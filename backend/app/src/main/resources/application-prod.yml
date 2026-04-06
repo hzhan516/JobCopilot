@@ -1,0 +1,17 @@
+# 生产环境配置
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 10
+
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    root: WARN
+    edu.asu.ser594.resumeassistant: INFO
+    org.springframework.web: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

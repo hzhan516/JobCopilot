@@ -1,0 +1,59 @@
+# =============================================================================
+# Docker 构建忽略文件
+# =============================================================================
+
+# 版本控制
+.git
+.gitignore
+
+# IDE 配置
+.idea
+.vscode
+*.iml
+*.ipr
+*.iws
+
+# 构建产物（后端）
+backend/target/
+backend/*/target/
+backend/*.jar
+
+# 构建产物（前端）
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# Python 虚拟环境（AI服务）
+ai-service/venv/
+ai-service/__pycache__/
+ai-service/*.pyc
+ai-service/.pytest_cache/
+
+# 本地环境文件
+.env
+.env.local
+.env.*.local
+
+# 日志文件
+*.log
+logs/
+
+# 测试文件
+test/
+tests/
+*test*
+
+# 文档
+*.md
+docs/
+
+# Docker 相关（避免循环）
+.dockerignore
+Dockerfile*
+docker-compose*.yml
+
+# 临时文件
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db

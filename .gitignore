@@ -1,0 +1,8 @@
+/.idea/
+/backend/api/target/
+/backend/app/target/
+/backend/domain/target/
+/backend/infrastructure/target/
+/backend/trigger/target/
+/backend/types/target/
+/backend/PROJECT_STRUCTURE.md

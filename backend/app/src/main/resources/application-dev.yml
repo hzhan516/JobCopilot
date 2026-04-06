@@ -1,0 +1,31 @@
+# 开发环境配置 - 使用 H2 内存数据库
+spring:
+  datasource:
+    url: jdbc:h2:mem:resume_assistant;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+
+  # H2 控制台（开发调试用）
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+logging:
+  level:
+    root: DEBUG
+    edu.asu.ser594.resumeassistant: DEBUG
+    org.springframework.web: DEBUG

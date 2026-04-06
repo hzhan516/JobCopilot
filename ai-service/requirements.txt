@@ -1,0 +1,30 @@
+# Python AI服务依赖
+# =================
+
+# Web框架
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+
+# 消息队列
+pika==1.3.2
+
+# OpenAI
+openai==1.54.0
+
+# 数据处理
+pydantic==2.9.0
+python-multipart==0.0.12
+
+# PDF解析
+PyPDF2==3.0.1
+
+# 向量嵌入
+sentence-transformers==3.2.0
+numpy==1.26.4
+
+# 工具
+python-dotenv==1.0.1
+httpx==0.27.2
+
+# 日志
+structlog==24.4.0
