@@ -6,19 +6,19 @@
 
 ## 1. 文档信息
 
-| 项目 | 内容 |
-|------|------|
-| **文档标题** | 智能求职助手 - 架构设计文档 |
-| **版本** | 1.0 |
-| **日期** | 2025年1月 |
-| **作者** | SER 594 课程项目组 |
-| **项目** | 智能求职助手 (Intelligent Job Assistant) |
-| **状态** | 草案 |
+| 项目       | 内容                                 |
+|----------|------------------------------------|
+| **文档标题** | 智能求职助手 - 架构设计文档                    |
+| **版本**   | 1.0                                |
+| **日期**   | 2025年1月                            |
+| **作者**   | SER 594 课程项目组                      |
+| **项目**   | 智能求职助手 (Intelligent Job Assistant) |
+| **状态**   | 草案                                 |
 
 ### 版本历史
 
-| 版本 | 日期 | 作者 | 变更说明 |
-|------|------|------|----------|
+| 版本  | 日期      | 作者          | 变更说明 |
+|-----|---------|-------------|------|
 | 1.0 | 2025-01 | SER 594 项目组 | 初始版本 |
 
 ---
@@ -31,13 +31,13 @@
 
 ### 2.2 设计目标
 
-| 目标 | 描述 | 优先级 |
-|------|------|--------|
-| **可扩展性** | 支持未来功能扩展和用户增长 | 高 |
-| **可维护性** | 清晰的模块划分，便于维护和迭代 | 高 |
-| **性能** | 响应时间 < 2秒，支持并发用户 | 高 |
-| **可靠性** | 服务可用性 > 99.5% | 中 |
-| **安全性** | 数据加密，访问控制 | 高 |
+| 目标       | 描述               | 优先级 |
+|----------|------------------|-----|
+| **可扩展性** | 支持未来功能扩展和用户增长    | 高   |
+| **可维护性** | 清晰的模块划分，便于维护和迭代  | 高   |
+| **性能**   | 响应时间 < 2秒，支持并发用户 | 高   |
+| **可靠性**  | 服务可用性 > 99.5%    | 中   |
+| **安全性**  | 数据加密，访问控制        | 高   |
 
 ### 2.3 架构原则
 
@@ -49,14 +49,14 @@
 
 ### 2.4 技术栈概览
 
-| 层级 | 技术 | 说明 |
-|------|------|------|
-| **前端** | React 18 + TypeScript + Tailwind CSS | 求职者交互界面 |
-| **后端** | Java Spring Boot 3.x + DDD | 业务逻辑、数据管理、消息队列 |
-| **AI服务** | Python FastAPI | 简历解析、匹配计算、对话处理 |
-| **数据库** | PostgreSQL 15 + pgvector | 业务数据 + 向量数据（统一存储） |
-| **消息队列** | RabbitMQ | 异步服务通信 |
-| **部署** | Docker Compose | 5服务架构 |
+| 层级       | 技术                                   | 说明                |
+|----------|--------------------------------------|-------------------|
+| **前端**   | React 18 + TypeScript + Tailwind CSS | 求职者交互界面           |
+| **后端**   | Java Spring Boot 3.x + DDD           | 业务逻辑、数据管理、消息队列    |
+| **AI服务** | Python FastAPI                       | 简历解析、匹配计算、对话处理    |
+| **数据库**  | PostgreSQL 15 + pgvector             | 业务数据 + 向量数据（统一存储） |
+| **消息队列** | RabbitMQ                             | 异步服务通信            |
+| **部署**   | Docker Compose                       | 5服务架构             |
 
 ---
 
@@ -158,12 +158,12 @@
 
 #### 4.1.1 页面结构
 
-| 页面 | 功能 | 核心组件 |
-|------|------|----------|
-| **简历页面** | 上传、查看、管理简历 | ResumeUpload, ResumeViewer, ResumeList |
-| **职位页面** | 浏览职位、查看匹配度 | JobList, JobDetail, MatchScore |
-| **对话页面** | AI对话优化简历 | ChatInterface, MessageList, SuggestionPanel |
-| **追踪页面** | 申请记录、面试日程 | ApplicationTracker, InterviewCalendar |
+| 页面       | 功能         | 核心组件                                        |
+|----------|------------|---------------------------------------------|
+| **简历页面** | 上传、查看、管理简历 | ResumeUpload, ResumeViewer, ResumeList      |
+| **职位页面** | 浏览职位、查看匹配度 | JobList, JobDetail, MatchScore              |
+| **对话页面** | AI对话优化简历   | ChatInterface, MessageList, SuggestionPanel |
+| **追踪页面** | 申请记录、面试日程  | ApplicationTracker, InterviewCalendar       |
 
 #### 4.1.2 组件层次
 
@@ -214,13 +214,13 @@ App
 
 #### 4.2.2 领域设计
 
-| 领域 | 聚合根 | 实体 | 值对象 | 领域服务 |
-|------|--------|------|--------|----------|
-| **用户领域** | User | UserProfile | Email, Phone | AuthService |
-| **简历领域** | Resume | ParsedResume, Skill, WorkExperience, Education | ResumeSummary | ResumeParserService |
-| **职位领域** | Job | JobRequirement, JobMatch | JobSummary, MatchScore | JobMatchingService |
-| **对话领域** | Conversation | Message, SuggestedChange | MessageContent | ConversationService |
-| **追踪领域** | JobApplication | Interview | ApplicationStatus | TrackingService |
+| 领域       | 聚合根            | 实体                                             | 值对象                    | 领域服务                |
+|----------|----------------|------------------------------------------------|------------------------|---------------------|
+| **用户领域** | User           | UserProfile                                    | Email, Phone           | AuthService         |
+| **简历领域** | Resume         | ParsedResume, Skill, WorkExperience, Education | ResumeSummary          | ResumeParserService |
+| **职位领域** | Job            | JobRequirement, JobMatch                       | JobSummary, MatchScore | JobMatchingService  |
+| **对话领域** | Conversation   | Message, SuggestedChange                       | MessageContent         | ConversationService |
+| **追踪领域** | JobApplication | Interview                                      | ApplicationStatus      | TrackingService     |
 
 ### 4.3 Python AI服务组件 (FastAPI)
 
@@ -257,12 +257,12 @@ ai_service/
 
 #### 4.3.2 AI处理引擎
 
-| 模块 | 功能 | 依赖 |
-|------|------|------|
-| **简历解析器** | 提取PDF/Word内容，生成结构化JSON | PyPDF2, python-docx, OpenAI API |
-| **嵌入生成器** | 生成文本向量表示 | sentence-transformers (all-MiniLM-L6-v2) |
-| **匹配计算器** | 计算简历-职位相似度 | cosine similarity, ranking algorithm |
-| **对话处理器** | RAG对话，记忆管理 | LangChain, OpenAI API, pgvector |
+| 模块        | 功能                     | 依赖                                       |
+|-----------|------------------------|------------------------------------------|
+| **简历解析器** | 提取PDF/Word内容，生成结构化JSON | PyPDF2, python-docx, OpenAI API          |
+| **嵌入生成器** | 生成文本向量表示               | sentence-transformers (all-MiniLM-L6-v2) |
+| **匹配计算器** | 计算简历-职位相似度             | cosine similarity, ranking algorithm     |
+| **对话处理器** | RAG对话，记忆管理             | LangChain, OpenAI API, pgvector          |
 
 ---
 
@@ -388,8 +388,8 @@ CREATE INDEX idx_job_embeddings_vector ON job_embeddings
 
 #### 5.2.1 嵌入模型选择
 
-| 模型 | 维度 | 用途 | 说明 |
-|------|------|------|------|
+| 模型                   | 维度  | 用途        | 说明           |
+|----------------------|-----|-----------|--------------|
 | **all-MiniLM-L6-v2** | 384 | 简历/职位语义匹配 | 轻量级，速度快，效果良好 |
 
 #### 5.2.2 相似度搜索示例
@@ -456,16 +456,16 @@ LIMIT 5;
 
 #### 6.1.1 队列定义
 
-| 队列名称 | 类型 | 生产者 | 消费者 | 消息大小 |
-|----------|------|--------|--------|----------|
-| ai.resume.preprocess | 工作队列 | Java后端 | Python AI | < 1KB |
-| ai.resume.preprocess.result | 结果队列 | Python AI | Java后端 | 5-10KB |
-| ai.job.match | 工作队列 | Java后端 | Python AI | < 5KB |
-| ai.job.match.result | 结果队列 | Python AI | Java后端 | < 5KB |
-| ai.chat.message | 工作队列 | Java后端 | Python AI | < 5KB |
-| ai.chat.message.result | 结果队列 | Python AI | Java后端 | < 5KB |
-| ai.vector.request | 请求队列 | Python AI | Java后端 | < 1KB |
-| ai.vector.response | 响应队列 | Java后端 | Python AI | 2-5KB |
+| 队列名称                        | 类型   | 生产者       | 消费者       | 消息大小   |
+|-----------------------------|------|-----------|-----------|--------|
+| ai.resume.preprocess        | 工作队列 | Java后端    | Python AI | < 1KB  |
+| ai.resume.preprocess.result | 结果队列 | Python AI | Java后端    | 5-10KB |
+| ai.job.match                | 工作队列 | Java后端    | Python AI | < 5KB  |
+| ai.job.match.result         | 结果队列 | Python AI | Java后端    | < 5KB  |
+| ai.chat.message             | 工作队列 | Java后端    | Python AI | < 5KB  |
+| ai.chat.message.result      | 结果队列 | Python AI | Java后端    | < 5KB  |
+| ai.vector.request           | 请求队列 | Python AI | Java后端    | < 1KB  |
+| ai.vector.response          | 响应队列 | Java后端    | Python AI | 2-5KB  |
 
 #### 6.1.2 消息格式
 
@@ -532,24 +532,24 @@ LIMIT 5;
 
 #### 6.2.1 API端点概览
 
-| 端点 | 方法 | 描述 | 认证 |
-|------|------|------|------|
-| `/api/v1/auth/register` | POST | 用户注册 | 否 |
-| `/api/v1/auth/login` | POST | 用户登录 | 否 |
-| `/api/v1/resumes` | GET | 获取用户简历列表 | 是 |
-| `/api/v1/resumes` | POST | 上传新简历 | 是 |
-| `/api/v1/resumes/{id}` | GET | 获取简历详情 | 是 |
-| `/api/v1/resumes/{id}` | DELETE | 删除简历 | 是 |
-| `/api/v1/jobs` | GET | 获取职位列表 | 是 |
-| `/api/v1/jobs/{id}` | GET | 获取职位详情 | 是 |
-| `/api/v1/jobs/match` | POST | 获取匹配职位 | 是 |
-| `/api/v1/conversations` | GET | 获取对话列表 | 是 |
-| `/api/v1/conversations` | POST | 创建新对话 | 是 |
-| `/api/v1/conversations/{id}/messages` | GET | 获取对话消息 | 是 |
-| `/api/v1/conversations/{id}/messages` | POST | 发送消息 | 是 |
-| `/api/v1/applications` | GET | 获取申请记录 | 是 |
-| `/api/v1/applications` | POST | 创建申请记录 | 是 |
-| `/api/v1/applications/{id}` | PUT | 更新申请状态 | 是 |
+| 端点                                    | 方法     | 描述       | 认证 |
+|---------------------------------------|--------|----------|----|
+| `/api/v1/auth/register`               | POST   | 用户注册     | 否  |
+| `/api/v1/auth/login`                  | POST   | 用户登录     | 否  |
+| `/api/v1/resumes`                     | GET    | 获取用户简历列表 | 是  |
+| `/api/v1/resumes`                     | POST   | 上传新简历    | 是  |
+| `/api/v1/resumes/{id}`                | GET    | 获取简历详情   | 是  |
+| `/api/v1/resumes/{id}`                | DELETE | 删除简历     | 是  |
+| `/api/v1/jobs`                        | GET    | 获取职位列表   | 是  |
+| `/api/v1/jobs/{id}`                   | GET    | 获取职位详情   | 是  |
+| `/api/v1/jobs/match`                  | POST   | 获取匹配职位   | 是  |
+| `/api/v1/conversations`               | GET    | 获取对话列表   | 是  |
+| `/api/v1/conversations`               | POST   | 创建新对话    | 是  |
+| `/api/v1/conversations/{id}/messages` | GET    | 获取对话消息   | 是  |
+| `/api/v1/conversations/{id}/messages` | POST   | 发送消息     | 是  |
+| `/api/v1/applications`                | GET    | 获取申请记录   | 是  |
+| `/api/v1/applications`                | POST   | 创建申请记录   | 是  |
+| `/api/v1/applications/{id}`           | PUT    | 更新申请状态   | 是  |
 
 #### 6.2.2 请求/响应示例
 
@@ -657,13 +657,13 @@ Response (200 OK):
 
 ### 7.1 AI技术栈
 
-| 技术 | 用途 | 实现 |
-|------|------|------|
-| **向量搜索/嵌入** | 简历与职位语义匹配 | sentence-transformers + pgvector |
-| **结构化输出** | 解析简历为结构化JSON | OpenAI GPT-4 + JSON Schema |
-| **LLM API集成** | API调用层，重试和成本追踪 | 自定义客户端 + 装饰器 |
-| **记忆/对话管理** | 对话历史管理 | 数据库存储 + 上下文窗口管理 |
-| **RAG** | 检索简历内容作为对话上下文 | LangChain + pgvector |
+| 技术            | 用途             | 实现                               |
+|---------------|----------------|----------------------------------|
+| **向量搜索/嵌入**   | 简历与职位语义匹配      | sentence-transformers + pgvector |
+| **结构化输出**     | 解析简历为结构化JSON   | OpenAI GPT-4 + JSON Schema       |
+| **LLM API集成** | API调用层，重试和成本追踪 | 自定义客户端 + 装饰器                     |
+| **记忆/对话管理**   | 对话历史管理         | 数据库存储 + 上下文窗口管理                  |
+| **RAG**       | 检索简历内容作为对话上下文  | LangChain + pgvector             |
 
 ### 7.2 简历解析模块
 
@@ -820,10 +820,10 @@ LIMIT $2;
 
 #### 7.5.2 上下文窗口管理
 
-| 模型 | 最大上下文 | 保留策略 |
-|------|-----------|----------|
-| GPT-4 | 8K tokens | 保留最近N条消息，摘要早期对话 |
-| GPT-3.5 | 4K tokens | 同上 |
+| 模型      | 最大上下文     | 保留策略            |
+|---------|-----------|-----------------|
+| GPT-4   | 8K tokens | 保留最近N条消息，摘要早期对话 |
+| GPT-3.5 | 4K tokens | 同上              |
 
 ---
 
@@ -869,12 +869,12 @@ LIMIT $2;
 
 #### 8.2.1 敏感数据处理
 
-| 数据类型 | 保护措施 |
-|----------|----------|
-| 密码 | bcrypt哈希，salt rounds=12 |
-| 简历内容 | 传输TLS加密，存储加密 |
-| 个人身份信息 | 字段级加密 |
-| API密钥 | 环境变量存储，不提交到代码库 |
+| 数据类型   | 保护措施                    |
+|--------|-------------------------|
+| 密码     | bcrypt哈希，salt rounds=12 |
+| 简历内容   | 传输TLS加密，存储加密            |
+| 个人身份信息 | 字段级加密                   |
+| API密钥  | 环境变量存储，不提交到代码库          |
 
 #### 8.2.2 传输安全
 
@@ -886,12 +886,12 @@ LIMIT $2;
 
 #### 8.3.1 权限矩阵
 
-| 资源 | 所有者 | 其他用户 | 管理员 |
-|------|--------|----------|--------|
-| 简历 | CRUD | - | R |
-| 职位 | R | R | CRUD |
-| 对话 | CRUD | - | R |
-| 申请记录 | CRUD | - | R |
+| 资源   | 所有者  | 其他用户 | 管理员  |
+|------|------|------|------|
+| 简历   | CRUD | -    | R    |
+| 职位   | R    | R    | CRUD |
+| 对话   | CRUD | -    | R    |
+| 申请记录 | CRUD | -    | R    |
 
 ---
 
@@ -985,13 +985,13 @@ networks:
 
 ### 9.2 服务端口映射
 
-| 服务 | 内部端口 | 外部端口 | 用途 |
-|------|----------|----------|------|
-| Frontend | 80 | 80 | Web界面 |
-| Backend | 8080 | 8080 | REST API |
-| AI Service | 8000 | 8000 | AI处理API |
-| PostgreSQL | 5432 | 5432 | 数据库 |
-| RabbitMQ | 5672/15672 | 5672/15672 | 消息队列/管理界面 |
+| 服务         | 内部端口       | 外部端口       | 用途        |
+|------------|------------|------------|-----------|
+| Frontend   | 80         | 80         | Web界面     |
+| Backend    | 8080       | 8080       | REST API  |
+| AI Service | 8000       | 8000       | AI处理API   |
+| PostgreSQL | 5432       | 5432       | 数据库       |
+| RabbitMQ   | 5672/15672 | 5672/15672 | 消息队列/管理界面 |
 
 ### 9.3 基础设施图
 
@@ -1026,14 +1026,14 @@ networks:
 
 ### 10.1 性能指标
 
-| 指标 | 目标值 | 说明 |
-|------|--------|------|
+| 指标      | 目标值           | 说明   |
+|---------|---------------|------|
 | API响应时间 | < 500ms (P95) | 普通查询 |
-| 简历解析时间 | < 10秒 | 异步处理 |
-| 职位匹配时间 | < 2秒 | 向量搜索 |
-| 对话响应时间 | < 3秒 | AI生成 |
-| 并发用户数 | 100+ | 同时在线 |
-| 系统可用性 | 99.5% | 年度目标 |
+| 简历解析时间  | < 10秒         | 异步处理 |
+| 职位匹配时间  | < 2秒          | 向量搜索 |
+| 对话响应时间  | < 3秒          | AI生成 |
+| 并发用户数   | 100+          | 同时在线 |
+| 系统可用性   | 99.5%         | 年度目标 |
 
 ### 10.2 扩展策略
 
@@ -1062,24 +1062,24 @@ networks:
 
 #### 10.2.2 性能优化措施
 
-| 层面 | 优化措施 |
-|------|----------|
-| **数据库** | 索引优化、查询优化、连接池 |
-| **缓存** | Redis缓存热点数据 |
-| **CDN** | 静态资源CDN加速 |
+| 层面       | 优化措施          |
+|----------|---------------|
+| **数据库**  | 索引优化、查询优化、连接池 |
+| **缓存**   | Redis缓存热点数据   |
+| **CDN**  | 静态资源CDN加速     |
 | **AI服务** | 模型量化、批处理、异步处理 |
-| **消息队列** | 消费者水平扩展 |
+| **消息队列** | 消费者水平扩展       |
 
 ### 10.3 监控和日志
 
 #### 10.3.1 监控指标
 
-| 类别 | 指标 |
-|------|------|
-| **应用** | QPS、响应时间、错误率 |
-| **系统** | CPU、内存、磁盘、网络 |
+| 类别     | 指标             |
+|--------|----------------|
+| **应用** | QPS、响应时间、错误率   |
+| **系统** | CPU、内存、磁盘、网络   |
 | **业务** | 活跃用户、简历处理量、对话数 |
-| **AI** | API调用次数、成本、延迟 |
+| **AI** | API调用次数、成本、延迟  |
 
 #### 10.3.2 日志结构
 
@@ -1103,14 +1103,14 @@ networks:
 
 ### 11.1 术语表
 
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| 领域驱动设计 | DDD | Domain-Driven Design，业务逻辑内聚的架构方法 |
-| 向量嵌入 | Embedding | 将文本转换为数值向量的技术 |
-| 检索增强生成 | RAG | Retrieval-Augmented Generation，结合检索的生成模型 |
-| 消息队列 | MQ | Message Queue，异步通信机制 |
-| 聚合根 | Aggregate Root | DDD中的核心实体 |
-| 值对象 | Value Object | DDD中无身份标识的对象 |
+| 术语     | 英文             | 说明                                       |
+|--------|----------------|------------------------------------------|
+| 领域驱动设计 | DDD            | Domain-Driven Design，业务逻辑内聚的架构方法         |
+| 向量嵌入   | Embedding      | 将文本转换为数值向量的技术                            |
+| 检索增强生成 | RAG            | Retrieval-Augmented Generation，结合检索的生成模型 |
+| 消息队列   | MQ             | Message Queue，异步通信机制                     |
+| 聚合根    | Aggregate Root | DDD中的核心实体                                |
+| 值对象    | Value Object   | DDD中无身份标识的对象                             |
 
 ### 11.2 参考资料
 
@@ -1132,6 +1132,7 @@ networks:
 **决策**: 使用PostgreSQL + pgvector扩展
 
 **理由**:
+
 - 统一数据库管理，简化运维
 - pgvector支持高效的向量相似度搜索
 - 事务一致性保证
@@ -1145,6 +1146,7 @@ networks:
 **决策**: 使用RabbitMQ作为消息队列
 
 **理由**:
+
 - 异步处理，解耦服务
 - 支持可靠消息传递
 - 数据隔离，AI服务不直接访问数据库
@@ -1158,6 +1160,7 @@ networks:
 **决策**: 使用all-MiniLM-L6-v2模型
 
 **理由**:
+
 - 轻量级，384维向量
 - 速度快，适合实时应用
 - 多语言支持

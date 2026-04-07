@@ -1,16 +1,14 @@
-# 开发环境配置 - 使用 H2 内存数据库
+# /backend/app/src/main/resources/application-dev.yml
 spring:
-  datasource:
-    url: jdbc:h2:mem:resume_assistant;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+  application:
+    name: resume-assistant-backend
 
-  jpa:
-    show-sql: true
-    hibernate:
-      ddl-auto: create-drop
-    database-platform: org.hibernate.dialect.H2Dialect
+  # 数据源配置 PostgreSQL + pgvector
+  datasource:
+    url: jdbc:postgresql://localhost:5432/resume_assistant
+    username: resume_user
+    password: resume_pass
+    driver-class-name: org.postgresql.Driver
 
   # H2 控制台（开发调试用）
   h2:
@@ -18,14 +16,26 @@ spring:
       enabled: true
       path: /h2-console
 
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
+  # JPA
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
 
+  # 禁用 Flyway（H2 不需要）
+  flyway:
+    enabled: false
+
+  # JWT（开发用固定密钥）
+jwt:
+  secret: dev-secret-key-at-least-32-characters-long
+  access-token-expiration: 86400000      # 24小时（开发方便）
+  refresh-token-expiration: 604800000    # 7天
+
+# 日志
 logging:
   level:
-    root: DEBUG
-    edu.asu.ser594.resumeassistant: DEBUG
-    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG

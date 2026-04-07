@@ -2,7 +2,8 @@
 
 # Resume Assistant
 
-An intelligent job search assistant powered by AI, helping job seekers optimize resumes, match suitable positions, and track application progress.
+An intelligent job search assistant powered by AI, helping job seekers optimize resumes, match suitable positions, and
+track application progress.
 
 ## Features
 
@@ -36,13 +37,13 @@ This project adopts a microservices architecture with the following components:
                      └─────────────┘
 ```
 
-| Service | Technology | Port | Description |
-|---------|------------|------|-------------|
-| Frontend | React 18 + Vite | 80 | Web user interface served by Nginx |
-| Backend | Java 21 + Spring Boot 3.5 | 8080 | REST API and business logic |
-| AI Service | Python 3 + FastAPI | 8000 | AI processing and OpenAI integration |
-| Database | PostgreSQL 15 + pgvector | 5432 | Business data and vector storage |
-| Message Queue | RabbitMQ 3 | 5672 / 15672 | Async message processing |
+| Service       | Technology                | Port         | Description                          |
+|---------------|---------------------------|--------------|--------------------------------------|
+| Frontend      | React 18 + Vite           | 80           | Web user interface served by Nginx   |
+| Backend       | Java 21 + Spring Boot 3.5 | 8080         | REST API and business logic          |
+| AI Service    | Python 3 + FastAPI        | 8000         | AI processing and OpenAI integration |
+| Database      | PostgreSQL 15 + pgvector  | 5432         | Business data and vector storage     |
+| Message Queue | RabbitMQ 3                | 5672 / 15672 | Async message processing             |
 
 ## Project Structure
 
@@ -72,14 +73,14 @@ This project adopts a microservices architecture with the following components:
 
 The backend adopts **Hexagonal Architecture / Domain-Driven Design (DDD)** with the following layered modules:
 
-| Module | Description | Dependencies |
-|--------|-------------|--------------|
-| `types` | Basic types, enums, constants | None |
-| `domain` | Domain entities, services, repositories | `types` |
-| `api` | DTOs, facade interfaces | `domain`, `types` |
-| `infrastructure` | DB, cache, messaging implementations | `domain`, `api` |
-| `trigger` | Controllers, schedulers, event listeners | `domain`, `api` |
-| `app` | Spring Boot startup and configuration | All modules |
+| Module           | Description                              | Dependencies      |
+|------------------|------------------------------------------|-------------------|
+| `types`          | Basic types, enums, constants            | None              |
+| `domain`         | Domain entities, services, repositories  | `types`           |
+| `api`            | DTOs, facade interfaces                  | `domain`, `types` |
+| `infrastructure` | DB, cache, messaging implementations     | `domain`, `api`   |
+| `trigger`        | Controllers, schedulers, event listeners | `domain`, `api`   |
+| `app`            | Spring Boot startup and configuration    | All modules       |
 
 ## Quick Start
 
@@ -105,12 +106,12 @@ cp .env.example .env
 
 Required environment variables:
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `OPENAI_API_KEY` | Yes | Your OpenAI API key |
-| `JWT_SECRET` | Yes | Secret key for JWT token generation (min 32 chars) |
-| `SPRING_PROFILES_ACTIVE` | No | Spring profile: `dev` (default) or `prod` |
-| `LOG_LEVEL` | No | AI service log level: `INFO` (default) or `DEBUG` |
+| Variable                 | Required | Description                                        |
+|--------------------------|----------|----------------------------------------------------|
+| `OPENAI_API_KEY`         | Yes      | Your OpenAI API key                                |
+| `JWT_SECRET`             | Yes      | Secret key for JWT token generation (min 32 chars) |
+| `SPRING_PROFILES_ACTIVE` | No       | Spring profile: `dev` (default) or `prod`          |
+| `LOG_LEVEL`              | No       | AI service log level: `INFO` (default) or `DEBUG`  |
 
 ### 3. Start All Services
 
@@ -130,13 +131,13 @@ podman compose up -d
 
 ### 4. Verify Services
 
-| Service | URL | Description |
-|---------|-----|-------------|
-| Frontend | http://localhost | Web application |
-| Backend API | http://localhost:8080/api | REST API endpoints |
-| Backend Health | http://localhost:8080/actuator/health | Health check |
-| AI Service | http://localhost:8000 | FastAPI documentation |
-| RabbitMQ Management | http://localhost:15672 | Message queue UI (guest/guest) |
+| Service             | URL                                   | Description                    |
+|---------------------|---------------------------------------|--------------------------------|
+| Frontend            | http://localhost                      | Web application                |
+| Backend API         | http://localhost:8080/api             | REST API endpoints             |
+| Backend Health      | http://localhost:8080/actuator/health | Health check                   |
+| AI Service          | http://localhost:8000                 | FastAPI documentation          |
+| RabbitMQ Management | http://localhost:15672                | Message queue UI (guest/guest) |
 
 ### 5. Stop Services
 
@@ -162,6 +163,7 @@ The development server will start at http://localhost:5173
 ### Backend Development
 
 Requirements:
+
 - JDK 21
 - Maven 3.9+
 
@@ -181,6 +183,7 @@ mvn spring-boot:run -pl app -Dspring-boot.run.profiles=prod
 ### AI Service Development
 
 Requirements:
+
 - Python 3.11+
 - pip or poetry
 
@@ -211,12 +214,14 @@ See [DOCKER_DEPLOY.md](./DOCKER_DEPLOY.md) for detailed deployment instructions 
 ## Technology Stack
 
 ### Frontend
+
 - React 18.2
 - Vite 5.0
 - React Router 6
 - Axios
 
 ### Backend
+
 - Java 21
 - Spring Boot 3.5.7
 - PostgreSQL 15 + pgvector
@@ -224,12 +229,14 @@ See [DOCKER_DEPLOY.md](./DOCKER_DEPLOY.md) for detailed deployment instructions 
 - Maven 3.9+
 
 ### AI Service
+
 - Python 3.11
 - FastAPI
 - OpenAI API
 - Uvicorn
 
 ### DevOps
+
 - Docker & Docker Compose
 - Nginx
 - Flyway (database migration)

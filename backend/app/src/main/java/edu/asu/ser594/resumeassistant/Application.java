@@ -6,7 +6,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 智能求职助手后端服务启动类
- * 
+ *
  * @author SER594 Team
  * @date 2024
  */

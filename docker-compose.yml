@@ -77,7 +77,7 @@ services:
     restart: unless-stopped
     # 健康检查
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -138,7 +138,7 @@ services:
     restart: unless-stopped
     # 健康检查
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U resume_user -d resume_assistant"]
+      test: [ "CMD-SHELL", "pg_isready -U resume_user -d resume_assistant" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -165,7 +165,7 @@ services:
     restart: unless-stopped
     # 健康检查
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
       interval: 30s
       timeout: 10s
       retries: 5

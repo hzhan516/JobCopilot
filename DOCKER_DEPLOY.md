@@ -20,12 +20,14 @@ vim .env
 ```
 
 必需配置项：
+
 - `OPENAI_API_KEY`: 你的 OpenAI API 密钥
 - `JWT_SECRET`: JWT 签名密钥（生产环境必须修改）
 
 ### 2. 启动服务
 
 #### 使用 Docker
+
 ```bash
 # 构建并启动所有服务
 docker-compose up -d
@@ -41,6 +43,7 @@ docker-compose down -v
 ```
 
 #### 使用 Podman
+
 ```bash
 # 方法 1: 使用 podman-compose
 podman-compose up -d
@@ -71,17 +74,18 @@ curl http://localhost/health
 
 ## 服务访问地址
 
-| 服务 | 地址 | 说明 |
-|------|------|------|
-| 前端界面 | http://localhost | 求职者界面 |
-| 后端 API | http://localhost:8080/api | REST API |
-| AI 服务 | http://localhost:8000 | FastAPI 文档 |
-| RabbitMQ 管理 | http://localhost:15672 | guest/guest |
-| H2 控制台 | http://localhost:8080/api/h2-console | 开发环境 |
+| 服务          | 地址                                   | 说明          |
+|-------------|--------------------------------------|-------------|
+| 前端界面        | http://localhost                     | 求职者界面       |
+| 后端 API      | http://localhost:8080/api            | REST API    |
+| AI 服务       | http://localhost:8000                | FastAPI 文档  |
+| RabbitMQ 管理 | http://localhost:15672               | guest/guest |
+| H2 控制台      | http://localhost:8080/api/h2-console | 开发环境        |
 
 ## 常用命令
 
 ### 查看日志
+
 ```bash
 # 所有服务日志
 docker-compose logs -f
@@ -93,6 +97,7 @@ docker-compose logs -f postgres
 ```
 
 ### 重启服务
+
 ```bash
 # 重启所有服务
 docker-compose restart
@@ -102,6 +107,7 @@ docker-compose restart backend
 ```
 
 ### 重建服务
+
 ```bash
 # 重新构建并启动（代码更新后）
 docker-compose up -d --build
@@ -111,6 +117,7 @@ docker-compose up -d --build backend
 ```
 
 ### 进入容器
+
 ```bash
 # 进入后端容器
 docker-compose exec backend sh
@@ -141,14 +148,18 @@ docker-compose exec -T postgres psql -U resume_user resume_assistant < backup.sq
 ## 故障排查
 
 ### 端口冲突
+
 如果启动时报端口冲突错误，修改 `docker-compose.yml` 中的端口映射：
+
 ```yaml
 ports:
   - "8081:8080"  # 将主机端口改为 8081
 ```
 
 ### 内存不足
+
 如果容器频繁重启，可能是内存不足：
+
 ```bash
 # 查看容器资源使用
 docker stats
@@ -157,6 +168,7 @@ docker stats
 ```
 
 ### 清理构建缓存
+
 ```bash
 # 清理未使用的镜像、容器、卷
 docker system prune -a --volumes
@@ -187,13 +199,13 @@ docker-compose up -d --build --force-recreate
 ## 注意事项
 
 1. **Podman 用户**：
-   - 确保安装 `podman-compose`
-   - 或使用 `podman compose`（Podman 3.0+ 原生支持）
-   - 如果遇到权限问题，检查 SELinux 设置
+    - 确保安装 `podman-compose`
+    - 或使用 `podman compose`（Podman 3.0+ 原生支持）
+    - 如果遇到权限问题，检查 SELinux 设置
 
 2. **Windows 用户**：
-   - 使用 WSL2 运行 Docker
-   - 文件共享性能可能较慢
+    - 使用 WSL2 运行 Docker
+    - 文件共享性能可能较慢
 
 3. **Mac 用户**：
-   - Docker Desktop 内存默认 2GB，建议增加到 4GB+
+    - Docker Desktop 内存默认 2GB，建议增加到 4GB+

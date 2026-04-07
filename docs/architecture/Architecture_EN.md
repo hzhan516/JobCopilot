@@ -6,21 +6,21 @@
 
 ## 1. Document Information
 
-| Field | Value |
-|-------|-------|
-| **Project Name** | Intelligent Job Assistant (智能求职助手) |
-| **Document Title** | System Architecture Document |
-| **Version** | 1.0.0 |
-| **Date** | 2025-01 |
-| **Authors** | SER 594 Course Project Team |
-| **Status** | Draft |
+| Field               | Value                                    |
+|---------------------|------------------------------------------|
+| **Project Name**    | Intelligent Job Assistant (智能求职助手)       |
+| **Document Title**  | System Architecture Document             |
+| **Version**         | 1.0.0                                    |
+| **Date**            | 2025-01                                  |
+| **Authors**         | SER 594 Course Project Team              |
+| **Status**          | Draft                                    |
 | **Target Audience** | Developers, Architects, Project Managers |
 
 ### Revision History
 
-| Version | Date | Author | Description |
-|---------|------|--------|-------------|
-| 1.0.0 | 2025-01 | Project Team | Initial architecture document |
+| Version | Date    | Author       | Description                   |
+|---------|---------|--------------|-------------------------------|
+| 1.0.0   | 2025-01 | Project Team | Initial architecture document |
 
 ---
 
@@ -28,16 +28,19 @@
 
 ### 2.1 System Purpose
 
-The Intelligent Job Assistant is a comprehensive job search platform that leverages artificial intelligence to help job seekers optimize their resumes, discover relevant job opportunities, and track their application progress. The system combines modern web technologies with advanced AI capabilities to provide an intelligent, conversational experience for job seekers.
+The Intelligent Job Assistant is a comprehensive job search platform that leverages artificial intelligence to help job
+seekers optimize their resumes, discover relevant job opportunities, and track their application progress. The system
+combines modern web technologies with advanced AI capabilities to provide an intelligent, conversational experience for
+job seekers.
 
 ### 2.2 Key Features
 
-| Feature | Description | Target Users |
-|---------|-------------|--------------|
-| **Resume Intelligent Parsing** | Upload PDF/Word resumes, automatically extract structured information (skills, experience, education) | All job seekers |
-| **Job Intelligent Matching** | AI-powered semantic matching between resumes and job postings | All job seekers |
-| **Conversational Resume Optimization** | AI assistant helps optimize resumes through natural dialogue | All job seekers |
-| **Job Application Tracking** | Record application history, interview schedules, and status updates | All job seekers |
+| Feature                                | Description                                                                                           | Target Users    |
+|----------------------------------------|-------------------------------------------------------------------------------------------------------|-----------------|
+| **Resume Intelligent Parsing**         | Upload PDF/Word resumes, automatically extract structured information (skills, experience, education) | All job seekers |
+| **Job Intelligent Matching**           | AI-powered semantic matching between resumes and job postings                                         | All job seekers |
+| **Conversational Resume Optimization** | AI assistant helps optimize resumes through natural dialogue                                          | All job seekers |
+| **Job Application Tracking**           | Record application history, interview schedules, and status updates                                   | All job seekers |
 
 ### 2.3 Target Users
 
@@ -74,14 +77,14 @@ The Intelligent Job Assistant is a comprehensive job search platform that levera
 
 ### 2.5 Technology Stack Summary
 
-| Layer | Technology | Version | Purpose |
-|-------|------------|---------|---------|
-| **Frontend** | React + TypeScript + Tailwind CSS | 18.x | User interface |
-| **Backend** | Java Spring Boot | 3.x | Business logic, API |
-| **AI Service** | Python FastAPI | Latest | AI/ML processing |
-| **Database** | PostgreSQL + pgvector | 15 | Business + vector data |
-| **Message Queue** | RabbitMQ | 3.x | Async communication |
-| **Deployment** | Docker Compose | - | Container orchestration |
+| Layer             | Technology                        | Version | Purpose                 |
+|-------------------|-----------------------------------|---------|-------------------------|
+| **Frontend**      | React + TypeScript + Tailwind CSS | 18.x    | User interface          |
+| **Backend**       | Java Spring Boot                  | 3.x     | Business logic, API     |
+| **AI Service**    | Python FastAPI                    | Latest  | AI/ML processing        |
+| **Database**      | PostgreSQL + pgvector             | 15      | Business + vector data  |
+| **Message Queue** | RabbitMQ                          | 3.x     | Async communication     |
+| **Deployment**    | Docker Compose                    | -       | Container orchestration |
 
 ---
 
@@ -245,14 +248,14 @@ The Intelligent Job Assistant is a comprehensive job search platform that levera
 
 #### 4.1.1 Technology Stack
 
-| Component | Technology | Version | Purpose |
-|-----------|------------|---------|---------|
-| Framework | React | 18.x | UI component library |
-| Language | TypeScript | 5.x | Type-safe development |
-| Styling | Tailwind CSS | 3.x | Utility-first CSS |
-| State Management | React Query | Latest | Server state management |
-| HTTP Client | Axios | Latest | API communication |
-| Build Tool | Vite | Latest | Fast development build |
+| Component        | Technology   | Version | Purpose                 |
+|------------------|--------------|---------|-------------------------|
+| Framework        | React        | 18.x    | UI component library    |
+| Language         | TypeScript   | 5.x     | Type-safe development   |
+| Styling          | Tailwind CSS | 3.x     | Utility-first CSS       |
+| State Management | React Query  | Latest  | Server state management |
+| HTTP Client      | Axios        | Latest  | API communication       |
+| Build Tool       | Vite         | Latest  | Fast development build  |
 
 #### 4.1.2 Page Structure
 
@@ -296,12 +299,12 @@ The Intelligent Job Assistant is a comprehensive job search platform that levera
 
 #### 4.1.3 Page Components
 
-| Page | Key Components | Features |
-|------|----------------|----------|
-| **Resume Page** | UploadZone, ResumeViewer, ParsedDataEditor | PDF/Word upload, preview, edit parsed data |
-| **Job Page** | JobList, JobDetail, MatchScore, FilterPanel | Job search, matching scores, filtering |
-| **Chat Page** | ChatWindow, MessageList, SuggestionPanel | AI conversation, resume optimization |
-| **Tracking Page** | ApplicationList, Calendar, StatusBoard | Application tracking, interview schedule |
+| Page              | Key Components                              | Features                                   |
+|-------------------|---------------------------------------------|--------------------------------------------|
+| **Resume Page**   | UploadZone, ResumeViewer, ParsedDataEditor  | PDF/Word upload, preview, edit parsed data |
+| **Job Page**      | JobList, JobDetail, MatchScore, FilterPanel | Job search, matching scores, filtering     |
+| **Chat Page**     | ChatWindow, MessageList, SuggestionPanel    | AI conversation, resume optimization       |
+| **Tracking Page** | ApplicationList, Calendar, StatusBoard      | Application tracking, interview schedule   |
 
 ### 4.2 Java Backend Service
 
@@ -368,13 +371,13 @@ The Intelligent Job Assistant is a comprehensive job search platform that levera
 
 #### 4.2.2 Domain Modules
 
-| Domain | Key Entities | Key Services | Repositories |
-|--------|--------------|--------------|--------------|
-| **User** | User, UserProfile, AuthToken | AuthService, UserService | UserRepository |
-| **Resume** | Resume, ParsedResume, Skill, WorkExperience, Education | ResumeService, ResumeParserService | ResumeRepository, ResumeEmbeddingRepository |
-| **Job** | Job, JobRequirement, JobMatch | JobService, JobMatchingService | JobRepository, JobEmbeddingRepository |
-| **Conversation** | Conversation, Message, SuggestedChange | ConversationService, ChatService | ConversationRepository |
-| **Tracking** | JobApplication, Interview, ApplicationStatus | TrackingService | TrackingRepository |
+| Domain           | Key Entities                                           | Key Services                       | Repositories                                |
+|------------------|--------------------------------------------------------|------------------------------------|---------------------------------------------|
+| **User**         | User, UserProfile, AuthToken                           | AuthService, UserService           | UserRepository                              |
+| **Resume**       | Resume, ParsedResume, Skill, WorkExperience, Education | ResumeService, ResumeParserService | ResumeRepository, ResumeEmbeddingRepository |
+| **Job**          | Job, JobRequirement, JobMatch                          | JobService, JobMatchingService     | JobRepository, JobEmbeddingRepository       |
+| **Conversation** | Conversation, Message, SuggestedChange                 | ConversationService, ChatService   | ConversationRepository                      |
+| **Tracking**     | JobApplication, Interview, ApplicationStatus           | TrackingService                    | TrackingRepository                          |
 
 #### 4.2.3 API Controllers
 
@@ -510,14 +513,14 @@ public class TrackingController {
 
 #### 4.3.2 AI Modules
 
-| Module | Technology | Purpose |
-|--------|------------|---------|
-| **Resume Parser** | PyPDF2, python-docx, OpenAI GPT-4 | Extract structured data from PDF/Word resumes |
-| **Embedding Generator** | sentence-transformers (all-MiniLM-L6-v2) | Generate 384-dimensional embeddings |
-| **Match Calculator** | pgvector, cosine similarity | Calculate semantic similarity between resumes and jobs |
-| **Chat Processor** | OpenAI GPT-4, LangChain | Process conversational queries with RAG |
-| **Memory Manager** | Custom implementation | Manage conversation history and context |
-| **RAG Retriever** | pgvector, embedding search | Retrieve relevant resume content for context |
+| Module                  | Technology                               | Purpose                                                |
+|-------------------------|------------------------------------------|--------------------------------------------------------|
+| **Resume Parser**       | PyPDF2, python-docx, OpenAI GPT-4        | Extract structured data from PDF/Word resumes          |
+| **Embedding Generator** | sentence-transformers (all-MiniLM-L6-v2) | Generate 384-dimensional embeddings                    |
+| **Match Calculator**    | pgvector, cosine similarity              | Calculate semantic similarity between resumes and jobs |
+| **Chat Processor**      | OpenAI GPT-4, LangChain                  | Process conversational queries with RAG                |
+| **Memory Manager**      | Custom implementation                    | Manage conversation history and context                |
+| **RAG Retriever**       | pgvector, embedding search               | Retrieve relevant resume content for context           |
 
 ---
 
@@ -801,13 +804,14 @@ CREATE INDEX idx_applications_applied_at ON job_applications(applied_at);
 
 #### 5.3.1 Embedding Model Selection
 
-| Model | Dimension | Performance | Use Case |
-|-------|-----------|-------------|----------|
-| **all-MiniLM-L6-v2** | 384 | Fast, good quality | Selected for this project |
-| all-mpnet-base-v2 | 768 | Slower, better quality | Alternative option |
-| text-embedding-ada-002 | 1536 | API-based, high quality | Cloud option |
+| Model                  | Dimension | Performance             | Use Case                  |
+|------------------------|-----------|-------------------------|---------------------------|
+| **all-MiniLM-L6-v2**   | 384       | Fast, good quality      | Selected for this project |
+| all-mpnet-base-v2      | 768       | Slower, better quality  | Alternative option        |
+| text-embedding-ada-002 | 1536      | API-based, high quality | Cloud option              |
 
 **Selected Model**: `sentence-transformers/all-MiniLM-L6-v2`
+
 - **Dimension**: 384
 - **Max Sequence Length**: 256 tokens
 - **Average Performance**: Strong semantic similarity
@@ -923,20 +927,21 @@ LIMIT 10;
 
 #### 6.1.1 Queue Configuration
 
-| Queue Name | Type | Producer | Consumer | Message Size | TTL |
-|------------|------|----------|----------|--------------|-----|
-| `ai.resume.parse` | Work Queue | Java Backend | Python AI | < 1KB | 1 hour |
-| `ai.resume.parse.result` | Result Queue | Python AI | Java Backend | 5-10KB | 1 hour |
-| `ai.job.match` | Work Queue | Java Backend | Python AI | < 5KB | 30 min |
-| `ai.job.match.result` | Result Queue | Python AI | Java Backend | < 5KB | 30 min |
-| `ai.chat.message` | Work Queue | Java Backend | Python AI | < 5KB | 5 min |
-| `ai.chat.message.result` | Result Queue | Python AI | Java Backend | < 5KB | 5 min |
-| `ai.vector.request` | Request Queue | Python AI | Java Backend | < 1KB | 1 min |
-| `ai.vector.response` | Response Queue | Java Backend | Python AI | 2-5KB | 1 min |
+| Queue Name               | Type           | Producer     | Consumer     | Message Size | TTL    |
+|--------------------------|----------------|--------------|--------------|--------------|--------|
+| `ai.resume.parse`        | Work Queue     | Java Backend | Python AI    | < 1KB        | 1 hour |
+| `ai.resume.parse.result` | Result Queue   | Python AI    | Java Backend | 5-10KB       | 1 hour |
+| `ai.job.match`           | Work Queue     | Java Backend | Python AI    | < 5KB        | 30 min |
+| `ai.job.match.result`    | Result Queue   | Python AI    | Java Backend | < 5KB        | 30 min |
+| `ai.chat.message`        | Work Queue     | Java Backend | Python AI    | < 5KB        | 5 min  |
+| `ai.chat.message.result` | Result Queue   | Python AI    | Java Backend | < 5KB        | 5 min  |
+| `ai.vector.request`      | Request Queue  | Python AI    | Java Backend | < 1KB        | 1 min  |
+| `ai.vector.response`     | Response Queue | Java Backend | Python AI    | 2-5KB        | 1 min  |
 
 #### 6.1.2 Message Schema Examples
 
 **Resume Parse Request:**
+
 ```json
 {
   "messageId": "uuid-v4",
@@ -951,6 +956,7 @@ LIMIT 10;
 ```
 
 **Resume Parse Result:**
+
 ```json
 {
   "messageId": "uuid-v4",
@@ -973,6 +979,7 @@ LIMIT 10;
 ```
 
 **Job Match Request:**
+
 ```json
 {
   "messageId": "uuid-v4",
@@ -991,6 +998,7 @@ LIMIT 10;
 ```
 
 **Chat Message Request:**
+
 ```json
 {
   "messageId": "uuid-v4",
@@ -1012,29 +1020,29 @@ LIMIT 10;
 
 #### 6.2.1 REST API Endpoints
 
-| Endpoint | Method | Description | Auth Required |
-|----------|--------|-------------|---------------|
-| `/api/v1/auth/register` | POST | User registration | No |
-| `/api/v1/auth/login` | POST | User login | No |
-| `/api/v1/auth/refresh` | POST | Refresh access token | Yes |
-| `/api/v1/users/me` | GET | Get current user profile | Yes |
-| `/api/v1/users/me` | PUT | Update user profile | Yes |
-| `/api/v1/resumes` | GET | List user resumes | Yes |
-| `/api/v1/resumes` | POST | Upload new resume | Yes |
-| `/api/v1/resumes/{id}` | GET | Get resume details | Yes |
-| `/api/v1/resumes/{id}` | PUT | Update resume | Yes |
-| `/api/v1/resumes/{id}` | DELETE | Delete resume | Yes |
-| `/api/v1/jobs` | GET | Search jobs | Yes |
-| `/api/v1/jobs/{id}` | GET | Get job details | Yes |
-| `/api/v1/jobs/matches` | GET | Get matching jobs | Yes |
-| `/api/v1/conversations` | GET | List conversations | Yes |
-| `/api/v1/conversations` | POST | Create conversation | Yes |
-| `/api/v1/conversations/{id}` | GET | Get conversation | Yes |
-| `/api/v1/conversations/{id}/messages` | GET | Get messages | Yes |
-| `/api/v1/conversations/{id}/messages` | POST | Send message | Yes |
-| `/api/v1/applications` | GET | List applications | Yes |
-| `/api/v1/applications` | POST | Create application | Yes |
-| `/api/v1/applications/{id}` | PUT | Update application | Yes |
+| Endpoint                              | Method | Description              | Auth Required |
+|---------------------------------------|--------|--------------------------|---------------|
+| `/api/v1/auth/register`               | POST   | User registration        | No            |
+| `/api/v1/auth/login`                  | POST   | User login               | No            |
+| `/api/v1/auth/refresh`                | POST   | Refresh access token     | Yes           |
+| `/api/v1/users/me`                    | GET    | Get current user profile | Yes           |
+| `/api/v1/users/me`                    | PUT    | Update user profile      | Yes           |
+| `/api/v1/resumes`                     | GET    | List user resumes        | Yes           |
+| `/api/v1/resumes`                     | POST   | Upload new resume        | Yes           |
+| `/api/v1/resumes/{id}`                | GET    | Get resume details       | Yes           |
+| `/api/v1/resumes/{id}`                | PUT    | Update resume            | Yes           |
+| `/api/v1/resumes/{id}`                | DELETE | Delete resume            | Yes           |
+| `/api/v1/jobs`                        | GET    | Search jobs              | Yes           |
+| `/api/v1/jobs/{id}`                   | GET    | Get job details          | Yes           |
+| `/api/v1/jobs/matches`                | GET    | Get matching jobs        | Yes           |
+| `/api/v1/conversations`               | GET    | List conversations       | Yes           |
+| `/api/v1/conversations`               | POST   | Create conversation      | Yes           |
+| `/api/v1/conversations/{id}`          | GET    | Get conversation         | Yes           |
+| `/api/v1/conversations/{id}/messages` | GET    | Get messages             | Yes           |
+| `/api/v1/conversations/{id}/messages` | POST   | Send message             | Yes           |
+| `/api/v1/applications`                | GET    | List applications        | Yes           |
+| `/api/v1/applications`                | POST   | Create application       | Yes           |
+| `/api/v1/applications/{id}`           | PUT    | Update application       | Yes           |
 
 #### 6.2.2 API Response Format
 
@@ -1050,6 +1058,7 @@ LIMIT 10;
 ```
 
 Error Response:
+
 ```json
 {
   "success": false,
@@ -1110,13 +1119,13 @@ Error Response:
 
 ### 7.1 AI Technologies Overview
 
-| # | Technology | Implementation | Purpose |
-|---|------------|----------------|---------|
-| 1 | **Vector Search/Embeddings** | sentence-transformers + pgvector | Semantic matching between resumes and jobs |
-| 2 | **Structured Outputs** | OpenAI Function Calling | Parse resumes into structured JSON |
-| 3 | **LLM API Integration** | OpenAI API with retry logic | AI assistant for chat and optimization |
-| 4 | **Memory/Conversation Management** | Custom context window | Dialogue history management |
-| 5 | **RAG (Retrieval-Augmented Generation)** | pgvector + prompt engineering | Retrieve resume content as dialogue context |
+| # | Technology                               | Implementation                   | Purpose                                     |
+|---|------------------------------------------|----------------------------------|---------------------------------------------|
+| 1 | **Vector Search/Embeddings**             | sentence-transformers + pgvector | Semantic matching between resumes and jobs  |
+| 2 | **Structured Outputs**                   | OpenAI Function Calling          | Parse resumes into structured JSON          |
+| 3 | **LLM API Integration**                  | OpenAI API with retry logic      | AI assistant for chat and optimization      |
+| 4 | **Memory/Conversation Management**       | Custom context window            | Dialogue history management                 |
+| 5 | **RAG (Retrieval-Augmented Generation)** | pgvector + prompt engineering    | Retrieve resume content as dialogue context |
 
 ### 7.2 AI Component Architecture
 
@@ -1428,13 +1437,14 @@ class LLMClient:
 
 #### 7.5.2 Cost Tracking
 
-| Model | Input Cost ($/1M tokens) | Output Cost ($/1M tokens) |
-|-------|--------------------------|---------------------------|
-| GPT-4 | $30.00 | $60.00 |
-| GPT-4 Turbo | $10.00 | $30.00 |
-| GPT-3.5 Turbo | $0.50 | $1.50 |
+| Model         | Input Cost ($/1M tokens) | Output Cost ($/1M tokens) |
+|---------------|--------------------------|---------------------------|
+| GPT-4         | $30.00                   | $60.00                    |
+| GPT-4 Turbo   | $10.00                   | $30.00                    |
+| GPT-3.5 Turbo | $0.50                    | $1.50                     |
 
 **Estimated Monthly Cost** (1000 active users, 50 messages/user):
+
 - Input tokens: ~25M = $250 (GPT-4 Turbo)
 - Output tokens: ~10M = $300 (GPT-4 Turbo)
 - **Total: ~$550/month**
@@ -1501,26 +1511,26 @@ class LLMClient:
 
 ### 8.2 Security Measures
 
-| Category | Measure | Implementation |
-|----------|---------|----------------|
-| **Authentication** | JWT Tokens | HS256 algorithm, 24h access token, 7d refresh token |
-| **Password Security** | BCrypt Hashing | 12 rounds of BCrypt |
-| **HTTPS** | TLS 1.3 | All communications encrypted |
-| **CORS** | Whitelist | Only allow frontend domain |
-| **Input Validation** | Bean Validation | @Valid annotations on DTOs |
-| **SQL Injection** | Parameterized Queries | JPA/Hibernate prepared statements |
-| **XSS Prevention** | Output Encoding | React automatic escaping |
-| **Rate Limiting** | Bucket Algorithm | 100 requests/minute per IP |
+| Category              | Measure               | Implementation                                      |
+|-----------------------|-----------------------|-----------------------------------------------------|
+| **Authentication**    | JWT Tokens            | HS256 algorithm, 24h access token, 7d refresh token |
+| **Password Security** | BCrypt Hashing        | 12 rounds of BCrypt                                 |
+| **HTTPS**             | TLS 1.3               | All communications encrypted                        |
+| **CORS**              | Whitelist             | Only allow frontend domain                          |
+| **Input Validation**  | Bean Validation       | @Valid annotations on DTOs                          |
+| **SQL Injection**     | Parameterized Queries | JPA/Hibernate prepared statements                   |
+| **XSS Prevention**    | Output Encoding       | React automatic escaping                            |
+| **Rate Limiting**     | Bucket Algorithm      | 100 requests/minute per IP                          |
 
 ### 8.3 Data Protection
 
-| Data Type | Storage | Protection |
-|-----------|---------|------------|
-| Passwords | PostgreSQL | BCrypt hashed |
-| JWT Secrets | Environment | Docker secrets |
-| API Keys | Environment | Docker secrets |
+| Data Type    | Storage        | Protection                  |
+|--------------|----------------|-----------------------------|
+| Passwords    | PostgreSQL     | BCrypt hashed               |
+| JWT Secrets  | Environment    | Docker secrets              |
+| API Keys     | Environment    | Docker secrets              |
 | Resume Files | Object Storage | Signed URLs, access control |
-| PII | PostgreSQL | Encryption at rest |
+| PII          | PostgreSQL     | Encryption at rest          |
 
 ---
 
@@ -1667,14 +1677,14 @@ networks:
 
 ### 9.3 Port Mapping
 
-| Service | Container Port | Host Port | Purpose |
-|---------|----------------|-----------|---------|
-| Frontend | 80 | 80 | Web application |
-| Backend | 8080 | 8080 | REST API |
-| AI Service | 8000 | 8000 | AI processing API |
-| PostgreSQL | 5432 | 5432 | Database access |
-| RabbitMQ | 5672 | 5672 | Message broker |
-| RabbitMQ Management | 15672 | 15672 | Web management UI |
+| Service             | Container Port | Host Port | Purpose           |
+|---------------------|----------------|-----------|-------------------|
+| Frontend            | 80             | 80        | Web application   |
+| Backend             | 8080           | 8080      | REST API          |
+| AI Service          | 8000           | 8000      | AI processing API |
+| PostgreSQL          | 5432           | 5432      | Database access   |
+| RabbitMQ            | 5672           | 5672      | Message broker    |
+| RabbitMQ Management | 15672          | 15672     | Web management UI |
 
 ---
 
@@ -1682,14 +1692,14 @@ networks:
 
 ### 10.1 Performance Targets
 
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| API Response Time (p95) | < 200ms | For non-AI endpoints |
-| Resume Upload Processing | < 30s | End-to-end with AI parsing |
-| Job Match Query | < 500ms | Vector similarity search |
-| Chat Response | < 3s | First token from LLM |
-| Concurrent Users | 1000 | Supported simultaneously |
-| System Availability | 99.9% | Uptime target |
+| Metric                   | Target  | Measurement                |
+|--------------------------|---------|----------------------------|
+| API Response Time (p95)  | < 200ms | For non-AI endpoints       |
+| Resume Upload Processing | < 30s   | End-to-end with AI parsing |
+| Job Match Query          | < 500ms | Vector similarity search   |
+| Chat Response            | < 3s    | First token from LLM       |
+| Concurrent Users         | 1000    | Supported simultaneously   |
+| System Availability      | 99.9%   | Uptime target              |
 
 ### 10.2 Scalability Considerations
 
@@ -1729,15 +1739,15 @@ networks:
 
 ### 10.3 Performance Optimization Strategies
 
-| Area | Strategy | Implementation |
-|------|----------|----------------|
-| **Database** | Connection Pooling | HikariCP (max 20 connections) |
+| Area         | Strategy           | Implementation                        |
+|--------------|--------------------|---------------------------------------|
+| **Database** | Connection Pooling | HikariCP (max 20 connections)         |
 | **Database** | Query Optimization | Indexes on frequently queried columns |
-| **Database** | Vector Index | IVFFlat for approximate search |
-| **Caching** | Redis (future) | Cache job listings, user sessions |
-| **CDN** | Static Assets | CloudFront/Cloudflare for frontend |
-| **AI** | Batch Processing | Process multiple resumes in batches |
-| **AI** | Embedding Caching | Cache embeddings for similar content |
+| **Database** | Vector Index       | IVFFlat for approximate search        |
+| **Caching**  | Redis (future)     | Cache job listings, user sessions     |
+| **CDN**      | Static Assets      | CloudFront/Cloudflare for frontend    |
+| **AI**       | Batch Processing   | Process multiple resumes in batches   |
+| **AI**       | Embedding Caching  | Cache embeddings for similar content  |
 
 ### 10.4 Monitoring and Observability
 
@@ -1791,20 +1801,21 @@ networks:
 
 ### 11.1 Glossary
 
-| Term | Definition |
-|------|------------|
-| **DDD** | Domain-Driven Design - Software design approach focused on modeling business domains |
-| **RAG** | Retrieval-Augmented Generation - AI technique combining retrieval with LLM generation |
-| **pgvector** | PostgreSQL extension for vector similarity search |
-| **Embedding** | Numerical vector representation of text for semantic search |
-| **IVFFlat** | Index type for approximate nearest neighbor search |
-| **JWT** | JSON Web Token - Compact, URL-safe token format |
-| **BCrypt** | Password hashing function with salt |
-| **MQ** | Message Queue - Asynchronous communication mechanism |
+| Term          | Definition                                                                            |
+|---------------|---------------------------------------------------------------------------------------|
+| **DDD**       | Domain-Driven Design - Software design approach focused on modeling business domains  |
+| **RAG**       | Retrieval-Augmented Generation - AI technique combining retrieval with LLM generation |
+| **pgvector**  | PostgreSQL extension for vector similarity search                                     |
+| **Embedding** | Numerical vector representation of text for semantic search                           |
+| **IVFFlat**   | Index type for approximate nearest neighbor search                                    |
+| **JWT**       | JSON Web Token - Compact, URL-safe token format                                       |
+| **BCrypt**    | Password hashing function with salt                                                   |
+| **MQ**        | Message Queue - Asynchronous communication mechanism                                  |
 
 ### 11.2 References
 
-1. [Domain-Driven Design: Tackling Complexity in the Heart of Software](https://www.amazon.com/Domain-Driven-Design-Tackling-Complexity-Software/dp/0321125215) - Eric Evans
+1. [Domain-Driven Design: Tackling Complexity in the Heart of Software](https://www.amazon.com/Domain-Driven-Design-Tackling-Complexity-Software/dp/0321125215) -
+   Eric Evans
 2. [pgvector Documentation](https://github.com/pgvector/pgvector) - GitHub
 3. [Sentence Transformers Documentation](https://www.sbert.net/) - UKPLab
 4. [OpenAI API Documentation](https://platform.openai.com/docs) - OpenAI
@@ -1819,12 +1830,14 @@ networks:
 **Status**: Accepted
 
 **Context**: We need to store both business data and vector embeddings. Options:
+
 - Separate databases (PostgreSQL + Pinecone/Milvus)
 - Unified storage with pgvector
 
 **Decision**: Use PostgreSQL + pgvector for unified storage.
 
 **Consequences**:
+
 - (+) Simpler deployment and backup
 - (+) Single connection pool
 - (+) ACID transactions across business and vector data
@@ -1835,12 +1848,14 @@ networks:
 **Status**: Accepted
 
 **Context**: AI processing is asynchronous and may take time. Options:
+
 - Synchronous HTTP calls
 - Asynchronous message queue
 
 **Decision**: Use RabbitMQ for async communication.
 
 **Consequences**:
+
 - (+) Better decoupling
 - (+) Retry and dead letter handling
 - (+) Can scale AI workers independently
@@ -1851,12 +1866,14 @@ networks:
 **Status**: Accepted
 
 **Context**: Need to generate embeddings for semantic search. Options:
+
 - OpenAI text-embedding-ada-002 (API-based)
 - sentence-transformers (local)
 
 **Decision**: Use sentence-transformers/all-MiniLM-L6-v2.
 
 **Consequences**:
+
 - (+) No API costs for embeddings
 - (+) Fast local inference
 - (+) 384-dim vectors (efficient storage)
