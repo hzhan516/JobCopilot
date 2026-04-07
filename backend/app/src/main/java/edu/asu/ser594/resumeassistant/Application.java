@@ -1,7 +1,9 @@
 package edu.asu.ser594.resumeassistant;
 
+import edu.asu.ser594.resumeassistant.infrastructure.config.InfrastructureConfig;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
@@ -11,6 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * @date 2024
  */
 @SpringBootApplication(scanBasePackages = "edu.asu.ser594.resumeassistant")
+@Import(InfrastructureConfig.class)
 @EnableScheduling
 public class Application {
 

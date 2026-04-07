@@ -25,10 +25,28 @@ spring:
     username: ${SPRING_RABBITMQ_USERNAME:guest}
     password: ${SPRING_RABBITMQ_PASSWORD:guest}
 
-# 文件存储
-file:
-  storage:
-    path: ${FILE_STORAGE_PATH:/app/uploads}
+# 文件存储配置（从环境变量读取，支持动态切换存储源）
+# 支持类型: minio, local, s3, oss
+storage:
+  # 存储类型，通过环境变量设置，默认 minio
+  type: ${STORAGE_TYPE:minio}
+  
+  # MinIO 配置（当 type=minio 时生效）
+  minio:
+    endpoint: ${MINIO_ENDPOINT:http://minio:9000}
+    access-key: ${MINIO_ACCESS_KEY:minioadmin}
+    secret-key: ${MINIO_SECRET_KEY:minioadmin}
+    bucket-name: ${MINIO_BUCKET_NAME:resumes}
+    connect-timeout: ${MINIO_CONNECT_TIMEOUT:5000}
+    write-timeout: ${MINIO_WRITE_TIMEOUT:60000}
+    read-timeout: ${MINIO_READ_TIMEOUT:30000}
+  
+  # 本地存储配置（当 type=local 时生效）
+  local:
+    base-path: ${LOCAL_STORAGE_BASE_PATH:/app/uploads}
+    resume-path: ${LOCAL_STORAGE_RESUME_PATH:resumes}
+    date-subdirectory: ${LOCAL_STORAGE_DATE_SUBDIR:true}
+    url-prefix: ${LOCAL_STORAGE_URL_PREFIX:}
 
 # JWT（从环境变量读取，必须设置）
 jwt:

@@ -8,11 +8,11 @@
 
 ### 基础信息
 
-| 项目 | 值 |
-|------|-----|
-| **Base URL** | `http://localhost:8080/api` |
-| **Content-Type** | `application/json` |
-| **编码** | UTF-8 |
+| 项目               | 值                           |
+|------------------|-----------------------------|
+| **Base URL**     | `http://localhost:8080/api` |
+| **Content-Type** | `application/json`          |
+| **编码**           | UTF-8                       |
 
 ### 响应格式
 
@@ -22,26 +22,28 @@
 {
   "code": 200,
   "message": "Success",
-  "data": { ... }
+  "data": {
+    "...": "..."
+  }
 }
 ```
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `code` | Integer | 状态码，200 表示成功 |
-| `message` | String | 提示信息 |
-| `data` | Object | 业务数据 |
+| 字段        | 类型      | 说明           |
+|-----------|---------|--------------|
+| `code`    | Integer | 状态码，200 表示成功 |
+| `message` | String  | 提示信息         |
+| `data`    | Object  | 业务数据         |
 
 ### HTTP 状态码
 
-| 状态码 | 说明 |
-|--------|------|
-| 200 | 请求成功 |
-| 400 | 请求参数错误 |
+| 状态码 | 说明       |
+|-----|----------|
+| 200 | 请求成功     |
+| 400 | 请求参数错误   |
 | 401 | 未认证/登录过期 |
-| 403 | 无权限访问 |
-| 404 | 资源不存在 |
-| 500 | 服务器内部错误 |
+| 403 | 无权限访问    |
+| 404 | 资源不存在    |
+| 500 | 服务器内部错误  |
 
 ### 认证方式
 
@@ -55,10 +57,11 @@ Authorization: Bearer <accessToken>
 
 ## 文档目录
 
-| 模块 | 文档 | 说明 |
-|------|------|------|
-| 认证 | [authentication.md](authentication.md) | 用户注册、登录、Token 刷新 |
-| 响应格式 | [response-format.md](response-format.md) | 统一响应格式详细说明 |
+| 模块   | 文档                                       | 说明               |
+|------|------------------------------------------|------------------|
+| 认证   | [authentication.md](authentication.md)   | 用户注册、登录、Token 刷新 |
+| 简历管理 | [resume.md](resume.md)                   | 简历上传、下载和管理       |
+| 响应格式 | [response-format.md](response-format.md) | 统一响应格式详细说明       |
 
 ---
 
@@ -88,9 +91,27 @@ curl -X POST http://localhost:8080/api/v1/auth/login/email \
 
 ### 3. 使用 Token 访问受保护接口
 
+#### 上传简历
+
 ```bash
-curl -X GET http://localhost:8080/api/v1/user/profile \
-  -H "Authorization: Bearer <your_access_token>"
+curl -X POST http://localhost:8080/api/v1/resumes \
+  -H "Authorization: Bearer <your_access_token>" \
+  -F "file=@/path/to/resume.pdf" \
+  -F "title=My Resume"
+```
+
+#### 下载简历
+
+```bash
+# 下载原始文件
+curl -X GET http://localhost:8080/api/v1/resumes/<resume_id>/download \
+  -H "Authorization: Bearer <your_access_token>" \
+  --output resume.pdf
+
+# 指定导出格式（文件名会相应改变）
+curl -X GET "http://localhost:8080/api/v1/resumes/<resume_id>/download?format=pdf" \
+  -H "Authorization: Bearer <your_access_token>" \
+  --output resume.pdf
 ```
 
 ---
