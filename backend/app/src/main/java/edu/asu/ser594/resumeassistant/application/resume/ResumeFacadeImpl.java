@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
@@ -78,32 +79,28 @@ public class ResumeFacadeImpl implements ResumeFacade {
 
     @Override
     public ResponseEntity<InputStreamResource> downloadResume(UUID resumeId, UUID userId, String exportFormat) {
-        // 先获取简历信息（用于文件名和Content-Type）
-        Resume resume = resumeService.findResumeByIdAndUserId(resumeId, userId)
-                .orElseThrow(() -> new StorageException("resume.not.found"));
-        
-        // 获取文件流（原始文件）
-        java.io.InputStream inputStream = resumeService.downloadResume(resumeId, userId)
-                .orElseThrow(() -> new StorageException("resume.file.not.found"));
+        // Get resume metadata
+        Resume resume = resumeService.getResumeForDownload(resumeId, userId);
 
-        // 确定输出文件名和Content-Type
+        // Get file stream (with conversion if needed)
+        InputStream inputStream = resumeService.downloadResumeWithFormat(resumeId, userId, exportFormat);
+
+        // Determine output filename and Content-Type
         String outputFileName = determineOutputFileName(resume.getOriginalFileName(), exportFormat);
         String contentType = determineContentType(exportFormat, resume.getFileType());
-        
-        // 对中文文件名进行URL编码（RFC 5987）
+
+        // Encode filename for Content-Disposition
         String encodedFileName = URLEncoder.encode(outputFileName, StandardCharsets.UTF_8)
                 .replace("+", "%20");
-        
-        // 构建Content-Disposition头，同时支持ASCII和UTF-8文件名
-        String asciiFileName = outputFileName.replaceAll("[^\\x20-\\x7E]", "_"); // ASCII文件名（非ASCII字符替换为下划线）
+        String asciiFileName = outputFileName.replaceAll("[^\\x20-\\x7E]", "_");
         String contentDisposition = String.format(
                 "attachment; filename=\"%s\"; filename*=UTF-8''%s",
                 asciiFileName,
-                encodedFileName // UTF-8编码的完整文件名
+                encodedFileName
         );
 
-        log.info("Downloading resume: {}, exportFormat: {}, outputFileName: {}", 
-                resumeId, exportFormat, outputFileName);
+        log.info("Downloading resume: {}, format: {} -> {}, filename: {}",
+                resumeId, resume.getFileType(), exportFormat, outputFileName);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)

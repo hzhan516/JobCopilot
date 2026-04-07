@@ -5,14 +5,12 @@ import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.resume.R
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
-import org.springframework.stereotype.Component;
 
 /**
  * 简历持久化映射器
  * Resume persistence mapper
  */
 @Mapper(componentModel = "spring")
-@Component
 public interface ResumePersistenceMapper {
 
     Resume toDomain(ResumeJpaEntity entity);

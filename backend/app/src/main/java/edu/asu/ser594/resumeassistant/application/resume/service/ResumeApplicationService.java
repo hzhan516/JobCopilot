@@ -4,13 +4,17 @@ import edu.asu.ser594.resumeassistant.application.resume.command.UploadResumeCom
 import edu.asu.ser594.resumeassistant.domain.resume.entity.Resume;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.exception.StorageException;
+import edu.asu.ser594.resumeassistant.domain.shared.service.DocumentFormatConverter;
 import edu.asu.ser594.resumeassistant.domain.shared.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,6 +37,8 @@ public class ResumeApplicationService {
 
     private static final String STORAGE_PROVIDER = "minio";
     private static final Duration PRESIGNED_URL_EXPIRATION = Duration.ofHours(1);
+
+    private final DocumentFormatConverter documentFormatConverter;
 
     /**
      * 上传简历
@@ -104,14 +110,6 @@ public class ResumeApplicationService {
     }
 
     /**
-     * 下载简历
-     */
-    public Optional<java.io.InputStream> downloadResume(UUID resumeId, UUID userId) {
-        return resumeRepository.findByIdAndUserId(resumeId, userId)
-                .flatMap(resume -> fileStorageService.download(resume.getStoragePath()));
-    }
-
-    /**
      * 生成预签名下载URL
      */
     public Optional<String> generateDownloadUrl(UUID resumeId, UUID userId) {
@@ -134,4 +132,87 @@ public class ResumeApplicationService {
         // 删除记录
         resumeRepository.delete(resume);
     }
+
+    /**
+     * Download resume with format conversion
+     * 下载简历（支持格式转换）
+     *
+     * @param resumeId     Resume ID
+     * @param userId       User ID
+     * @param targetFormat Target format (pdf, docx, md, txt, html)
+     * @return InputStream of converted document
+     */
+    public InputStream downloadResumeWithFormat(UUID resumeId, UUID userId, String targetFormat) {
+        Resume resume = resumeRepository.findByIdAndUserId(resumeId, userId)
+                .orElseThrow(() -> new StorageException("resume.not.found"));
+
+        InputStream sourceStream = fileStorageService.download(resume.getStoragePath())
+                .orElseThrow(() -> new StorageException("resume.file.not.found"));
+
+        String sourceFormat = normalizeFormat(resume.getFileType());
+        String tf = normalizeFormat(targetFormat);
+
+        // Same format - return as-is
+        if (sourceFormat.equals(tf) || tf.equals("original")) {
+            return sourceStream;
+        }
+
+        // Perform conversion (with chain support for MD -> PDF)
+        try {
+            InputStream result = performConversion(sourceStream, sourceFormat, tf);
+            if (result == null) {
+                throw new IOException("No converter found for: " + sourceFormat + " -> " + tf);
+            }
+            return result;
+        } catch (IOException e) {
+            log.error("Format conversion failed: {} -> {}", sourceFormat, tf, e);
+            throw new StorageException("resume.conversion.failed", e);
+        }
+    }
+
+    /**
+     * Perform format conversion with chain support
+     * 执行格式转换（支持链式转换）
+     */
+    private InputStream performConversion(InputStream source, String sourceFormat, String targetFormat) throws IOException {
+        // Check if direct conversion is supported
+        if (documentFormatConverter.supports(sourceFormat, targetFormat)) {
+            return documentFormatConverter.convert(source, sourceFormat, targetFormat);
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get resume metadata for download
+     */
+    public Resume getResumeForDownload(UUID resumeId, UUID userId) {
+        return resumeRepository.findByIdAndUserId(resumeId, userId)
+                .orElseThrow(() -> new StorageException("resume.not.found"));
+    }
+
+    private String normalizeFormat(String format) {
+        if (format == null) return "";
+        String f = format.toLowerCase();
+        
+        // Handle MIME types
+        if (f.equals("text/markdown") || f.equals("text/x-markdown")) return "md";
+        if (f.equals("application/pdf")) return "pdf";
+        if (f.equals("text/plain")) return "txt";
+        if (f.equals("text/html")) return "html";
+        if (f.equals("application/msword") || f.contains("wordprocessingml")) return "docx";
+
+        // Handle cases where format might be a filename/path
+        if (f.contains(".")) {
+            f = f.substring(f.lastIndexOf('.') + 1);
+        }
+
+        return switch (f) {
+            case "markdown" -> "md";
+            case "word" -> "docx";
+            case "text" -> "txt";
+            default -> f;
+        };
+    }
+
 }
