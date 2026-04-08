@@ -6,21 +6,33 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-// User profile JPA entity
+/**
+ * 用户资料 JPA 实体
+ * User profile JPA entity
+ *
+ * 注意：
+ * - 不使用 @Data 注解
+ * - 使用 @EqualsAndHashCode(onlyExplicitlyIncluded = true) 仅基于 ID
+ */
 @Entity
 @Table(name = "user_profiles")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@EqualsAndHashCode(of = "id")
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString(onlyExplicitlyIncluded = true)
 public class UserProfileJpaEntity {
 
     @Id
     @Column(updatable = false, nullable = false)
+    @EqualsAndHashCode.Include
+    @ToString.Include
     private UUID id;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id", nullable = false, unique = true)
+    @ToString.Include
     private UUID userId;
 
     @Column(name = "full_name")

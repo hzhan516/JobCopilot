@@ -8,17 +8,30 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-// User JPA entity
+/**
+ * 用户 JPA 实体
+ * User JPA entity
+ *
+ * 注意：
+ * - 不使用 @Data 注解，因为它会生成 toString/equals/hashCode 可能影响懒加载
+ * - 使用 @Getter/@Setter 显式控制访问器
+ * - 使用 @EqualsAndHashCode(onlyExplicitlyIncluded = true) 仅基于 ID
+ */
 @Entity
 @Table(name = "users")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@EqualsAndHashCode(of = "id")
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString(onlyExplicitlyIncluded = true)
 public class UserJpaEntity {
+
     @Id
     @Column(updatable = false, nullable = false)
+    @EqualsAndHashCode.Include
+    @ToString.Include
     private UUID id;
 
     @Column(unique = true, nullable = false)

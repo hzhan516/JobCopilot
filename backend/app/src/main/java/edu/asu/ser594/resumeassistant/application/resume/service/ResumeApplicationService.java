@@ -1,27 +1,34 @@
 package edu.asu.ser594.resumeassistant.application.resume.service;
 
-import edu.asu.ser594.resumeassistant.application.resume.command.UploadResumeCommand;
-import edu.asu.ser594.resumeassistant.domain.resume.entity.Resume;
-import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeRepository;
+import edu.asu.ser594.resumeassistant.application.resume.command.ResumeEditCommand;
+import edu.asu.ser594.resumeassistant.application.resume.command.ResumeUploadCommand;
+import edu.asu.ser594.resumeassistant.application.resume.dto.ResumeDownloadResult;
+import edu.asu.ser594.resumeassistant.application.resume.query.ResumeDownloadQuery;
+import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
+import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
+import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeGroupRepository;
+import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.exception.StorageException;
 import edu.asu.ser594.resumeassistant.domain.shared.service.DocumentFormatConverter;
 import edu.asu.ser594.resumeassistant.domain.shared.service.FileStorageService;
+import edu.asu.ser594.resumeassistant.domain.shared.valueobject.DocumentFormat;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.time.Duration;
-import java.util.Optional;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.UUID;
 
 /**
- * 简历应用服务
- * Resume application service
+ * Resume Application Service
+ *
+ * 职责：编排用例，协调领域对象
+ * Responsibility: Orchestrate use cases, coordinate domain objects
  */
 @Slf4j
 @Service
@@ -29,190 +36,170 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class ResumeApplicationService {
 
-    private final ResumeRepository resumeRepository;
+    private final ResumeGroupRepository groupRepository;
+    private final ResumeVersionRepository versionRepository;
     private final FileStorageService fileStorageService;
-
-    @Value("${minio.bucket-name:resumes}")
-    private String bucketName;
-
-    private static final String STORAGE_PROVIDER = "minio";
-    private static final Duration PRESIGNED_URL_EXPIRATION = Duration.ofHours(1);
-
     private final DocumentFormatConverter documentFormatConverter;
 
-    /**
-     * 上传简历
-     */
+    // ==================== 命令处理 Command Handlers ====================
+
     @Transactional
-    public Resume uploadResume(UUID userId, UploadResumeCommand command) {
-        // 第一步：先保存简历记录获取ID（storagePath暂时用占位符）
-        Resume initialResume = Resume.create(
-                userId,
-                command.getFileName(),
-                command.getContentType(),
-                command.getFileSize(),
-                "pending", // 临时路径，稍后更新
-                STORAGE_PROVIDER
-        );
+    public ResumeGroup handleUpload(ResumeUploadCommand command, UUID userId) {
+        // 1. 创建简历组
+        ResumeGroup group = ResumeGroup.create(userId, command.getTitle());
 
-        // 保存获取生成的ID
-        Resume savedResume = resumeRepository.save(initialResume);
-        log.info("Resume record created with ID: {}", savedResume.getId());
+        // 2. 存储文件，获取路径（这让底层基础设施去决定真实存的位置，但如果接口设计需要传入Path，则生成随机键）
+        String storagePath = UUID.randomUUID().toString() + "_" + command.getFileName();
+        
+        fileStorageService.upload(storagePath, command.getInputStream(),
+                command.getFileSize(), command.getContentType());
 
-        // 第二步：使用生成的ID构建存储路径
-        String storagePath = String.format("resumes/%s/%s/%s",
-                userId, savedResume.getId(), savedResume.getStoredFileName());
+        // 3. 将原版添加进简历组（包含创建衍生版本等生命周期都在聚合内）
+        group.uploadOriginalVersion(command.getFileName(), command.getContentType(),
+                command.getFileSize(), storagePath);
 
-        // 第三步：上传文件到 MinIO
-        boolean uploadSuccess = false;
-        try {
-            fileStorageService.upload(
-                    storagePath,
-                    command.getInputStream(),
-                    command.getFileSize(),
-                    command.getContentType()
-            );
-            uploadSuccess = true;
-            log.info("File uploaded to storage: {}", storagePath);
-        } catch (StorageException e) {
-            log.error("Failed to upload resume file: {}", command.getFileName(), e);
-            throw e;
+        // 4. 保存聚合
+        groupRepository.save(group);
+
+        log.info("Resume uploaded: groupId={}, userId={}", group.getId(), userId);
+        return group;
+    }
+
+    @Transactional
+    public ResumeVersion handleEdit(ResumeEditCommand command) {
+        ResumeVersion version = versionRepository.findById(command.getVersionId())
+                .orElseThrow(() -> new StorageException("version.not.found"));
+
+        ResumeGroup group = groupRepository.findById(version.getGroupId())
+                .orElseThrow(() -> new StorageException("group.not.found"));
+
+        if (!group.isOwnedBy(command.getUserId())) {
+            throw new StorageException("access.denied");
         }
 
-        // 第四步：更新简历记录的最终存储路径
-        // 如果后续保存失败，需要清理已上传的文件
-        try {
-            Resume updatedResume = savedResume.toBuilder()
-                    .storagePath(storagePath)
-                    .build();
-            Resume result = resumeRepository.save(updatedResume);
-            log.info("Resume upload completed successfully: {}", result.getId());
-            return result;
-        } catch (Exception e) {
-            // 如果保存失败，尝试删除已上传的文件（防止孤立文件）
-            if (uploadSuccess) {
-                try {
-                    fileStorageService.delete(storagePath);
-                    log.warn("Deleted orphaned file due to save failure: {}", storagePath);
-                } catch (Exception deleteEx) {
-                    log.error("Failed to delete orphaned file: {}", storagePath, deleteEx);
-                }
-            }
-            throw e;
-        }
+        // 调用领域方法
+        version.editContent(command.getContent());
+        versionRepository.save(version);
+
+        log.info("Resume edited: versionId={}", version.getId());
+        return version;
     }
 
-    /**
-     * 根据ID和用户ID查找简历
-     */
-    public Optional<Resume> findResumeByIdAndUserId(UUID resumeId, UUID userId) {
-        return resumeRepository.findByIdAndUserId(resumeId, userId);
-    }
-
-    /**
-     * 生成预签名下载URL
-     */
-    public Optional<String> generateDownloadUrl(UUID resumeId, UUID userId) {
-        return resumeRepository.findByIdAndUserId(resumeId, userId)
-                .map(resume -> fileStorageService.generatePresignedUrl(
-                        resume.getStoragePath(), PRESIGNED_URL_EXPIRATION));
-    }
-
-    /**
-     * 删除简历
-     */
     @Transactional
-    public void deleteResume(UUID resumeId, UUID userId) {
-        Resume resume = resumeRepository.findByIdAndUserId(resumeId, userId)
-                .orElseThrow(() -> new StorageException("resume.not.found"));
+    public void handleDelete(UUID groupId, UUID userId) {
+        ResumeGroup group = groupRepository.findByIdAndUserId(groupId, userId)
+                .orElseThrow(() -> new StorageException("group.not.found"));
+
+        List<ResumeVersion> versions = versionRepository.findAllByGroupId(groupId);
 
         // 删除文件
-        fileStorageService.delete(resume.getStoragePath());
-
-        // 删除记录
-        resumeRepository.delete(resume);
-    }
-
-    /**
-     * Download resume with format conversion
-     * 下载简历（支持格式转换）
-     *
-     * @param resumeId     Resume ID
-     * @param userId       User ID
-     * @param targetFormat Target format (pdf, docx, md, txt, html)
-     * @return InputStream of converted document
-     */
-    public InputStream downloadResumeWithFormat(UUID resumeId, UUID userId, String targetFormat) {
-        Resume resume = resumeRepository.findByIdAndUserId(resumeId, userId)
-                .orElseThrow(() -> new StorageException("resume.not.found"));
-
-        InputStream sourceStream = fileStorageService.download(resume.getStoragePath())
-                .orElseThrow(() -> new StorageException("resume.file.not.found"));
-
-        String sourceFormat = normalizeFormat(resume.getFileType());
-        String tf = normalizeFormat(targetFormat);
-
-        // Same format - return as-is
-        if (sourceFormat.equals(tf) || tf.equals("original")) {
-            return sourceStream;
-        }
-
-        // Perform conversion (with chain support for MD -> PDF)
-        try {
-            InputStream result = performConversion(sourceStream, sourceFormat, tf);
-            if (result == null) {
-                throw new IOException("No converter found for: " + sourceFormat + " -> " + tf);
+        for (ResumeVersion v : versions) {
+            if (v.getStoragePath() != null) {
+                try {
+                    fileStorageService.delete(v.getStoragePath());
+                } catch (Exception e) {
+                    log.warn("Failed to delete file: {}", v.getStoragePath(), e);
+                }
             }
-            return result;
-        } catch (IOException e) {
-            log.error("Format conversion failed: {} -> {}", sourceFormat, tf, e);
-            throw new StorageException("resume.conversion.failed", e);
-        }
-    }
-
-    /**
-     * Perform format conversion with chain support
-     * 执行格式转换（支持链式转换）
-     */
-    private InputStream performConversion(InputStream source, String sourceFormat, String targetFormat) throws IOException {
-        // Check if direct conversion is supported
-        if (documentFormatConverter.supports(sourceFormat, targetFormat)) {
-            return documentFormatConverter.convert(source, sourceFormat, targetFormat);
-        }
-        
-        return null;
-    }
-
-    /**
-     * Get resume metadata for download
-     */
-    public Resume getResumeForDownload(UUID resumeId, UUID userId) {
-        return resumeRepository.findByIdAndUserId(resumeId, userId)
-                .orElseThrow(() -> new StorageException("resume.not.found"));
-    }
-
-    private String normalizeFormat(String format) {
-        if (format == null) return "";
-        String f = format.toLowerCase();
-        
-        // Handle MIME types
-        if (f.equals("text/markdown") || f.equals("text/x-markdown")) return "md";
-        if (f.equals("application/pdf")) return "pdf";
-        if (f.equals("text/plain")) return "txt";
-        if (f.equals("text/html")) return "html";
-        if (f.equals("application/msword") || f.contains("wordprocessingml")) return "docx";
-
-        // Handle cases where format might be a filename/path
-        if (f.contains(".")) {
-            f = f.substring(f.lastIndexOf('.') + 1);
         }
 
-        return switch (f) {
-            case "markdown" -> "md";
-            case "word" -> "docx";
-            case "text" -> "txt";
-            default -> f;
-        };
+        versionRepository.deleteAllByGroupId(groupId);
+        groupRepository.delete(groupId);
+
+        log.info("Resume group deleted: groupId={}", groupId);
     }
 
+    @Transactional
+    public void handleDeleteVersion(UUID versionId, UUID userId) {
+        ResumeVersion version = versionRepository.findById(versionId)
+                .orElseThrow(() -> new StorageException("version.not.found"));
+
+        ResumeGroup group = groupRepository.findById(version.getGroupId())
+                .orElseThrow(() -> new StorageException("group.not.found"));
+
+        if (!group.isOwnedBy(userId)) {
+            throw new StorageException("access.denied");
+        }
+
+        // 如果是 ORIGINAL 版本，不允许单独删除（必须通过删除组来删除）
+        if (version.getVersionType() == ResumeVersion.VersionType.ORIGINAL) {
+            throw new StorageException("version.original.cannot.delete");
+        }
+
+        // 删除文件（如果有存储路径）
+        if (version.getStoragePath() != null) {
+            try {
+                fileStorageService.delete(version.getStoragePath());
+            } catch (Exception e) {
+                log.warn("Failed to delete file: {}", version.getStoragePath(), e);
+            }
+        }
+
+        versionRepository.delete(versionId);
+
+        log.info("Resume version deleted: versionId={}, groupId={}", versionId, group.getId());
+    }
+
+    // ==================== 查询处理 Query Handlers ====================
+
+    public ResumeGroup getGroup(UUID groupId, UUID userId) {
+        return groupRepository.findByIdAndUserId(groupId, userId)
+                .orElseThrow(() -> new StorageException("group.not.found"));
+    }
+
+    public List<ResumeGroup> listUserGroups(UUID userId) {
+        return groupRepository.findAllByUserId(userId);
+    }
+
+    public ResumeVersion getVersion(UUID versionId, UUID userId) {
+        ResumeVersion version = versionRepository.findById(versionId)
+                .orElseThrow(() -> new StorageException("version.not.found"));
+
+        ResumeGroup group = groupRepository.findById(version.getGroupId())
+                .orElseThrow(() -> new StorageException("group.not.found"));
+
+        if (!group.isOwnedBy(userId)) {
+            throw new StorageException("access.denied");
+        }
+
+        return version;
+    }
+
+    public ResumeDownloadResult handleDownload(ResumeDownloadQuery query) {
+        ResumeVersion version = getVersion(query.getVersionId(), query.getUserId());
+
+        InputStream sourceStream;
+        DocumentFormat sourceFormat;
+
+        if (version.getVersionType() == ResumeVersion.VersionType.ORIGINAL) {
+            sourceStream = fileStorageService.download(version.getStoragePath())
+                    .orElseThrow(() -> new StorageException("file.not.found"));
+            sourceFormat = DocumentFormat.fromMimeType(version.getFileType());
+        } else {
+            sourceStream = new ByteArrayInputStream(
+                    version.getContent().getBytes(StandardCharsets.UTF_8));
+            sourceFormat = DocumentFormat.fromFormatString("md");
+        }
+
+        // 格式转换
+        DocumentFormat targetFormat = DocumentFormat.fromFormatString(query.getTargetFormat());
+        InputStream resultStream = sourceStream;
+        DocumentFormat resultFormat = sourceFormat;
+
+        if (!query.getTargetFormat().equalsIgnoreCase("original") && !sourceFormat.equals(targetFormat)) {
+            try {
+                resultStream = documentFormatConverter.convert(sourceStream, sourceFormat.getFormat(), targetFormat.getFormat());
+                resultFormat = targetFormat;
+            } catch (IOException e) {
+                log.error("Conversion failed: {} -> {}", sourceFormat.getFormat(), targetFormat.getFormat(), e);
+                throw new StorageException("conversion.failed", e);
+            }
+        }
+
+        return ResumeDownloadResult.builder()
+                .inputStream(resultStream)
+                .fileName(resultFormat.generateOutputFileName(version.getOriginalFileName()))
+                .contentType(resultFormat.getMimeType())
+                .build();
+    }
 }

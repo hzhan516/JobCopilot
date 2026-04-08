@@ -7,28 +7,42 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-// User credential JPA entity
+/**
+ * 用户凭证 JPA 实体
+ * User credential JPA entity
+ *
+ * 注意：
+ * - 不使用 @Data 注解，避免 toString 暴露敏感信息
+ * - @ToString 排除 credentialValue 字段
+ */
 @Entity
 @Table(name = "user_credentials")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@EqualsAndHashCode(of = "id")
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString(onlyExplicitlyIncluded = true)
 public class UserCredentialJpaEntity {
 
     @Id
     @Column(updatable = false, nullable = false)
+    @EqualsAndHashCode.Include
+    @ToString.Include
     private UUID id;
 
     @Column(name = "user_id", nullable = false)
+    @ToString.Include
     private UUID userId;
 
     @Column(name = "credential_type", nullable = false)
     @Enumerated(EnumType.STRING)
+    @ToString.Include
     private CredentialType credentialType;
 
     @Column(name = "credential_value", nullable = false)
+    // 注意：不在 toString 中包含敏感信息
     private String credentialValue;
 
     @Column(name = "last_changed_at")

@@ -7,7 +7,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-// Email login request
+/**
+ * 邮箱登录请求DTO
+ * Login by email request DTO
+ */
 @Getter
 @Builder
 @NoArgsConstructor

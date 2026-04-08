@@ -9,6 +9,13 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 邮箱注册请求DTO
+ * Register by email request DTO
+ *
+ * 注意：@Builder 与 @NoArgsConstructor/@AllArgsConstructor 配合使用时
+ * 需要显式声明构造函数注解，否则 Jackson 反序列化可能失败
+ */
 @Getter
 @Builder
 @NoArgsConstructor

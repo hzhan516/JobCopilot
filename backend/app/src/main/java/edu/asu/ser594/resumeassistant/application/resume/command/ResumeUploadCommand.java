@@ -11,7 +11,7 @@ import java.io.InputStream;
  */
 @Getter
 @Builder
-public class UploadResumeCommand {
+public class ResumeUploadCommand {
 
     private final String fileName;
     private final String contentType;

@@ -15,6 +15,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -62,6 +63,25 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .map(ConstraintViolation::getMessage)
                 .orElseGet(() -> messageProvider.getMessage("error.invalid.request"));
+
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.error(400, message));
+    }
+
+    /**
+     * 参数类型转换异常
+     * Handle method argument type mismatch (e.g., invalid UUID format)
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex) {
+
+        String paramName = ex.getName();
+        String requiredType = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "Unknown";
+
+        log.warn("Parameter type mismatch: {} should be {}", paramName, requiredType);
+
+        String message = String.format("Parameter '%s' must be a valid %s", paramName, requiredType);
 
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error(400, message));

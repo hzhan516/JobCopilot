@@ -1,11 +1,19 @@
 package edu.asu.ser594.resumeassistant.application.resume;
 
+import edu.asu.ser594.resumeassistant.api.common.dto.ApiResponse;
+import edu.asu.ser594.resumeassistant.api.resume.dto.request.ResumeEditRequest;
 import edu.asu.ser594.resumeassistant.api.resume.dto.request.ResumeUploadRequest;
+import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeGroupResponse;
 import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeUploadResponse;
+import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeVersionResponse;
 import edu.asu.ser594.resumeassistant.api.resume.facade.ResumeFacade;
-import edu.asu.ser594.resumeassistant.application.resume.command.UploadResumeCommand;
+import edu.asu.ser594.resumeassistant.application.resume.command.ResumeEditCommand;
+import edu.asu.ser594.resumeassistant.application.resume.command.ResumeUploadCommand;
+import edu.asu.ser594.resumeassistant.application.resume.dto.ResumeDownloadResult;
+import edu.asu.ser594.resumeassistant.application.resume.query.ResumeDownloadQuery;
 import edu.asu.ser594.resumeassistant.application.resume.service.ResumeApplicationService;
-import edu.asu.ser594.resumeassistant.domain.resume.entity.Resume;
+import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
+import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.shared.exception.StorageException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,59 +25,55 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.UUID;
-
-@Slf4j
+import java.util.stream.Collectors;
 
 /**
  * 简历门面实现
- * Resume facade implementation
+ * Resume Facade Implementation
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class ResumeFacadeImpl implements ResumeFacade {
 
-    private final ResumeApplicationService resumeService;
+    private final ResumeApplicationService applicationService;
 
-    // 允许的文件类型
-    private static final String[] ALLOWED_CONTENT_TYPES = {
+    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
+    private static final String[] ALLOWED_TYPES = {
             "application/pdf",
-            "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "text/markdown",
             "text/plain"
     };
 
-    // 最大文件大小: 10MB
-    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
-
     @Override
     public ResumeUploadResponse uploadResume(ResumeUploadRequest request, UUID userId) {
-        MultipartFile file = request.getFile();
-
-        // 验证文件
-        validateFile(file);
+        validateFile(request.getFile());
 
         try {
-            UploadResumeCommand command = UploadResumeCommand.builder()
-                    .fileName(file.getOriginalFilename())
-                    .contentType(file.getContentType())
-                    .fileSize(file.getSize())
-                    .inputStream(file.getInputStream())
-                    .title(request.getTitle() != null ? request.getTitle() : file.getOriginalFilename())
+            ResumeUploadCommand command = ResumeUploadCommand.builder()
+                    .fileName(request.getFile().getOriginalFilename())
+                    .contentType(request.getFile().getContentType())
+                    .fileSize(request.getFile().getSize())
+                    .inputStream(request.getFile().getInputStream())
+                    .title(request.getTitle())
                     .build();
 
-            Resume resume = resumeService.uploadResume(userId, command);
+            ResumeGroup group = applicationService.handleUpload(command, userId);
+
+            // 获取原始版本ID
+            ResumeVersion originalVersion = group.getActiveVersionByType(ResumeVersion.VersionType.ORIGINAL);
+            UUID originalVersionId = originalVersion != null ? originalVersion.getId() : null;
 
             return ResumeUploadResponse.builder()
-                    .resumeId(resume.getId())
-                    .fileName(resume.getOriginalFileName())
-                    .fileSize(resume.getFileSize())
-                    .status(resume.getProcessingStatus().name())
-                    .uploadedAt(resume.getCreatedAt())
+                    .groupId(group.getId())
+                    .originalVersionId(originalVersionId)
+                    .title(group.getTitle())
+                    .createdAt(group.getCreatedAt())
                     .build();
 
         } catch (IOException e) {
@@ -78,89 +82,148 @@ public class ResumeFacadeImpl implements ResumeFacade {
     }
 
     @Override
-    public ResponseEntity<InputStreamResource> downloadResume(UUID resumeId, UUID userId, String exportFormat) {
-        // Get resume metadata
-        Resume resume = resumeService.getResumeForDownload(resumeId, userId);
+    public ApiResponse<List<ResumeGroupResponse>> getResumeGroups(UUID userId) {
+        List<ResumeGroup> groups = applicationService.listUserGroups(userId);
+        return ApiResponse.success(groups.stream()
+                .map(this::toGroupResponse)
+                .collect(Collectors.toList()));
+    }
 
-        // Get file stream (with conversion if needed)
-        InputStream inputStream = resumeService.downloadResumeWithFormat(resumeId, userId, exportFormat);
+    @Override
+    public ApiResponse<ResumeGroupResponse> getResumeGroup(UUID groupId, UUID userId) {
+        ResumeGroup group = applicationService.getGroup(groupId, userId);
+        return ApiResponse.success(toGroupResponse(group));
+    }
 
-        // Determine output filename and Content-Type
-        String outputFileName = determineOutputFileName(resume.getOriginalFileName(), exportFormat);
-        String contentType = determineContentType(exportFormat, resume.getFileType());
+    @Override
+    public ApiResponse<List<ResumeVersionResponse>> getVersionsByGroup(UUID groupId, UUID userId) {
+        ResumeGroup group = applicationService.getGroup(groupId, userId);
+        return ApiResponse.success(group.getVersions().stream()
+                .map(this::toVersionResponse)
+                .collect(Collectors.toList()));
+    }
 
-        // Encode filename for Content-Disposition
-        String encodedFileName = URLEncoder.encode(outputFileName, StandardCharsets.UTF_8)
+    @Override
+    public ApiResponse<ResumeVersionResponse> getVersion(UUID versionId, UUID userId) {
+        ResumeVersion version = applicationService.getVersion(versionId, userId);
+        return ApiResponse.success(toVersionResponse(version));
+    }
+
+    @Override
+    public ApiResponse<ResumeVersionResponse> editVersion(ResumeEditRequest request, UUID userId) {
+        ResumeEditCommand command = ResumeEditCommand.builder()
+                .versionId(request.getVersionId())
+                .userId(userId)
+                .content(request.getContent())
+                .build();
+
+        ResumeVersion updated = applicationService.handleEdit(command);
+        return ApiResponse.success(toVersionResponse(updated));
+    }
+
+    @Override
+    public ResponseEntity<InputStreamResource> downloadResume(UUID versionId, UUID userId,
+                                                              String format) {
+        ResumeDownloadQuery query = ResumeDownloadQuery.builder()
+                .versionId(versionId)
+                .userId(userId)
+                .targetFormat(format)
+                .build();
+
+        ResumeDownloadResult result = applicationService.handleDownload(query);
+
+        String encodedFileName = URLEncoder.encode(result.getFileName(), StandardCharsets.UTF_8)
                 .replace("+", "%20");
-        String asciiFileName = outputFileName.replaceAll("[^\\x20-\\x7E]", "_");
-        String contentDisposition = String.format(
-                "attachment; filename=\"%s\"; filename*=UTF-8''%s",
-                asciiFileName,
-                encodedFileName
-        );
-
-        log.info("Downloading resume: {}, format: {} -> {}, filename: {}",
-                resumeId, resume.getFileType(), exportFormat, outputFileName);
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
-                .contentType(MediaType.parseMediaType(contentType))
-                .body(new InputStreamResource(inputStream));
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename*=UTF-8''" + encodedFileName)
+                .contentType(MediaType.parseMediaType(result.getContentType()))
+                .body(new InputStreamResource(result.getInputStream()));
     }
 
-    /**
-     * 根据导出格式确定输出文件名
-     */
-    private String determineOutputFileName(String originalFileName, String exportFormat) {
-        if (exportFormat == null || exportFormat.isEmpty() || "original".equalsIgnoreCase(exportFormat)) {
-            return originalFileName;
-        }
-        
-        // 获取原始文件名（不含扩展名）
-        String baseName = originalFileName;
-        int dotIndex = originalFileName.lastIndexOf('.');
-        if (dotIndex > 0) {
-            baseName = originalFileName.substring(0, dotIndex);
-        }
-        
-        // 根据导出格式添加对应扩展名
-        return baseName + "." + exportFormat.toLowerCase();
+    @Override
+    public ApiResponse<Void> deleteResumeGroup(UUID groupId, UUID userId) {
+        applicationService.handleDelete(groupId, userId);
+        return ApiResponse.success(null);
     }
 
-    /**
-     * 根据导出格式确定Content-Type
-     */
-    private String determineContentType(String exportFormat, String originalContentType) {
-        if (exportFormat == null || exportFormat.isEmpty() || "original".equalsIgnoreCase(exportFormat)) {
-            return originalContentType;
-        }
-        
-        return switch (exportFormat.toLowerCase()) {
-            case "pdf" -> "application/pdf";
-            case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-            case "doc" -> "application/msword";
-            case "html", "htm" -> "text/html";
-            case "md", "markdown" -> "text/markdown";
-            case "txt" -> "text/plain";
-            default -> originalContentType;
-        };
+    @Override
+    public ApiResponse<Void> deleteVersion(UUID versionId, UUID userId) {
+        applicationService.handleDeleteVersion(versionId, userId);
+        return ApiResponse.success(null);
+    }
+
+    @Override
+    public ApiResponse<ResumeGroupResponse> setDefaultGroup(UUID groupId, UUID userId) {
+        throw new UnsupportedOperationException("MVP not implemented");
+    }
+
+    @Override
+    public ApiResponse<ResumeVersionResponse> createAiVersion(UUID groupId, UUID userId) {
+        throw new UnsupportedOperationException("MVP not implemented");
+    }
+
+    @Override
+    public ApiResponse<ResumeVersionResponse> rollbackToVersion(UUID versionId, UUID userId) {
+        throw new UnsupportedOperationException("MVP not implemented");
+    }
+
+    // ==================== 映射方法 ====================
+
+    private ResumeGroupResponse toGroupResponse(ResumeGroup group) {
+        ResumeVersion original = group.getActiveVersionByType(ResumeVersion.VersionType.ORIGINAL);
+        ResumeVersion converted = group.getActiveVersionByType(ResumeVersion.VersionType.CONVERTED);
+        ResumeVersion ai = group.getActiveVersionByType(ResumeVersion.VersionType.AI_OPTIMIZED);
+
+        return ResumeGroupResponse.builder()
+                .groupId(group.getId())
+                .title(group.getTitle())
+                .isDefault(group.isDefault())
+                .createdAt(group.getCreatedAt())
+                .updatedAt(group.getUpdatedAt())
+                .originalVersion(toVersionSummary(original))
+                .convertedVersion(toVersionSummary(converted))
+                .aiOptimizedVersion(toVersionSummary(ai))
+                .build();
+    }
+
+    private ResumeGroupResponse.VersionSummary toVersionSummary(ResumeVersion v) {
+        if (v == null) return null;
+        return ResumeGroupResponse.VersionSummary.builder()
+                .versionId(v.getId())
+                .status(v.getStatus().name())
+                .createdAt(v.getCreatedAt())
+                .exists(true)
+                .build();
+    }
+
+    private ResumeVersionResponse toVersionResponse(ResumeVersion v) {
+        return ResumeVersionResponse.builder()
+                .versionId(v.getId())
+                .groupId(v.getGroupId())
+                .versionType(v.getVersionType().name())
+                .status(v.getStatus().name())
+                .originalFileName(v.getOriginalFileName())
+                .fileType(v.getFileType())
+                .fileSize(v.getFileSize())
+                .content(v.getContent())
+                .editable(v.isEditable())
+                .createdAt(v.getCreatedAt())
+                .updatedAt(v.getUpdatedAt())
+                .build();
     }
 
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new StorageException("validation.file.required");
         }
-
-        // 检查文件大小
         if (file.getSize() > MAX_FILE_SIZE) {
             throw new StorageException("resume.upload.size.exceeded");
         }
-
-        // 检查文件类型
         boolean allowed = false;
-        String contentType = file.getContentType();
-        for (String allowedType : ALLOWED_CONTENT_TYPES) {
-            if (allowedType.equals(contentType)) {
+        for (String type : ALLOWED_TYPES) {
+            if (type.equals(file.getContentType())) {
                 allowed = true;
                 break;
             }

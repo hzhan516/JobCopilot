@@ -14,9 +14,8 @@ import java.util.UUID;
 @Builder
 public class ResumeUploadResponse {
 
-    private final UUID resumeId;
-    private final String fileName;
-    private final long fileSize;
-    private final String status;
-    private final LocalDateTime uploadedAt;
+    private final UUID groupId;
+    private final UUID originalVersionId;
+    private final String title;
+    private final LocalDateTime createdAt;
 }
