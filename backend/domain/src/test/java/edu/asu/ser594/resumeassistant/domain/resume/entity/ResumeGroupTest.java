@@ -1,0 +1,246 @@
+package edu.asu.ser594.resumeassistant.domain.resume.entity;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+/**
+ * ResumeGroup Entity Unit Tests
+ * 
+ * Tests the ResumeGroup aggregate root following DDD principles:
+ * - Factory method creation
+ * - Aggregate invariants (user ownership, version management)
+ * - Business rules (one active version per type)
+ */
+@DisplayName("ResumeGroup Entity Tests")
+class ResumeGroupTest {
+
+    private static final UUID TEST_USER_ID = UUID.randomUUID();
+    private static final String TEST_TITLE = "My Resume";
+
+    @Test
+    @DisplayName("Should create group with factory method and default title")
+    void shouldCreateGroupWithFactoryMethodAndDefaultTitle() {
+        // When
+        ResumeGroup group = ResumeGroup.create(TEST_USER_ID, null);
+
+        // Then
+        assertThat(group).isNotNull();
+        assertThat(group.getId()).isNotNull();
+        assertThat(group.getUserId()).isEqualTo(TEST_USER_ID);
+        assertThat(group.getTitle()).isEqualTo("Untitled Resume");
+        assertThat(group.isDefault()).isFalse();
+        assertThat(group.getVersions()).isEmpty();
+        assertThat(group.getCreatedAt()).isNotNull();
+        assertThat(group.getUpdatedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should create group with custom title")
+    void shouldCreateGroupWithCustomTitle() {
+        // When
+        ResumeGroup group = ResumeGroup.create(TEST_USER_ID, TEST_TITLE);
+
+        // Then
+        assertThat(group.getTitle()).isEqualTo(TEST_TITLE);
+    }
+
+    @Test
+    @DisplayName("Should upload original version and create converted version")
+    void shouldUploadOriginalVersionAndCreateConvertedVersion() {
+        // Given
+        ResumeGroup group = ResumeGroup.create(TEST_USER_ID, TEST_TITLE);
+
+        // When
+        group.uploadOriginalVersion("resume.pdf", "application/pdf", 1024L, "storage/path");
+
+        // Then
+        assertThat(group.getVersions()).hasSize(2);
+        assertThat(group.getActiveVersionByType(ResumeVersion.VersionType.ORIGINAL)).isNotNull();
+        assertThat(group.getActiveVersionByType(ResumeVersion.VersionType.CONVERTED)).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should add version and auto-archive same type active version")
+    void shouldAddVersionAndAutoArchiveSameTypeActiveVersion() {
+        // Given
+        ResumeGroup group = ResumeGroup.create(TEST_USER_ID, TEST_TITLE);
+        ResumeVersion original = ResumeVersion.createOriginal(
+                group.getId(), "v1.pdf", "application/pdf", 1024L, "path/v1");
+        group.addVersion(original);
+
+        // When
+        ResumeVersion newOriginal = ResumeVersion.createOriginal(
+                group.getId(), "v2.pdf", "application/pdf", 2048L, "path/v2");
+        group.addVersion(newOriginal);
+
+        // Then
+        assertThat(group.getVersions()).hasSize(2);
+        assertThat(original.getStatus()).isEqualTo(ResumeVersion.Status.ARCHIVED);
+        assertThat(newOriginal.getStatus()).isEqualTo(ResumeVersion.Status.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("Should return unmodifiable versions list")
+    void shouldReturnUnmodifiableVersionsList() {
+        // Given
+        ResumeGroup group = ResumeGroup.create(TEST_USER_ID, TEST_TITLE);
+        group.uploadOriginalVersion("resume.pdf", "application/pdf", 1024L, "storage/path");
+
+        List<ResumeVersion> versions = group.getVersions();
+
+        // Then
+        assertThatThrownBy(() -> versions.add(ResumeVersion.createConverted(group.getId())))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    @DisplayName("Should get active version by type")
+    void shouldGetActiveVersionByType() {
+        // Given
+        ResumeGroup group = ResumeGroup.create(TEST_USER_ID, TEST_TITLE);
+        group.uploadOriginalVersion("resume.pdf", "application/pdf", 1024L, "storage/path");
+
+        // When
+        ResumeVersion original = group.getActiveVersionByType(ResumeVersion.VersionType.ORIGINAL);
+        ResumeVersion converted = group.getActiveVersionByType(ResumeVersion.VersionType.CONVERTED);
+        ResumeVersion ai = group.getActiveVersionByType(ResumeVersion.VersionType.AI_OPTIMIZED);
+
+        // Then
+        assertThat(original).isNotNull();
+        assertThat(original.getVersionType()).isEqualTo(ResumeVersion.VersionType.ORIGINAL);
+        assertThat(converted).isNotNull();
+        assertThat(converted.getVersionType()).isEqualTo(ResumeVersion.VersionType.CONVERTED);
+        assertThat(ai).isNull();
+    }
+
+    @Test
+    @DisplayName("Should set as default")
+    void shouldSetAsDefault() {
+        // Given
+        ResumeGroup group = ResumeGroup.create(TEST_USER_ID, TEST_TITLE);
+        assertThat(group.isDefault()).isFalse();
+
+        // When
+        group.setAsDefault();
+
+        // Then
+        assertThat(group.isDefault()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Should change title")
+    void shouldChangeTitle() {
+        // Given
+        ResumeGroup group = ResumeGroup.create(TEST_USER_ID, "Old Title");
+
+        // When
+        group.changeTitle("New Title");
+
+        // Then
+        assertThat(group.getTitle()).isEqualTo("New Title");
+    }
+
+    @Test
+    @DisplayName("Should not change title when null")
+    void shouldNotChangeTitleWhenNull() {
+        // Given
+        ResumeGroup group = ResumeGroup.create(TEST_USER_ID, "Original Title");
+
+        // When
+        group.changeTitle(null);
+
+        // Then
+        assertThat(group.getTitle()).isEqualTo("Original Title");
+    }
+
+    @Test
+    @DisplayName("Should verify ownership correctly")
+    void shouldVerifyOwnershipCorrectly() {
+        // Given
+        ResumeGroup group = ResumeGroup.create(TEST_USER_ID, TEST_TITLE);
+        UUID otherUserId = UUID.randomUUID();
+
+        // Then
+        assertThat(group.isOwnedBy(TEST_USER_ID)).isTrue();
+        assertThat(group.isOwnedBy(otherUserId)).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should reconstruct aggregate with versions")
+    void shouldReconstructAggregateWithVersions() {
+        // Given
+        UUID id = UUID.randomUUID();
+        LocalDateTime now = LocalDateTime.now();
+        ResumeVersion version = ResumeVersion.createOriginal(
+                id, "resume.pdf", "application/pdf", 1024L, "storage/path");
+
+        // When
+        ResumeGroup group = ResumeGroup.reconstruct(
+                id, TEST_USER_ID, TEST_TITLE, true, now, now, List.of(version));
+
+        // Then
+        assertThat(group.getId()).isEqualTo(id);
+        assertThat(group.getUserId()).isEqualTo(TEST_USER_ID);
+        assertThat(group.getTitle()).isEqualTo(TEST_TITLE);
+        assertThat(group.isDefault()).isTrue();
+        assertThat(group.getVersions()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("Should update timestamp on modifications")
+    void shouldUpdateTimestampOnModifications() {
+        // Given
+        ResumeGroup group = ResumeGroup.create(TEST_USER_ID, TEST_TITLE);
+        LocalDateTime initialTimestamp = group.getUpdatedAt();
+
+        // When
+        try {
+            Thread.sleep(10);
+        } catch (InterruptedException ignored) {}
+        group.changeTitle("New Title");
+        LocalDateTime afterTitleChange = group.getUpdatedAt();
+
+        try {
+            Thread.sleep(10);
+        } catch (InterruptedException ignored) {}
+        group.setAsDefault();
+        LocalDateTime afterSetDefault = group.getUpdatedAt();
+
+        // Then
+        assertThat(afterTitleChange).isAfter(initialTimestamp);
+        assertThat(afterSetDefault).isAfter(afterTitleChange);
+    }
+
+    @Test
+    @DisplayName("Should maintain userId immutability")
+    void shouldMaintainUserIdImmutability() {
+        // Given
+        ResumeGroup group = ResumeGroup.create(TEST_USER_ID, TEST_TITLE);
+
+        // Then
+        assertThat(group.getUserId()).isEqualTo(TEST_USER_ID);
+    }
+
+    @Test
+    @DisplayName("Should maintain createdAt immutability")
+    void shouldMaintainCreatedAtImmutability() {
+        // Given
+        ResumeGroup group = ResumeGroup.create(TEST_USER_ID, TEST_TITLE);
+        LocalDateTime createdAt = group.getCreatedAt();
+
+        // When
+        group.changeTitle("New");
+        group.setAsDefault();
+        group.uploadOriginalVersion("file.pdf", "application/pdf", 1024L, "path");
+
+        // Then
+        assertThat(group.getCreatedAt()).isEqualTo(createdAt);
+    }
+}
