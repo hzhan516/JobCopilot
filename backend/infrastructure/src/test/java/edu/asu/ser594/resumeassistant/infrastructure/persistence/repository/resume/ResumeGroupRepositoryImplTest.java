@@ -4,6 +4,7 @@ import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.resume.ResumeGroupJpaEntity;
 import edu.asu.ser594.resumeassistant.infrastructure.repository.resume.JpaResumeGroupRepository;
+import edu.asu.ser594.resumeassistant.infrastructure.repository.resume.JpaResumeVersionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,9 @@ class ResumeGroupRepositoryImplTest {
 
     @Mock
     private JpaResumeGroupRepository jpaRepository;
+
+    @Mock
+    private JpaResumeVersionRepository jpaVersionRepository;
 
     @InjectMocks
     private ResumeGroupRepositoryImpl groupRepository;

@@ -67,9 +67,10 @@ class JwtTokenServiceImplTest {
 
     @Test
     @DisplayName("Should generate different tokens for different calls")
-    void shouldGenerateDifferentTokensForDifferentCalls() {
+    void shouldGenerateDifferentTokensForDifferentCalls() throws InterruptedException {
         // When
         TokenPair result1 = tokenService.generateTokenPair(TEST_USER_ID);
+        Thread.sleep(1000);
         TokenPair result2 = tokenService.generateTokenPair(TEST_USER_ID);
 
         // Then

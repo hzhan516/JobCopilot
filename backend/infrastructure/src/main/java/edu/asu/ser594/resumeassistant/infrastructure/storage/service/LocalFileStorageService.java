@@ -48,11 +48,12 @@ public class LocalFileStorageService implements FileStorageService {
 
     @Override
     public void upload(String objectKey, InputStream inputStream, long size, String contentType) {
+        if (inputStream == null) {
+            throw new StorageException("storage.upload.failed", new IllegalArgumentException("inputStream cannot be null"));
+        }
         try {
             Path targetPath = resolvePath(objectKey);
-            // Create parent directories if they don't exist
             Files.createDirectories(targetPath.getParent());
-            // Copy file content
             Files.copy(inputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
             log.info("File uploaded to local storage: {}", targetPath);
         } catch (IOException e) {
@@ -65,7 +66,7 @@ public class LocalFileStorageService implements FileStorageService {
     public Optional<InputStream> download(String objectKey) {
         try {
             Path filePath = resolvePath(objectKey);
-            if (!Files.exists(filePath)) {
+            if (!Files.exists(filePath) || Files.isDirectory(filePath)) {
                 return Optional.empty();
             }
             return Optional.of(Files.newInputStream(filePath));

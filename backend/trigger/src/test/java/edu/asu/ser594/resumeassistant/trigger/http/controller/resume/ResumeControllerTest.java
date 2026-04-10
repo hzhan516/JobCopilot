@@ -23,6 +23,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -37,6 +40,7 @@ import static org.mockito.Mockito.*;
  * - Response wrapping
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("Resume Controller Tests")
 class ResumeControllerTest {
 

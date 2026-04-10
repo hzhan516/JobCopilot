@@ -56,7 +56,10 @@ class LocalFileStorageServiceTest {
     void setUp() {
         storageProperties = new StorageProperties();
         storageProperties.getLocal().setBasePath(tempDir.toString());
+        storageProperties.getLocal().setResumePath("");
+        storageProperties.getLocal().setDateSubdirectory(false);
         storageService = new LocalFileStorageService(storageProperties);
+        storageService.init();
     }
 
     // ==================== Upload Tests ====================

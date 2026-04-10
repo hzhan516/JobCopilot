@@ -11,11 +11,27 @@ public class BCryptPasswordEncoderImpl implements PasswordEncoder {
 
     @Override
     public String encode(String rawPassword) {
-        return BCrypt.hashpw(rawPassword, BCrypt.gensalt(STRENGTH));
+        if (rawPassword == null) {
+            throw new IllegalArgumentException("rawPassword cannot be null");
+        }
+        String truncatedPassword = truncatePassword(rawPassword);
+        return BCrypt.hashpw(truncatedPassword, BCrypt.gensalt(STRENGTH));
     }
 
     @Override
     public boolean matches(String rawPassword, String encodedPassword) {
-        return BCrypt.checkpw(rawPassword, encodedPassword);
+        if (rawPassword == null || encodedPassword == null) {
+            return false;
+        }
+        String truncatedPassword = truncatePassword(rawPassword);
+        return BCrypt.checkpw(truncatedPassword, encodedPassword);
+    }
+
+    private String truncatePassword(String password) {
+        byte[] bytes = password.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        if (bytes.length > 72) {
+            return new String(bytes, 0, 72, java.nio.charset.StandardCharsets.UTF_8);
+        }
+        return password;
     }
 }
