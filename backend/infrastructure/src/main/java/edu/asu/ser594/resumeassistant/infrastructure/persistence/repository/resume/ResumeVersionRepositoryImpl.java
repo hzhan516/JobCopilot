@@ -74,6 +74,8 @@ public class ResumeVersionRepositoryImpl implements ResumeVersionRepository {
         e.setStorageProvider(domain.getStorageProvider());
         e.setContent(domain.getContent());
         e.setParsedContent(domain.getParsedContent());
+        e.setParseStatus(domain.getParseStatus());
+        e.setParseErrorMessage(domain.getParseErrorMessage());
         e.setStatus(domain.getStatus().name());
         e.setCreatedAt(domain.getCreatedAt());
         e.setUpdatedAt(domain.getUpdatedAt());
@@ -89,6 +91,7 @@ public class ResumeVersionRepositoryImpl implements ResumeVersionRepository {
                 e.getFileSize() != null ? e.getFileSize() : 0L,
                 e.getStoragePath(), e.getStorageProvider(),
                 e.getContent(), e.getParsedContent(),
+                e.getParseStatus(), e.getParseErrorMessage(),
                 ResumeVersion.Status.valueOf(e.getStatus()),
                 e.getCreatedAt(), e.getUpdatedAt()
         );

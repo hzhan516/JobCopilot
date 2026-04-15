@@ -14,6 +14,7 @@ import edu.asu.ser594.resumeassistant.application.resume.query.ResumeDownloadQue
 import edu.asu.ser594.resumeassistant.application.resume.service.ResumeApplicationService;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.exception.StorageException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -167,6 +168,12 @@ public class ResumeFacadeImpl implements ResumeFacade {
     @Override
     public ApiResponse<ResumeVersionResponse> rollbackToVersion(UUID versionId, UUID userId) {
         throw new UnsupportedOperationException("MVP not implemented");
+    }
+
+    @Override
+    public void handleParseResult(AiResultEvent event) {
+        log.info("Handling parse result for ResumeVersion: {}", event.referenceId());
+        applicationService.handleParseResult(event);
     }
 
     // ==================== 映射方法 ====================

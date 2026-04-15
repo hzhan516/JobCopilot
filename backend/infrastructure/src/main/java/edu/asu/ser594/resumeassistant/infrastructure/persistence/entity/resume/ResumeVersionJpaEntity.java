@@ -1,7 +1,10 @@
 package edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.resume;
 
+import edu.asu.ser594.resumeassistant.domain.resume.valueobject.ParseStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.*;
@@ -73,6 +76,13 @@ public class ResumeVersionJpaEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     // 注意：不在 toString 中包含 JSON 内容
     private String parsedContent;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "parse_status", nullable = false, length = 20)
+    private ParseStatus parseStatus;
+    
+    @Column(name = "parse_error_message", columnDefinition = "TEXT")
+    private String parseErrorMessage;
 
     @Column(nullable = false, length = 20)
     @ToString.Include

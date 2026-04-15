@@ -4,23 +4,24 @@ import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
-import edu.asu.ser594.resumeassistant.domain.job.service.LlmParserPort;
-import edu.asu.ser594.resumeassistant.domain.job.service.VisionVerificationPort;
-import edu.asu.ser594.resumeassistant.domain.job.service.WebScraperPort;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import edu.asu.ser594.resumeassistant.domain.job.valueobject.ParsedJobContent;
-import edu.asu.ser594.resumeassistant.domain.job.valueobject.ScrapeResult;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -28,12 +29,9 @@ class JobApplicationServiceTest {
 
     @Mock
     private JobRepository jobRepository;
+    
     @Mock
-    private WebScraperPort webScraperPort;
-    @Mock
-    private LlmParserPort llmParserPort;
-    @Mock
-    private VisionVerificationPort visionVerificationPort;
+    private AiMessagePublisherPort aiMessagePublisherPort;
 
     @InjectMocks
     private JobApplicationService jobApplicationService;
@@ -44,7 +42,7 @@ class JobApplicationServiceTest {
     }
 
     @Test
-    void submitJob_Success_WithoutImageCheck() {
+    void submitJob_Success() {
         String userId = "user123";
         String url = "http://example.com/job";
         SubmitJobRequest request = new SubmitJobRequest(url, false);
@@ -52,53 +50,39 @@ class JobApplicationServiceTest {
         Job job = Job.create(userId, url, false);
         when(jobRepository.save(any(Job.class))).thenReturn(job);
 
-        ScrapeResult scrapeResult = new ScrapeResult("markdown content", null);
-        when(webScraperPort.scrape(anyString(), anyBoolean())).thenReturn(scrapeResult);
-
-        ParsedJobContent parsedContent = new ParsedJobContent("Software Engineer", "Tech Corp", "Description", List.of("Java"));
-        when(llmParserPort.parse(anyString())).thenReturn(parsedContent);
-
         JobResponse response = jobApplicationService.submitJob(userId, request);
 
         assertNotNull(response);
         assertEquals(userId, response.userId());
-        assertEquals("COMPLETED", response.status());
-        assertNotNull(response.parsedContent());
-        assertEquals("Software Engineer", response.parsedContent().title());
-        assertFalse(response.imageCheckEnabled());
+        assertEquals("SCRAPING", response.status());
 
-        verify(jobRepository, times(4)).save(any(Job.class));
-        verify(webScraperPort, times(1)).scrape(url, false);
-        verify(llmParserPort, times(1)).parse("markdown content");
-        verify(visionVerificationPort, never()).verifyAndFix(any(), any());
+        verify(jobRepository, times(2)).save(any(Job.class));
+        verify(aiMessagePublisherPort, times(1)).sendJobForParsing(any(JobParseCommand.class));
     }
 
     @Test
-    void submitJob_Success_WithImageCheck() {
-        String userId = "user123";
-        String url = "http://example.com/job";
-        SubmitJobRequest request = new SubmitJobRequest(url, true);
+    void handleJobProcessResult_Success_TriggersVectorGen() {
+        String jobId = "job123";
+        Job job = Job.create("user123", "http://example.com/job", false);
+        when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
+        
+        Map<String, Object> mockParsedData = Map.of(
+            "title", "Software Engineer",
+            "company", "Tech Corp",
+            "description", "A great job",
+            "requirements", List.of("Java", "Spring")
+        );
 
-        Job job = Job.create(userId, url, true);
-        when(jobRepository.save(any(Job.class))).thenReturn(job);
+        AiResultEvent event = new AiResultEvent(jobId, "JOB_PARSE", "COMPLETED", mockParsedData, null);
 
-        ScrapeResult scrapeResult = new ScrapeResult("markdown content", "http://example.com/screenshot.png");
-        when(webScraperPort.scrape(anyString(), anyBoolean())).thenReturn(scrapeResult);
+        jobApplicationService.handleJobProcessResult(event);
 
-        ParsedJobContent initialParsedContent = new ParsedJobContent("Software Eng", "Tech", "Desc", List.of("Java"));
-        when(llmParserPort.parse(anyString())).thenReturn(initialParsedContent);
+        assertEquals("COMPLETED", job.getStatus().name());
+        assertNotNull(job.getParsedContent());
+        assertEquals("Software Engineer", job.getParsedContent().title());
 
-        ParsedJobContent verifiedContent = new ParsedJobContent("Software Engineer", "Tech Corp", "Description", List.of("Java", "Spring"));
-        when(visionVerificationPort.verifyAndFix(any(), anyString())).thenReturn(verifiedContent);
-
-        JobResponse response = jobApplicationService.submitJob(userId, request);
-
-        assertNotNull(response);
-        assertEquals("COMPLETED", response.status());
-        assertEquals("Software Engineer", response.parsedContent().title());
-        assertTrue(response.imageCheckEnabled());
-
-        verify(visionVerificationPort, times(1)).verifyAndFix(initialParsedContent, "http://example.com/screenshot.png");
+        verify(jobRepository, times(1)).save(job);
+        verify(aiMessagePublisherPort, times(1)).sendTextForVectorGeneration(any(VectorGenCommand.class));
     }
 
     @Test

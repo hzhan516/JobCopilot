@@ -6,6 +6,7 @@ import edu.asu.ser594.resumeassistant.api.resume.dto.request.ResumeUploadRequest
 import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeGroupResponse;
 import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeUploadResponse;
 import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeVersionResponse;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.ResponseEntity;
 
@@ -89,4 +90,10 @@ public interface ResumeFacade {
      * 回滚到指定版本
      */
     ApiResponse<ResumeVersionResponse> rollbackToVersion(UUID versionId, UUID userId);
+
+    /**
+     * 处理AI解析结果的回调
+     * Handle parse result from AI service
+     */
+    void handleParseResult(AiResultEvent event);
 }

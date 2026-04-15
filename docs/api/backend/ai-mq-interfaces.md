@@ -57,43 +57,75 @@
 
 ---
 
-## 3. 简历解析模块 (Resume Parse) MQ 接口定义 (规划中)
+## 3. 简历解析模块 (Resume Parse) MQ 接口定义
+
+当用户上传一份新简历时，后台先持久化 ORIGINAL 版本，然后触发解析。
 
 ### 3.1 Backend -> AI Service (请求)
-**Routing Key:** `ai.resume.parse.req`
-**Queue:** `q.ai.resume.parse.req`
+**Routing Key:** `ai.req.resume.parse`
+**Queue:** `ai.queue.resume.parse`
 
-**Message Body (预期):**
+**Message Body (`ResumeParseCommand`):**
 ```json
 {
   "resumeId": "resume-uuid-1234",
   "fileUrl": "http://minio.../resume.pdf",
-  "format": "PDF"
+  "format": "application/pdf"
 }
 ```
 
 ### 3.2 AI Service -> Backend (响应)
-**Routing Key:** `ai.resume.parse.res`
-**Queue:** `q.ai.resume.parse.res`
+**Routing Key:** `backend.res.resume.parse`
+**Queue:** `backend.queue.resume.parse`
 
-**Message Body (预期):**
+**Message Body (`AiResultEvent`):**
 ```json
 {
-  "resumeId": "resume-uuid-1234",
-  "success": true,
-  "parsedJson": { ... },
+  "referenceId": "resume-uuid-1234",
+  "type": "RESUME_PARSE",
+  "status": "COMPLETED",
+  "data": {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "skills": ["Java", "Spring"],
+    "experience": []
+  },
   "errorMessage": null
 }
 ```
 
 ---
 
-## 4. 向量生成模块 (Vector Generation) MQ 接口定义 (规划中)
+## 4. 向量生成模块 (Vector Generation) MQ 接口定义
+
+当简历被成功解析，或职位被成功解析后，通过该模块将 JSON Text 转化为 pgvector 能够存储的向量数据。
 
 ### 4.1 Backend -> AI Service (请求)
-**Routing Key:** `ai.vector.gen.req`
-**Queue:** `q.ai.vector.gen.req`
+**Routing Key:** `ai.req.vector.gen`
+**Queue:** `ai.queue.vector.gen`
+
+**Message Body (`VectorGenCommand`):**
+```json
+{
+  "referenceId": "resume-or-job-uuid",
+  "entityType": "RESUME", 
+  "text": "Full parsed JSON string or raw job description text"
+}
+```
 
 ### 4.2 AI Service -> Backend (响应)
-**Routing Key:** `ai.vector.gen.res`
-**Queue:** `q.ai.vector.gen.res`
+**Routing Key:** `backend.res.vector.gen`
+**Queue:** `backend.queue.vector.gen`
+
+**Message Body (`AiResultEvent`):**
+```json
+{
+  "referenceId": "resume-or-job-uuid",
+  "type": "VECTOR_GEN",
+  "status": "COMPLETED",
+  "data": {
+    "embedding": [0.123, -0.456, 0.789]
+  },
+  "errorMessage": null
+}
+```

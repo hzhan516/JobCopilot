@@ -8,10 +8,15 @@ import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeGroupRepository;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
+import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ResumeParseCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.exception.StorageException;
 import edu.asu.ser594.resumeassistant.domain.shared.service.DocumentFormatConverter;
 import edu.asu.ser594.resumeassistant.domain.shared.service.FileStorageService;
 import edu.asu.ser594.resumeassistant.domain.shared.valueobject.DocumentFormat;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -40,6 +45,8 @@ public class ResumeApplicationService {
     private final ResumeVersionRepository versionRepository;
     private final FileStorageService fileStorageService;
     private final DocumentFormatConverter documentFormatConverter;
+    private final AiMessagePublisherPort aiMessagePublisherPort;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     // ==================== 命令处理 Command Handlers ====================
 
@@ -60,6 +67,29 @@ public class ResumeApplicationService {
 
         // 4. 保存聚合
         groupRepository.save(group);
+
+        // 5. 触发 AI 异步解析
+        ResumeVersion originalVersion = group.getVersions().stream()
+                .filter(v -> v.getVersionType() == ResumeVersion.VersionType.ORIGINAL)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Original version not found after upload"));
+        
+        originalVersion.markParsing();
+        versionRepository.save(originalVersion);
+
+        try {
+            ResumeParseCommand parseCommand = new ResumeParseCommand(
+                    originalVersion.getId().toString(),
+                    originalVersion.getStoragePath(),
+                    command.contentType()
+            );
+            aiMessagePublisherPort.sendResumeForParsing(parseCommand);
+            log.info("Triggered async resume parsing for versionId={}", originalVersion.getId());
+        } catch (Exception e) {
+            log.error("Failed to publish resume parsing request: {}", originalVersion.getId(), e);
+            originalVersion.markParseFailed("Failed to publish parsing request: " + e.getMessage());
+            versionRepository.save(originalVersion);
+        }
 
         log.info("Resume uploaded: groupId={}, userId={}", group.getId(), userId);
         return group;
@@ -138,6 +168,40 @@ public class ResumeApplicationService {
         versionRepository.delete(versionId);
 
         log.info("Resume version deleted: versionId={}, groupId={}", versionId, group.getId());
+    }
+
+    @Transactional
+    public void handleParseResult(AiResultEvent event) {
+        ResumeVersion originalVersion = versionRepository.findById(UUID.fromString(event.referenceId()))
+                .orElseThrow(() -> new StorageException("version.not.found"));
+
+        if (!"COMPLETED".equals(event.status())) {
+            originalVersion.markParseFailed(event.errorMessage() != null ? event.errorMessage() : "Unknown AI processing error");
+            versionRepository.save(originalVersion);
+            log.error("Resume parsing failed for versionId={}: {}", originalVersion.getId(), event.errorMessage());
+            return;
+        }
+
+        try {
+            String parsedJsonStr = objectMapper.writeValueAsString(event.data());
+            originalVersion.markParseCompleted(parsedJsonStr);
+            versionRepository.save(originalVersion);
+            log.info("Resume parsing completed for versionId={}", originalVersion.getId());
+
+            // 触发向量生成
+            VectorGenCommand vectorCmd = new VectorGenCommand(
+                    originalVersion.getId().toString(),
+                    "RESUME",
+                    parsedJsonStr
+            );
+            aiMessagePublisherPort.sendTextForVectorGeneration(vectorCmd);
+            log.info("Triggered async vector generation for resume versionId={}", originalVersion.getId());
+
+        } catch (Exception e) {
+            log.error("Failed to process parsed data or trigger vector gen for versionId={}", originalVersion.getId(), e);
+            originalVersion.markParseFailed("Failed to handle parsed result: " + e.getMessage());
+            versionRepository.save(originalVersion);
+        }
     }
 
     // ==================== 查询处理 Query Handlers ====================

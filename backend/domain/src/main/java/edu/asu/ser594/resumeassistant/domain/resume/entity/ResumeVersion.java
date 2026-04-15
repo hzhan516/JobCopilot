@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.domain.resume.entity;
 
+import edu.asu.ser594.resumeassistant.domain.resume.valueobject.ParseStatus;
 import edu.asu.ser594.resumeassistant.domain.shared.entity.Entity;
 
 import java.time.LocalDateTime;
@@ -42,6 +43,9 @@ public final class ResumeVersion implements Entity<UUID> {
     private String content;
     private String parsedContent;
 
+    private ParseStatus parseStatus;
+    private String parseErrorMessage;
+
     private Status status;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -50,6 +54,7 @@ public final class ResumeVersion implements Entity<UUID> {
                           String originalFileName, String storedFileName,
                           String fileType, long fileSize, String storagePath,
                           String storageProvider, String content, String parsedContent,
+                          ParseStatus parseStatus, String parseErrorMessage,
                           Status status, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.groupId = groupId;
@@ -62,6 +67,8 @@ public final class ResumeVersion implements Entity<UUID> {
         this.storageProvider = storageProvider;
         this.content = content;
         this.parsedContent = parsedContent;
+        this.parseStatus = parseStatus;
+        this.parseErrorMessage = parseErrorMessage;
         this.status = status;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -84,6 +91,8 @@ public final class ResumeVersion implements Entity<UUID> {
                 "minio",
                 null,
                 null,
+                ParseStatus.PENDING,
+                null,
                 Status.ACTIVE,
                 LocalDateTime.now(),
                 LocalDateTime.now()
@@ -103,6 +112,8 @@ public final class ResumeVersion implements Entity<UUID> {
                 null,
                 "",  // 空内容待填充
                 null,
+                ParseStatus.PENDING,
+                null,
                 Status.ACTIVE,
                 LocalDateTime.now(),
                 LocalDateTime.now()
@@ -113,11 +124,11 @@ public final class ResumeVersion implements Entity<UUID> {
                                             String originalFileName, String storedFileName,
                                             String fileType, long fileSize, String storagePath,
                                             String storageProvider, String content,
-                                            String parsedContent, Status status,
-                                            LocalDateTime createdAt, LocalDateTime updatedAt) {
+                                            String parsedContent, ParseStatus parseStatus, String parseErrorMessage, 
+                                            Status status, LocalDateTime createdAt, LocalDateTime updatedAt) {
         return new ResumeVersion(id, groupId, versionType, originalFileName, storedFileName,
                 fileType, fileSize, storagePath, storageProvider, content, parsedContent,
-                status, createdAt, updatedAt);
+                parseStatus, parseErrorMessage, status, createdAt, updatedAt);
     }
 
     // ==================== 领域行为 ====================
@@ -134,6 +145,23 @@ public final class ResumeVersion implements Entity<UUID> {
             throw new IllegalStateException("Only active version can be edited");
         }
         this.content = newContent;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void markParsing() {
+        this.parseStatus = ParseStatus.PARSING;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void markParseCompleted(String parsedContent) {
+        this.parseStatus = ParseStatus.COMPLETED;
+        this.parsedContent = parsedContent;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void markParseFailed(String errorMessage) {
+        this.parseStatus = ParseStatus.FAILED;
+        this.parseErrorMessage = errorMessage;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -184,6 +212,10 @@ public final class ResumeVersion implements Entity<UUID> {
     public String getContent() { return content; }
 
     public String getParsedContent() { return parsedContent; }
+    
+    public ParseStatus getParseStatus() { return parseStatus; }
+
+    public String getParseErrorMessage() { return parseErrorMessage; }
 
     public Status getStatus() { return status; }
 

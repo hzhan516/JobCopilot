@@ -4,8 +4,9 @@ import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
-import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
 import edu.asu.ser594.resumeassistant.domain.job.valueobject.ParsedJobContent;
@@ -62,6 +63,20 @@ public class JobApplicationService implements JobFacade {
             } catch (Exception e) {
                 job.markFailed("Failed to deserialize AI result data");
                 log.error("Deserialization error for job {}: ", event.referenceId(), e);
+                jobRepository.save(job);
+                return;
+            }
+
+            try {
+                VectorGenCommand vectorCmd = new VectorGenCommand(
+                        job.getId(),
+                        "JOB",
+                        job.getParsedContent().title() + "\n" + job.getParsedContent().company() + "\n" + job.getParsedContent().description() + "\n" + String.join("\n", job.getParsedContent().requirements())
+                );
+                aiMessagePublisherPort.sendTextForVectorGeneration(vectorCmd);
+                log.info("Triggered async vector generation for job: {}", job.getId());
+            } catch (Exception e) {
+                log.error("Failed to publish job vector gen request: {}", job.getId(), e);
             }
         } else {
             job.markFailed(event.errorMessage() != null ? event.errorMessage() : "Unknown AI processing error");
