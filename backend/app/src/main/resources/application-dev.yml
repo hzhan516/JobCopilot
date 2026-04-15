@@ -124,3 +124,22 @@ ai:
     api-key: ${OPENAI_API_KEY:}
   jina:
     api-key: ${JINA_API_KEY:}
+
+# ============================================
+# RabbitMQ 消息队列配置
+# ============================================
+spring:
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: /
+    listener:
+      simple:
+        retry:
+          enabled: true
+          initial-interval: 3000ms
+          max-attempts: 3
+          max-interval: 10000ms
+          multiplier: 2.0

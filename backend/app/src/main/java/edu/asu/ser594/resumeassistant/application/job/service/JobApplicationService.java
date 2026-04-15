@@ -4,12 +4,10 @@ import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
+import edu.asu.ser594.resumeassistant.domain.job.event.JobProcessRequestEvent;
+import edu.asu.ser594.resumeassistant.domain.job.event.JobProcessResultEvent;
+import edu.asu.ser594.resumeassistant.domain.job.port.JobEventPublisherPort;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
-import edu.asu.ser594.resumeassistant.domain.job.service.LlmParserPort;
-import edu.asu.ser594.resumeassistant.domain.job.service.VisionVerificationPort;
-import edu.asu.ser594.resumeassistant.domain.job.service.WebScraperPort;
-import edu.asu.ser594.resumeassistant.domain.job.valueobject.ParsedJobContent;
-import edu.asu.ser594.resumeassistant.domain.job.valueobject.ScrapeResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,43 +19,47 @@ import org.springframework.transaction.annotation.Transactional;
 public class JobApplicationService implements JobFacade {
 
     private final JobRepository jobRepository;
-    private final WebScraperPort webScraperPort;
-    private final LlmParserPort llmParserPort;
-    private final VisionVerificationPort visionVerificationPort;
+    private final JobEventPublisherPort jobEventPublisherPort;
 
     @Override
     @Transactional
     public JobResponse submitJob(String userId, SubmitJobRequest request) {
-        log.info("Submitting new job for user: {}", userId);
+        log.info("Submitting new job for async processing for user: {}", userId);
         
         Job job = Job.create(userId, request.url(), request.imageCheckEnabled());
+        job.markScraping();
         job = jobRepository.save(job);
 
         try {
-            job.markScraping();
-            jobRepository.save(job);
-            ScrapeResult scrapeResult = webScraperPort.scrape(job.getOriginalUrl(), job.isImageCheckEnabled());
-
-            job.markParsing();
-            jobRepository.save(job);
-            ParsedJobContent parsedContent = llmParserPort.parse(scrapeResult.markdownText());
-
-            if (job.isImageCheckEnabled() && scrapeResult.screenshotUrl() != null) {
-                log.info("Performing vision verification for job: {}", job.getId());
-                parsedContent = visionVerificationPort.verifyAndFix(parsedContent, scrapeResult.screenshotUrl());
-            }
-
-            job.markCompleted(parsedContent);
-            jobRepository.save(job);
-            
+            JobProcessRequestEvent event = new JobProcessRequestEvent(
+                    job.getId(),
+                    job.getOriginalUrl(),
+                    job.isImageCheckEnabled()
+            );
+            jobEventPublisherPort.publishJobProcessRequest(event);
             return mapToResponse(job);
-
         } catch (Exception e) {
-            log.error("Failed to process job: {}", job.getId(), e);
-            job.markFailed(e.getMessage());
+            log.error("Failed to publish job processing request: {}", job.getId(), e);
+            job.markFailed("Failed to publish job processing request: " + e.getMessage());
             jobRepository.save(job);
-            throw new RuntimeException("Failed to process job: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to submit job: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    @Transactional
+    public void handleJobProcessResult(JobProcessResultEvent event) {
+        Job job = jobRepository.findById(event.jobId())
+                .orElseThrow(() -> new IllegalArgumentException("Job not found: " + event.jobId()));
+
+        if (event.success() && event.parsedContent() != null) {
+            job.markCompleted(event.parsedContent());
+        } else {
+            job.markFailed(event.errorMessage() != null ? event.errorMessage() : "Unknown AI processing error");
+        }
+        
+        jobRepository.save(job);
+        log.info("Job {} updated to status {}", job.getId(), job.getStatus());
     }
 
     @Override
