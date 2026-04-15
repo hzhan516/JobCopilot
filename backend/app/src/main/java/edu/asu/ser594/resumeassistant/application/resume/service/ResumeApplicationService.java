@@ -46,17 +46,17 @@ public class ResumeApplicationService {
     @Transactional
     public ResumeGroup handleUpload(ResumeUploadCommand command, UUID userId) {
         // 1. 创建简历组
-        ResumeGroup group = ResumeGroup.create(userId, command.getTitle());
+        ResumeGroup group = ResumeGroup.create(userId, command.title());
 
         // 2. 存储文件，获取路径（这让底层基础设施去决定真实存的位置，但如果接口设计需要传入Path，则生成随机键）
-        String storagePath = UUID.randomUUID().toString() + "_" + command.getFileName();
+        String storagePath = UUID.randomUUID().toString() + "_" + command.fileName();
         
-        fileStorageService.upload(storagePath, command.getInputStream(),
-                command.getFileSize(), command.getContentType());
+        fileStorageService.upload(storagePath, command.inputStream(),
+                command.fileSize(), command.contentType());
 
         // 3. 将原版添加进简历组（包含创建衍生版本等生命周期都在聚合内）
-        group.uploadOriginalVersion(command.getFileName(), command.getContentType(),
-                command.getFileSize(), storagePath);
+        group.uploadOriginalVersion(command.fileName(), command.contentType(),
+                command.fileSize(), storagePath);
 
         // 4. 保存聚合
         groupRepository.save(group);
@@ -67,18 +67,18 @@ public class ResumeApplicationService {
 
     @Transactional
     public ResumeVersion handleEdit(ResumeEditCommand command) {
-        ResumeVersion version = versionRepository.findById(command.getVersionId())
+        ResumeVersion version = versionRepository.findById(command.versionId())
                 .orElseThrow(() -> new StorageException("version.not.found"));
 
         ResumeGroup group = groupRepository.findById(version.getGroupId())
                 .orElseThrow(() -> new StorageException("group.not.found"));
 
-        if (!group.isOwnedBy(command.getUserId())) {
+        if (!group.isOwnedBy(command.userId())) {
             throw new StorageException("access.denied");
         }
 
         // 调用领域方法
-        version.editContent(command.getContent());
+        version.editContent(command.content());
         versionRepository.save(version);
 
         log.info("Resume edited: versionId={}", version.getId());
@@ -166,7 +166,7 @@ public class ResumeApplicationService {
     }
 
     public ResumeDownloadResult handleDownload(ResumeDownloadQuery query) {
-        ResumeVersion version = getVersion(query.getVersionId(), query.getUserId());
+        ResumeVersion version = getVersion(query.versionId(), query.userId());
 
         InputStream sourceStream;
         DocumentFormat sourceFormat;
@@ -182,11 +182,11 @@ public class ResumeApplicationService {
         }
 
         // 格式转换
-        DocumentFormat targetFormat = DocumentFormat.fromFormatString(query.getTargetFormat());
+        DocumentFormat targetFormat = DocumentFormat.fromFormatString(query.targetFormat());
         InputStream resultStream = sourceStream;
         DocumentFormat resultFormat = sourceFormat;
 
-        if (!query.getTargetFormat().equalsIgnoreCase("original") && !sourceFormat.equals(targetFormat)) {
+        if (!query.targetFormat().equalsIgnoreCase("original") && !sourceFormat.equals(targetFormat)) {
             try {
                 resultStream = documentFormatConverter.convert(sourceStream, sourceFormat.getFormat(), targetFormat.getFormat());
                 resultFormat = targetFormat;

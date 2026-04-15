@@ -104,8 +104,8 @@ class AuthFacadeImplTest {
 
         // Then
         verify(authService).registerByEmail(argThat(command ->
-                command.getEmail().equals(TEST_EMAIL) &&
-                        command.getPassword().equals(TEST_PASSWORD)));
+                command.email().equals(TEST_EMAIL) &&
+                        command.password().equals(TEST_PASSWORD)));
     }
 
     @Test
@@ -148,8 +148,8 @@ class AuthFacadeImplTest {
 
         // Then
         verify(authService).loginByEmail(argThat(command ->
-                command.getEmail().equals(TEST_EMAIL) &&
-                        command.getPassword().equals(TEST_PASSWORD)));
+                command.email().equals(TEST_EMAIL) &&
+                        command.password().equals(TEST_PASSWORD)));
     }
 
     @Test

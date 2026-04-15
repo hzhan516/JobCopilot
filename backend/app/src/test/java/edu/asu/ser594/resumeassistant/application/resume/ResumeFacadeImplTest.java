@@ -125,10 +125,10 @@ class ResumeFacadeImplTest {
 
         // Then
         ResumeUploadCommand capturedCommand = commandCaptor.getValue();
-        assertThat(capturedCommand.getFileName()).isEqualTo("resume.pdf");
-        assertThat(capturedCommand.getContentType()).isEqualTo("application/pdf");
-        assertThat(capturedCommand.getFileSize()).isEqualTo(1024L);
-        assertThat(capturedCommand.getTitle()).isEqualTo("My Resume");
+        assertThat(capturedCommand.fileName()).isEqualTo("resume.pdf");
+        assertThat(capturedCommand.contentType()).isEqualTo("application/pdf");
+        assertThat(capturedCommand.fileSize()).isEqualTo(1024L);
+        assertThat(capturedCommand.title()).isEqualTo("My Resume");
     }
 
     // ==================== Download Tests ====================
@@ -175,9 +175,9 @@ class ResumeFacadeImplTest {
 
         // Then
         ResumeDownloadQuery capturedQuery = queryCaptor.getValue();
-        assertThat(capturedQuery.getVersionId()).isEqualTo(VERSION_ID);
-        assertThat(capturedQuery.getUserId()).isEqualTo(USER_ID);
-        assertThat(capturedQuery.getTargetFormat()).isEqualTo("pdf");
+        assertThat(capturedQuery.versionId()).isEqualTo(VERSION_ID);
+        assertThat(capturedQuery.userId()).isEqualTo(USER_ID);
+        assertThat(capturedQuery.targetFormat()).isEqualTo("pdf");
     }
 
     // ==================== Group Query Tests ====================
@@ -312,9 +312,9 @@ class ResumeFacadeImplTest {
 
         // Then
         ResumeEditCommand capturedCommand = commandCaptor.getValue();
-        assertThat(capturedCommand.getVersionId()).isEqualTo(VERSION_ID);
-        assertThat(capturedCommand.getUserId()).isEqualTo(USER_ID);
-        assertThat(capturedCommand.getContent()).isEqualTo("Updated content");
+        assertThat(capturedCommand.versionId()).isEqualTo(VERSION_ID);
+        assertThat(capturedCommand.userId()).isEqualTo(USER_ID);
+        assertThat(capturedCommand.content()).isEqualTo("Updated content");
     }
 
     @Test

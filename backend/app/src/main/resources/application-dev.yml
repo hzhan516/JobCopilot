@@ -115,3 +115,12 @@ logging:
   level:
     org.hibernate.SQL: ${LOG_HIBERNATE_LEVEL:DEBUG}
     edu.asu.ser594.resumeassistant: ${LOG_APP_LEVEL:DEBUG}
+
+# ============================================
+# AI 外部服务配置
+# ============================================
+ai:
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+  jina:
+    api-key: ${JINA_API_KEY:}

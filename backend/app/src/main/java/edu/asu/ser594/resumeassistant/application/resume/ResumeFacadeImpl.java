@@ -132,14 +132,14 @@ public class ResumeFacadeImpl implements ResumeFacade {
 
         ResumeDownloadResult result = applicationService.handleDownload(query);
 
-        String encodedFileName = URLEncoder.encode(result.getFileName(), StandardCharsets.UTF_8)
+        String encodedFileName = URLEncoder.encode(result.fileName(), StandardCharsets.UTF_8)
                 .replace("+", "%20");
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename*=UTF-8''" + encodedFileName)
-                .contentType(MediaType.parseMediaType(result.getContentType()))
-                .body(new InputStreamResource(result.getInputStream()));
+                .contentType(MediaType.parseMediaType(result.contentType()))
+                .body(new InputStreamResource(result.inputStream()));
     }
 
     @Override

@@ -373,8 +373,8 @@ class ResumeApplicationServiceTest {
 
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.getInputStream()).isEqualTo(fileStream);
-        assertThat(result.getContentType()).isEqualTo("application/pdf");
+        assertThat(result.inputStream()).isEqualTo(fileStream);
+        assertThat(result.contentType()).isEqualTo("application/pdf");
     }
 
     @Test
@@ -402,7 +402,7 @@ class ResumeApplicationServiceTest {
 
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.getContentType()).isEqualTo("application/pdf");
+        assertThat(result.contentType()).isEqualTo("application/pdf");
         verify(documentFormatConverter).convert(any(), eq("md"), eq("pdf"));
     }
 

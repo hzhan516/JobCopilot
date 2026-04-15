@@ -30,11 +30,11 @@ public class AuthApplicationService {
 
     @Transactional
     public User registerByEmail(RegisterByEmailCommand command) {
-        if (userRepository.existsByEmail(command.getEmail())) {
+        if (userRepository.existsByEmail(command.email())) {
             throw new AuthException(AuthException.ErrorType.EMAIL_EXISTS);
         }
 
-        User user = User.create(command.getEmail());
+        User user = User.create(command.email());
         User savedUser = userRepository.save(user);
 
         UserProfile profile = UserProfile.create(savedUser.getId());
@@ -42,7 +42,7 @@ public class AuthApplicationService {
 
         UserCredential credential = UserCredential.createPassword(
                 savedUser.getId(),
-                passwordEncoder.encode(command.getPassword())
+                passwordEncoder.encode(command.password())
         );
         userCredentialRepository.save(credential);
 
@@ -50,14 +50,14 @@ public class AuthApplicationService {
     }
 
     public User loginByEmail(LoginByEmailCommand command) {
-        User user = userRepository.findByEmail(command.getEmail())
+        User user = userRepository.findByEmail(command.email())
                 .orElseThrow(() -> new AuthException(AuthException.ErrorType.INVALID_CREDENTIALS));
 
         UserCredential credential = userCredentialRepository
                 .findByUserIdAndType(user.getId(), CredentialType.PASSWORD)
                 .orElseThrow(() -> new AuthException(AuthException.ErrorType.INVALID_CREDENTIALS));
 
-        if (!passwordEncoder.matches(command.getPassword(), credential.getCredentialValue())) {
+        if (!passwordEncoder.matches(command.password(), credential.getCredentialValue())) {
             throw new AuthException(AuthException.ErrorType.INVALID_CREDENTIALS);
         }
 
