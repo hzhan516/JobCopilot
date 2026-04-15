@@ -4,10 +4,12 @@ import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
-import edu.asu.ser594.resumeassistant.domain.job.event.JobProcessRequestEvent;
-import edu.asu.ser594.resumeassistant.domain.job.event.JobProcessResultEvent;
-import edu.asu.ser594.resumeassistant.domain.job.port.JobEventPublisherPort;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
+import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
+import edu.asu.ser594.resumeassistant.domain.job.valueobject.ParsedJobContent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,7 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class JobApplicationService implements JobFacade {
 
     private final JobRepository jobRepository;
-    private final JobEventPublisherPort jobEventPublisherPort;
+    private final AiMessagePublisherPort aiMessagePublisherPort;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     @Transactional
@@ -31,12 +34,12 @@ public class JobApplicationService implements JobFacade {
         job = jobRepository.save(job);
 
         try {
-            JobProcessRequestEvent event = new JobProcessRequestEvent(
+            JobParseCommand command = new JobParseCommand(
                     job.getId(),
                     job.getOriginalUrl(),
                     job.isImageCheckEnabled()
             );
-            jobEventPublisherPort.publishJobProcessRequest(event);
+            aiMessagePublisherPort.sendJobForParsing(command);
             return mapToResponse(job);
         } catch (Exception e) {
             log.error("Failed to publish job processing request: {}", job.getId(), e);
@@ -48,12 +51,18 @@ public class JobApplicationService implements JobFacade {
 
     @Override
     @Transactional
-    public void handleJobProcessResult(JobProcessResultEvent event) {
-        Job job = jobRepository.findById(event.jobId())
-                .orElseThrow(() -> new IllegalArgumentException("Job not found: " + event.jobId()));
+    public void handleJobProcessResult(AiResultEvent event) {
+        Job job = jobRepository.findById(event.referenceId())
+                .orElseThrow(() -> new IllegalArgumentException("Job not found: " + event.referenceId()));
 
-        if (event.success() && event.parsedContent() != null) {
-            job.markCompleted(event.parsedContent());
+        if ("COMPLETED".equals(event.status()) && event.data() != null) {
+            try {
+                ParsedJobContent content = objectMapper.convertValue(event.data(), ParsedJobContent.class);
+                job.markCompleted(content);
+            } catch (Exception e) {
+                job.markFailed("Failed to deserialize AI result data");
+                log.error("Deserialization error for job {}: ", event.referenceId(), e);
+            }
         } else {
             job.markFailed(event.errorMessage() != null ? event.errorMessage() : "Unknown AI processing error");
         }

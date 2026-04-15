@@ -2,7 +2,7 @@ package edu.asu.ser594.resumeassistant.api.job.facade;
 
 import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
-import edu.asu.ser594.resumeassistant.domain.job.event.JobProcessResultEvent;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 
 /**
  * Inbound port facade for Job related operations.
@@ -13,5 +13,6 @@ public interface JobFacade {
 
     JobResponse getJob(String jobId, String userId);
 
-    void handleJobProcessResult(JobProcessResultEvent event);
+    void handleJobProcessResult(AiResultEvent event);
 }
+
