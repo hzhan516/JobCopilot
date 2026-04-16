@@ -82,11 +82,11 @@
 }
 ```
 
-#### 400 - 邮箱已存在
+#### 409 - 邮箱已存在
 
 ```json
 {
-  "code": 400,
+  "code": 409,
   "message": "Email already exists",
   "data": null
 }
@@ -163,11 +163,11 @@ curl -X POST http://localhost:8080/api/v1/auth/register/email \
 
 ### 错误响应
 
-#### 400 - 邮箱或密码错误
+#### 401 - 邮箱或密码错误
 
 ```json
 {
-  "code": 400,
+  "code": 401,
   "message": "Invalid credentials",
   "data": null
 }

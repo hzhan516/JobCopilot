@@ -61,9 +61,9 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<ApiResponse<Void>> response = exceptionHandler.handleAuthException(authException);
 
         // Then
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getCode()).isEqualTo(400);
+        assertThat(response.getBody().getCode()).isEqualTo(409);
     }
 
     @Test
@@ -78,7 +78,7 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<ApiResponse<Void>> response = exceptionHandler.handleAuthException(authException);
 
         // Then
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test
@@ -93,7 +93,7 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<ApiResponse<Void>> response = exceptionHandler.handleAuthException(authException);
 
         // Then
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test
@@ -108,7 +108,7 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<ApiResponse<Void>> response = exceptionHandler.handleAuthException(authException);
 
         // Then
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test

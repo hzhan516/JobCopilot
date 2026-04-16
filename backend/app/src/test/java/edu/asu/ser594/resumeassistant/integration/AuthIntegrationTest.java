@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.integration;
 
+import edu.asu.ser594.resumeassistant.api.common.dto.ApiResponse;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.LoginByEmailRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.RegisterByEmailRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.response.AuthResponse;
@@ -8,10 +9,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.net.URI;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -47,19 +52,20 @@ class AuthIntegrationTest {
                 .build();
 
         // When
-        ResponseEntity<AuthResponse> response = restTemplate.postForEntity(
-                BASE_URL + "/register/email",
-                request,
-                AuthResponse.class
+        ResponseEntity<ApiResponse<AuthResponse>> response = restTemplate.exchange(
+                RequestEntity.post(URI.create(BASE_URL + "/register/email"))
+                        .body(request),
+                new ParameterizedTypeReference<ApiResponse<AuthResponse>>() {}
         );
 
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getEmail()).isEqualTo(TEST_EMAIL);
-        assertThat(response.getBody().getUserId()).isNotNull();
-        assertThat(response.getBody().getAccessToken()).isNotNull();
-        assertThat(response.getBody().getRefreshToken()).isNotNull();
+        assertThat(response.getBody().getData()).isNotNull();
+        assertThat(response.getBody().getData().getEmail()).isEqualTo(TEST_EMAIL);
+        assertThat(response.getBody().getData().getUserId()).isNotNull();
+        assertThat(response.getBody().getData().getAccessToken()).isNotNull();
+        assertThat(response.getBody().getData().getRefreshToken()).isNotNull();
     }
 
     @Test
@@ -71,10 +77,10 @@ class AuthIntegrationTest {
                 .password(TEST_PASSWORD)
                 .build();
 
-        restTemplate.postForEntity(
-                BASE_URL + "/register/email",
-                registerRequest,
-                AuthResponse.class
+        restTemplate.exchange(
+                RequestEntity.post(URI.create(BASE_URL + "/register/email"))
+                        .body(registerRequest),
+                new ParameterizedTypeReference<ApiResponse<AuthResponse>>() {}
         );
 
         // When - Login
@@ -83,17 +89,18 @@ class AuthIntegrationTest {
                 .password(TEST_PASSWORD)
                 .build();
 
-        ResponseEntity<AuthResponse> response = restTemplate.postForEntity(
-                BASE_URL + "/login/email",
-                loginRequest,
-                AuthResponse.class
+        ResponseEntity<ApiResponse<AuthResponse>> response = restTemplate.exchange(
+                RequestEntity.post(URI.create(BASE_URL + "/login/email"))
+                        .body(loginRequest),
+                new ParameterizedTypeReference<ApiResponse<AuthResponse>>() {}
         );
 
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getEmail()).isEqualTo(TEST_EMAIL + ".login");
-        assertThat(response.getBody().getAccessToken()).isNotNull();
+        assertThat(response.getBody().getData()).isNotNull();
+        assertThat(response.getBody().getData().getEmail()).isEqualTo(TEST_EMAIL + ".login");
+        assertThat(response.getBody().getData().getAccessToken()).isNotNull();
     }
 
     @Test

@@ -10,7 +10,7 @@
 
 - **Host/Port**: `localhost:5672` (生产内部网络一般为 `resume-rabbitmq:5672`)
 - **Credentials**: `guest` / `guest`
-- **Exchange (Topic)**: `ai.topic.exchange`
+- **Exchange (Direct)**: `ai.direct.exchange`
 - **消息格式**: JSON (`application/json`)
 - **最大消息大小限制**: 10MB (10485760 bytes)。大型文件通过 OSS/S3 URL 传递，避免在 MQ 中传输超大 Base64 数据。
 
@@ -21,10 +21,11 @@
 当用户提交一个心仪的职位 URL 链接时，触发被动解析流程。
 
 ### 2.1 Backend -> AI Service (请求)
-**Routing Key:** `ai.job.process.req`
-**Queue:** `q.ai.job.process.req`
+**Exchange:** `ai.direct.exchange`
+**Routing Key:** `ai.req.job.parse`
+**Queue:** `ai.queue.job.parse`
 
-**Message Body (`JobProcessRequestEvent`):**
+**Message Body (`JobParseCommand`):**
 ```json
 {
   "jobId": "job-uuid-1234",
@@ -34,26 +35,29 @@
 ```
 
 ### 2.2 AI Service -> Backend (响应)
-**Routing Key:** `ai.job.process.res`
-**Queue:** `q.ai.job.process.res`
+**Exchange:** `ai.direct.exchange`
+**Routing Key:** `backend.res.job.parse`
+**Queue:** `backend.queue.job.parse`
 
-**Message Body (`JobProcessResultEvent`):**
+**Message Body (`AiResultEvent`):**
 ```json
 {
-  "jobId": "job-uuid-1234",
-  "success": true,
-  "parsedContent": {
+  "referenceId": "job-uuid-1234",
+  "type": "JOB_PARSE",
+  "status": "COMPLETED",
+  "data": {
     "title": "Software Engineer",
     "company": "Tech Corp",
     "description": "Full job description...",
     "requirements": ["Java", "Spring Boot", "AWS"]
   },
-  "errorMessage": null
+  "errorMessage": null,
+  "eventType": "JOB"
 }
 ```
 
 > **注意：**
-> 如果 `success` 为 `false`，则 `errorMessage` 必须包含导致失败的具体原因文本，且 `parsedContent` 可以为空。
+> 如果 `status` 为 `FAILED`，则 `errorMessage` 必须包含导致失败的具体原因文本，且 `data` 可以为空。
 
 ---
 
@@ -62,6 +66,7 @@
 当用户上传一份新简历时，后台先持久化 ORIGINAL 版本，然后触发解析。
 
 ### 3.1 Backend -> AI Service (请求)
+**Exchange:** `ai.direct.exchange`
 **Routing Key:** `ai.req.resume.parse`
 **Queue:** `ai.queue.resume.parse`
 
@@ -75,6 +80,7 @@
 ```
 
 ### 3.2 AI Service -> Backend (响应)
+**Exchange:** `ai.direct.exchange`
 **Routing Key:** `backend.res.resume.parse`
 **Queue:** `backend.queue.resume.parse`
 
@@ -101,6 +107,7 @@
 当简历被成功解析，或职位被成功解析后，通过该模块将 JSON Text 转化为 pgvector 能够存储的向量数据。
 
 ### 4.1 Backend -> AI Service (请求)
+**Exchange:** `ai.direct.exchange`
 **Routing Key:** `ai.req.vector.gen`
 **Queue:** `ai.queue.vector.gen`
 
@@ -114,6 +121,7 @@
 ```
 
 ### 4.2 AI Service -> Backend (响应)
+**Exchange:** `ai.direct.exchange`
 **Routing Key:** `backend.res.vector.gen`
 **Queue:** `backend.queue.vector.gen`
 

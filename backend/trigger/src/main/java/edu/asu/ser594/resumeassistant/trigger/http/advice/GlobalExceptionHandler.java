@@ -98,8 +98,14 @@ public class GlobalExceptionHandler {
         // 通过 Application 层翻译为本地化消息
         String localizedMessage = exceptionResolver.resolve(ex.getErrorType());
 
-        return ResponseEntity.badRequest()
-                .body(ApiResponse.error(400, localizedMessage));
+        HttpStatus status = switch (ex.getErrorType()) {
+            case EMAIL_EXISTS -> HttpStatus.CONFLICT;
+            case INVALID_CREDENTIALS, EMAIL_NOT_FOUND, EMAIL_NOT_VERIFIED, TOKEN_EXPIRED, TOKEN_INVALID ->
+                    HttpStatus.UNAUTHORIZED;
+        };
+
+        return ResponseEntity.status(status)
+                .body(ApiResponse.error(status.value(), localizedMessage));
     }
 
     /**

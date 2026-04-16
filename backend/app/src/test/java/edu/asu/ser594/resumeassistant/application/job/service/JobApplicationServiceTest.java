@@ -48,7 +48,7 @@ class JobApplicationServiceTest {
         SubmitJobRequest request = new SubmitJobRequest(url, false);
 
         Job job = Job.create(userId, url, false);
-        when(jobRepository.save(any(Job.class))).thenReturn(job);
+        when(jobRepository.save(any(Job.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         JobResponse response = jobApplicationService.submitJob(userId, request);
 
@@ -56,7 +56,7 @@ class JobApplicationServiceTest {
         assertEquals(userId, response.userId());
         assertEquals("SCRAPING", response.status());
 
-        verify(jobRepository, times(2)).save(any(Job.class));
+        verify(jobRepository, times(1)).save(any(Job.class));
         verify(aiMessagePublisherPort, times(1)).sendJobForParsing(any(JobParseCommand.class));
     }
 
@@ -64,6 +64,8 @@ class JobApplicationServiceTest {
     void handleJobProcessResult_Success_TriggersVectorGen() {
         String jobId = "job123";
         Job job = Job.create("user123", "http://example.com/job", false);
+        job.markScraping();
+        job.markParsing();
         when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
         
         Map<String, Object> mockParsedData = Map.of(

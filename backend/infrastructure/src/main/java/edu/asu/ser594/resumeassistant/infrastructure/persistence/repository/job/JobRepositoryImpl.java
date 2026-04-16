@@ -5,7 +5,6 @@ import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.job.JobJpaEntity;
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.mapper.job.JobPersistenceMapper;
 import lombok.RequiredArgsConstructor;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;

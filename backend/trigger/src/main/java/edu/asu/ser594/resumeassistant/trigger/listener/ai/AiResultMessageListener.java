@@ -2,10 +2,7 @@ package edu.asu.ser594.resumeassistant.trigger.listener.ai;
 
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
 import edu.asu.ser594.resumeassistant.api.resume.facade.ResumeFacade;
-import edu.asu.ser594.resumeassistant.domain.embedding.entity.JobVector;
-import edu.asu.ser594.resumeassistant.domain.embedding.entity.ResumeVector;
-import edu.asu.ser594.resumeassistant.domain.embedding.repository.JobVectorRepository;
-import edu.asu.ser594.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
+import edu.asu.ser594.resumeassistant.domain.embedding.repository.EmbeddingRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.infrastructure.messaging.config.RabbitMqConfig;
 import lombok.RequiredArgsConstructor;
@@ -13,9 +10,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @Slf4j
 @Component
@@ -24,8 +21,7 @@ public class AiResultMessageListener {
 
     private final JobFacade jobFacade;
     private final ResumeFacade resumeFacade;
-    private final ResumeVectorRepository resumeVectorRepository;
-    private final JobVectorRepository jobVectorRepository;
+    private final EmbeddingRepository embeddingRepository;
 
     @RabbitListener(queues = RabbitMqConfig.QUEUE_RES_JOB_PARSE)
     public void onJobParseResult(AiResultEvent event) {
@@ -53,10 +49,10 @@ public class AiResultMessageListener {
         log.info("Received AiResultEvent for VECTOR_GEN, referenceId: {}, status: {}", event.referenceId(), event.status());
         try {
             String entityType = event.eventType() != null ? event.eventType() : extractEntityType(event);
-            float[] embeddingArray = extractEmbedding(event);
+            List<Double> embedding = extractEmbedding(event);
 
-            if ("COMPLETED".equals(event.status()) && embeddingArray != null) {
-                saveCompletedVector(event.referenceId(), entityType, embeddingArray);
+            if ("COMPLETED".equals(event.status()) && embedding != null) {
+                saveCompletedVector(event.referenceId(), entityType, embedding);
             } else {
                 saveFailedVector(event.referenceId(), entityType, event.errorMessage());
             }
@@ -75,45 +71,38 @@ public class AiResultMessageListener {
     }
 
     @SuppressWarnings("unchecked")
-    private float[] extractEmbedding(AiResultEvent event) {
+    private List<Double> extractEmbedding(AiResultEvent event) {
         if (event.data() != null && event.data().containsKey("embedding")) {
             Object rawEmbedding = event.data().get("embedding");
             if (rawEmbedding instanceof List<?> list) {
-                float[] arr = new float[list.size()];
-                for (int i = 0; i < list.size(); i++) {
-                    Object val = list.get(i);
+                List<Double> result = new ArrayList<>(list.size());
+                for (Object val : list) {
                     if (val instanceof Number n) {
-                        arr[i] = n.floatValue();
+                        result.add(n.doubleValue());
                     }
                 }
-                return arr;
+                return result;
             }
         }
         return null;
     }
 
-    private void saveCompletedVector(String referenceId, String entityType, float[] embedding) {
-        String id = UUID.randomUUID().toString();
+    private void saveCompletedVector(String referenceId, String entityType, List<Double> embedding) {
         if ("RESUME".equalsIgnoreCase(entityType) || "RESUME_VECTOR".equalsIgnoreCase(entityType)) {
-            ResumeVector vector = ResumeVector.createCompleted(id, referenceId, embedding);
-            resumeVectorRepository.save(vector);
+            embeddingRepository.saveResumeVector(referenceId, embedding, "COMPLETED", null);
             log.info("Saved COMPLETED resume vector for versionId: {}", referenceId);
         } else {
-            JobVector vector = JobVector.createCompleted(id, referenceId, embedding);
-            jobVectorRepository.save(vector);
+            embeddingRepository.saveJobVector(referenceId, embedding, "COMPLETED", null);
             log.info("Saved COMPLETED job vector for jobId: {}", referenceId);
         }
     }
 
     private void saveFailedVector(String referenceId, String entityType, String errorMessage) {
-        String id = UUID.randomUUID().toString();
         if ("RESUME".equalsIgnoreCase(entityType) || "RESUME_VECTOR".equalsIgnoreCase(entityType)) {
-            ResumeVector vector = ResumeVector.createFailed(id, referenceId, errorMessage);
-            resumeVectorRepository.save(vector);
+            embeddingRepository.saveResumeVector(referenceId, null, "FAILED", errorMessage);
             log.warn("Saved FAILED resume vector for versionId: {}", referenceId);
         } else {
-            JobVector vector = JobVector.createFailed(id, referenceId, errorMessage);
-            jobVectorRepository.save(vector);
+            embeddingRepository.saveJobVector(referenceId, null, "FAILED", errorMessage);
             log.warn("Saved FAILED job vector for jobId: {}", referenceId);
         }
     }
