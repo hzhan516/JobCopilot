@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Repository
@@ -31,7 +32,7 @@ public class JobRepositoryImpl implements JobRepository {
     }
 
     @Override
-    public List<Job> findAllByUserId(String userId) {
+    public List<Job> findAllByUserId(UUID userId) {
         return jpaJobRepository.findAllByUserId(userId).stream()
                 .map(jobMapper::toDomain)
                 .collect(Collectors.toList());

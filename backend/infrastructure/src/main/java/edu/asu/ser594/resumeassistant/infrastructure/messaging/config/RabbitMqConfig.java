@@ -30,6 +30,11 @@ public class RabbitMqConfig {
     public static final String ROUTING_KEY_RES_VECTOR_GEN = "backend.res.vector.gen";
     public static final String QUEUE_RES_VECTOR_GEN = "backend.queue.vector.gen";
 
+    public static final String ROUTING_KEY_REQ_CONVERSATION = "ai.req.conversation";
+    public static final String QUEUE_REQ_CONVERSATION = "ai.queue.conversation";
+    public static final String ROUTING_KEY_RES_CONVERSATION = "backend.res.conversation";
+    public static final String QUEUE_RES_CONVERSATION = "backend.queue.conversation";
+
     @Bean
     public MessageConverter jackson2JsonMessageConverter() {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -107,5 +112,25 @@ public class RabbitMqConfig {
     @Bean
     public Binding resVectorGenBinding(Queue resVectorGenQueue, DirectExchange aiDirectExchange) {
         return BindingBuilder.bind(resVectorGenQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_VECTOR_GEN);
+    }
+
+    @Bean
+    public Queue reqConversationQueue() {
+        return QueueBuilder.durable(QUEUE_REQ_CONVERSATION).build();
+    }
+
+    @Bean
+    public Binding reqConversationBinding(Queue reqConversationQueue, DirectExchange aiDirectExchange) {
+        return BindingBuilder.bind(reqConversationQueue).to(aiDirectExchange).with(ROUTING_KEY_REQ_CONVERSATION);
+    }
+
+    @Bean
+    public Queue resConversationQueue() {
+        return QueueBuilder.durable(QUEUE_RES_CONVERSATION).build();
+    }
+
+    @Bean
+    public Binding resConversationBinding(Queue resConversationQueue, DirectExchange aiDirectExchange) {
+        return BindingBuilder.bind(resConversationQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_CONVERSATION);
     }
 }

@@ -18,18 +18,20 @@ public class Message implements Entity<UUID> {
     private final String content;
     private final int sequence;
     private final LocalDateTime createdAt;
+    private final String fileUrl;
 
     /**
      * 保护级别的原生构造函数
      * Protected native constructor
      */
-    protected Message(UUID id, UUID conversationId, MessageRole role, String content, int sequence, LocalDateTime createdAt) {
+    protected Message(UUID id, UUID conversationId, MessageRole role, String content, int sequence, LocalDateTime createdAt, String fileUrl) {
         this.id = id;
         this.conversationId = conversationId;
         this.role = role;
         this.content = content;
         this.sequence = sequence;
         this.createdAt = createdAt;
+        this.fileUrl = fileUrl;
     }
 
     /**
@@ -37,13 +39,22 @@ public class Message implements Entity<UUID> {
      * Static factory method for creating a new message
      */
     public static Message create(UUID conversationId, MessageRole role, String content, int sequence) {
+        return create(conversationId, role, content, sequence, null);
+    }
+
+    /**
+     * 静态工厂方法，用于创建附带文件链接的新消息
+     * Static factory method for creating a new message with an optional file URL
+     */
+    public static Message create(UUID conversationId, MessageRole role, String content, int sequence, String fileUrl) {
         return new Message(
             UUID.randomUUID(),
             conversationId,
             role,
             content,
             sequence,
-            LocalDateTime.now()
+            LocalDateTime.now(),
+            fileUrl
         );
     }
 
@@ -51,8 +62,8 @@ public class Message implements Entity<UUID> {
      * 从仓储恢复消息实体
      * Reconstruct message entity from repository
      */
-    public static Message reconstruct(UUID id, UUID conversationId, MessageRole role, String content, int sequence, LocalDateTime createdAt) {
-        return new Message(id, conversationId, role, content, sequence, createdAt);
+    public static Message reconstruct(UUID id, UUID conversationId, MessageRole role, String content, int sequence, LocalDateTime createdAt, String fileUrl) {
+        return new Message(id, conversationId, role, content, sequence, createdAt, fileUrl);
     }
 
     @Override
@@ -78,5 +89,9 @@ public class Message implements Entity<UUID> {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public String getFileUrl() {
+        return fileUrl;
     }
 }

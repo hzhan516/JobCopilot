@@ -7,6 +7,7 @@ import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 职位相关操作的入站门面接口
@@ -22,7 +23,7 @@ public interface JobFacade {
      * @param request 职位提交请求 / The job submission details containing URL and options.
      * @return 初步响应结果 / The initial state of the job as a response.
      */
-    JobResponse submitJob(String userId, SubmitJobRequest request);
+    JobResponse submitJob(UUID userId, SubmitJobRequest request);
 
     /**
      * 获取指定职位的处理状态与详情
@@ -32,7 +33,7 @@ public interface JobFacade {
      * @param userId 请求用户的 ID / The ID of the requesting user.
      * @return 职位状态及详情 / The current state and details of the job.
      */
-    JobResponse getJob(String jobId, String userId);
+    JobResponse getJob(String jobId, UUID userId);
 
     /**
      * 根据用户 ID 获取职位列表
@@ -41,7 +42,7 @@ public interface JobFacade {
      * @param userId 用户 ID / User ID
      * @return 职位列表响应 / List of job responses
      */
-    List<JobResponse> listJobs(String userId);
+    List<JobResponse> listJobs(UUID userId);
 
     /**
      * 匹配职位 (调用 AI 引擎)
@@ -51,7 +52,7 @@ public interface JobFacade {
      * @param request 匹配请求参数 / Match request parameters
      * @return 职位匹配整体响应 / Job match response
      */
-    JobMatchResponse matchJobs(String userId, JobMatchRequest request);
+    JobMatchResponse matchJobs(UUID userId, JobMatchRequest request);
 
     /**
      * 处理异步的职位 AI 解析结果

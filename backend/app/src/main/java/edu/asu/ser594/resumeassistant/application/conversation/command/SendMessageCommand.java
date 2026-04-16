@@ -3,6 +3,7 @@ package edu.asu.ser594.resumeassistant.application.conversation.command;
 import edu.asu.ser594.resumeassistant.domain.conversation.valueobject.MessageRole;
 import lombok.Builder;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -14,6 +15,7 @@ public record SendMessageCommand(
     UUID conversationId,
     UUID userId,
     MessageRole role,
-    String content
+    String content,
+    List<String> fileUrls
 ) {
 }

@@ -16,9 +16,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 对话控制器
@@ -39,7 +42,7 @@ public class ConversationController {
     @PostMapping
     public ApiResponse<ConversationResponse> createConversation(
             @Validated @RequestBody CreateConversationRequest request,
-            @CurrentUser String userId) {
+            @CurrentUser UUID userId) {
         log.info("REST request to create conversation for user: {}", userId);
         return ApiResponse.success(conversationFacade.createConversation(request, userId));
     }
@@ -52,7 +55,7 @@ public class ConversationController {
     public ApiResponse<ConversationResponse> sendMessage(
             @PathVariable String conversationId,
             @Validated @RequestBody SendMessageRequest request,
-            @CurrentUser String userId) {
+            @CurrentUser UUID userId) {
         log.info("REST request to send message to conversation: {}", conversationId);
         return ApiResponse.success(conversationFacade.sendMessage(conversationId, request, userId));
     }
@@ -64,7 +67,7 @@ public class ConversationController {
     @GetMapping("/{conversationId}")
     public ApiResponse<ConversationResponse> getConversation(
             @PathVariable String conversationId,
-            @CurrentUser String userId) {
+            @CurrentUser UUID userId) {
         log.info("REST request to get conversation: {}", conversationId);
         return ApiResponse.success(conversationFacade.getConversation(conversationId, userId));
     }
@@ -75,7 +78,7 @@ public class ConversationController {
      */
     @GetMapping
     public ApiResponse<List<ConversationResponse>> listConversations(
-            @CurrentUser String userId) {
+            @CurrentUser UUID userId) {
         log.info("REST request to list conversations for user: {}", userId);
         return ApiResponse.success(conversationFacade.listConversations(userId));
     }
@@ -87,7 +90,7 @@ public class ConversationController {
     @PutMapping("/{conversationId}/close")
     public ApiResponse<Void> closeConversation(
             @PathVariable String conversationId,
-            @CurrentUser String userId) {
+            @CurrentUser UUID userId) {
         log.info("REST request to close conversation: {}", conversationId);
         conversationFacade.closeConversation(conversationId, userId);
         return ApiResponse.success(null);
@@ -100,9 +103,23 @@ public class ConversationController {
     @DeleteMapping("/{conversationId}")
     public ApiResponse<Void> deleteConversation(
             @PathVariable String conversationId,
-            @CurrentUser String userId) {
+            @CurrentUser UUID userId) {
         log.info("REST request to delete conversation: {}", conversationId);
         conversationFacade.deleteConversation(conversationId, userId);
         return ApiResponse.success(null);
+    }
+
+    /**
+     * 上传对话附件（AI 生成文件等）
+     * Upload conversation attachment (e.g. AI-generated files)
+     */
+    @PostMapping(value = "/{conversationId}/files", consumes = "multipart/form-data")
+    public ApiResponse<String> uploadAttachment(
+            @PathVariable String conversationId,
+            @RequestParam("file") MultipartFile file,
+            @CurrentUser UUID userId) {
+        log.info("REST request to upload attachment for conversation: {}", conversationId);
+        String fileUrl = conversationFacade.uploadAttachment(conversationId, file, userId);
+        return ApiResponse.success(fileUrl);
     }
 }

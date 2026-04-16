@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
  * @param role      角色 / Role
  * @param content   内容 / Content
  * @param sequence  序列号 / Sequence
+ * @param fileUrl   关联文件 URL / Associated file URL
  * @param createdAt 创建时间 / Created at
  */
 public record MessageResponse(
@@ -17,6 +18,7 @@ public record MessageResponse(
     String role,
     String content,
     int sequence,
+    String fileUrl,
     LocalDateTime createdAt
 ) {
 }

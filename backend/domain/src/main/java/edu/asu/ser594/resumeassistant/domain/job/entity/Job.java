@@ -14,7 +14,7 @@ public class Job extends AggregateRoot<String> {
 
     private final String id;
     @Getter
-    private final String userId;
+    private final UUID userId;
     @Getter
     private final String originalUrl;
     @Getter
@@ -26,7 +26,7 @@ public class Job extends AggregateRoot<String> {
     @Getter
     private String errorMessage;
 
-    public Job(String id, String userId, String originalUrl, boolean imageCheckEnabled, JobStatus status, ParsedJobContent parsedContent, String errorMessage) {
+    public Job(String id, UUID userId, String originalUrl, boolean imageCheckEnabled, JobStatus status, ParsedJobContent parsedContent, String errorMessage) {
         this.id = id;
         this.userId = userId;
         this.originalUrl = originalUrl;
@@ -36,7 +36,7 @@ public class Job extends AggregateRoot<String> {
         this.errorMessage = errorMessage;
     }
 
-    private Job(String id, String userId, String originalUrl, boolean imageCheckEnabled, JobStatus status) {
+    private Job(String id, UUID userId, String originalUrl, boolean imageCheckEnabled, JobStatus status) {
         this.id = id;
         this.userId = userId;
         this.originalUrl = originalUrl;
@@ -57,7 +57,7 @@ public class Job extends AggregateRoot<String> {
      * @param imageCheckEnabled Whether visual verification is required.
      * @return A newly initialized Job aggregate root.
      */
-    public static Job create(String userId, String url, boolean imageCheckEnabled) {
+    public static Job create(UUID userId, String url, boolean imageCheckEnabled) {
         return new Job(UUID.randomUUID().toString(), userId, url, imageCheckEnabled, JobStatus.PENDING);
     }
 

@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.trigger.listener.ai;
 
+import edu.asu.ser594.resumeassistant.api.conversation.facade.ConversationFacade;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
 import edu.asu.ser594.resumeassistant.api.resume.facade.ResumeFacade;
 import edu.asu.ser594.resumeassistant.domain.embedding.entity.JobVector;
@@ -25,6 +26,7 @@ public class AiResultMessageListener {
 
     private final JobFacade jobFacade;
     private final ResumeFacade resumeFacade;
+    private final ConversationFacade conversationFacade;
     private final ResumeVectorRepository resumeVectorRepository;
     private final JobVectorRepository jobVectorRepository;
 
@@ -65,6 +67,39 @@ public class AiResultMessageListener {
         } catch (Exception e) {
             log.error("Error processing AiResultEvent for VECTOR_GEN referenceId: {}", event.referenceId(), e);
         }
+    }
+
+    @RabbitListener(queues = RabbitMqConfig.QUEUE_RES_CONVERSATION)
+    public void onConversationReply(AiResultEvent event) {
+        log.info("Received AiResultEvent for CONVERSATION_REPLY, referenceId: {}, status: {}", event.referenceId(), event.status());
+        try {
+            if (!"COMPLETED".equals(event.status())) {
+                log.warn("Conversation AI reply failed for conversation: {}, error: {}", event.referenceId(), event.errorMessage());
+                return;
+            }
+
+            String content = extractReplyContent(event);
+            String fileUrl = extractFileUrl(event);
+
+            conversationFacade.saveAiReply(event.referenceId(), content, fileUrl);
+            log.info("Saved AI reply for conversation: {}", event.referenceId());
+        } catch (Exception e) {
+            log.error("Error processing AiResultEvent for CONVERSATION_REPLY referenceId: {}", event.referenceId(), e);
+        }
+    }
+
+    private String extractReplyContent(AiResultEvent event) {
+        if (event.data() != null && event.data().containsKey("content")) {
+            return (String) event.data().get("content");
+        }
+        return "";
+    }
+
+    private String extractFileUrl(AiResultEvent event) {
+        if (event.data() != null && event.data().containsKey("fileUrl")) {
+            return (String) event.data().get("fileUrl");
+        }
+        return null;
     }
 
     private String extractEntityType(AiResultEvent event) {

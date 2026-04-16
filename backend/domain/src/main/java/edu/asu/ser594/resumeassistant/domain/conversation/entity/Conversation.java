@@ -77,11 +77,19 @@ public class Conversation extends AggregateRoot<UUID> {
      * Domain behavior: add new message
      */
     public void addMessage(MessageRole role, String content) {
+        addMessage(role, content, null);
+    }
+
+    /**
+     * 领域行为：添加新消息（支持附带文件链接）
+     * Domain behavior: add new message with optional file URL
+     */
+    public void addMessage(MessageRole role, String content, String fileUrl) {
         if (this.status == ConversationStatus.CLOSED) {
             throw new ConversationException(ConversationException.ErrorType.CLOSED_CONVERSATION, "Cannot add message to a closed conversation");
         }
         int sequence = this.messages.size() + 1;
-        Message newMessage = Message.create(this.getId(), role, content, sequence);
+        Message newMessage = Message.create(this.getId(), role, content, sequence, fileUrl);
         this.messages.add(newMessage);
         this.updatedAt = LocalDateTime.now();
     }

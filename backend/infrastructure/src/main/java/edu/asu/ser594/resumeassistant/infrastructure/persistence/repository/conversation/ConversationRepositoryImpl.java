@@ -82,6 +82,7 @@ public class ConversationRepositoryImpl implements ConversationRepository {
             .content(message.getContent())
             .sequence(message.getSequence())
             .createdAt(message.getCreatedAt())
+            .fileUrl(message.getFileUrl())
             .build();
     }
 
@@ -118,7 +119,8 @@ public class ConversationRepositoryImpl implements ConversationRepository {
             entity.getRole(),
             entity.getContent(),
             entity.getSequence(),
-            entity.getCreatedAt()
+            entity.getCreatedAt(),
+            entity.getFileUrl()
         );
     }
 }

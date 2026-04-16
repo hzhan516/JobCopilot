@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 职位门面实现
@@ -23,22 +24,22 @@ public class JobFacadeImpl implements JobFacade {
     private final JobApplicationService applicationService;
 
     @Override
-    public JobResponse submitJob(String userId, SubmitJobRequest request) {
+    public JobResponse submitJob(UUID userId, SubmitJobRequest request) {
         return applicationService.submitJob(userId, request);
     }
 
     @Override
-    public JobResponse getJob(String jobId, String userId) {
+    public JobResponse getJob(String jobId, UUID userId) {
         return applicationService.getJob(jobId, userId);
     }
 
     @Override
-    public List<JobResponse> listJobs(String userId) {
+    public List<JobResponse> listJobs(UUID userId) {
         return applicationService.listJobs(userId);
     }
 
     @Override
-    public JobMatchResponse matchJobs(String userId, JobMatchRequest request) {
+    public JobMatchResponse matchJobs(UUID userId, JobMatchRequest request) {
         return applicationService.matchJobs(userId, request);
     }
 

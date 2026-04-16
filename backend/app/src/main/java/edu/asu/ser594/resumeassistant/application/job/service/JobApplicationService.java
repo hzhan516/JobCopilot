@@ -23,6 +23,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -36,7 +37,7 @@ public class JobApplicationService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Transactional
-    public JobResponse submitJob(String userId, SubmitJobRequest request) {
+    public JobResponse submitJob(UUID userId, SubmitJobRequest request) {
         log.info("Submitting new job for async processing for user: {}", userId);
         
         Job job = Job.create(userId, request.url(), request.imageCheckEnabled());
@@ -95,7 +96,7 @@ public class JobApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public JobResponse getJob(String jobId, String userId) {
+    public JobResponse getJob(String jobId, UUID userId) {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
 
@@ -107,14 +108,14 @@ public class JobApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<JobResponse> listJobs(String userId) {
+    public List<JobResponse> listJobs(UUID userId) {
         List<Job> jobs = jobRepository.findAllByUserId(userId);
         return jobs.stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
-    public JobMatchResponse matchJobs(String userId, JobMatchRequest request) {
+    public JobMatchResponse matchJobs(UUID userId, JobMatchRequest request) {
         log.info("Requesting job match for user: {}, query: {}", userId, request.query());
         String url = "http://localhost:8000/api/v1/match";
 
@@ -159,7 +160,7 @@ public class JobApplicationService {
 
         return new JobResponse(
                 job.getId(),
-                job.getUserId(),
+                job.getUserId().toString(),
                 job.getOriginalUrl(),
                 job.getStatus().name(),
                 parsedContentResponse,

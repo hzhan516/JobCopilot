@@ -134,7 +134,7 @@ job seekers.
 │                                          │                                          │
 │  ┌───────────────────────────────────────▼──────────────────────────────────────┐   │
 │  │                          Infrastructure Layer                                  │   │
-│  │  Repository | MQ Publisher | MQ Consumer | PGVector Client | Auth Service   │   │
+│  │  Repository | MQ Publisher | MQ Consumer | PGVector Client | Auth Service | MinIO │   │
 │  └─────────────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────────────┘
                                           │
@@ -919,6 +919,27 @@ LIMIT 10;
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+#### 5.4.2 Conversation Message Flow
+
+```
+┌─────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│  User   │───▶│  Frontend   │───▶│ Java Backend│───▶│ Save Message│───▶│ Publish MQ  │
+│ Send    │    │ Call API    │    │ Receive     │    │ (USER)      │    │ (Async)     │
+│ Message │    │             │    │ Request     │    │             │    │             │
+└─────────┘    └─────────────┘    └─────────────┘    └─────────────┘    └──────┬──────┘
+                                                                                │
+┌─────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐           │
+│ Frontend│◀───│ Poll/Push   │◀───│ Save AI     │◀───│ Consume MQ  │◀──────────┘
+│ Display │    │ Get Messages│    │ Reply       │    │ Result      │
+│         │    │             │    │ (ASSISTANT) │    │ (Python AI) │
+└─────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+```
+
+**File Upload Branch**:
+```
+AI Service / Frontend ──▶ Call Backend Upload API ──▶ Store to MinIO ──▶ Return Presigned URL ──▶ Update Message(fileUrl)
+```
+
 ---
 
 ## 6. Integration Architecture
@@ -935,6 +956,8 @@ LIMIT 10;
 | `ai.job.match.result`    | Result Queue   | Python AI    | Java Backend | < 5KB        | 30 min |
 | `ai.chat.message`        | Work Queue     | Java Backend | Python AI    | < 5KB        | 5 min  |
 | `ai.chat.message.result` | Result Queue   | Python AI    | Java Backend | < 5KB        | 5 min  |
+| `ai.conversation`        | Work Queue     | Java Backend | Python AI    | < 5KB        | 5 min  |
+| `ai.conversation.result` | Result Queue   | Python AI    | Java Backend | < 5KB        | 5 min  |
 | `ai.vector.request`      | Request Queue  | Python AI    | Java Backend | < 1KB        | 1 min  |
 | `ai.vector.response`     | Response Queue | Java Backend | Python AI    | 2-5KB        | 1 min  |
 
@@ -1016,6 +1039,37 @@ LIMIT 10;
 }
 ```
 
+**Conversation AI Request (Backend -> Python AI):**
+
+```json
+{
+  "conversationId": "550e8400-e29b-41d4-a716-446655440003",
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "messageHistory": [
+    { "role": "USER", "content": "How can I improve my resume?" }
+  ],
+  "currentMessage": "How can I improve my resume?",
+  "fileUrls": ["https://minio.example.com/resumes/xxx.pdf"],
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002"
+}
+```
+
+**Conversation AI Response (Python AI -> Backend):**
+
+```json
+{
+  "referenceId": "550e8400-e29b-41d4-a716-446655440003",
+  "type": "CONVERSATION_REPLY",
+  "status": "COMPLETED",
+  "data": {
+    "content": "Based on your resume, here are my suggestions...",
+    "fileUrl": "https://minio.example.com/conversations/xxx/optimized.pdf"
+  },
+  "errorMessage": null,
+  "eventType": null
+}
+```
+
 ### 6.2 API Design
 
 #### 6.2.1 REST API Endpoints
@@ -1040,6 +1094,7 @@ LIMIT 10;
 | `/api/v1/conversations/{id}`          | GET    | Get conversation         | Yes           |
 | `/api/v1/conversations/{id}/messages` | GET    | Get messages             | Yes           |
 | `/api/v1/conversations/{id}/messages` | POST   | Send message             | Yes           |
+| `/api/v1/conversations/{id}/files`    | POST   | Upload attachment        | Yes           |
 | `/api/v1/applications`                | GET    | List applications        | Yes           |
 | `/api/v1/applications`                | POST   | Create application       | Yes           |
 | `/api/v1/applications/{id}`           | PUT    | Update application       | Yes           |

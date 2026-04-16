@@ -3,6 +3,7 @@ package edu.asu.ser594.resumeassistant.domain.job.repository;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 职位聚合根仓储接口
@@ -35,6 +36,6 @@ public interface JobRepository {
      * @param userId 用户 ID / User ID
      * @return 职位实体列表 / List of job entities
      */
-    List<Job> findAllByUserId(String userId);
+    List<Job> findAllByUserId(UUID userId);
 }
 

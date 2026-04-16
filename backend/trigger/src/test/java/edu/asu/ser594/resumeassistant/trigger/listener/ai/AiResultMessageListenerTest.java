@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.trigger.listener.ai;
 
+import edu.asu.ser594.resumeassistant.api.conversation.facade.ConversationFacade;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
 import edu.asu.ser594.resumeassistant.api.resume.facade.ResumeFacade;
 import edu.asu.ser594.resumeassistant.domain.embedding.entity.JobVector;
@@ -18,6 +19,7 @@ import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class AiResultMessageListenerTest {
@@ -27,6 +29,9 @@ class AiResultMessageListenerTest {
 
     @Mock
     private ResumeFacade resumeFacade;
+
+    @Mock
+    private ConversationFacade conversationFacade;
 
     @Mock
     private ResumeVectorRepository resumeVectorRepository;
@@ -81,5 +86,37 @@ class AiResultMessageListenerTest {
         listener.onVectorGenResult(event);
 
         verify(resumeVectorRepository).save(any(ResumeVector.class));
+    }
+
+    @Test
+    void onConversationReply_ShouldCallConversationFacade() {
+        AiResultEvent event = new AiResultEvent(
+                "conv-1",
+                "CONVERSATION_REPLY",
+                "COMPLETED",
+                Map.of("content", "Hello from AI", "fileUrl", "http://minio/file.pdf"),
+                null,
+                null
+        );
+
+        listener.onConversationReply(event);
+
+        verify(conversationFacade).saveAiReply("conv-1", "Hello from AI", "http://minio/file.pdf");
+    }
+
+    @Test
+    void onConversationReply_WhenFailed_ShouldNotCallFacade() {
+        AiResultEvent event = new AiResultEvent(
+                "conv-1",
+                "CONVERSATION_REPLY",
+                "FAILED",
+                null,
+                "AI service error",
+                null
+        );
+
+        listener.onConversationReply(event);
+
+        verifyNoInteractions(conversationFacade);
     }
 }
