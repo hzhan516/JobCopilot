@@ -32,7 +32,8 @@ async def root():
 async def health_check():
     return {
         "status": "healthy",
-        "gemini_api_key_configured": bool(os.getenv("GEMINI_API_KEY")),
+        "vertex_ai_project_configured": bool(os.getenv("GOOGLE_CLOUD_PROJECT", "ser594-ai-service")),
+        "vertex_ai_location": os.getenv("VERTEX_AI_LOCATION", "us-central1"),
     }
 
 

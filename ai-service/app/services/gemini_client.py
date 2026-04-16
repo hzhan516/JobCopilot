@@ -1,33 +1,24 @@
-import base64
 import json
 import re
 from typing import Any
 
-import httpx
+from google import genai
+from google.genai import types
 
-from app.config import GEMINI_API_KEY, GEMINI_TEXT_MODEL, GEMINI_VISION_MODEL
+from app.config import (
+    GEMINI_TEXT_MODEL,
+    GEMINI_VISION_MODEL,
+    GOOGLE_CLOUD_PROJECT,
+    VERTEX_AI_LOCATION,
+)
 
-GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
-
-def _extract_candidate_text(payload: dict[str, Any]) -> str:
-    candidates = payload.get("candidates") or []
-    if not candidates:
-        raise ValueError("Gemini returned no candidates.")
-
-    content = candidates[0].get("content") or {}
-    parts = content.get("parts") or []
-
-    texts: list[str] = []
-    for part in parts:
-        text = part.get("text")
-        if text:
-            texts.append(text)
-
-    if not texts:
-        raise ValueError("Gemini response did not contain text output.")
-
-    return "\n".join(texts).strip()
+def _get_vertex_client() -> genai.Client:
+    return genai.Client(
+        vertexai=True,
+        project=GOOGLE_CLOUD_PROJECT,
+        location=VERTEX_AI_LOCATION,
+    )
 
 
 def _extract_json_text(raw_text: str) -> str:
@@ -39,56 +30,33 @@ def _extract_json_text(raw_text: str) -> str:
 
     match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
     if not match:
-        raise ValueError("Gemini response did not contain a JSON object.")
+        raise ValueError(f"Gemini response did not contain a JSON object: {raw_text}")
 
     return match.group(0)
 
 
-def _post_generate_content(model: str, parts: list[dict[str, Any]]) -> dict[str, Any]:
-    if not GEMINI_API_KEY:
-        raise ValueError("GEMINI_API_KEY is not configured.")
+def _generate_text(model: str, parts: list[Any]) -> str:
+    client = _get_vertex_client()
 
-    url = f"{GEMINI_API_BASE}/models/{model}:generateContent"
-
-    payload = {
-        "contents": [
-            {
-                "parts": parts,
-            }
-        ]
-    }
-
-    headers = {
-        "Content-Type": "application/json",
-        "x-goog-api-key": GEMINI_API_KEY,
-    }
-
-    response = httpx.post(
-        url,
-        json=payload,
-        headers=headers,
-        timeout=60.0,
+    response = client.models.generate_content(
+        model=model,
+        contents=parts,
+        config=types.GenerateContentConfig(
+            temperature=0.1,
+        ),
     )
 
-    if response.status_code >= 400:
-        raise ValueError(
-            f"Gemini API request failed with status {response.status_code}: {response.text}"
-        )
+    if not response.text:
+        raise ValueError("Vertex AI returned an empty response.")
 
-    return response.json()
+    return response.text.strip()
 
 
 def generate_json_from_text_prompt(prompt: str) -> dict[str, Any]:
-    response_payload = _post_generate_content(
+    raw_text = _generate_text(
         model=GEMINI_TEXT_MODEL,
-        parts=[
-            {
-                "text": prompt,
-            }
-        ],
+        parts=[prompt],
     )
-
-    raw_text = _extract_candidate_text(response_payload)
     json_text = _extract_json_text(raw_text)
     return json.loads(json_text)
 
@@ -98,23 +66,12 @@ def generate_json_from_image_prompt(
     image_bytes: bytes,
     mime_type: str = "image/png",
 ) -> dict[str, Any]:
-    encoded_image = base64.b64encode(image_bytes).decode("utf-8")
-
-    response_payload = _post_generate_content(
+    raw_text = _generate_text(
         model=GEMINI_VISION_MODEL,
         parts=[
-            {
-                "text": prompt,
-            },
-            {
-                "inline_data": {
-                    "mime_type": mime_type,
-                    "data": encoded_image,
-                }
-            },
+            prompt,
+            types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
         ],
     )
-
-    raw_text = _extract_candidate_text(response_payload)
     json_text = _extract_json_text(raw_text)
     return json.loads(json_text)

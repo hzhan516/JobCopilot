@@ -23,8 +23,10 @@ VECTOR_GEN_RESULT_QUEUE = "backend.queue.vector.gen"
 VECTOR_GEN_REQUEST_ROUTING_KEY = "ai.req.vector.gen"
 VECTOR_GEN_RESULT_ROUTING_KEY = "backend.res.vector.gen"
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
-GEMINI_TEXT_MODEL = os.getenv("GEMINI_TEXT_MODEL", "gemini-2.0-flash")
-GEMINI_VISION_MODEL = os.getenv("GEMINI_VISION_MODEL", "gemini-2.0-flash")
+GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT", "ser594-ai-service")
+VERTEX_AI_LOCATION = os.getenv("VERTEX_AI_LOCATION", "us-central1")
+
+GEMINI_TEXT_MODEL = os.getenv("GEMINI_TEXT_MODEL", "gemini-2.5-flash")
+GEMINI_VISION_MODEL = os.getenv("GEMINI_VISION_MODEL", "gemini-2.5-flash")
