@@ -16,7 +16,9 @@ public class JobVectorRepositoryImpl implements JobVectorRepository {
 
     @Override
     public void save(JobVector vector) {
+        Optional<JobVectorJpaEntity> existing = jpaRepository.findByJobId(vector.getJobId());
         JobVectorJpaEntity entity = toEntity(vector);
+        existing.ifPresent(e -> entity.setId(e.getId()));
         jpaRepository.save(entity);
     }
 

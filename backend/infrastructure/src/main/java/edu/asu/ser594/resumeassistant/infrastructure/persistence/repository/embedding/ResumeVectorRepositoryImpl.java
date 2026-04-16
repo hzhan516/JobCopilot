@@ -16,7 +16,9 @@ public class ResumeVectorRepositoryImpl implements ResumeVectorRepository {
 
     @Override
     public void save(ResumeVector vector) {
+        Optional<ResumeVectorJpaEntity> existing = jpaRepository.findByResumeVersionId(vector.getResumeVersionId());
         ResumeVectorJpaEntity entity = toEntity(vector);
+        existing.ifPresent(e -> entity.setId(e.getId()));  // 复用已有 id，JPA 就会执行 UPDATE
         jpaRepository.save(entity);
     }
 
