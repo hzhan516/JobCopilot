@@ -72,6 +72,7 @@ public class ConversationApplicationService {
         Conversation conversation = getConversationWithOwnershipCheck(command.conversationId(), command.userId());
         
         conversation.addMessage(command.role(), command.content());
+        conversation.autoGenerateTitle(command.content());
         Conversation saved = conversationRepository.save(conversation);
 
         // 构造并发送 MQ 请求 / Build and send MQ request

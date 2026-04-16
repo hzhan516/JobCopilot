@@ -63,13 +63,15 @@ public class ConversationFacadeImpl implements ConversationFacade {
     }
 
     @Override
-    public ConversationResponse getConversation(String conversationId, UUID userId) {
+    public ConversationResponse getConversation(String conversationId, UUID userId, Integer page, Integer size) {
         GetConversationQuery query = new GetConversationQuery(
             UUID.fromString(conversationId),
-            userId
+            userId,
+            page,
+            size
         );
         Conversation conversation = queryService.getConversation(query);
-        return mapToResponse(conversation);
+        return mapToResponse(conversation, page, size);
     }
 
     @Override
@@ -112,11 +114,12 @@ public class ConversationFacadeImpl implements ConversationFacade {
     }
 
     /**
-     * 映射领域聚合根到响应 DTO
-     * Map domain aggregate root to response DTO
+     * 映射领域聚合根到响应 DTO（支持消息分页）
+     * Map domain aggregate root to response DTO with optional message pagination
      */
-    private ConversationResponse mapToResponse(Conversation conversation) {
-        List<MessageResponse> messageResponses = conversation.getMessages().stream()
+    private ConversationResponse mapToResponse(Conversation conversation, Integer page, Integer size) {
+        List<MessageResponse> messageResponses = applyMessagePagination(conversation.getMessages(), page, size)
+            .stream()
             .map(this::mapMessageToResponse)
             .toList();
 
@@ -130,6 +133,32 @@ public class ConversationFacadeImpl implements ConversationFacade {
             conversation.getCreatedAt(),
             conversation.getUpdatedAt()
         );
+    }
+
+    /**
+     * 默认不分页映射
+     * Default mapping without pagination
+     */
+    private ConversationResponse mapToResponse(Conversation conversation) {
+        return mapToResponse(conversation, null, null);
+    }
+
+    /**
+     * 对消息列表应用分页
+     * Apply pagination to message list
+     */
+    private List<edu.asu.ser594.resumeassistant.domain.conversation.entity.Message> applyMessagePagination(
+            List<edu.asu.ser594.resumeassistant.domain.conversation.entity.Message> messages,
+            Integer page, Integer size) {
+        if (page == null || size == null || page < 0 || size <= 0) {
+            return messages;
+        }
+        int fromIndex = page * size;
+        if (fromIndex >= messages.size()) {
+            return java.util.Collections.emptyList();
+        }
+        int toIndex = Math.min(fromIndex + size, messages.size());
+        return messages.subList(fromIndex, toIndex);
     }
 
     /**

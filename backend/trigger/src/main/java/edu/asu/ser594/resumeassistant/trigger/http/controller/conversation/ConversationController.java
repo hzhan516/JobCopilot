@@ -61,15 +61,17 @@ public class ConversationController {
     }
 
     /**
-     * 获取对话详情
-     * Get conversation details
+     * 获取对话详情（支持消息分页）
+     * Get conversation details with optional message pagination
      */
     @GetMapping("/{conversationId}")
     public ApiResponse<ConversationResponse> getConversation(
             @PathVariable String conversationId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
             @CurrentUser UUID userId) {
-        log.info("REST request to get conversation: {}", conversationId);
-        return ApiResponse.success(conversationFacade.getConversation(conversationId, userId));
+        log.info("REST request to get conversation: {}, page: {}, size: {}", conversationId, page, size);
+        return ApiResponse.success(conversationFacade.getConversation(conversationId, userId, page, size));
     }
 
     /**

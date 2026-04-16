@@ -1,6 +1,6 @@
 # 对话管理 API
 
-> 基于简历上下文的多轮 AI 对话接口，支持异步 MQ 交互与附件上传
+> 基于简历上下文的多轮 AI 对话接口，支持异步 MQ 交互、附件上传与消息分页
 
 ---
 
@@ -14,6 +14,7 @@
 6. [删除对话](#6-删除对话)
 7. [上传附件](#7-上传附件)
 8. [异步消息流说明](#8-异步消息流说明)
+9. [错误码说明](#9-错误码说明)
 
 ---
 
@@ -123,6 +124,8 @@
 
 返回更新后的完整对话信息，包含新增的用户消息。**注意**：AI 回复通过异步 MQ 处理，不会立即出现在响应中，前端需要通过轮询或 WebSocket 获取最新回复。
 
+若创建对话时未指定标题，且这是该对话的**第一条消息**，系统会自动将对话标题设置为消息内容的前 30 个字符。
+
 #### 响应示例
 
 ```json
@@ -132,7 +135,7 @@
   "data": {
     "conversationId": "550e8400-e29b-41d4-a716-446655440003",
     "userId": "550e8400-e29b-41d4-a716-446655440000",
-    "title": "优化工作经验",
+    "title": "帮我优化一下项目经验部分",
     "status": "ACTIVE",
     "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
     "messages": [
@@ -171,11 +174,18 @@
 |------|------|------|------|
 | `conversationId` | String (UUID) | 是 | 对话唯一标识 |
 
+#### Query Parameters
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `page` | Integer | 否 | 消息页码，从 0 开始 |
+| `size` | Integer | 否 | 每页消息数量，默认返回全部 |
+
 ### 响应结构
 
 #### 成功响应 (200)
 
-返回完整的对话信息，包括所有消息列表（按 sequence 排序）。若 AI 已回复，消息列表中会包含 `role=ASSISTANT` 的消息，且可能带有 `fileUrl`。
+返回完整的对话信息，包括所有消息列表（按 `sequence` 升序排列）。若传入了 `page` 和 `size`，仅返回指定分页范围的消息。若 AI 已回复，消息列表中会包含 `role=ASSISTANT` 的消息，且可能带有 `fileUrl`。
 
 ---
 
@@ -205,7 +215,7 @@
     {
       "conversationId": "550e8400-e29b-41d4-a716-446655440003",
       "userId": "550e8400-e29b-41d4-a716-446655440000",
-      "title": "优化工作经验",
+      "title": "帮我优化一下项目经验部分",
       "status": "ACTIVE",
       "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
       "createdAt": "2024-01-15T10:30:00",
@@ -329,13 +339,14 @@
 当用户调用【发送消息】接口后，后端会执行以下异步流程：
 
 1. 保存用户消息（`role=USER`）到数据库
-2. 组装 `ConversationRequestCommand`，包含历史消息、当前消息、fileUrls、resumeVersionId
-3. 通过 RabbitMQ 发送到 `ai.req.conversation` 队列
-4. Python AI 服务消费该消息，生成回复
-5. AI 服务将结果发送到 `backend.res.conversation` 队列
-6. `AiResultMessageListener` 监听到 `CONVERSATION_REPLY` 类型事件，保存 AI 回复（`role=ASSISTANT`）到数据库
+2. 若对话标题为默认值且是首条消息，自动生成标题
+3. 组装 `ConversationRequestCommand`，包含历史消息、当前消息、fileUrls、resumeVersionId
+4. 通过 RabbitMQ 发送到 `ai.req.conversation` 队列
+5. Python AI 服务消费该消息，生成回复
+6. AI 服务将结果发送到 `backend.res.conversation` 队列
+7. `AiResultMessageListener` 监听到 `CONVERSATION_REPLY` 类型事件，保存 AI 回复（`role=ASSISTANT`）到数据库
 
-### 8.2 MQ 消息格式
+### 8.2 发送给 AI 服务的数据格式
 
 **请求消息 (`ConversationRequestCommand`)**：
 
@@ -352,6 +363,17 @@
 }
 ```
 
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `conversationId` | String | 对话 ID |
+| `userId` | String | 用户 ID |
+| `messageHistory` | List<Map> | 历史消息列表（role, content, fileUrl） |
+| `currentMessage` | String | 当前用户发送的最新消息 |
+| `fileUrls` | List<String> | 用户引用的外部文件 URL 列表 |
+| `resumeVersionId` | String | 关联简历版本 ID（可选） |
+
+### 8.3 接收 AI 回复的数据格式
+
 **响应消息 (`AiResultEvent`，type=`CONVERSATION_REPLY`)**：
 
 ```json
@@ -365,6 +387,73 @@
   },
   "errorMessage": null,
   "eventType": null
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `referenceId` | String | 对话 ID |
+| `type` | String | 固定为 `CONVERSATION_REPLY` |
+| `status` | String | `COMPLETED` 或 `FAILED` |
+| `data.content` | String | AI 回复文本 |
+| `data.fileUrl` | String | AI 生成文件的 URL（可选） |
+| `errorMessage` | String | 失败原因（`status=FAILED` 时存在） |
+
+---
+
+## 9. 错误码说明
+
+### 通用错误码
+
+| 状态码 | 含义 | 触发场景 |
+|--------|------|----------|
+| `200` | 成功 | 请求处理成功 |
+| `400` | 请求参数错误 | 消息内容为空、UUID 格式错误、分页参数非法 |
+| `401` | 未认证 | 缺少 JWT Token 或 Token 已过期 |
+| `403` | 权限不足 | 尝试操作不属于自己的对话 |
+| `404` | 资源不存在 | 对话 ID 不存在、简历版本 ID 不存在 |
+| `409` | 业务冲突 | 向已关闭的对话发送消息 |
+| `500` | 服务器内部错误 | 文件上传失败、MQ 发送异常 |
+
+### 业务错误示例
+
+**向已关闭对话发送消息 (409)**：
+
+```json
+{
+  "code": 409,
+  "message": "Cannot add message to a closed conversation",
+  "data": null
+}
+```
+
+**访问不属于自己的对话 (403)**：
+
+```json
+{
+  "code": 403,
+  "message": "Access denied",
+  "data": null
+}
+```
+
+**对话不存在 (404)**：
+
+```json
+{
+  "code": 404,
+  "message": "Conversation not found",
+  "data": null
+}
+```
+
+**无效的简历版本 (400)**：
+
+```json
+{
+  "code": 400,
+  "message": "Invalid resume version or access denied",
+  "data": null
 }
 ```
 
@@ -399,7 +488,7 @@
   "title": String,            // 标题
   "status": String,           // ACTIVE / CLOSED
   "resumeVersionId": String,  // 关联简历版本 ID
-  "messages": MessageResponse[], // 消息列表
+  "messages": MessageResponse[], // 消息列表（可能已分页）
   "createdAt": LocalDateTime, // 创建时间
   "updatedAt": LocalDateTime  // 更新时间
 }

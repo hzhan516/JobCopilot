@@ -1095,6 +1095,7 @@ AI Service / Frontend ──▶ Call Backend Upload API ──▶ Store to MinIO
 | `/api/v1/conversations/{id}/messages` | GET    | Get messages             | Yes           |
 | `/api/v1/conversations/{id}/messages` | POST   | Send message             | Yes           |
 | `/api/v1/conversations/{id}/files`    | POST   | Upload attachment        | Yes           |
+| `/api/v1/conversations/{id}?page=0&size=20` | GET | Get conversation details (paginated messages) | Yes |
 | `/api/v1/applications`                | GET    | List applications        | Yes           |
 | `/api/v1/applications`                | POST   | Create application       | Yes           |
 | `/api/v1/applications/{id}`           | PUT    | Update application       | Yes           |

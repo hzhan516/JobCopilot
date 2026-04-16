@@ -8,5 +8,11 @@ import java.util.UUID;
  */
 public record GetConversationQuery(
     UUID conversationId,
-    UUID userId
-) {}
+    UUID userId,
+    Integer page,
+    Integer size
+) {
+    public GetConversationQuery(UUID conversationId, UUID userId) {
+        this(conversationId, userId, null, null);
+    }
+}

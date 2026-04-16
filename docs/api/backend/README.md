@@ -338,6 +338,7 @@ Authorization: Bearer <access_token>
 #### 3.3 获取对话详情
 - **URL**: `GET /api/v1/conversations/{conversationId}`
 - **认证**: 需要
+- **分页**: 支持 `?page=0&size=20` 对消息列表分页
 
 #### 3.4 获取对话列表
 - **URL**: `GET /api/v1/conversations`
@@ -350,6 +351,11 @@ Authorization: Bearer <access_token>
 #### 3.6 删除对话
 - **URL**: `DELETE /api/v1/conversations/{conversationId}`
 - **认证**: 需要
+
+#### 3.7 上传附件
+- **URL**: `POST /api/v1/conversations/{conversationId}/files`
+- **认证**: 需要
+- **Content-Type**: `multipart/form-data`
 
 ---
 
@@ -368,10 +374,11 @@ Authorization: Bearer <access_token>
 | 编辑版本 | PUT | `/api/v1/resumes/versions/{versionId}` | 编辑版本内容 | 是 |
 | 创建对话 | POST | `/api/v1/conversations` | 创建新对话 | 是 |
 | 发送消息 | POST | `/api/v1/conversations/{conversationId}/messages` | 发送对话消息 | 是 |
-| 获取对话 | GET | `/api/v1/conversations/{conversationId}` | 获取对话详情 | 是 |
+| 获取对话 | GET | `/api/v1/conversations/{conversationId}` | 获取对话详情（支持消息分页） | 是 |
 | 获取对话列表 | GET | `/api/v1/conversations` | 获取所有对话 | 是 |
 | 关闭对话 | PUT | `/api/v1/conversations/{conversationId}/close` | 关闭对话 | 是 |
 | 删除对话 | DELETE | `/api/v1/conversations/{conversationId}` | 删除对话 | 是 |
+| 上传附件 | POST | `/api/v1/conversations/{conversationId}/files` | 上传对话附件 | 是 |
 
 ---
 

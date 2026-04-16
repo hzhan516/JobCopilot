@@ -46,7 +46,7 @@ public class ConversationJpaEntity {
     @Column(nullable = false)
     private ConversationStatus status;
 
-    @Column(name = "resume_version_id", nullable = false)
+    @Column(name = "resume_version_id")
     private String resumeVersionId;
 
     @Column(name = "created_at", nullable = false)

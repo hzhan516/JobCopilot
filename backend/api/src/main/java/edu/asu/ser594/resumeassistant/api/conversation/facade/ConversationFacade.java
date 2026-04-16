@@ -30,7 +30,7 @@ public interface ConversationFacade {
      * 获取对话详情
      * Get conversation details
      */
-    ConversationResponse getConversation(String conversationId, UUID userId);
+    ConversationResponse getConversation(String conversationId, UUID userId, Integer page, Integer size);
 
     /**
      * 获取用户的所有对话

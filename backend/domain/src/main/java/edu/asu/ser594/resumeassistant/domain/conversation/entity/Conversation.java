@@ -115,6 +115,21 @@ public class Conversation extends AggregateRoot<UUID> {
     }
 
     /**
+     * 领域行为：根据首条消息自动生成标题
+     * Domain behavior: auto-generate title from first message
+     */
+    public void autoGenerateTitle(String content) {
+        if (content != null && !content.trim().isEmpty()) {
+            String trimmed = content.trim();
+            String generated = trimmed.length() > 30 ? trimmed.substring(0, 30) + "..." : trimmed;
+            if ("New Conversation".equals(this.title) || this.title == null || this.title.trim().isEmpty()) {
+                this.title = generated;
+                this.updatedAt = LocalDateTime.now();
+            }
+        }
+    }
+
+    /**
      * 领域行为：检查是否属于指定用户
      * Domain behavior: check if owned by specific user
      */
