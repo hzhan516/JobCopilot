@@ -6,7 +6,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- Table for storing resume version embeddings
 CREATE TABLE IF NOT EXISTS resume_vectors (
     id VARCHAR(64) PRIMARY KEY,
-    resume_version_id VARCHAR(64) NOT NULL,
+    resume_version_id VARCHAR(64) NOT NULL UNIQUE,
     embedding vector(1536),
     status VARCHAR(32) NOT NULL,
     error_message TEXT,
@@ -20,7 +20,7 @@ CREATE INDEX idx_resume_vectors_status ON resume_vectors(status);
 -- Table for storing job embeddings
 CREATE TABLE IF NOT EXISTS job_vectors (
     id VARCHAR(64) PRIMARY KEY,
-    job_id VARCHAR(64) NOT NULL,
+    job_id VARCHAR(64) NOT NULL UNIQUE,
     embedding vector(1536),
     status VARCHAR(32) NOT NULL,
     error_message TEXT,
