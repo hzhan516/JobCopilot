@@ -2,14 +2,16 @@ package edu.asu.ser594.resumeassistant.application.conversation.command;
 
 import lombok.Builder;
 
+import java.util.UUID;
+
 /**
  * 创建对话命令
  * Create conversation command
  */
 @Builder
 public record CreateConversationCommand(
-    String userId,
+    UUID userId,
     String title,
-    String resumeVersionId
+    UUID resumeVersionId
 ) {
 }

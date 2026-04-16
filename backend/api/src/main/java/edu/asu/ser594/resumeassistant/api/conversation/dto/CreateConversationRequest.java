@@ -11,9 +11,4 @@ public record CreateConversationRequest(
     String title,
     String resumeVersionId
 ) {
-    public CreateConversationRequest {
-        if (resumeVersionId == null || resumeVersionId.trim().isEmpty()) {
-            throw new IllegalArgumentException("Resume version ID cannot be empty");
-        }
-    }
 }

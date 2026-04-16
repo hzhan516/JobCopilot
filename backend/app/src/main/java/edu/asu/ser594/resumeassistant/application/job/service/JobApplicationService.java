@@ -6,7 +6,6 @@ import edu.asu.ser594.resumeassistant.api.job.dto.response.JobMatchResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchFactors;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchItem;
-import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
@@ -29,14 +28,13 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class JobApplicationService implements JobFacade {
+public class JobApplicationService {
 
     private final JobRepository jobRepository;
     private final AiMessagePublisherPort aiMessagePublisherPort;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Override
     @Transactional
     public JobResponse submitJob(String userId, SubmitJobRequest request) {
         log.info("Submitting new job for async processing for user: {}", userId);
@@ -61,7 +59,6 @@ public class JobApplicationService implements JobFacade {
         }
     }
 
-    @Override
     @Transactional
     public void handleJobProcessResult(AiResultEvent event) {
         Job job = jobRepository.findById(event.referenceId())
@@ -97,7 +94,6 @@ public class JobApplicationService implements JobFacade {
         log.info("Job {} updated to status {}", job.getId(), job.getStatus());
     }
 
-    @Override
     @Transactional(readOnly = true)
     public JobResponse getJob(String jobId, String userId) {
         Job job = jobRepository.findById(jobId)
@@ -110,7 +106,6 @@ public class JobApplicationService implements JobFacade {
         return mapToResponse(job);
     }
 
-    @Override
     @Transactional(readOnly = true)
     public List<JobResponse> listJobs(String userId) {
         List<Job> jobs = jobRepository.findAllByUserId(userId);
@@ -119,7 +114,6 @@ public class JobApplicationService implements JobFacade {
                 .collect(Collectors.toList());
     }
 
-    @Override
     public JobMatchResponse matchJobs(String userId, JobMatchRequest request) {
         log.info("Requesting job match for user: {}, query: {}", userId, request.query());
         String url = "http://localhost:8000/api/v1/match";

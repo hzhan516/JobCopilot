@@ -11,7 +11,7 @@ public record SendMessageRequest(
 ) {
     public SendMessageRequest {
         if (content == null || content.trim().isEmpty()) {
-            throw new IllegalArgumentException("Message content cannot be empty");
+            throw new IllegalArgumentException("消息内容不能为空 / Message content cannot be empty");
         }
     }
 }

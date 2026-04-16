@@ -5,8 +5,8 @@ import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeGroupRepository;
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.resume.ResumeGroupJpaEntity;
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.resume.ResumeVersionJpaEntity;
-import edu.asu.ser594.resumeassistant.infrastructure.repository.resume.JpaResumeGroupRepository;
-import edu.asu.ser594.resumeassistant.infrastructure.repository.resume.JpaResumeVersionRepository;
+import edu.asu.ser594.resumeassistant.infrastructure.persistence.mapper.resume.ResumeGroupPersistenceMapper;
+import edu.asu.ser594.resumeassistant.infrastructure.persistence.mapper.resume.ResumeVersionPersistenceMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -25,40 +25,58 @@ public class ResumeGroupRepositoryImpl implements ResumeGroupRepository {
 
     private final JpaResumeGroupRepository jpaGroupRepo;
     private final JpaResumeVersionRepository jpaVersionRepo;
+    private final ResumeGroupPersistenceMapper groupMapper;
+    private final ResumeVersionPersistenceMapper versionMapper;
 
     @Override
     public void save(ResumeGroup group) {
-        jpaGroupRepo.save(toEntity(group));
+        jpaGroupRepo.save(groupMapper.toJpaEntity(group));
 
         // 级联保存版本
         for (ResumeVersion version : group.getVersions()) {
-            jpaVersionRepo.save(toVersionEntity(version));
+            jpaVersionRepo.save(versionMapper.toJpaEntity(version));
         }
     }
 
     @Override
     public Optional<ResumeGroup> findById(UUID groupId) {
         return jpaGroupRepo.findById(groupId)
-                .map(e -> toDomain(e, loadVersions(groupId)));
+                .map(e -> {
+                    ResumeGroup group = groupMapper.toDomain(e);
+                    loadVersionsIntoGroup(group);
+                    return group;
+                });
     }
 
     @Override
     public Optional<ResumeGroup> findByIdAndUserId(UUID groupId, UUID userId) {
         return jpaGroupRepo.findByIdAndUserId(groupId, userId)
-                .map(e -> toDomain(e, loadVersions(groupId)));
+                .map(e -> {
+                    ResumeGroup group = groupMapper.toDomain(e);
+                    loadVersionsIntoGroup(group);
+                    return group;
+                });
     }
 
     @Override
     public List<ResumeGroup> findAllByUserId(UUID userId) {
         return jpaGroupRepo.findAllByUserId(userId).stream()
-                .map(e -> toDomain(e, loadVersions(e.getId())))
+                .map(e -> {
+                    ResumeGroup group = groupMapper.toDomain(e);
+                    loadVersionsIntoGroup(group);
+                    return group;
+                })
                 .collect(Collectors.toList());
     }
 
     @Override
     public Optional<ResumeGroup> findDefaultByUserId(UUID userId) {
         return jpaGroupRepo.findByUserIdAndIsDefaultTrue(userId)
-                .map(e -> toDomain(e, loadVersions(e.getId())));
+                .map(e -> {
+                    ResumeGroup group = groupMapper.toDomain(e);
+                    loadVersionsIntoGroup(group);
+                    return group;
+                });
     }
 
     @Override
@@ -71,66 +89,12 @@ public class ResumeGroupRepositoryImpl implements ResumeGroupRepository {
         jpaGroupRepo.clearDefaultForUser(userId);
     }
 
-    // ==================== 映射方法 ====================
-
-    private List<ResumeVersion> loadVersions(UUID groupId) {
-        return jpaVersionRepo.findAllByGroupId(groupId).stream()
-                .map(this::toVersionDomain)
+    private void loadVersionsIntoGroup(ResumeGroup group) {
+        List<ResumeVersion> versions = jpaVersionRepo.findAllByGroupId(group.getId()).stream()
+                .map(versionMapper::toDomain)
                 .collect(Collectors.toList());
-    }
-
-    private ResumeGroupJpaEntity toEntity(ResumeGroup domain) {
-        ResumeGroupJpaEntity e = new ResumeGroupJpaEntity();
-        e.setId(domain.getId());
-        e.setUserId(domain.getUserId());
-        e.setTitle(domain.getTitle());
-        e.setIsDefault(domain.isDefault());
-        e.setCreatedAt(domain.getCreatedAt());
-        e.setUpdatedAt(domain.getUpdatedAt());
-        return e;
-    }
-
-    private ResumeGroup toDomain(ResumeGroupJpaEntity e, List<ResumeVersion> versions) {
-        return ResumeGroup.reconstruct(
-                e.getId(), e.getUserId(), e.getTitle(),
-                Boolean.TRUE.equals(e.getIsDefault()),
-                e.getCreatedAt(), e.getUpdatedAt(), versions
-        );
-    }
-
-    private ResumeVersionJpaEntity toVersionEntity(ResumeVersion domain) {
-        ResumeVersionJpaEntity e = new ResumeVersionJpaEntity();
-        e.setId(domain.getId());
-        e.setGroupId(domain.getGroupId());
-        e.setVersionType(domain.getVersionType().name());
-        e.setOriginalFileName(domain.getOriginalFileName());
-        e.setStoredFileName(domain.getStoredFileName());
-        e.setFileType(domain.getFileType());
-        e.setFileSize(domain.getFileSize());
-        e.setStoragePath(domain.getStoragePath());
-        e.setStorageProvider(domain.getStorageProvider());
-        e.setContent(domain.getContent());
-        e.setParsedContent(domain.getParsedContent());
-        e.setParseStatus(domain.getParseStatus());
-        e.setParseErrorMessage(domain.getParseErrorMessage());
-        e.setStatus(domain.getStatus().name());
-        e.setCreatedAt(domain.getCreatedAt());
-        e.setUpdatedAt(domain.getUpdatedAt());
-        return e;
-    }
-
-    private ResumeVersion toVersionDomain(ResumeVersionJpaEntity e) {
-        return ResumeVersion.reconstruct(
-                e.getId(), e.getGroupId(),
-                ResumeVersion.VersionType.valueOf(e.getVersionType()),
-                e.getOriginalFileName(), e.getStoredFileName(),
-                e.getFileType(),
-                e.getFileSize() != null ? e.getFileSize() : 0L,
-                e.getStoragePath(), e.getStorageProvider(),
-                e.getContent(), e.getParsedContent(),
-                e.getParseStatus(), e.getParseErrorMessage(),
-                ResumeVersion.Status.valueOf(e.getStatus()),
-                e.getCreatedAt(), e.getUpdatedAt()
-        );
+        for (ResumeVersion version : versions) {
+            group.addVersion(version);
+        }
     }
 }

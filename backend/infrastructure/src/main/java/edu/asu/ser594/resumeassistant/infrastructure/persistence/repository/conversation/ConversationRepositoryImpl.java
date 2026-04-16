@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 对话仓储实现
@@ -30,20 +31,20 @@ public class ConversationRepositoryImpl implements ConversationRepository {
     }
 
     @Override
-    public Optional<Conversation> findById(String id) {
-        return jpaRepository.findById(id).map(this::mapToDomainEntity);
+    public Optional<Conversation> findById(UUID id) {
+        return jpaRepository.findById(id.toString()).map(this::mapToDomainEntity);
     }
 
     @Override
-    public List<Conversation> findAllByUserId(String userId) {
-        return jpaRepository.findAllByUserId(userId).stream()
+    public List<Conversation> findAllByUserId(UUID userId) {
+        return jpaRepository.findAllByUserId(userId.toString()).stream()
             .map(this::mapToDomainEntity)
             .toList();
     }
 
     @Override
-    public void deleteById(String id) {
-        jpaRepository.deleteById(id);
+    public void deleteById(UUID id) {
+        jpaRepository.deleteById(id.toString());
     }
 
     /**
@@ -52,11 +53,11 @@ public class ConversationRepositoryImpl implements ConversationRepository {
      */
     private ConversationJpaEntity mapToJpaEntity(Conversation conversation) {
         ConversationJpaEntity entity = ConversationJpaEntity.builder()
-            .id(conversation.getId())
-            .userId(conversation.getUserId())
+            .id(conversation.getId().toString())
+            .userId(conversation.getUserId().toString())
             .title(conversation.getTitle())
             .status(conversation.getStatus())
-            .resumeVersionId(conversation.getResumeVersionId())
+            .resumeVersionId(conversation.getResumeVersionId() != null ? conversation.getResumeVersionId().toString() : null)
             .createdAt(conversation.getCreatedAt())
             .updatedAt(conversation.getUpdatedAt())
             .build();
@@ -75,7 +76,7 @@ public class ConversationRepositoryImpl implements ConversationRepository {
      */
     private MessageJpaEntity mapMessageToJpaEntity(Message message, ConversationJpaEntity conversation) {
         return MessageJpaEntity.builder()
-            .id(message.getId())
+            .id(message.getId().toString())
             .conversation(conversation)
             .role(message.getRole())
             .content(message.getContent())
@@ -95,11 +96,11 @@ public class ConversationRepositoryImpl implements ConversationRepository {
             .toList();
 
         return Conversation.reconstruct(
-            entity.getId(),
-            entity.getUserId(),
+            java.util.UUID.fromString(entity.getId()),
+            java.util.UUID.fromString(entity.getUserId()),
             entity.getTitle(),
             entity.getStatus(),
-            entity.getResumeVersionId(),
+            entity.getResumeVersionId() != null ? java.util.UUID.fromString(entity.getResumeVersionId()) : null,
             entity.getCreatedAt(),
             entity.getUpdatedAt(),
             messages
@@ -111,14 +112,9 @@ public class ConversationRepositoryImpl implements ConversationRepository {
      * Map message JPA entity to domain entity
      */
     private Message mapMessageToDomainEntity(MessageJpaEntity entity) {
-        // Since constructor is protected, we can reflect or we can simply add a reconstruct method or static method.
-        // Or if the layers are separated and we can't call constructor, we should use reflection or expose a reconstruct method in Message.
-        // Let's modify Message.java to add reconstruct method, but here we can just use the builder if we had one.
-        // Wait, Message constructor is protected, and they are in different packages!
-        // This is a common DDD issue. We need a way to reconstruct Message.
         return Message.reconstruct(
-            entity.getId(),
-            entity.getConversation().getId(),
+            java.util.UUID.fromString(entity.getId()),
+            java.util.UUID.fromString(entity.getConversation().getId()),
             entity.getRole(),
             entity.getContent(),
             entity.getSequence(),

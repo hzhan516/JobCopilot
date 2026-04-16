@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.domain.conversation.entity;
 
+import edu.asu.ser594.resumeassistant.domain.conversation.exception.ConversationException;
 import edu.asu.ser594.resumeassistant.domain.conversation.valueobject.ConversationStatus;
 import edu.asu.ser594.resumeassistant.domain.conversation.valueobject.MessageRole;
 import edu.asu.ser594.resumeassistant.domain.shared.entity.AggregateRoot;
@@ -14,13 +15,13 @@ import java.util.UUID;
  * 对话聚合根
  * Conversation aggregate root
  */
-public class Conversation extends AggregateRoot<String> {
+public class Conversation extends AggregateRoot<UUID> {
 
-    private final String id;
-    private final String userId;
+    private final UUID id;
+    private final UUID userId;
     private String title;
     private ConversationStatus status;
-    private final String resumeVersionId;
+    private final UUID resumeVersionId;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private final List<Message> messages;
@@ -29,8 +30,8 @@ public class Conversation extends AggregateRoot<String> {
      * 保护级别的原生构造函数
      * Protected native constructor
      */
-    protected Conversation(String id, String userId, String title, ConversationStatus status, 
-                           String resumeVersionId, LocalDateTime createdAt, LocalDateTime updatedAt, 
+    protected Conversation(UUID id, UUID userId, String title, ConversationStatus status, 
+                           UUID resumeVersionId, LocalDateTime createdAt, LocalDateTime updatedAt, 
                            List<Message> messages) {
         this.id = id;
         this.userId = userId;
@@ -46,11 +47,11 @@ public class Conversation extends AggregateRoot<String> {
      * 静态工厂方法：创建新对话
      * Static factory method: create new conversation
      */
-    public static Conversation create(String userId, String title, String resumeVersionId) {
+    public static Conversation create(UUID userId, String title, UUID resumeVersionId) {
         String finalTitle = (title == null || title.trim().isEmpty()) ? "New Conversation" : title;
         LocalDateTime now = LocalDateTime.now();
         return new Conversation(
-            UUID.randomUUID().toString(),
+            UUID.randomUUID(),
             userId,
             finalTitle,
             ConversationStatus.ACTIVE,
@@ -65,8 +66,8 @@ public class Conversation extends AggregateRoot<String> {
      * 从仓储恢复聚合根
      * Reconstruct aggregate root from repository
      */
-    public static Conversation reconstruct(String id, String userId, String title, ConversationStatus status, 
-                                           String resumeVersionId, LocalDateTime createdAt, LocalDateTime updatedAt, 
+    public static Conversation reconstruct(UUID id, UUID userId, String title, ConversationStatus status, 
+                                           UUID resumeVersionId, LocalDateTime createdAt, LocalDateTime updatedAt, 
                                            List<Message> messages) {
         return new Conversation(id, userId, title, status, resumeVersionId, createdAt, updatedAt, messages);
     }
@@ -77,7 +78,7 @@ public class Conversation extends AggregateRoot<String> {
      */
     public void addMessage(MessageRole role, String content) {
         if (this.status == ConversationStatus.CLOSED) {
-            throw new IllegalStateException("Cannot add message to a closed conversation");
+            throw new ConversationException(ConversationException.ErrorType.CLOSED_CONVERSATION, "Cannot add message to a closed conversation");
         }
         int sequence = this.messages.size() + 1;
         Message newMessage = Message.create(this.getId(), role, content, sequence);
@@ -109,12 +110,12 @@ public class Conversation extends AggregateRoot<String> {
      * 领域行为：检查是否属于指定用户
      * Domain behavior: check if owned by specific user
      */
-    public boolean isOwnedBy(String userId) {
+    public boolean isOwnedBy(UUID userId) {
         return this.userId != null && this.userId.equals(userId);
     }
 
     @Override
-    public String getId() {
+    public UUID getId() {
         return id;
     }
 
@@ -126,7 +127,7 @@ public class Conversation extends AggregateRoot<String> {
         return Collections.unmodifiableList(this.messages);
     }
 
-    public String getUserId() {
+    public UUID getUserId() {
         return userId;
     }
 
@@ -138,7 +139,7 @@ public class Conversation extends AggregateRoot<String> {
         return status;
     }
 
-    public String getResumeVersionId() {
+    public UUID getResumeVersionId() {
         return resumeVersionId;
     }
 

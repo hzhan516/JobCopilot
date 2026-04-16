@@ -1,6 +1,5 @@
 package edu.asu.ser594.resumeassistant.application.conversation;
 
-import edu.asu.ser594.resumeassistant.api.common.dto.ApiResponse;
 import edu.asu.ser594.resumeassistant.api.conversation.dto.ConversationResponse;
 import edu.asu.ser594.resumeassistant.api.conversation.dto.CreateConversationRequest;
 import edu.asu.ser594.resumeassistant.api.conversation.dto.MessageResponse;
@@ -8,7 +7,10 @@ import edu.asu.ser594.resumeassistant.api.conversation.dto.SendMessageRequest;
 import edu.asu.ser594.resumeassistant.api.conversation.facade.ConversationFacade;
 import edu.asu.ser594.resumeassistant.application.conversation.command.CreateConversationCommand;
 import edu.asu.ser594.resumeassistant.application.conversation.command.SendMessageCommand;
+import edu.asu.ser594.resumeassistant.application.conversation.query.GetConversationQuery;
+import edu.asu.ser594.resumeassistant.application.conversation.query.ListConversationsQuery;
 import edu.asu.ser594.resumeassistant.application.conversation.service.ConversationApplicationService;
+import edu.asu.ser594.resumeassistant.application.conversation.service.ConversationQueryService;
 import edu.asu.ser594.resumeassistant.domain.conversation.entity.Conversation;
 import edu.asu.ser594.resumeassistant.domain.conversation.entity.Message;
 import edu.asu.ser594.resumeassistant.domain.conversation.valueobject.MessageRole;
@@ -16,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 对话外观实现类
@@ -26,56 +29,62 @@ import java.util.List;
 public class ConversationFacadeImpl implements ConversationFacade {
 
     private final ConversationApplicationService applicationService;
+    private final ConversationQueryService queryService;
 
     @Override
-    public ApiResponse<ConversationResponse> createConversation(CreateConversationRequest request, String userId) {
+    public ConversationResponse createConversation(CreateConversationRequest request, String userId) {
+        UUID resumeVersionId = request.resumeVersionId() != null && !request.resumeVersionId().isEmpty()
+                ? UUID.fromString(request.resumeVersionId())
+                : null;
         CreateConversationCommand command = CreateConversationCommand.builder()
-            .userId(userId)
+            .userId(UUID.fromString(userId))
             .title(request.title())
-            .resumeVersionId(request.resumeVersionId())
+            .resumeVersionId(resumeVersionId)
             .build();
             
         Conversation conversation = applicationService.createConversation(command);
-        return ApiResponse.success(mapToResponse(conversation));
+        return mapToResponse(conversation);
     }
 
     @Override
-    public ApiResponse<ConversationResponse> sendMessage(String conversationId, SendMessageRequest request, String userId) {
+    public ConversationResponse sendMessage(String conversationId, SendMessageRequest request, String userId) {
         SendMessageCommand command = SendMessageCommand.builder()
-            .conversationId(conversationId)
-            .userId(userId)
+            .conversationId(UUID.fromString(conversationId))
+            .userId(UUID.fromString(userId))
             .role(MessageRole.USER) // Assuming request comes from user
             .content(request.content())
             .build();
             
         Conversation conversation = applicationService.sendMessage(command);
-        return ApiResponse.success(mapToResponse(conversation));
+        return mapToResponse(conversation);
     }
 
     @Override
-    public ApiResponse<ConversationResponse> getConversation(String conversationId, String userId) {
-        Conversation conversation = applicationService.getConversation(conversationId, userId);
-        return ApiResponse.success(mapToResponse(conversation));
+    public ConversationResponse getConversation(String conversationId, String userId) {
+        GetConversationQuery query = new GetConversationQuery(
+            UUID.fromString(conversationId),
+            UUID.fromString(userId)
+        );
+        Conversation conversation = queryService.getConversation(query);
+        return mapToResponse(conversation);
     }
 
     @Override
-    public ApiResponse<List<ConversationResponse>> listConversations(String userId) {
-        List<ConversationResponse> responses = applicationService.listConversations(userId).stream()
+    public List<ConversationResponse> listConversations(String userId) {
+        ListConversationsQuery query = new ListConversationsQuery(UUID.fromString(userId));
+        return queryService.listConversations(query).stream()
             .map(this::mapToResponse)
             .toList();
-        return ApiResponse.success(responses);
     }
 
     @Override
-    public ApiResponse<Void> closeConversation(String conversationId, String userId) {
-        applicationService.closeConversation(conversationId, userId);
-        return ApiResponse.success(null);
+    public void closeConversation(String conversationId, String userId) {
+        applicationService.closeConversation(UUID.fromString(conversationId), UUID.fromString(userId));
     }
 
     @Override
-    public ApiResponse<Void> deleteConversation(String conversationId, String userId) {
-        applicationService.deleteConversation(conversationId, userId);
-        return ApiResponse.success(null);
+    public void deleteConversation(String conversationId, String userId) {
+        applicationService.deleteConversation(UUID.fromString(conversationId), UUID.fromString(userId));
     }
 
     /**
@@ -88,11 +97,11 @@ public class ConversationFacadeImpl implements ConversationFacade {
             .toList();
 
         return new ConversationResponse(
-            conversation.getId(),
-            conversation.getUserId(),
+            conversation.getId().toString(),
+            conversation.getUserId().toString(),
             conversation.getTitle(),
             conversation.getStatus().name(),
-            conversation.getResumeVersionId(),
+            conversation.getResumeVersionId() != null ? conversation.getResumeVersionId().toString() : null,
             messageResponses,
             conversation.getCreatedAt(),
             conversation.getUpdatedAt()
@@ -105,7 +114,7 @@ public class ConversationFacadeImpl implements ConversationFacade {
      */
     private MessageResponse mapMessageToResponse(Message message) {
         return new MessageResponse(
-            message.getId(),
+            message.getId().toString(),
             message.getRole().name(),
             message.getContent(),
             message.getSequence(),

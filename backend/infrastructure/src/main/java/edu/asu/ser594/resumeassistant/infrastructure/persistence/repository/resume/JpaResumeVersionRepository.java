@@ -1,4 +1,4 @@
-package edu.asu.ser594.resumeassistant.infrastructure.repository.resume;
+package edu.asu.ser594.resumeassistant.infrastructure.persistence.repository.resume;
 
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.resume.ResumeVersionJpaEntity;
 import org.springframework.data.jpa.repository.JpaRepository;

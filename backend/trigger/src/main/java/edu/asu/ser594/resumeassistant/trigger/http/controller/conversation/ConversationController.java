@@ -41,7 +41,7 @@ public class ConversationController {
             @Validated @RequestBody CreateConversationRequest request,
             @CurrentUser String userId) {
         log.info("REST request to create conversation for user: {}", userId);
-        return conversationFacade.createConversation(request, userId);
+        return ApiResponse.success(conversationFacade.createConversation(request, userId));
     }
 
     /**
@@ -54,7 +54,7 @@ public class ConversationController {
             @Validated @RequestBody SendMessageRequest request,
             @CurrentUser String userId) {
         log.info("REST request to send message to conversation: {}", conversationId);
-        return conversationFacade.sendMessage(conversationId, request, userId);
+        return ApiResponse.success(conversationFacade.sendMessage(conversationId, request, userId));
     }
 
     /**
@@ -66,7 +66,7 @@ public class ConversationController {
             @PathVariable String conversationId,
             @CurrentUser String userId) {
         log.info("REST request to get conversation: {}", conversationId);
-        return conversationFacade.getConversation(conversationId, userId);
+        return ApiResponse.success(conversationFacade.getConversation(conversationId, userId));
     }
 
     /**
@@ -77,7 +77,7 @@ public class ConversationController {
     public ApiResponse<List<ConversationResponse>> listConversations(
             @CurrentUser String userId) {
         log.info("REST request to list conversations for user: {}", userId);
-        return conversationFacade.listConversations(userId);
+        return ApiResponse.success(conversationFacade.listConversations(userId));
     }
 
     /**
@@ -89,7 +89,8 @@ public class ConversationController {
             @PathVariable String conversationId,
             @CurrentUser String userId) {
         log.info("REST request to close conversation: {}", conversationId);
-        return conversationFacade.closeConversation(conversationId, userId);
+        conversationFacade.closeConversation(conversationId, userId);
+        return ApiResponse.success(null);
     }
 
     /**
@@ -101,6 +102,7 @@ public class ConversationController {
             @PathVariable String conversationId,
             @CurrentUser String userId) {
         log.info("REST request to delete conversation: {}", conversationId);
-        return conversationFacade.deleteConversation(conversationId, userId);
+        conversationFacade.deleteConversation(conversationId, userId);
+        return ApiResponse.success(null);
     }
 }
