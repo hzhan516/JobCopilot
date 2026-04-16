@@ -33,14 +33,14 @@ class AiResultMessageListenerTest {
 
     @Test
     void onJobParseResult_ShouldCallJobFacade() {
-        AiResultEvent event = new AiResultEvent("job-1", "JOB_PARSE", "COMPLETED", null, null);
+        AiResultEvent event = new AiResultEvent("job-1", "JOB_PARSE", "COMPLETED", null, null, null);
         listener.onJobParseResult(event);
         verify(jobFacade).handleJobProcessResult(event);
     }
 
     @Test
     void onResumeParseResult_ShouldCallResumeFacade() {
-        AiResultEvent event = new AiResultEvent("resume-1", "RESUME_PARSE", "COMPLETED", null, null);
+        AiResultEvent event = new AiResultEvent("resume-1", "RESUME_PARSE", "COMPLETED", null, null, null);
         listener.onResumeParseResult(event);
         verify(resumeFacade).handleParseResult(event);
     }
@@ -52,7 +52,8 @@ class AiResultMessageListenerTest {
                 "VECTOR_GEN",
                 "COMPLETED",
                 Map.of("embedding", List.of(0.1, 0.2)),
-                null
+                null,
+                "JOB"
         );
 
         listener.onVectorGenResult(event);
@@ -67,7 +68,8 @@ class AiResultMessageListenerTest {
                 "VECTOR_GEN",
                 "COMPLETED",
                 Map.of("embedding", List.of(0.3, 0.4), "entityType", "RESUME"),
-                null
+                null,
+                "RESUME"
         );
 
         listener.onVectorGenResult(event);

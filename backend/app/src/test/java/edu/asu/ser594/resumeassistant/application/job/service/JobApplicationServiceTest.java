@@ -73,7 +73,7 @@ class JobApplicationServiceTest {
             "requirements", List.of("Java", "Spring")
         );
 
-        AiResultEvent event = new AiResultEvent(jobId, "JOB_PARSE", "COMPLETED", mockParsedData, null);
+        AiResultEvent event = new AiResultEvent(jobId, "JOB_PARSE", "COMPLETED", mockParsedData, null, "JOB");
 
         jobApplicationService.handleJobProcessResult(event);
 

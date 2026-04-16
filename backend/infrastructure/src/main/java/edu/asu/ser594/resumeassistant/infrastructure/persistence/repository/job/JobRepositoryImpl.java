@@ -5,9 +5,12 @@ import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.job.JobJpaEntity;
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.mapper.job.JobPersistenceMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -27,4 +30,12 @@ public class JobRepositoryImpl implements JobRepository {
     public Optional<Job> findById(String id) {
         return jpaJobRepository.findById(id).map(jobMapper::toDomain);
     }
+
+    @Override
+    public List<Job> findAllByUserId(String userId) {
+        return jpaJobRepository.findAllByUserId(userId).stream()
+                .map(jobMapper::toDomain)
+                .collect(Collectors.toList());
+    }
 }
+

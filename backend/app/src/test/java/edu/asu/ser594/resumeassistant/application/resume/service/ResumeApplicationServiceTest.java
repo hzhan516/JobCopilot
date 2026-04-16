@@ -130,7 +130,8 @@ class ResumeApplicationServiceTest {
                 "RESUME_PARSE",
                 "COMPLETED",
                 Map.of("name", "John Doe"),
-                null
+                null,
+                "RESUME"
         );
 
         resumeService.handleParseResult(event);

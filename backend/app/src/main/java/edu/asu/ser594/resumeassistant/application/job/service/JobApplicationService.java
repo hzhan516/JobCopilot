@@ -1,7 +1,11 @@
 package edu.asu.ser594.resumeassistant.application.job.service;
 
+import edu.asu.ser594.resumeassistant.api.job.dto.request.JobMatchRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
+import edu.asu.ser594.resumeassistant.api.job.dto.response.JobMatchResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
+import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchFactors;
+import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchItem;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
@@ -16,6 +20,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -23,6 +33,7 @@ public class JobApplicationService implements JobFacade {
 
     private final JobRepository jobRepository;
     private final AiMessagePublisherPort aiMessagePublisherPort;
+    private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -97,6 +108,48 @@ public class JobApplicationService implements JobFacade {
         }
 
         return mapToResponse(job);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<JobResponse> listJobs(String userId) {
+        List<Job> jobs = jobRepository.findAllByUserId(userId);
+        return jobs.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public JobMatchResponse matchJobs(String userId, JobMatchRequest request) {
+        log.info("Requesting job match for user: {}, query: {}", userId, request.query());
+        String url = "http://localhost:8000/api/v1/match";
+
+        try {
+            return restTemplate.postForObject(url, request, JobMatchResponse.class);
+        } catch (RestClientException e) {
+            log.warn("Python AI service unavailable, returning mock data. Error: {}", e.getMessage());
+            return buildMockJobMatchResponse();
+        }
+    }
+
+    private JobMatchResponse buildMockJobMatchResponse() {
+        MatchItem mock1 = new MatchItem(
+                "mock-job-1",
+                "Senior Java Developer",
+                "Tech Corp",
+                0.92,
+                new MatchFactors(0.95, 0.90, 0.88),
+                "Looking for an experienced Java developer with Spring Boot skills."
+        );
+        MatchItem mock2 = new MatchItem(
+                "mock-job-2",
+                "Backend Engineer",
+                "Startup Inc",
+                0.85,
+                new MatchFactors(0.88, 0.80, 0.90),
+                "Join our fast-paced team to build scalable microservices."
+        );
+        return new JobMatchResponse(java.util.List.of(mock1, mock2), 2, 12L, 45L);
     }
 
     private JobResponse mapToResponse(Job job) {
