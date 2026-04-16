@@ -36,3 +36,11 @@
 /backend/domain/.factorypath
 /backend/domain/.project
 /backend/domain/.settings/
+# Python
+**/.venv/
+**/__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+**/.DS_Store

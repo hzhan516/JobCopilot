@@ -101,8 +101,8 @@ services:
       - RABBITMQ_PASSWORD=guest
       # 文件存储路径（与后端共享）
       - FILE_STORAGE_PATH=/app/uploads
-      # OpenAI API密钥
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # Gemini API密钥
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       # 日志级别
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
