@@ -44,13 +44,18 @@ def _extract_text_from_plain(file_bytes: bytes) -> str:
 
 
 def extract_resume_text(file_bytes: bytes, content_format: str) -> str:
-    if content_format == "application/pdf":
+    normalized = content_format.strip().lower()
+
+    if normalized in {"pdf", "application/pdf"}:
         return _extract_text_from_pdf(file_bytes)
 
-    if content_format == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    if normalized in {
+        "docx",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }:
         return _extract_text_from_docx(file_bytes)
 
-    if content_format in {"text/plain", "text/markdown"}:
+    if normalized in {"txt", "text/plain", "text/markdown", "md"}:
         return _extract_text_from_plain(file_bytes)
 
     raise ValueError(f"Unsupported resume format: {content_format}")

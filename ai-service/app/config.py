@@ -23,6 +23,11 @@ VECTOR_GEN_RESULT_QUEUE = "backend.queue.vector.gen"
 VECTOR_GEN_REQUEST_ROUTING_KEY = "ai.req.vector.gen"
 VECTOR_GEN_RESULT_ROUTING_KEY = "backend.res.vector.gen"
 
+CONVERSATION_REQUEST_QUEUE = "ai.queue.conversation"
+CONVERSATION_RESULT_QUEUE = "backend.queue.conversation"
+CONVERSATION_REQUEST_ROUTING_KEY = "ai.req.conversation"
+CONVERSATION_RESULT_ROUTING_KEY = "backend.res.conversation"
+
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT", "ser594-ai-service")

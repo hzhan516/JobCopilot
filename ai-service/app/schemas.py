@@ -16,7 +16,7 @@ class JobParseCommand(AppBaseModel):
 class ResumeParseCommand(AppBaseModel):
     resume_id: str = Field(alias="resumeId")
     file_url: str = Field(alias="fileUrl")
-    format: str
+    file_type: str = Field(alias="fileType")
 
 
 class VectorGenCommand(AppBaseModel):

@@ -14,6 +14,8 @@ from app.config import (
     RABBITMQ_USERNAME,
     VECTOR_GEN_REQUEST_QUEUE,
     VECTOR_GEN_REQUEST_ROUTING_KEY,
+CONVERSATION_REQUEST_QUEUE,
+CONVERSATION_REQUEST_ROUTING_KEY,
 )
 from app.mq.publisher import publish_ai_result
 from app.schemas import (
@@ -157,6 +159,7 @@ def handle_vector_message(
 
 
 def job_message_callback(ch, method, properties, body) -> None:
+
     try:
         handle_job_message(ch, body)
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -175,6 +178,7 @@ def resume_message_callback(ch, method, properties, body) -> None:
 
 
 def vector_message_callback(ch, method, properties, body) -> None:
+
     try:
         handle_vector_message(ch, body)
         ch.basic_ack(delivery_tag=method.delivery_tag)

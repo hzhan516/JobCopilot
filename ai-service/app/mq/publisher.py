@@ -7,7 +7,9 @@ from app.config import (
     JOB_PARSE_RESULT_ROUTING_KEY,
     RESUME_PARSE_RESULT_ROUTING_KEY,
     VECTOR_GEN_RESULT_ROUTING_KEY,
+    CONVERSATION_RESULT_ROUTING_KEY,
 )
+
 from app.schemas import AiResultEvent
 
 
@@ -18,8 +20,9 @@ def get_result_routing_key(event_type: str) -> str:
         return RESUME_PARSE_RESULT_ROUTING_KEY
     if event_type == "VECTOR_GEN":
         return VECTOR_GEN_RESULT_ROUTING_KEY
+    if event_type == "CONVERSATION_REPLY":
+        return CONVERSATION_RESULT_ROUTING_KEY
     raise ValueError(f"Unsupported event type: {event_type}")
-
 
 def publish_ai_result(
     channel: pika.adapters.blocking_connection.BlockingChannel,
