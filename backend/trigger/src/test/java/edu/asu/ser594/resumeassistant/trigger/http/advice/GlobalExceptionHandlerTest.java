@@ -116,10 +116,10 @@ class GlobalExceptionHandlerTest {
     void shouldHandleGenericBusinessException() {
         // Given
         BusinessException businessException = new BusinessException("BUSINESS_ERROR", "Business rule violated") {};
-        when(messageProvider.getMessage("BUSINESS_ERROR")).thenReturn("Business rule violated");
+        when(messageProvider.getMessage("BUSINESS_ERROR", new Object[]{"Business rule violated"})).thenReturn("Business rule violated");
 
         // When
-        ResponseEntity<ApiResponse<Void>> response = exceptionHandler.handleDomainException(businessException);
+        ResponseEntity<ApiResponse<Void>> response = exceptionHandler.handleLocalizedException(businessException);
 
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);

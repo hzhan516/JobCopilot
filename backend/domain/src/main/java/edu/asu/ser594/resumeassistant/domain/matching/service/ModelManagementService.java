@@ -1,11 +1,11 @@
 package edu.asu.ser594.resumeassistant.domain.matching.service;
 
 import edu.asu.ser594.resumeassistant.domain.matching.entity.MatchingModel;
+import edu.asu.ser594.resumeassistant.domain.matching.exception.MatchingException;
 import edu.asu.ser594.resumeassistant.domain.matching.repository.MatchingModelRepository;
 import edu.asu.ser594.resumeassistant.domain.matching.valueobject.ModelType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
@@ -17,7 +17,6 @@ import java.util.Optional;
  * Domain service: responsible for model activation, switching, etc.
  */
 @Slf4j
-@Service
 @RequiredArgsConstructor
 public class ModelManagementService {
 
@@ -51,7 +50,7 @@ public class ModelManagementService {
      */
     public void switchActiveModel(final Long modelId) {
         MatchingModel target = matchingModelRepository.findById(modelId)
-                .orElseThrow(() -> new IllegalArgumentException("Model not found: " + modelId));
+                .orElseThrow(() -> new MatchingException("matching.not.found"));
 
         matchingModelRepository.findActiveByType(target.getType())
                 .ifPresent(currentActive -> {

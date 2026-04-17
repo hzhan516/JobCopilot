@@ -12,7 +12,7 @@ import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
 import Dashboard from '@/pages/Dashboard';
 import ResumeList from '@/pages/resumes/ResumeList';
-import ResumeUpload from '@/pages/resumes/ResumeUpload';
+import ResumeDetail from '@/pages/resumes/ResumeDetail';
 import ResumeEdit from '@/pages/resumes/ResumeEdit';
 import JobList from '@/pages/jobs/JobList';
 import Chat from '@/pages/chat/Chat';
@@ -63,17 +63,17 @@ function App() {
             }
           />
           <Route
-            path="/resumes/upload"
+            path="/resumes/:groupId"
             element={
               <ProtectedRoute>
                 <MainLayout>
-                  <ResumeUpload />
+                  <ResumeDetail />
                 </MainLayout>
               </ProtectedRoute>
             }
           />
           <Route
-            path="/resumes/:groupId/edit"
+            path="/resumes/:groupId/versions/:versionId/edit"
             element={
               <ProtectedRoute>
                 <MainLayout>

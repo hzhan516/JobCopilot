@@ -1,7 +1,7 @@
 package edu.asu.ser594.resumeassistant.trigger.http.advice;
 
 import edu.asu.ser594.resumeassistant.api.common.dto.ApiResponse;
-import edu.asu.ser594.resumeassistant.domain.shared.exception.DomainException;
+import edu.asu.ser594.resumeassistant.domain.shared.exception.LocalizedException;
 import edu.asu.ser594.resumeassistant.domain.shared.service.MessageProvider;
 import edu.asu.ser594.resumeassistant.domain.user.exception.AuthException;
 import edu.asu.ser594.resumeassistant.api.shared.service.ExceptionMessageResolver;
@@ -109,19 +109,18 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 通用领域异常
-     * Handle generic domain exceptions
+     * 本地化异常
+     * Handle localized exceptions
      */
-    @ExceptionHandler(DomainException.class)
-    public ResponseEntity<ApiResponse<Void>> handleDomainException(DomainException ex) {
-        log.warn("Domain exception: {}", ex.getMessage());
+    @ExceptionHandler(LocalizedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleLocalizedException(LocalizedException ex) {
+        log.warn("Localized exception: {}", ex.getMessageKey());
 
-        // 尝试从 i18n 获取消息，如果没有则使用原始消息
         String message;
         try {
-            message = messageProvider.getMessage(ex.getMessage());
+            message = messageProvider.getMessage(ex.getMessageKey(), ex.getArgs());
         } catch (Exception e) {
-            message = ex.getMessage();
+            message = ex.getMessageKey();
         }
 
         return ResponseEntity.badRequest()

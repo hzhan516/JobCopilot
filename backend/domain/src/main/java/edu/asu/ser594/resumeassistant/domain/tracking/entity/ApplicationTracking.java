@@ -122,8 +122,7 @@ public class ApplicationTracking extends AggregateRoot<String> {
      */
     public void changeStatus(final ApplicationStatus newStatus, final String note) {
         if (!this.status.canTransitionTo(newStatus)) {
-            throw new TrackingException(
-                    String.format("Invalid status transition from %s to %s", this.status, newStatus));
+            throw new TrackingException("tracking.status.invalid", this.status, newStatus);
         }
         final TrackingEvent event = TrackingEvent.create(this.status, newStatus, note);
         this.events.add(event);

@@ -3,6 +3,7 @@ package edu.asu.ser594.resumeassistant.application.job.service;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
+import edu.asu.ser594.resumeassistant.domain.job.exception.JobException;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
@@ -106,9 +107,10 @@ class JobApplicationServiceTest {
     void getJob_NotFound_ThrowsException() {
         when(jobRepository.findById(anyString())).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> {
+        JobException exception = assertThrows(JobException.class, () -> {
             jobApplicationService.getJob("invalid-id", UUID.randomUUID());
         });
+        assertEquals("job.not.found", exception.getMessageKey());
     }
 
     @Test
@@ -116,8 +118,9 @@ class JobApplicationServiceTest {
         Job job = Job.create(UUID.randomUUID(), "http://example.com", false);
         when(jobRepository.findById("job123")).thenReturn(Optional.of(job));
 
-        assertThrows(IllegalArgumentException.class, () -> {
+        JobException exception = assertThrows(JobException.class, () -> {
             jobApplicationService.getJob("job123", UUID.randomUUID());
         });
+        assertEquals("access.denied", exception.getMessageKey());
     }
 }

@@ -50,7 +50,7 @@ public class ConversationApplicationService {
             try {
                 resumeFacade.getVersion(command.resumeVersionId(), command.userId());
             } catch (Exception e) {
-                throw new ConversationException(ConversationException.ErrorType.INVALID_RESUME_VERSION, "Invalid resume version or access denied");
+                throw new ConversationException("version.not.found");
             }
         }
 
@@ -99,7 +99,7 @@ public class ConversationApplicationService {
     public void saveAiReply(UUID conversationId, String content, String fileUrl) {
         log.info("Saving AI reply for conversation: {}", conversationId);
         Conversation conversation = conversationRepository.findById(conversationId)
-            .orElseThrow(() -> new ConversationException(ConversationException.ErrorType.NOT_FOUND, "Conversation not found"));
+            .orElseThrow(() -> new ConversationException("conversation.not.found"));
         conversation.addMessage(MessageRole.ASSISTANT, content, fileUrl);
         conversationRepository.save(conversation);
         log.info("AI reply saved for conversation: {}", conversationId);
@@ -152,10 +152,10 @@ public class ConversationApplicationService {
      */
     private Conversation getConversationWithOwnershipCheck(UUID conversationId, UUID userId) {
         Conversation conversation = conversationRepository.findById(conversationId)
-            .orElseThrow(() -> new ConversationException(ConversationException.ErrorType.NOT_FOUND, "Conversation not found"));
+            .orElseThrow(() -> new ConversationException("conversation.not.found"));
         
         if (!conversation.isOwnedBy(userId)) {
-            throw new ConversationException(ConversationException.ErrorType.ACCESS_DENIED, "Access denied");
+            throw new ConversationException("access.denied");
         }
         
         return conversation;

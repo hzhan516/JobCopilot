@@ -3,6 +3,7 @@ package edu.asu.ser594.resumeassistant.application.job.service;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
+import edu.asu.ser594.resumeassistant.domain.job.exception.JobException;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
@@ -55,7 +56,7 @@ public class JobApplicationService {
     @Transactional
     public void handleJobProcessResult(AiResultEvent event) {
         Job job = jobRepository.findById(event.referenceId())
-                .orElseThrow(() -> new IllegalArgumentException("Job not found: " + event.referenceId()));
+                .orElseThrow(() -> new JobException("job.not.found"));
 
         if ("COMPLETED".equals(event.status()) && event.data() != null) {
             try {
@@ -90,10 +91,10 @@ public class JobApplicationService {
     @Transactional(readOnly = true)
     public JobResponse getJob(String jobId, UUID userId) {
         Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+                .orElseThrow(() -> new JobException("job.not.found"));
 
         if (!job.getUserId().equals(userId)) {
-            throw new IllegalArgumentException("Job does not belong to user: " + userId);
+            throw new JobException("access.denied");
         }
 
         return mapToResponse(job);
