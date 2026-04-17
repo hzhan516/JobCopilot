@@ -5,6 +5,7 @@ import edu.asu.ser594.resumeassistant.domain.matching.repository.MatchingModelRe
 import edu.asu.ser594.resumeassistant.domain.matching.valueobject.ModelType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
@@ -16,6 +17,7 @@ import java.util.Optional;
  * Domain service: responsible for model activation, switching, etc.
  */
 @Slf4j
+@Service
 @RequiredArgsConstructor
 public class ModelManagementService {
 

@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/sonner';
 // 布局
 import MainLayout from '@/components/layout/MainLayout';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import PublicRoute from '@/components/PublicRoute';
 
 // 页面
 import Login from '@/pages/auth/Login';
@@ -22,9 +23,23 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          {/* 公开路由 */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          {/* 公开路由 - 已登录用户将被重定向 */}
+          <Route
+            path="/login"
+            element={
+              <PublicRoute>
+                <Login />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              <PublicRoute>
+                <Register />
+              </PublicRoute>
+            }
+          />
 
           {/* 受保护路由 */}
           <Route
