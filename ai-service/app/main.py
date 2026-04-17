@@ -9,6 +9,11 @@ from fastapi import FastAPI
 
 from app.mq.consumer import create_connection, setup_all_queues, start_all_consumers
 
+from app.schemas import SuitabilityBreakdown, SuitabilityRequest, SuitabilityResponse
+
+from app.services.suitability_service import evaluate_suitability_with_vertex
+
+
 app = FastAPI(
     title="Resume Assistant AI Service",
     description="AI service for scraping, parsing, and job processing.",
@@ -79,9 +84,17 @@ async def startup_event() -> None:
     _start_mq_consumer_once()
 
 
+@app.post("/api/v1/suitability", response_model=SuitabilityResponse)
+async def evaluate_suitability(request: SuitabilityRequest) -> SuitabilityResponse:
+    return evaluate_suitability_with_vertex(request)
+
+
 if __name__ == "__main__":
     _start_mq_consumer_once()
 
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+

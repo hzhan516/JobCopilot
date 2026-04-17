@@ -51,3 +51,23 @@ class AiResultEvent(AppBaseModel):
     data: dict[str, Any] | None = None
     error_message: str | None = Field(default=None, alias="errorMessage")
     event_type: str | None = Field(default=None, alias="eventType")
+
+
+class SuitabilityRequest(AppBaseModel):
+    resume: ParsedResumeContent
+    job: ParsedJobContent
+
+
+class SuitabilityBreakdown(AppBaseModel):
+    skill_score: float = Field(alias="skillScore")
+    experience_score: float = Field(alias="experienceScore")
+    overall_score: float = Field(alias="overallScore")
+
+
+class SuitabilityResponse(AppBaseModel):
+    suitable: bool
+    summary: str
+    breakdown: SuitabilityBreakdown
+    vertex_score: float = Field(alias="vertexScore")
+    dataset_score: float | None = Field(default=None, alias="datasetScore")
+    final_score: float = Field(alias="finalScore")
