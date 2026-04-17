@@ -35,6 +35,11 @@ public class RabbitMqConfig {
     public static final String ROUTING_KEY_RES_CONVERSATION = "backend.res.conversation";
     public static final String QUEUE_RES_CONVERSATION = "backend.queue.conversation";
 
+    public static final String ROUTING_KEY_REQ_JOB_RANK = "ai.req.job.rank";
+    public static final String QUEUE_REQ_JOB_RANK = "ai.queue.job.rank";
+    public static final String ROUTING_KEY_RES_JOB_RANK = "backend.res.job.rank";
+    public static final String QUEUE_RES_JOB_RANK = "backend.queue.job.rank";
+
     @Bean
     public MessageConverter jackson2JsonMessageConverter() {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -132,5 +137,25 @@ public class RabbitMqConfig {
     @Bean
     public Binding resConversationBinding(Queue resConversationQueue, DirectExchange aiDirectExchange) {
         return BindingBuilder.bind(resConversationQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_CONVERSATION);
+    }
+
+    @Bean
+    public Queue reqJobRankQueue() {
+        return QueueBuilder.durable(QUEUE_REQ_JOB_RANK).build();
+    }
+
+    @Bean
+    public Binding reqJobRankBinding(Queue reqJobRankQueue, DirectExchange aiDirectExchange) {
+        return BindingBuilder.bind(reqJobRankQueue).to(aiDirectExchange).with(ROUTING_KEY_REQ_JOB_RANK);
+    }
+
+    @Bean
+    public Queue resJobRankQueue() {
+        return QueueBuilder.durable(QUEUE_RES_JOB_RANK).build();
+    }
+
+    @Bean
+    public Binding resJobRankBinding(Queue resJobRankQueue, DirectExchange aiDirectExchange) {
+        return BindingBuilder.bind(resJobRankQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_JOB_RANK);
     }
 }
