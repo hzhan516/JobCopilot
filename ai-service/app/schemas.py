@@ -25,6 +25,21 @@ class VectorGenCommand(AppBaseModel):
     text: str
 
 
+class ConversationMessage(AppBaseModel):
+    role: str
+    content: str
+    file_url: str | None = Field(default=None, alias="fileUrl")
+
+
+class ConversationRequestCommand(AppBaseModel):
+    conversation_id: str = Field(alias="conversationId")
+    user_id: str = Field(alias="userId")
+    message_history: list[ConversationMessage] = Field(default_factory=list, alias="messageHistory")
+    current_message: str = Field(alias="currentMessage")
+    file_urls: list[str] = Field(default_factory=list, alias="fileUrls")
+    resume_version_id: str | None = Field(default=None, alias="resumeVersionId")
+
+
 class ScrapeResult(AppBaseModel):
     markdown_text: str
     screenshot_url: str | None = None

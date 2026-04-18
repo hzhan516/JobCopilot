@@ -4,6 +4,8 @@ import pika
 
 from app.config import (
     AI_DIRECT_EXCHANGE,
+    CONVERSATION_REQUEST_QUEUE,
+    CONVERSATION_REQUEST_ROUTING_KEY,
     JOB_PARSE_REQUEST_QUEUE,
     JOB_PARSE_REQUEST_ROUTING_KEY,
     RESUME_PARSE_REQUEST_QUEUE,
@@ -14,21 +16,21 @@ from app.config import (
     RABBITMQ_USERNAME,
     VECTOR_GEN_REQUEST_QUEUE,
     VECTOR_GEN_REQUEST_ROUTING_KEY,
-CONVERSATION_REQUEST_QUEUE,
-CONVERSATION_REQUEST_ROUTING_KEY,
 )
+
 from app.mq.publisher import publish_ai_result
 from app.schemas import (
     AiResultEvent,
+    ConversationRequestCommand,
     JobParseCommand,
     ResumeParseCommand,
     VectorGenCommand,
 )
+from app.services.conversation_service import process_conversation
 from app.services.job_orchestrator import process_job
-
 from app.services.resume_orchestrator import process_resume
-
 from app.services.vector_service import process_vector
+
 
 def create_connection() -> pika.BlockingConnection:
     credentials = pika.PlainCredentials(RABBITMQ_USERNAME, RABBITMQ_PASSWORD)
@@ -68,6 +70,13 @@ def setup_all_queues(channel: pika.adapters.blocking_connection.BlockingChannel)
         routing_key=VECTOR_GEN_REQUEST_ROUTING_KEY,
     )
 
+    channel.queue_declare(queue=CONVERSATION_REQUEST_QUEUE, durable=True)
+    channel.queue_bind(
+        exchange=AI_DIRECT_EXCHANGE,
+        queue=CONVERSATION_REQUEST_QUEUE,
+        routing_key=CONVERSATION_REQUEST_ROUTING_KEY,
+    )
+
 
 def parse_job_command(body: bytes) -> JobParseCommand:
     payload = json.loads(body.decode("utf-8"))
@@ -82,6 +91,11 @@ def parse_resume_command(body: bytes) -> ResumeParseCommand:
 def parse_vector_command(body: bytes) -> VectorGenCommand:
     payload = json.loads(body.decode("utf-8"))
     return VectorGenCommand.model_validate(payload)
+
+
+def parse_conversation_command(body: bytes) -> ConversationRequestCommand:
+    payload = json.loads(body.decode("utf-8"))
+    return ConversationRequestCommand.model_validate(payload)
 
 
 def build_failed_event(
@@ -124,7 +138,6 @@ def handle_resume_message(
     body: bytes,
 ) -> None:
     command = parse_resume_command(body)
-
     try:
         result = process_resume(command)
     except Exception as exc:
@@ -143,7 +156,6 @@ def handle_vector_message(
     body: bytes,
 ) -> None:
     command = parse_vector_command(body)
-
     try:
         result = process_vector(command)
     except Exception as exc:
@@ -157,9 +169,25 @@ def handle_vector_message(
     publish_ai_result(channel, result)
 
 
+def handle_conversation_message(
+    channel: pika.adapters.blocking_connection.BlockingChannel,
+    body: bytes,
+) -> None:
+    command = parse_conversation_command(body)
+    try:
+        result = process_conversation(command)
+    except Exception as exc:
+        result = build_failed_event(
+            reference_id=command.conversation_id,
+            event_type="CONVERSATION_REPLY",
+            error_message=str(exc),
+            event_entity_type=None,
+        )
+
+    publish_ai_result(channel, result)
+
 
 def job_message_callback(ch, method, properties, body) -> None:
-
     try:
         handle_job_message(ch, body)
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -178,12 +206,20 @@ def resume_message_callback(ch, method, properties, body) -> None:
 
 
 def vector_message_callback(ch, method, properties, body) -> None:
-
     try:
         handle_vector_message(ch, body)
         ch.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as exc:
         print(f"Failed to process vector message: {exc}")
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+
+
+def conversation_message_callback(ch, method, properties, body) -> None:
+    try:
+        handle_conversation_message(ch, body)
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+    except Exception as exc:
+        print(f"Failed to process conversation message: {exc}")
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 
@@ -202,5 +238,8 @@ def start_all_consumers(channel: pika.adapters.blocking_connection.BlockingChann
         queue=VECTOR_GEN_REQUEST_QUEUE,
         on_message_callback=vector_message_callback,
     )
-
+    channel.basic_consume(
+        queue=CONVERSATION_REQUEST_QUEUE,
+        on_message_callback=conversation_message_callback,
+    )
     channel.start_consuming()
