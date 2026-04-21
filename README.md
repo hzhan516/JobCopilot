@@ -8,7 +8,7 @@ track application progress.
 ## Features
 
 - **Resume Management**: Upload, parse, and manage your resumes in multiple formats
-- **AI-Powered Parsing**: Extract structured information from resumes using OpenAI
+- **AI-Powered Parsing**: Extract structured information from resumes and job posts using Vertex AI Gemini
 - **Job Matching**: Intelligent job recommendations based on resume content and vector similarity
 - **Application Tracking**: Track job application status and manage your job search pipeline
 - **AI Conversation**: Interactive chat assistant for job search advice and resume optimization
@@ -41,7 +41,7 @@ This project adopts a microservices architecture with the following components:
 |---------------|---------------------------|--------------|--------------------------------------|
 | Frontend      | React 18 + Vite           | 80           | Web user interface served by Nginx   |
 | Backend       | Java 21 + Spring Boot 3.5 | 8080         | REST API and business logic          |
-| AI Service    | Python 3 + FastAPI        | 8000         | AI processing and OpenAI integration |
+| AI Service    | Python 3 + FastAPI        | 8000         | AI processing with Vertex AI Gemini  |
 | Database      | PostgreSQL 15 + pgvector  | 5432         | Business data and vector storage     |
 | Message Queue | RabbitMQ 3                | 5672 / 15672 | Async message processing             |
 
@@ -88,7 +88,8 @@ The backend adopts **Hexagonal Architecture / Domain-Driven Design (DDD)** with 
 
 - Docker 20.10+ and Docker Compose 2.0+
 - Or Podman with podman-compose
-- OpenAI API key
+- Google Cloud project with Vertex AI enabled
+- Google Cloud CLI authenticated via Application Default Credentials (ADC)
 
 ### 1. Clone the Repository
 
@@ -101,19 +102,27 @@ cd resume-assistant
 
 ```bash
 cp .env.example .env
-# Edit .env and fill in your OpenAI API key
+# Edit .env and fill in the required values
 ```
 
 Required environment variables:
 
 | Variable                 | Required | Description                                        |
 |--------------------------|----------|----------------------------------------------------|
-| `OPENAI_API_KEY`         | Yes      | Your OpenAI API key                                |
+| `GOOGLE_CLOUD_PROJECT`   | Yes      | Google Cloud project used by Vertex AI             |
+| `VERTEX_AI_LOCATION`     | Yes      | Vertex AI region, e.g. `us-central1`               |
 | `JWT_SECRET`             | Yes      | Secret key for JWT token generation (min 32 chars) |
 | `SPRING_PROFILES_ACTIVE` | No       | Spring profile: `dev` (default) or `prod`          |
 | `LOG_LEVEL`              | No       | AI service log level: `INFO` (default) or `DEBUG`  |
 
-### 3. Start All Services
+Before starting the AI service locally, authenticate ADC:
+
+```bash
+gcloud auth application-default login
+gcloud config set project "$GOOGLE_CLOUD_PROJECT"
+```
+
+### 3. Start Core Services
 
 Using Docker Compose:
 
@@ -129,6 +138,10 @@ podman-compose up -d
 podman compose up -d
 ```
 
+For local development, we usually start PostgreSQL, RabbitMQ, backend, and frontend with Docker Compose, then run the
+AI service locally so it can reuse local ADC credentials. The `ai-service` container needs ADC credentials mounted
+separately if you want to run it fully inside Docker.
+
 ### 4. Verify Services
 
 | Service             | URL                                   | Description                    |
@@ -136,7 +149,7 @@ podman compose up -d
 | Frontend            | http://localhost                      | Web application                |
 | Backend API         | http://localhost:8080/api             | REST API endpoints             |
 | Backend Health      | http://localhost:8080/actuator/health | Health check                   |
-| AI Service          | http://localhost:8000                 | FastAPI documentation          |
+| AI Service          | http://localhost:8000                 | FastAPI documentation / health |
 | RabbitMQ Management | http://localhost:15672                | Message queue UI (guest/guest) |
 
 ### 5. Stop Services
@@ -186,6 +199,7 @@ Requirements:
 
 - Python 3.11+
 - pip or poetry
+- Google Cloud CLI with ADC configured
 
 ```bash
 cd ai-service
@@ -196,6 +210,10 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Authenticate Vertex AI locally
+gcloud auth application-default login
+gcloud config set project "$GOOGLE_CLOUD_PROJECT"
 
 # Run development server
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -232,7 +250,8 @@ See [DOCKER_DEPLOY.md](./DOCKER_DEPLOY.md) for detailed deployment instructions 
 
 - Python 3.11
 - FastAPI
-- OpenAI API
+- Google Vertex AI Gemini
+- Google Vertex AI embeddings
 - Uvicorn
 
 ### DevOps

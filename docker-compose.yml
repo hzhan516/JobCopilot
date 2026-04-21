@@ -60,8 +60,6 @@ services:
       - FILE_STORAGE_PATH=/app/uploads
       # JWT密钥（生产环境请使用强密钥）
       - JWT_SECRET=${JWT_SECRET:-your-256-bit-secret-key-change-in-production}
-      # OpenAI API密钥（从环境变量读取）
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
       # 激活开发/生产配置
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
     volumes:
@@ -101,8 +99,13 @@ services:
       - RABBITMQ_PASSWORD=guest
       # 文件存储路径（与后端共享）
       - FILE_STORAGE_PATH=/app/uploads
-      # Gemini API密钥
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # Vertex AI配置（容器化运行时仍需额外提供ADC凭证）
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-ser594-ai-service}
+      - VERTEX_AI_LOCATION=${VERTEX_AI_LOCATION:-us-central1}
+      - GEMINI_TEXT_MODEL=${GEMINI_TEXT_MODEL:-gemini-2.5-flash}
+      - GEMINI_VISION_MODEL=${GEMINI_VISION_MODEL:-gemini-2.5-flash}
+      - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
+      - EMBEDDING_OUTPUT_DIMENSION=${EMBEDDING_OUTPUT_DIMENSION:-1536}
       # 日志级别
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
