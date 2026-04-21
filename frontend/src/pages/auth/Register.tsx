@@ -1,59 +1,99 @@
-import React, { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { z } from 'zod';
+import { useForm, useWatch } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FileText, Loader2, Eye, EyeOff } from 'lucide-react';
+import type { AxiosError } from 'axios';
+
+const registerSchema = z
+  .object({
+    email: z.string().min(1, '请输入邮箱地址').email('请输入有效的邮箱地址'),
+    password: z.string().min(1, '请输入密码').min(6, '密码长度至少为6位').max(32, '密码长度最多为32位'),
+    confirmPassword: z.string().min(1, '请确认密码'),
+    agreeTerms: z.boolean().refine((val) => val === true, {
+      message: '请阅读并同意服务条款',
+    }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: '两次输入的密码不一致',
+    path: ['confirmPassword'],
+  });
+
+type RegisterFormValues = z.infer<typeof registerSchema>;
+
+type Strength = 'weak' | 'medium' | 'strong';
+
+function getPasswordStrength(password: string): Strength {
+  if (!password || password.length < 6) return 'weak';
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (password.length >= 10) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/\d/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+
+  if (score <= 2) return 'weak';
+  if (score <= 4) return 'medium';
+  return 'strong';
+}
+
+const strengthConfig: Record<
+  Strength,
+  { label: string; color: string; barColor: string }
+> = {
+  weak: { label: '弱', color: 'text-red-600', barColor: 'bg-red-500' },
+  medium: { label: '中', color: 'text-yellow-600', barColor: 'bg-yellow-500' },
+  strong: { label: '强', color: 'text-green-600', barColor: 'bg-green-500' },
+};
 
 export default function Register() {
   const navigate = useNavigate();
   const { register } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const form = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      confirmPassword: '',
+      agreeTerms: false,
+    },
+  });
+
+  const { isSubmitting } = form.formState;
+  const passwordValue = useWatch({ control: form.control, name: 'password' });
+  const strength = useMemo(() => getPasswordStrength(passwordValue || ''), [passwordValue]);
+  const strengthInfo = strengthConfig[strength];
+
+  const onSubmit = async (values: RegisterFormValues) => {
     setError('');
-    setIsLoading(true);
-
-    // 表单验证
-    if (!email.trim()) {
-      setError('请输入邮箱地址');
-      setIsLoading(false);
-      return;
-    }
-    if (!password.trim()) {
-      setError('请输入密码');
-      setIsLoading(false);
-      return;
-    }
-    if (password.length < 6) {
-      setError('密码长度至少为6位');
-      setIsLoading(false);
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError('两次输入的密码不一致');
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      await register({ email, password });
-      navigate('/resumes');
-    } catch (err: any) {
-      // 处理两种错误格式：axios错误(response.data.message) 或 普通Error(message)
-      const errorMessage = err.response?.data?.message || err.message || '注册失败，请稍后重试';
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
+      await register({ email: values.email, password: values.password }, false);
+      navigate('/resumes', { replace: true });
+    } catch (err) {
+      const axiosErr = err as AxiosError<{ message?: string }>;
+      const status = axiosErr.response?.status;
+      const message = axiosErr.response?.data?.message || axiosErr.message;
+
+      if (status === 409) {
+        setError('邮箱已被注册');
+      } else if (status === 400) {
+        setError(message || '参数校验失败，请检查输入内容');
+      } else {
+        setError(message || '注册失败，请稍后重试');
+      }
     }
   };
 
@@ -83,66 +123,146 @@ export default function Register() {
               </Alert>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">邮箱地址</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
-                  className="h-11"
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>邮箱地址</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="your@email.com"
+                          disabled={isSubmitting}
+                          className="h-11"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">密码</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="至少6位字符"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={isLoading}
-                    className="h-11 pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">确认密码</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="再次输入密码"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={isLoading}
-                  className="h-11"
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>密码</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="6-32位字符"
+                            disabled={isSubmitting}
+                            className="h-11 pr-10"
+                            {...field}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                            tabIndex={-1}
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </FormControl>
+                      {field.value && (
+                        <div className="mt-2 space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full transition-all duration-300 ${strengthInfo.barColor}`}
+                                style={{
+                                  width:
+                                    strength === 'weak' ? '33%' : strength === 'medium' ? '66%' : '100%',
+                                }}
+                              />
+                            </div>
+                            <span className={`text-xs font-medium ${strengthInfo.color}`}>
+                              {strengthInfo.label}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            建议包含大小写字母、数字和特殊符号，长度 8 位以上
+                          </p>
+                        </div>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <Button type="submit" className="w-full h-11" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    注册中...
-                  </>
-                ) : (
-                  '注册'
-                )}
-              </Button>
-            </form>
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>确认密码</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            placeholder="再次输入密码"
+                            disabled={isSubmitting}
+                            className="h-11 pr-10"
+                            {...field}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                            tabIndex={-1}
+                          >
+                            {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="agreeTerms"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 py-1">
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isSubmitting} />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="font-normal cursor-pointer">
+                          我已阅读并同意
+                          <Link to="#" className="text-blue-600 hover:underline ml-1">
+                            服务条款
+                          </Link>
+                          和
+                          <Link to="#" className="text-blue-600 hover:underline ml-1">
+                            隐私政策
+                          </Link>
+                        </FormLabel>
+                        <FormMessage />
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                <Button type="submit" className="w-full h-11" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      注册中...
+                    </>
+                  ) : (
+                    '注册'
+                  )}
+                </Button>
+              </form>
+            </Form>
           </CardContent>
 
           <CardFooter className="flex justify-center">

@@ -6,8 +6,8 @@ interface AuthContextType {
   user: { userId: string; email: string } | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (data: LoginRequest) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<void>;
+  login: (data: LoginRequest, rememberMe?: boolean) => Promise<void>;
+  register: (data: RegisterRequest, rememberMe?: boolean) => Promise<void>;
   logout: () => void;
 }
 
@@ -19,20 +19,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  const login = useCallback(async (data: LoginRequest) => {
+  const login = useCallback(async (data: LoginRequest, rememberMe = false) => {
     setIsLoading(true);
     try {
-      const response = await authService.login(data);
+      const response = await authService.login(data, rememberMe);
       setUser({ userId: response.userId, email: response.email });
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  const register = useCallback(async (data: RegisterRequest) => {
+  const register = useCallback(async (data: RegisterRequest, rememberMe = false) => {
     setIsLoading(true);
     try {
-      const response = await authService.register(data);
+      const response = await authService.register(data, rememberMe);
       setUser({ userId: response.userId, email: response.email });
     } finally {
       setIsLoading(false);
@@ -60,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -67,5 +68,3 @@ export function useAuth() {
   }
   return context;
 }
-
-export default useAuth;

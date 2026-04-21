@@ -1,12 +1,16 @@
 package edu.asu.ser594.resumeassistant.domain.shared.exception;
 
-public abstract class DomainException extends RuntimeException {
+public abstract class DomainException extends LocalizedException {
 
-    public DomainException(String message) {
-        super(message);
+    public DomainException(String messageKey) {
+        super(messageKey);
     }
 
-    public DomainException(String message, Throwable cause) {
-        super(message, cause);
+    public DomainException(String messageKey, Object... args) {
+        super(messageKey, args);
+    }
+
+    public DomainException(String messageKey, Throwable cause, Object... args) {
+        super(messageKey, cause, args);
     }
 }

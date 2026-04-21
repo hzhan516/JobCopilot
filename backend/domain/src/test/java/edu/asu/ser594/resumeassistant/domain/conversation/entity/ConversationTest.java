@@ -90,7 +90,7 @@ class ConversationTest {
 
         assertThatThrownBy(() -> conversation.addMessage(MessageRole.USER, "Hello"))
                 .isInstanceOf(ConversationException.class)
-                .hasMessageContaining("Cannot add message to a closed conversation");
+                .hasMessageContaining("conversation.message.send.failed");
     }
 
     @Test

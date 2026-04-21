@@ -4,7 +4,7 @@ import lombok.Getter;
 
 // Exception with i18n support
 @Getter
-public class LocalizedException extends RuntimeException {
+public abstract class LocalizedException extends RuntimeException {
     private final String messageKey;
     private final Object[] args;
 
@@ -16,6 +16,12 @@ public class LocalizedException extends RuntimeException {
 
     public LocalizedException(String messageKey, Object... args) {
         super(messageKey);
+        this.messageKey = messageKey;
+        this.args = args;
+    }
+
+    public LocalizedException(String messageKey, Throwable cause, Object... args) {
+        super(messageKey, cause);
         this.messageKey = messageKey;
         this.args = args;
     }

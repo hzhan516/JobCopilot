@@ -24,8 +24,7 @@ public class ApplicationTrackingDomainService {
     public void validateStatusTransition(final ApplicationStatus fromStatus, final ApplicationStatus toStatus) {
         if (!fromStatus.canTransitionTo(toStatus)) {
             log.warn("Invalid status transition attempted: {} -> {}", fromStatus, toStatus);
-            throw new TrackingException(
-                    String.format("Status transition from %s to %s is not allowed", fromStatus, toStatus));
+            throw new TrackingException("tracking.status.invalid", fromStatus, toStatus);
         }
     }
 }

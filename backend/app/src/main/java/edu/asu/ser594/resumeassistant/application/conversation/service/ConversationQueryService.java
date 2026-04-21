@@ -48,10 +48,10 @@ public class ConversationQueryService {
      */
     private Conversation getConversationWithOwnershipCheck(UUID conversationId, UUID userId) {
         Conversation conversation = conversationRepository.findById(conversationId)
-            .orElseThrow(() -> new ConversationException(ConversationException.ErrorType.NOT_FOUND, "Conversation not found"));
+            .orElseThrow(() -> new ConversationException("conversation.not.found"));
         
         if (!conversation.isOwnedBy(userId)) {
-            throw new ConversationException(ConversationException.ErrorType.ACCESS_DENIED, "Access denied");
+            throw new ConversationException("access.denied");
         }
         
         return conversation;

@@ -86,7 +86,7 @@ public class Conversation extends AggregateRoot<UUID> {
      */
     public void addMessage(MessageRole role, String content, String fileUrl) {
         if (this.status == ConversationStatus.CLOSED) {
-            throw new ConversationException(ConversationException.ErrorType.CLOSED_CONVERSATION, "Cannot add message to a closed conversation");
+            throw new ConversationException("conversation.message.send.failed");
         }
         int sequence = this.messages.size() + 1;
         Message newMessage = Message.create(this.getId(), role, content, sequence, fileUrl);

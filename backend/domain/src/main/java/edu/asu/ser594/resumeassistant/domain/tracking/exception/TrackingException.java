@@ -10,11 +10,15 @@ import edu.asu.ser594.resumeassistant.domain.shared.exception.DomainException;
  */
 public class TrackingException extends DomainException {
 
-    public TrackingException(final String message) {
-        super(message);
+    public TrackingException(final String messageKey) {
+        super(messageKey);
     }
 
-    public TrackingException(final String message, final Throwable cause) {
-        super(message, cause);
+    public TrackingException(final String messageKey, Object... args) {
+        super(messageKey, args);
+    }
+
+    public TrackingException(final String messageKey, final Throwable cause, Object... args) {
+        super(messageKey, cause, args);
     }
 }
