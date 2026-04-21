@@ -4,6 +4,7 @@ import pika
 
 from app.config import (
     AI_DIRECT_EXCHANGE,
+    JOB_RANK_RESULT_ROUTING_KEY,
     JOB_PARSE_RESULT_ROUTING_KEY,
     RESUME_PARSE_RESULT_ROUTING_KEY,
     VECTOR_GEN_RESULT_ROUTING_KEY,
@@ -43,4 +44,33 @@ def publish_ai_result(
             content_type="application/json",
             delivery_mode=2,
         ),
+    )
+
+
+def publish_json_payload(
+    channel: pika.adapters.blocking_connection.BlockingChannel,
+    routing_key: str,
+    payload: dict,
+) -> None:
+    message_body = json.dumps(payload, ensure_ascii=False)
+
+    channel.basic_publish(
+        exchange=AI_DIRECT_EXCHANGE,
+        routing_key=routing_key,
+        body=message_body.encode("utf-8"),
+        properties=pika.BasicProperties(
+            content_type="application/json",
+            delivery_mode=2,
+        ),
+    )
+
+
+def publish_job_rank_result(
+    channel: pika.adapters.blocking_connection.BlockingChannel,
+    payload: dict,
+) -> None:
+    publish_json_payload(
+        channel=channel,
+        routing_key=JOB_RANK_RESULT_ROUTING_KEY,
+        payload=payload,
     )

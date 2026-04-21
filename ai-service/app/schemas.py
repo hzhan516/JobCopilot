@@ -40,6 +40,16 @@ class ConversationRequestCommand(AppBaseModel):
     resume_version_id: str | None = Field(default=None, alias="resumeVersionId")
 
 
+class JobRankCommand(AppBaseModel):
+    match_id: str = Field(alias="matchId")
+    user_id: str = Field(alias="userId")
+    resume_version_id: str = Field(alias="resumeVersionId")
+    resume_text: str = Field(default="", alias="resumeText")
+    query: str
+    recalled_job_ids: list[str] = Field(default_factory=list, alias="recalledJobIds")
+    job_details: dict[str, Any] = Field(default_factory=dict, alias="jobDetails")
+
+
 class ScrapeResult(AppBaseModel):
     markdown_text: str
     screenshot_url: str | None = None
@@ -115,3 +125,20 @@ class JobMatchResponse(AppBaseModel):
     total: int
     recall_time: int = Field(alias="recallTime")
     rank_time: int = Field(alias="rankTime")
+
+
+class JobRankResultItem(AppBaseModel):
+    job_id: str = Field(alias="jobId")
+    title: str
+    company: str
+    match_score: float = Field(alias="matchScore")
+    match_factors: MatchFactors = Field(alias="matchFactors")
+    description: str
+
+
+class JobRankResultPayload(AppBaseModel):
+    match_id: str = Field(alias="matchId")
+    status: str
+    rank_time_ms: int = Field(alias="rankTimeMs")
+    ranked_results: list[JobRankResultItem] = Field(default_factory=list, alias="rankedResults")
+    error_message: str | None = Field(default=None, alias="errorMessage")

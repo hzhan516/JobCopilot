@@ -28,6 +28,11 @@ CONVERSATION_RESULT_QUEUE = "backend.queue.conversation"
 CONVERSATION_REQUEST_ROUTING_KEY = "ai.req.conversation"
 CONVERSATION_RESULT_ROUTING_KEY = "backend.res.conversation"
 
+JOB_RANK_REQUEST_QUEUE = "ai.queue.job.rank"
+JOB_RANK_RESULT_QUEUE = "backend.queue.job.rank"
+JOB_RANK_REQUEST_ROUTING_KEY = "ai.req.job.rank"
+JOB_RANK_RESULT_ROUTING_KEY = "backend.res.job.rank"
+
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT", "ser594-ai-service")
