@@ -1,6 +1,65 @@
 import { create } from 'zustand';
-import type { ResumeGroup, UploadResponse } from '../types/resume';
-import { resumeApi } from '../services/resume.api';
+import type { ResumeGroup, ResumeVersion, UploadResponse } from '../types/resume';
+import { resumeService } from '../services/resumeService';
+import type {
+  ResumeGroup as ApiResumeGroup,
+  ResumeVersion as ApiResumeVersion,
+} from '../types';
+
+function mapSummaryToVersion(
+  summary: ApiResumeGroup['originalVersion'],
+  groupId: string,
+  versionType: ResumeVersion['versionType']
+): ResumeVersion | null {
+  if (!summary || !summary.exists || !summary.versionId) {
+    return null;
+  }
+
+  return {
+    versionId: summary.versionId,
+    groupId,
+    versionType,
+    status: 'ACTIVE',
+    storagePath: '',
+    content: undefined,
+    parsedContent: undefined,
+    parseStatus: summary.status as ResumeVersion['parseStatus'],
+    parseErrorMessage: undefined,
+    createdAt: summary.createdAt,
+  };
+}
+
+function adaptVersion(version: ApiResumeVersion): ResumeVersion {
+  return {
+    versionId: version.versionId,
+    groupId: version.groupId,
+    versionType: version.versionType as ResumeVersion['versionType'],
+    status: 'ACTIVE',
+    storagePath: '',
+    content: version.content ?? undefined,
+    parsedContent: undefined,
+    parseStatus: version.status as ResumeVersion['parseStatus'],
+    parseErrorMessage: undefined,
+    createdAt: version.createdAt,
+  };
+}
+
+function adaptGroup(group: ApiResumeGroup, versions: ResumeVersion[] = []): ResumeGroup {
+  const fallbackVersions = [
+    mapSummaryToVersion(group.originalVersion, group.groupId, 'ORIGINAL'),
+    mapSummaryToVersion(group.convertedVersion, group.groupId, 'CONVERTED'),
+    mapSummaryToVersion(group.aiOptimizedVersion, group.groupId, 'AI_OPTIMIZED'),
+  ].filter((version): version is ResumeVersion => version !== null);
+
+  return {
+    groupId: group.groupId,
+    title: group.title,
+    isDefault: group.isDefault,
+    createdAt: group.createdAt,
+    updatedAt: group.updatedAt,
+    versions: versions.length > 0 ? versions : fallbackVersions,
+  };
+}
 
 interface ResumeStore {
   groups: ResumeGroup[];
@@ -26,8 +85,8 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
   fetchGroups: async () => {
     set({ loading: true });
     try {
-      const { data } = await resumeApi.getGroups();
-      set({ groups: data });
+      const data = await resumeService.getResumeGroups();
+      set({ groups: data.map((group) => adaptGroup(group)) });
     } finally {
       set({ loading: false });
     }
@@ -36,8 +95,11 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
   fetchGroupDetail: async (groupId: string) => {
     set({ loading: true });
     try {
-      const { data } = await resumeApi.getGroupDetail(groupId);
-      set({ currentGroup: data });
+      const [group, versions] = await Promise.all([
+        resumeService.getResumeGroup(groupId),
+        resumeService.getVersionsByGroup(groupId),
+      ]);
+      set({ currentGroup: adaptGroup(group, versions.map(adaptVersion)) });
     } finally {
       set({ loading: false });
     }
@@ -46,9 +108,9 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
   uploadResume: async (file: File, title?: string) => {
     set({ loading: true, uploadProgress: 0 });
     try {
-      const data = await resumeApi.uploadResume(file, title);
+      const data = await resumeService.uploadResume(file, title);
       set({ uploadProgress: 100 });
-      return data.data;
+      return data;
     } finally {
       set({ loading: false });
       setTimeout(() => set({ uploadProgress: 0 }), 1000);
@@ -64,11 +126,11 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
       const poll = async () => {
         attempts++;
         try {
-          const { data } = await resumeApi.getGroupDetail(groupId);
-          set({ currentGroup: data });
-          
-          const originalVersion = data.versions.find(v => v.versionType === 'ORIGINAL');
-          
+          const data = await resumeService.getResumeGroup(groupId);
+          const adaptedGroup = adaptGroup(data);
+          set({ currentGroup: adaptedGroup });
+
+          const originalVersion = adaptedGroup.versions.find((v) => v.versionType === 'ORIGINAL');
           const status = originalVersion?.parseStatus;
           
           if (status === 'COMPLETED') {
@@ -97,7 +159,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
   saveVersion: async (versionId: string, content: string) => {
     set({ loading: true });
     try {
-      await resumeApi.updateVersion(versionId, content);
+      await resumeService.editVersion(versionId, content);
       const { currentGroup } = get();
       if (currentGroup) {
         await get().fetchGroupDetail(currentGroup.groupId);
@@ -110,7 +172,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
   deleteGroup: async (groupId: string) => {
     set({ loading: true });
     try {
-      await resumeApi.deleteGroup(groupId);
+      await resumeService.deleteResumeGroup(groupId);
       const { groups, currentGroup } = get();
       set({ 
         groups: groups.filter(g => g.groupId !== groupId),
@@ -124,7 +186,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
   deleteVersion: async (versionId: string) => {
     set({ loading: true });
     try {
-      await resumeApi.deleteVersion(versionId);
+      await resumeService.deleteVersion(versionId);
       const { currentGroup } = get();
       if (currentGroup) {
         await get().fetchGroupDetail(currentGroup.groupId);
