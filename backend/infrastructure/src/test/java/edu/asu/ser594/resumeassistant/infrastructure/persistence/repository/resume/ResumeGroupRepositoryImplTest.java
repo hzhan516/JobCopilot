@@ -3,8 +3,11 @@ package edu.asu.ser594.resumeassistant.infrastructure.persistence.repository.res
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.resume.ResumeGroupJpaEntity;
-import edu.asu.ser594.resumeassistant.infrastructure.repository.resume.JpaResumeGroupRepository;
-import edu.asu.ser594.resumeassistant.infrastructure.repository.resume.JpaResumeVersionRepository;
+import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.resume.ResumeVersionJpaEntity;
+import edu.asu.ser594.resumeassistant.infrastructure.persistence.mapper.resume.ResumeGroupPersistenceMapper;
+import edu.asu.ser594.resumeassistant.infrastructure.persistence.mapper.resume.ResumeVersionPersistenceMapper;
+import edu.asu.ser594.resumeassistant.infrastructure.persistence.repository.resume.JpaResumeGroupRepository;
+import edu.asu.ser594.resumeassistant.infrastructure.persistence.repository.resume.JpaResumeVersionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.quality.Strictness;
+import org.mockito.junit.jupiter.MockitoSettings;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -32,6 +37,7 @@ import static org.mockito.Mockito.*;
  * - Version relationship handling
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("Resume Group Repository Implementation Tests")
 class ResumeGroupRepositoryImplTest {
 
@@ -43,6 +49,12 @@ class ResumeGroupRepositoryImplTest {
 
     @Mock
     private JpaResumeVersionRepository jpaVersionRepository;
+
+    @Mock
+    private ResumeGroupPersistenceMapper groupMapper;
+
+    @Mock
+    private ResumeVersionPersistenceMapper versionMapper;
 
     @InjectMocks
     private ResumeGroupRepositoryImpl groupRepository;
@@ -61,6 +73,16 @@ class ResumeGroupRepositoryImplTest {
         testJpaEntity.setIsDefault(false);
         testJpaEntity.setCreatedAt(LocalDateTime.now());
         testJpaEntity.setUpdatedAt(LocalDateTime.now());
+
+        when(groupMapper.toJpaEntity(any(ResumeGroup.class))).thenReturn(testJpaEntity);
+        when(groupMapper.toDomain(any(ResumeGroupJpaEntity.class))).thenAnswer(invocation -> {
+            ResumeGroupJpaEntity e = invocation.getArgument(0);
+            return ResumeGroup.reconstruct(e.getId(), e.getUserId(), e.getTitle(),
+                    Boolean.TRUE.equals(e.getIsDefault()), e.getCreatedAt(), e.getUpdatedAt(), java.util.Collections.emptyList());
+        });
+        when(versionMapper.toJpaEntity(any(ResumeVersion.class))).thenReturn(new ResumeVersionJpaEntity());
+        when(versionMapper.toDomain(any(ResumeVersionJpaEntity.class))).thenReturn(
+                ResumeVersion.createConverted(GROUP_ID));
     }
 
     // ==================== Save Tests ====================

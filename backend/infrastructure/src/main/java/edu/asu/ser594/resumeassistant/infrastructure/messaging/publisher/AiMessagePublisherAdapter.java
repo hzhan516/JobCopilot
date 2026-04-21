@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.infrastructure.messaging.publisher;
 
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ConversationRequestCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ResumeParseCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
@@ -43,6 +44,16 @@ public class AiMessagePublisherAdapter implements AiMessagePublisherPort {
         rabbitTemplate.convertAndSend(
                 RabbitMqConfig.EXCHANGE_AI_DIRECT,
                 RabbitMqConfig.ROUTING_KEY_REQ_JOB_PARSE,
+                command
+        );
+    }
+
+    @Override
+    public void sendConversationRequest(ConversationRequestCommand command) {
+        log.info("Publishing ConversationRequestCommand to RabbitMQ for conversation: {}", command.conversationId());
+        rabbitTemplate.convertAndSend(
+                RabbitMqConfig.EXCHANGE_AI_DIRECT,
+                RabbitMqConfig.ROUTING_KEY_REQ_CONVERSATION,
                 command
         );
     }

@@ -56,6 +56,7 @@
 | **AI服务** | Python FastAPI                       | 简历解析、匹配计算、对话处理    |
 | **数据库**  | PostgreSQL 15 + pgvector             | 业务数据 + 向量数据（统一存储） |
 | **消息队列** | RabbitMQ                             | 异步服务通信            |
+| **对象存储** | MinIO                                | 文件存储（简历、对话附件） |
 | **部署**   | Docker Compose                       | 5服务架构             |
 
 ---
@@ -95,7 +96,7 @@
 │                                     │                                       │
 │  ┌──────────────────────────────────▼─────────────────────────────────────┐ │
 │  │                        基础设施层                                        │ │
-│  │  Repository | MQ Publisher | MQ Consumer | PGVector Client              │ │
+│  │  Repository | MQ Publisher | MQ Consumer | PGVector Client | MinIO     │ │
 │  └──────────────────────────────────┬─────────────────────────────────────┘ │
 └───────────────────────────────────┬─┴───────────────────────────────────────┘
                                     │ 消息队列 (RabbitMQ)
@@ -448,6 +449,25 @@ LIMIT 5;
 └─────────┘    └─────────────┘    └─────────────┘
 ```
 
+#### 5.3.3 对话消息流程
+
+```
+┌─────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│ 用户    │───▶│ 前端        │───▶│ Java后端    │───▶│ 保存消息    │───▶│ 发送MQ      │
+│ 发消息  │    │ 调用API     │    │ 接收请求    │    │ (USER)      │    │ (异步)      │
+└─────────┘    └─────────────┘    └─────────────┘    └─────────────┘    └──────┬──────┘
+                                                                                │
+┌─────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐           │
+│ 前端    │◀───│ 轮询/推送   │◀───│ 保存AI回复  │◀───│ 接收MQ结果  │◀──────────┘
+│ 展示    │    │ 获取消息    │    │ (ASSISTANT) │    │ (Python AI) │
+└─────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+```
+
+**文件上传支线**：
+```
+AI服务 / 前端 ──▶ 调用后端上传API ──▶ 转存MinIO ──▶ 返回预签名URL ──▶ 更新Message记录(fileUrl)
+```
+
 ---
 
 ## 6. 集成架构
@@ -464,6 +484,8 @@ LIMIT 5;
 | ai.job.match.result         | 结果队列 | Python AI | Java后端    | < 5KB  |
 | ai.chat.message             | 工作队列 | Java后端    | Python AI | < 5KB  |
 | ai.chat.message.result      | 结果队列 | Python AI | Java后端    | < 5KB  |
+| ai.conversation             | 工作队列 | Java后端    | Python AI | < 5KB  |
+| ai.conversation.result      | 结果队列 | Python AI | Java后端    | < 5KB  |
 | ai.vector.request           | 请求队列 | Python AI | Java后端    | < 1KB  |
 | ai.vector.response          | 响应队列 | Java后端    | Python AI | 2-5KB  |
 
@@ -526,6 +548,31 @@ LIMIT 5;
   },
   "timestamp": "2025-01-15T10:40:00Z"
 }
+
+// 对话 AI 请求 (Backend -> Python AI)
+{
+  "conversationId": "550e8400-e29b-41d4-a716-446655440003",
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "messageHistory": [
+    { "role": "USER", "content": "帮我优化工作经验部分" }
+  ],
+  "currentMessage": "帮我优化工作经验部分",
+  "fileUrls": ["https://minio.example.com/resumes/xxx.pdf"],
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002"
+}
+
+// 对话 AI 响应 (Python AI -> Backend)
+{
+  "referenceId": "550e8400-e29b-41d4-a716-446655440003",
+  "type": "CONVERSATION_REPLY",
+  "status": "COMPLETED",
+  "data": {
+    "content": "根据您的简历，我建议从以下几个方面优化工作经验...",
+    "fileUrl": "https://minio.example.com/conversations/xxx/optimized.pdf"
+  },
+  "errorMessage": null,
+  "eventType": null
+}
 ```
 
 ### 6.2 REST API设计
@@ -547,6 +594,8 @@ LIMIT 5;
 | `/api/v1/conversations`               | POST   | 创建新对话    | 是  |
 | `/api/v1/conversations/{id}/messages` | GET    | 获取对话消息   | 是  |
 | `/api/v1/conversations/{id}/messages` | POST   | 发送消息     | 是  |
+| `/api/v1/conversations/{id}/files`    | POST   | 上传对话附件   | 是  |
+| `/api/v1/conversations/{id}?page=0&size=20` | GET | 获取对话详情（支持消息分页） | 是 |
 | `/api/v1/applications`                | GET    | 获取申请记录   | 是  |
 | `/api/v1/applications`                | POST   | 创建申请记录   | 是  |
 | `/api/v1/applications/{id}`           | PUT    | 更新申请状态   | 是  |

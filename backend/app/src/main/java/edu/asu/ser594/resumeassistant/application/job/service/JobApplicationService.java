@@ -6,7 +6,6 @@ import edu.asu.ser594.resumeassistant.api.job.dto.response.JobMatchResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchFactors;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchItem;
-import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
@@ -24,21 +23,21 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class JobApplicationService implements JobFacade {
+public class JobApplicationService {
 
     private final JobRepository jobRepository;
     private final AiMessagePublisherPort aiMessagePublisherPort;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Override
     @Transactional
-    public JobResponse submitJob(String userId, SubmitJobRequest request) {
+    public JobResponse submitJob(UUID userId, SubmitJobRequest request) {
         log.info("Submitting new job for async processing for user: {}", userId);
         
         Job job = Job.create(userId, request.url(), request.imageCheckEnabled());
@@ -61,7 +60,6 @@ public class JobApplicationService implements JobFacade {
         }
     }
 
-    @Override
     @Transactional
     public void handleJobProcessResult(AiResultEvent event) {
         Job job = jobRepository.findById(event.referenceId())
@@ -97,9 +95,8 @@ public class JobApplicationService implements JobFacade {
         log.info("Job {} updated to status {}", job.getId(), job.getStatus());
     }
 
-    @Override
     @Transactional(readOnly = true)
-    public JobResponse getJob(String jobId, String userId) {
+    public JobResponse getJob(String jobId, UUID userId) {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
 
@@ -110,17 +107,15 @@ public class JobApplicationService implements JobFacade {
         return mapToResponse(job);
     }
 
-    @Override
     @Transactional(readOnly = true)
-    public List<JobResponse> listJobs(String userId) {
+    public List<JobResponse> listJobs(UUID userId) {
         List<Job> jobs = jobRepository.findAllByUserId(userId);
         return jobs.stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public JobMatchResponse matchJobs(String userId, JobMatchRequest request) {
+    public JobMatchResponse matchJobs(UUID userId, JobMatchRequest request) {
         log.info("Requesting job match for user: {}, query: {}", userId, request.query());
         String url = "http://localhost:8000/api/v1/match";
 
@@ -165,7 +160,7 @@ public class JobApplicationService implements JobFacade {
 
         return new JobResponse(
                 job.getId(),
-                job.getUserId(),
+                job.getUserId().toString(),
                 job.getOriginalUrl(),
                 job.getStatus().name(),
                 parsedContentResponse,

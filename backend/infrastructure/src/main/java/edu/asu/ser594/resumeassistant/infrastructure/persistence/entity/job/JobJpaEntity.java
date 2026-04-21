@@ -13,6 +13,7 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "jobs")
@@ -24,8 +25,8 @@ public class JobJpaEntity {
     @Column(length = 64)
     private String id;
 
-    @Column(name = "user_id", nullable = false, length = 64)
-    private String userId;
+    @Column(name = "user_id", nullable = false, columnDefinition = "UUID")
+    private UUID userId;
 
     @Column(name = "original_url", nullable = false, columnDefinition = "TEXT")
     private String originalUrl;

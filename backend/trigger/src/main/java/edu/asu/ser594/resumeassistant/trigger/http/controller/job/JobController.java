@@ -13,6 +13,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -24,7 +25,7 @@ public class JobController {
 
     @PostMapping
     public ApiResponse<JobResponse> submitJob(
-            @CurrentUser String userId,
+            @CurrentUser UUID userId,
             @Validated @RequestBody SubmitJobRequest request) {
         log.info("User {} submitting job link: {}", userId, request.url());
         JobResponse response = jobFacade.submitJob(userId, request);
@@ -33,7 +34,7 @@ public class JobController {
 
     @GetMapping("/{jobId}")
     public ApiResponse<JobResponse> getJob(
-            @CurrentUser String userId,
+            @CurrentUser UUID userId,
             @PathVariable("jobId") String jobId) {
         log.info("User {} fetching job details: {}", userId, jobId);
         JobResponse response = jobFacade.getJob(jobId, userId);
@@ -46,7 +47,7 @@ public class JobController {
      */
     @GetMapping
     public ApiResponse<List<JobResponse>> listJobs(
-            @CurrentUser String userId) {
+            @CurrentUser UUID userId) {
         log.info("User {} listing all jobs", userId);
         List<JobResponse> response = jobFacade.listJobs(userId);
         return ApiResponse.success(response);
@@ -58,7 +59,7 @@ public class JobController {
      */
     @PostMapping("/match")
     public ApiResponse<JobMatchResponse> matchJobs(
-            @CurrentUser String userId,
+            @CurrentUser UUID userId,
             @RequestBody JobMatchRequest request) {
         log.info("User {} requesting job match", userId);
         JobMatchResponse response = jobFacade.matchJobs(userId, request);

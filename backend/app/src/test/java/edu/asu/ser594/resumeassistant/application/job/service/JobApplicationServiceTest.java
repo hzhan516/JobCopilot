@@ -19,10 +19,11 @@ import org.mockito.MockitoAnnotations;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+
 import static org.mockito.Mockito.*;
 
 class JobApplicationServiceTest {
@@ -43,7 +44,7 @@ class JobApplicationServiceTest {
 
     @Test
     void submitJob_Success() {
-        String userId = "user123";
+        UUID userId = UUID.randomUUID();
         String url = "http://example.com/job";
         SubmitJobRequest request = new SubmitJobRequest(url, false);
 
@@ -53,7 +54,7 @@ class JobApplicationServiceTest {
         JobResponse response = jobApplicationService.submitJob(userId, request);
 
         assertNotNull(response);
-        assertEquals(userId, response.userId());
+        assertEquals(userId.toString(), response.userId());
         assertEquals("SCRAPING", response.status());
 
         verify(jobRepository, times(1)).save(any(Job.class));
@@ -63,7 +64,7 @@ class JobApplicationServiceTest {
     @Test
     void handleJobProcessResult_Success_TriggersVectorGen() {
         String jobId = "job123";
-        Job job = Job.create("user123", "http://example.com/job", false);
+        Job job = Job.create(UUID.randomUUID(), "http://example.com/job", false);
         job.markScraping();
         job.markParsing();
         when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
@@ -90,7 +91,7 @@ class JobApplicationServiceTest {
     @Test
     void getJob_Success() {
         String jobId = "job123";
-        String userId = "user123";
+        UUID userId = UUID.randomUUID();
         Job job = Job.create(userId, "http://example.com", false);
         
         when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
@@ -98,7 +99,7 @@ class JobApplicationServiceTest {
         JobResponse response = jobApplicationService.getJob(jobId, userId);
 
         assertNotNull(response);
-        assertEquals(userId, response.userId());
+        assertEquals(userId.toString(), response.userId());
     }
 
     @Test
@@ -106,17 +107,17 @@ class JobApplicationServiceTest {
         when(jobRepository.findById(anyString())).thenReturn(Optional.empty());
 
         assertThrows(IllegalArgumentException.class, () -> {
-            jobApplicationService.getJob("invalid-id", "user123");
+            jobApplicationService.getJob("invalid-id", UUID.randomUUID());
         });
     }
 
     @Test
     void getJob_WrongUser_ThrowsException() {
-        Job job = Job.create("otherUser", "http://example.com", false);
+        Job job = Job.create(UUID.randomUUID(), "http://example.com", false);
         when(jobRepository.findById("job123")).thenReturn(Optional.of(job));
 
         assertThrows(IllegalArgumentException.class, () -> {
-            jobApplicationService.getJob("job123", "user123");
+            jobApplicationService.getJob("job123", UUID.randomUUID());
         });
     }
 }

@@ -1,5 +1,7 @@
 # 职位智能解析模块 (Link-to-Match) API 文档
 
+> 所有 `userId` 字段已统一为 UUID 字符串格式（标准 36 字符，如 `550e8400-e29b-41d4-a716-446655440000`）。
+
 本模块提供求职者提交心仪职位链接，并利用后端通过 RabbitMQ 异步触发 Python AI 服务抓取网页、解析为结构化数据的能力。整个流程遵循 DDD 六边形架构，Java 后端仅通过 MQ 与 AI 服务交互，完全消除了 HTTP 同步直调的耦合。
 
 ---
@@ -28,7 +30,7 @@ Content-Type: application/json
 ```json
 {
   "jobId": "job-uuid-1234",
-  "userId": "user-uuid",
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
   "originalUrl": "https://www.linkedin.com/jobs/view/12345",
   "status": "PENDING",
   "parsedContent": null,
@@ -62,6 +64,71 @@ Authorization: Bearer <user-jwt-token>
   },
   "imageCheckEnabled": true,
   "errorMessage": null
+}
+```
+
+### 1.3 获取职位列表 (List Jobs)
+**Endpoint:** `GET /api/v1/jobs`
+**描述:** 获取当前登录用户提交的所有职位列表。
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+```
+
+**Response Body (`List<JobResponse>`):**
+```json
+[
+  {
+    "jobId": "job-uuid-1234",
+    "userId": "550e8400-e29b-41d4-a716-446655440000",
+    "originalUrl": "https://www.linkedin.com/jobs/view/12345",
+    "status": "COMPLETED",
+    "parsedContent": null,
+    "imageCheckEnabled": true,
+    "errorMessage": null
+  }
+]
+```
+
+### 1.4 职位智能匹配 (Match Jobs)
+**Endpoint:** `POST /api/v1/jobs/match`
+**描述:** 根据用户简历或查询条件，调用 AI 服务获取匹配的职位推荐列表。
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+Content-Type: application/json
+```
+
+**Request Body (`JobMatchRequest`):**
+```json
+{
+  "query": "Java Spring Boot",
+  "resumeVersionId": "resume-uuid-5678"
+}
+```
+
+**Response Body (`JobMatchResponse`):**
+```json
+{
+  "matches": [
+    {
+      "jobId": "mock-job-1",
+      "title": "Senior Java Developer",
+      "company": "Tech Corp",
+      "matchScore": 0.92,
+      "matchFactors": {
+        "skillMatch": 0.95,
+        "experienceMatch": 0.90,
+        "educationMatch": 0.88
+      },
+      "description": "Looking for an experienced Java developer with Spring Boot skills."
+    }
+  ],
+  "totalResults": 1,
+  "cachedCount": 12,
+  "apiCount": 45
 }
 ```
 
