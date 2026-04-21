@@ -44,13 +44,13 @@
                      └─────────────┘
 ```
 
-| 服务 | 技术栈 | 端口 | 说明 |
-|---------|------------|------|-------------|
-| 前端 | React 18 + Vite | 80 | Nginx托管的Web界面 |
-| 后端 | Java 21 + Spring Boot 3.5 | 8080 | REST API和业务逻辑 |
-| AI服务 | Python 3 + FastAPI | 8000 | AI处理和OpenAI集成 |
-| 数据库 | PostgreSQL 15 + pgvector | 5432 | 业务数据和向量存储 |
-| 消息队列 | RabbitMQ 3 | 5672 / 15672 | 异步消息处理 |
+| 服务   | 技术栈                       | 端口           | 说明            |
+|------|---------------------------|--------------|---------------|
+| 前端   | React 18 + Vite           | 80           | Nginx托管的Web界面 |
+| 后端   | Java 21 + Spring Boot 3.5 | 8080         | REST API和业务逻辑 |
+| AI服务 | Python 3 + FastAPI        | 8000         | AI处理和OpenAI集成 |
+| 数据库  | PostgreSQL 15 + pgvector  | 5432         | 业务数据和向量存储     |
+| 消息队列 | RabbitMQ 3                | 5672 / 15672 | 异步消息处理        |
 
 ## 项目结构
 
@@ -82,14 +82,14 @@
 
 后端采用**六边形架构 / 领域驱动设计（DDD）**，包含以下分层模块：
 
-| 模块 | 说明 | 依赖 |
-|--------|-------------|--------------|
-| `types` | 基础类型、枚举、常量 | 无 |
-| `domain` | 领域实体、服务、仓储接口 | `types` |
-| `api` | DTO、外观接口 | `domain`、`types` |
-| `infrastructure` | 数据库、缓存、消息队列实现 | `domain`、`api` |
-| `trigger` | 控制器、定时任务、事件监听器 | `domain`、`api` |
-| `app` | Spring Boot启动和配置 | 所有模块 |
+| 模块               | 说明               | 依赖               |
+|------------------|------------------|------------------|
+| `types`          | 基础类型、枚举、常量       | 无                |
+| `domain`         | 领域实体、服务、仓储接口     | `types`          |
+| `api`            | DTO、外观接口         | `domain`、`types` |
+| `infrastructure` | 数据库、缓存、消息队列实现    | `domain`、`api`   |
+| `trigger`        | 控制器、定时任务、事件监听器   | `domain`、`api`   |
+| `app`            | Spring Boot启动和配置 | 所有模块             |
 
 ## 快速开始
 
@@ -115,12 +115,12 @@ cp .env.example .env
 
 必需的环境变量：
 
-| 变量 | 必需 | 说明 |
-|----------|----------|-------------|
-| `OPENAI_API_KEY` | 是 | 你的 OpenAI API 密钥 |
-| `JWT_SECRET` | 是 | JWT令牌生成的安全密钥（至少32个字符） |
-| `SPRING_PROFILES_ACTIVE` | 否 | Spring配置文件：`dev`（默认）或`prod` |
-| `LOG_LEVEL` | 否 | AI服务日志级别：`INFO`（默认）或`DEBUG` |
+| 变量                       | 必需 | 说明                          |
+|--------------------------|----|-----------------------------|
+| `OPENAI_API_KEY`         | 是  | 你的OpenAI API密钥              |
+| `JWT_SECRET`             | 是  | JWT令牌生成的密钥（至少32个字符）         |
+| `SPRING_PROFILES_ACTIVE` | 否  | Spring配置文件：`dev`（默认）或`prod` |
+| `LOG_LEVEL`              | 否  | AI服务日志级别：`INFO`（默认）或`DEBUG` |
 
 ### 3. 启动所有服务
 
@@ -140,13 +140,13 @@ podman compose up -d
 
 ### 4. 验证服务状态
 
-| 服务 | 地址 | 说明 |
-|---------|-----|-------------|
-| 前端 | <http://localhost> | Web应用 |
-| 后端API | <http://localhost:8080/api> | REST API端点 |
-| 后端健康检查 | <http://localhost:8080/actuator/health> | 检查服务是否存活 |
-| AI服务 | <http://localhost:8000> | FastAPI Swagger 接口文档 |
-| RabbitMQ管理 | <http://localhost:15672> | 消息队列管理界面（默认账号 guest/guest） |
+| 服务         | 地址                                    | 说明                    |
+|------------|---------------------------------------|-----------------------|
+| 前端         | http://localhost                      | Web应用                 |
+| 后端API      | http://localhost:8080/api             | REST API端点            |
+| 后端健康检查     | http://localhost:8080/actuator/health | 健康检查                  |
+| AI服务       | http://localhost:8000                 | FastAPI文档             |
+| RabbitMQ管理 | http://localhost:15672                | 消息队列管理界面（guest/guest） |
 
 ### 5. 停止服务
 
@@ -274,7 +274,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - RabbitMQ 3
 - Maven 3.9+
 
-### AI 服务
+### AI服务
 
 - Python 3.11
 - FastAPI

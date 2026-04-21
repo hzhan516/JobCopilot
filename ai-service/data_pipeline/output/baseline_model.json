@@ -1,0 +1,30 @@
+{
+  "total_rows": 30,
+  "positive_rows": 4,
+  "negative_rows": 26,
+  "feature_averages": {
+    "positive_skill_overlap_ratio": 0.25,
+    "negative_skill_overlap_ratio": 0.0,
+    "positive_title_keyword_overlap": 0.25,
+    "negative_title_keyword_overlap": 0.0,
+    "positive_experience_description_overlap": 4.75,
+    "negative_experience_description_overlap": 1.8077,
+    "positive_label_score": 0.87,
+    "negative_label_score": 0.0027
+  },
+  "model_artifact": {
+    "model_type": "weighted_feature_baseline",
+    "version": "v1",
+    "feature_weights": {
+      "skill_overlap_ratio": 0.0726,
+      "title_keyword_overlap": 0.0726,
+      "experience_description_overlap": 0.8547
+    },
+    "normalization": {
+      "skill_overlap_ratio": 1.0,
+      "title_keyword_overlap": 1.0,
+      "experience_description_overlap": 12.0
+    },
+    "bias": 0.0
+  }
+}

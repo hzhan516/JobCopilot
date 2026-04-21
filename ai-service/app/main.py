@@ -1,53 +1,111 @@
 """
-智能求职助手 - Python AI服务
-FastAPI入口文件
+Resume Assistant - Python AI service entry point.
 """
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
 import os
+import threading
+
+from fastapi import FastAPI
+
+from app.mq.consumer import create_connection, setup_all_queues, start_all_consumers
+
+from app.schemas import (
+    JobMatchRequest,
+    JobMatchResponse,
+    SuitabilityBreakdown,
+    SuitabilityRequest,
+    SuitabilityResponse,
+)
+
+from app.services.job_matching_service import find_job_matches
+from app.services.suitability_service import evaluate_suitability_with_vertex
+
 
 app = FastAPI(
     title="Resume Assistant AI Service",
-    description="智能求职助手AI服务 - 简历解析、匹配计算、对话处理",
-    version="1.0.0"
+    description="AI service for scraping, parsing, and job processing.",
+    version="1.0.0",
 )
+
+_mq_started = False
+_mq_lock = threading.Lock()
 
 
 @app.get("/")
 async def root():
-    """根路径 - 服务状态"""
     return {
         "service": "Resume Assistant AI",
         "version": "1.0.0",
-        "status": "running"
+        "status": "running",
     }
 
 
 @app.get("/health")
 async def health_check():
-    """健康检查端点"""
     return {
         "status": "healthy",
-        "openai_api_key_configured": bool(os.getenv("OPENAI_API_KEY"))
+        "vertex_ai_project_configured": bool(os.getenv("GOOGLE_CLOUD_PROJECT", "ser594-ai-service")),
+        "vertex_ai_location": os.getenv("VERTEX_AI_LOCATION", "us-central1"),
     }
 
 
 @app.get("/api/status")
 async def status():
-    """详细状态信息"""
     return {
         "service": "AI Service",
         "features": [
             "resume_parse",
             "embedding_generation",
             "job_matching",
-            "chat_processing"
+            "chat_processing",
         ],
-        "ready": True
+        "ready": True,
     }
 
 
+def initialize_mq() -> None:
+    connection = create_connection()
+    channel = connection.channel()
+    setup_all_queues(channel)
+    start_all_consumers(channel)
+
+
+def _start_mq_consumer_once() -> None:
+    global _mq_started
+
+    with _mq_lock:
+        if _mq_started:
+            return
+
+        consumer_thread = threading.Thread(
+            target=initialize_mq,
+            name="rabbitmq-consumer-thread",
+            daemon=True,
+        )
+        consumer_thread.start()
+        _mq_started = True
+
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    _start_mq_consumer_once()
+
+
+@app.post("/api/v1/suitability", response_model=SuitabilityResponse)
+async def evaluate_suitability(request: SuitabilityRequest) -> SuitabilityResponse:
+    return evaluate_suitability_with_vertex(request)
+
+
+@app.post("/api/v1/match", response_model=JobMatchResponse)
+async def match_jobs(request: JobMatchRequest) -> JobMatchResponse:
+    return find_job_matches(request)
+
+
 if __name__ == "__main__":
+    _start_mq_consumer_once()
+
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
