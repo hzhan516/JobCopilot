@@ -1,23 +1,31 @@
 [中文文档](./README.zh.md) | [English Document](../README.md)
 
-# 智能求职助手
+# 智能求职助手 (Resume Assistant)
 
-一个由AI驱动的智能求职助手，帮助求职者优化简历、匹配合适的职位并追踪申请进度。
+**智能求职助手**是一个由 AI 驱动的平台，旨在为应届毕业生和转行者简化求职流程。它能够自动解析用户上传的简历，使用语义向量匹配技术评估简历与就业市场数据的契合度，并提供交互式的 AI 助手来迭代优化简历内容。通过结合安全的文件管理、异步 AI 处理和个性化推荐，该系统为用户节省了数小时的手动修改时间，同时显著提高了面试机会。
+
+**部署地址：** [待定 - 将在实现完成后更新]
+
+## 团队成员
+
+- **Guixing Jia** (@GuixingJia) - 项目经理 (PM)，Python AI 服务 & 前端开发
+- **Hansheng Zhang** (@hzhan516) - Java 后端 & 数据库架构负责人
+- **Mu-Hsi Yu** (@muhsiyu) - 前端 & UX 设计负责人，Python AI 服务
 
 ## 功能特性
 
 - **简历管理**：上传、解析和管理多种格式的简历
-- **AI智能解析**：使用OpenAI从简历中提取结构化信息
+- **AI智能解析**：使用 OpenAI 从简历中提取结构化信息
 - **职位匹配**：基于简历内容和向量相似度的智能职位推荐
 - **申请追踪**：追踪求职申请状态并管理求职流程
 - **AI对话**：交互式聊天助手，提供求职建议和简历优化指导
-- **向量搜索**：基于PostgreSQL pgvector扩展的语义搜索
+- **向量搜索**：基于 PostgreSQL pgvector 扩展的语义搜索
 
 ## 系统架构
 
 本项目采用微服务架构，包含以下组件：
 
-```
+```text
 ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
 │     前端    │──────▶│     后端    │◀─────▶│    AI      │
 │   (React)   │      │ (Spring    │      │ (FastAPI)  │
@@ -46,7 +54,7 @@
 
 ## 项目结构
 
-```
+```text
 .
 ├── frontend/              # React前端应用
 │   ├── src/              # 源代码
@@ -63,7 +71,9 @@
 │   ├── app/              # FastAPI应用
 │   ├── requirements.txt  # Python依赖
 │   └── Dockerfile        # AI服务Docker镜像
-├── docs/                 # 文档
+├── docs/                 # 项目文档
+├── eval/                 # AI评估脚本
+├── tests/                # 测试脚本
 ├── docker-compose.yml    # Docker Compose配置
 └── .env.example          # 环境变量模板
 ```
@@ -86,8 +96,8 @@
 ### 环境要求
 
 - Docker 20.10+ 和 Docker Compose 2.0+
-- 或 Podman 和 podman-compose
-- OpenAI API 密钥
+- 或使用 Podman 和 podman-compose
+- OpenAI API 密钥，或支持兼容的 LLM API 访问权限
 
 ### 1. 克隆仓库
 
@@ -100,7 +110,7 @@ cd resume-assistant
 
 ```bash
 cp .env.example .env
-# 编辑.env文件，填入你的OpenAI API密钥
+# 编辑 .env 文件，填入你的 OpenAI API 密钥
 ```
 
 必需的环境变量：
@@ -128,7 +138,7 @@ podman-compose up -d
 podman compose up -d
 ```
 
-### 4. 验证服务
+### 4. 验证服务状态
 
 | 服务         | 地址                                    | 说明                    |
 |------------|---------------------------------------|-----------------------|
@@ -143,9 +153,46 @@ podman compose up -d
 ```bash
 docker-compose down
 
-# 删除数据卷（注意：数据将丢失）
+# 删除数据卷（警告：所有数据库数据将丢失！）
 docker-compose down -v
 ```
+
+## 测试
+
+本项目在所有模块中维护了严格的测试套件（代码覆盖率 `> 80%`），以确保系统可靠性。
+
+### 后端测试 (Java)
+
+运行 Spring Boot 后端的单元和集成测试：
+
+```bash
+cd backend
+mvn test
+```
+
+### AI 服务测试 (Python)
+
+运行 FastAPI 和 AI 业务逻辑的 pytest 测试：
+
+```bash
+cd ai-service
+pip install -r requirements.txt
+pytest
+```
+
+## AI 评估套件
+
+为了评估 AI 组件（如提取模块的 F1 分数和推荐系统的 NDCG@5）与基准模型的对比表现：
+
+```bash
+cd eval
+# 安装评估脚本依赖
+pip install -r requirements.txt
+# 运行评估流水线
+python run_eval.py
+```
+
+*评估结果将自动导出至 `eval/results/` 目录。*
 
 ## 开发指南
 
@@ -157,7 +204,7 @@ npm install
 npm run dev
 ```
 
-开发服务器将在 http://localhost:5173 启动
+开发服务器将在 <http://localhost:5173> 启动。
 
 ### 后端开发
 
@@ -172,14 +219,14 @@ cd backend
 # 构建所有模块
 mvn clean install
 
-# 使用dev配置运行（默认）
+# 使用 dev 配置运行（默认）
 mvn spring-boot:run -pl app
 
-# 使用prod配置运行
+# 使用 prod 配置运行
 mvn spring-boot:run -pl app -Dspring-boot.run.profiles=prod
 ```
 
-### AI服务开发
+### AI 服务开发
 
 环境要求：
 
@@ -200,15 +247,15 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-## 部署
+## 部署上线
 
-详细部署说明请参考 [DOCKER_DEPLOY.md](../DOCKER_DEPLOY.md)，包括：
+详细的部署说明请参考 [DOCKER_DEPLOY.md](../DOCKER_DEPLOY.md)，内容包括：
 
-- 生产部署检查清单
-- 环境配置
-- SSL/TLS设置
-- 监控和日志
-- 备份策略
+- 生产环境部署检查清单
+- 环境变量配置
+- SSL/TLS 设置
+- 监控与日志记录
+- 数据备份策略
 
 ## 技术栈
 
@@ -250,9 +297,9 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ## 许可证
 
-本项目为亚利桑那州立大学（SER594课程）学术目的开发。
+本项目为亚利桑那州立大学（Arizona State University, SER594课程）学术目的开发。
 
 ## 致谢
 
 - 亚利桑那州立大学
-- SER594课程团队
+- SER594 课程教学团队
