@@ -86,3 +86,32 @@ class SuitabilityResponse(AppBaseModel):
     vertex_score: float = Field(alias="vertexScore")
     dataset_score: float | None = Field(default=None, alias="datasetScore")
     final_score: float = Field(alias="finalScore")
+
+
+class JobMatchRequest(AppBaseModel):
+    user_id: str = Field(alias="userId")
+    query: str
+    top_k: int = Field(default=10, alias="topK")
+    filters: dict[str, str] = Field(default_factory=dict)
+
+
+class MatchFactors(AppBaseModel):
+    skill_match: float = Field(alias="skillMatch")
+    experience_match: float = Field(alias="experienceMatch")
+    location_match: float = Field(alias="locationMatch")
+
+
+class MatchItem(AppBaseModel):
+    job_id: str = Field(alias="jobId")
+    title: str
+    company: str
+    match_score: float = Field(alias="matchScore")
+    match_factors: MatchFactors = Field(alias="matchFactors")
+    description: str
+
+
+class JobMatchResponse(AppBaseModel):
+    matches: list[MatchItem]
+    total: int
+    recall_time: int = Field(alias="recallTime")
+    rank_time: int = Field(alias="rankTime")

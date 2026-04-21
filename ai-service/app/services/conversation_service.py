@@ -1,7 +1,56 @@
 import json
+from pathlib import Path
+from urllib.parse import urlparse
 
 from app.schemas import AiResultEvent, ConversationRequestCommand
+from app.services.file_parser import download_file_bytes, extract_resume_text
 from app.services.gemini_client import generate_json_from_text_prompt
+
+
+def _infer_file_format(file_url: str) -> str | None:
+    suffix = Path(urlparse(file_url).path).suffix.lower()
+    if suffix == ".pdf":
+        return "pdf"
+    if suffix == ".docx":
+        return "docx"
+    if suffix == ".txt":
+        return "txt"
+    if suffix == ".md":
+        return "md"
+    return None
+
+
+def _load_attachment_context(command: ConversationRequestCommand) -> tuple[list[dict[str, str]], list[str]]:
+    attachments: list[dict[str, str]] = []
+    warnings: list[str] = []
+
+    for file_url in command.file_urls[:3]:
+        file_format = _infer_file_format(file_url)
+        if not file_format:
+            warnings.append(f"Skipped unsupported attachment format: {file_url}")
+            continue
+
+        try:
+            file_bytes = download_file_bytes(file_url)
+            extracted_text = extract_resume_text(file_bytes, file_format)
+        except Exception as exc:
+            warnings.append(f"Failed to read attachment {file_url}: {exc}")
+            continue
+
+        snippet = extracted_text.strip()
+        if not snippet:
+            warnings.append(f"Attachment had no readable text: {file_url}")
+            continue
+
+        attachments.append(
+            {
+                "fileUrl": file_url,
+                "format": file_format,
+                "textSnippet": snippet[:4000],
+            }
+        )
+
+    return attachments, warnings
 
 
 def _build_conversation_prompt(command: ConversationRequestCommand) -> str:
@@ -9,6 +58,7 @@ def _build_conversation_prompt(command: ConversationRequestCommand) -> str:
         message.model_dump(by_alias=True)
         for message in command.message_history
     ]
+    attachments, warnings = _load_attachment_context(command)
 
     return f"""
 You are an AI assistant for a resume and job application support system.
@@ -30,8 +80,8 @@ Rules:
 - content: your reply to the user
 - fileUrl: null unless a generated file URL is explicitly available
 - be practical and specific
-- do not invent uploaded file contents if they are not provided
-- if fileUrls are provided, mention that files are attached but cannot be edited directly yet
+- use attached file content when readable text is provided below
+- do not invent missing attachment contents
 - answer in the same language as the user's current message when possible
 
 Conversation ID:
@@ -45,6 +95,12 @@ Resume Version ID:
 
 Attached File URLs:
 {json.dumps(command.file_urls, ensure_ascii=False, indent=2)}
+
+Readable Attachment Content:
+{json.dumps(attachments, ensure_ascii=False, indent=2)}
+
+Attachment Warnings:
+{json.dumps(warnings, ensure_ascii=False, indent=2)}
 
 Message History:
 {json.dumps(history, ensure_ascii=False, indent=2)}

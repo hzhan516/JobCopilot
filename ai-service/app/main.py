@@ -9,8 +9,15 @@ from fastapi import FastAPI
 
 from app.mq.consumer import create_connection, setup_all_queues, start_all_consumers
 
-from app.schemas import SuitabilityBreakdown, SuitabilityRequest, SuitabilityResponse
+from app.schemas import (
+    JobMatchRequest,
+    JobMatchResponse,
+    SuitabilityBreakdown,
+    SuitabilityRequest,
+    SuitabilityResponse,
+)
 
+from app.services.job_matching_service import find_job_matches
 from app.services.suitability_service import evaluate_suitability_with_vertex
 
 
@@ -89,12 +96,16 @@ async def evaluate_suitability(request: SuitabilityRequest) -> SuitabilityRespon
     return evaluate_suitability_with_vertex(request)
 
 
+@app.post("/api/v1/match", response_model=JobMatchResponse)
+async def match_jobs(request: JobMatchRequest) -> JobMatchResponse:
+    return find_job_matches(request)
+
+
 if __name__ == "__main__":
     _start_mq_consumer_once()
 
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
 
 
