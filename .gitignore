@@ -44,3 +44,9 @@
 # macOS
 .DS_Store
 **/.DS_Store
+
+# Frontend generated files
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.vite/
+/frontend/.tmp/
