@@ -82,6 +82,11 @@ Rules:
 - be practical and specific
 - use attached file content when readable text is provided below
 - do not invent missing attachment contents
+- if you do not actually have resume text, job text, or attachment text, say so clearly
+- if the user asks whether you can see their resume, answer truthfully based on the provided attachment content
+- do not claim you reviewed a resume, job description, or file unless that content is present below
+- avoid generic openings such as "Thank you for your question"
+- do not give broad advice when the user asks a yes/no or visibility question; answer the question first
 - answer in the same language as the user's current message when possible
 
 Conversation ID:
@@ -112,7 +117,14 @@ Current Message:
 
 def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
     prompt = _build_conversation_prompt(command)
+    print(
+        "Conversation request:"
+        f" conversation_id={command.conversation_id},"
+        f" history_count={len(command.message_history)},"
+        f" file_url_count={len(command.file_urls)}"
+    )
     result = generate_json_from_text_prompt(prompt)
+    print(f"Conversation model result: {result}")
 
     content = str(result.get("content", "")).strip()
     file_url = result.get("fileUrl")
