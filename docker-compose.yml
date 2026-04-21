@@ -58,6 +58,9 @@ services:
       - SPRING_RABBITMQ_PASSWORD=guest
       # 文件存储路径
       - FILE_STORAGE_PATH=/app/uploads
+      # 本地部署使用本地文件存储，避免依赖未部署的 MinIO
+      - STORAGE_TYPE=local
+      - LOCAL_STORAGE_BASE_PATH=/app/uploads
       # JWT密钥（生产环境请使用强密钥）
       - JWT_SECRET=${JWT_SECRET:-your-256-bit-secret-key-change-in-production}
       # 激活开发/生产配置
@@ -75,7 +78,7 @@ services:
     restart: unless-stopped
     # 健康检查
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/api/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
