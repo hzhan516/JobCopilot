@@ -2,6 +2,7 @@ package edu.asu.ser594.resumeassistant.infrastructure.messaging.publisher;
 
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ConversationRequestCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobRankCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ResumeParseCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
@@ -54,6 +55,16 @@ public class AiMessagePublisherAdapter implements AiMessagePublisherPort {
         rabbitTemplate.convertAndSend(
                 RabbitMqConfig.EXCHANGE_AI_DIRECT,
                 RabbitMqConfig.ROUTING_KEY_REQ_CONVERSATION,
+                command
+        );
+    }
+
+    @Override
+    public void sendJobForRanking(JobRankCommand command) {
+        log.info("Publishing JobRankCommand to RabbitMQ for match: {}", command.matchId());
+        rabbitTemplate.convertAndSend(
+                RabbitMqConfig.EXCHANGE_AI_DIRECT,
+                RabbitMqConfig.ROUTING_KEY_REQ_JOB_RANK,
                 command
         );
     }

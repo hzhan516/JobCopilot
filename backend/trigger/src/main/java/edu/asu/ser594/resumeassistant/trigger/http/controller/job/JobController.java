@@ -3,6 +3,7 @@ package edu.asu.ser594.resumeassistant.trigger.http.controller.job;
 import edu.asu.ser594.resumeassistant.api.common.dto.ApiResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.JobMatchRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
+import edu.asu.ser594.resumeassistant.api.matching.dto.response.JobMatchHistoryResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobMatchResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
@@ -54,8 +55,8 @@ public class JobController {
     }
 
     /**
-     * 获取职位匹配推荐
-     * Get job matching recommendations
+     * 启动异步职位匹配
+     * Start async job matching
      */
     @PostMapping("/match")
     public ApiResponse<JobMatchResponse> matchJobs(
@@ -63,6 +64,31 @@ public class JobController {
             @RequestBody JobMatchRequest request) {
         log.info("User {} requesting job match", userId);
         JobMatchResponse response = jobFacade.matchJobs(userId, request);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 查询匹配结果
+     * Get match result by match ID
+     */
+    @GetMapping("/match/{matchId}")
+    public ApiResponse<JobMatchResponse> getMatchResult(
+            @CurrentUser UUID userId,
+            @PathVariable("matchId") String matchId) {
+        log.info("User {} fetching match result: {}", userId, matchId);
+        JobMatchResponse response = jobFacade.getMatchResult(matchId);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 获取历史匹配列表
+     * Get match history list
+     */
+    @GetMapping("/match/history")
+    public ApiResponse<List<JobMatchHistoryResponse>> getMatchHistory(
+            @CurrentUser UUID userId) {
+        log.info("User {} fetching match history", userId);
+        List<JobMatchHistoryResponse> response = jobFacade.getMatchHistory(userId);
         return ApiResponse.success(response);
     }
 }
