@@ -1,0 +1,319 @@
+{
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "create": "创建",
+    "loading": "加载中...",
+    "confirm": "确认",
+    "back": "返回",
+    "upload": "上传",
+    "submit": "提交",
+    "success": "成功",
+    "error": "错误",
+    "warning": "警告",
+    "yes": "是",
+    "no": "否",
+    "close": "关闭",
+    "viewDetails": "查看详情",
+    "enter": "进入",
+    "viewAll": "查看全部",
+    "viewMore": "查看更多",
+    "notSpecified": "未指定",
+    "notAvailable": "暂无",
+    "optional": "可选",
+    "appName": "智能求职助手"
+  },
+  "layout": {
+    "nav": {
+      "resumes": "我的简历",
+      "jobs": "职位推荐",
+      "chat": "AI对话",
+      "tracking": "求职跟踪"
+    },
+    "userMenu": {
+      "profile": "个人中心",
+      "logout": "退出登录"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "欢迎回来",
+      "subtitle": "登录您的账户继续",
+      "emailLabel": "邮箱地址",
+      "emailPlaceholder": "your@email.com",
+      "passwordLabel": "密码",
+      "passwordPlaceholder": "请输入密码",
+      "rememberMe": "记住我",
+      "loginButton": "登录",
+      "loggingIn": "登录中...",
+      "noAccount": "还没有账户？",
+      "registerNow": "立即注册",
+      "errorInvalidCredentials": "账户或密码错误",
+      "errors": {
+        "emailRequired": "请输入邮箱地址",
+        "emailInvalid": "请输入有效的邮箱地址",
+        "passwordRequired": "请输入密码",
+        "passwordMin": "密码长度至少为6位",
+        "passwordMax": "密码长度最多为32位"
+      }
+    },
+    "register": {
+      "title": "创建账户",
+      "subtitle": "开始您的智能求职之旅",
+      "emailLabel": "邮箱地址",
+      "emailPlaceholder": "your@email.com",
+      "passwordLabel": "密码",
+      "passwordPlaceholder": "6-32位字符",
+      "confirmPasswordLabel": "确认密码",
+      "confirmPasswordPlaceholder": "再次输入密码",
+      "agreeTerms": "我已阅读并同意",
+      "termsOfService": "服务条款",
+      "privacyPolicy": "隐私政策",
+      "and": "和",
+      "registerButton": "注册",
+      "registering": "注册中...",
+      "hasAccount": "已有账户？",
+      "loginNow": "立即登录",
+      "errorEmailExists": "邮箱已被注册",
+      "errorValidation": "参数校验失败，请检查输入内容",
+      "errorGeneric": "注册失败，请稍后重试",
+      "errors": {
+        "emailRequired": "请输入邮箱地址",
+        "emailInvalid": "请输入有效的邮箱地址",
+        "passwordRequired": "请输入密码",
+        "passwordMin": "密码长度至少为6位",
+        "passwordMax": "密码长度最多为32位",
+        "confirmPasswordRequired": "请确认密码",
+        "passwordMismatch": "两次输入的密码不一致",
+        "agreeTermsRequired": "请阅读并同意服务条款"
+      },
+      "passwordStrength": {
+        "weak": "弱",
+        "medium": "中",
+        "strong": "强",
+        "hint": "建议包含大小写字母、数字和特殊符号，长度8位以上"
+      }
+    }
+  },
+  "dashboard": {
+    "welcome": "欢迎回来！",
+    "subtitle": "智能求职助手已为您准备好今日的求职建议",
+    "uploadResume": "上传简历",
+    "viewJobs": "查看职位",
+    "stats": {
+      "resumes": "简历数量",
+      "matches": "匹配职位",
+      "applications": "投递记录",
+      "chats": "AI对话"
+    },
+    "quickActions": {
+      "title": "快速操作",
+      "resumes": "我的简历",
+      "resumesDesc": "管理您的简历，支持多版本",
+      "jobs": "职位推荐",
+      "jobsDesc": "基于简历智能匹配职位",
+      "chat": "AI对话",
+      "chatDesc": "智能助手帮您优化简历",
+      "tracking": "求职跟踪",
+      "trackingDesc": "追踪求职进度和面试安排"
+    },
+    "recommendedJobs": {
+      "title": "为您推荐",
+      "matchLabel": "匹配度"
+    },
+    "applicationProgress": {
+      "title": "求职进展",
+      "status": {
+        "interview": "面试中",
+        "applied": "已投递",
+        "offered": "已录用"
+      }
+    }
+  },
+  "jobList": {
+    "title": "职位推荐",
+    "subtitle": "基于您的简历智能匹配",
+    "searchPlaceholder": "搜索职位、公司...",
+    "locationFilter": "工作地点",
+    "allLocations": "全部地点",
+    "sortBy": "排序方式",
+    "sortMatch": "匹配度",
+    "sortSalary": "薪资",
+    "sortDate": "发布时间",
+    "emptyTitle": "暂无匹配的职位",
+    "emptyDesc": "请尝试调整筛选条件或更新您的简历",
+    "salaryNegotiable": "薪资面议",
+    "salaryMin": "{{min}}K起",
+    "salaryMax": "最高{{max}}K",
+    "salaryRange": "{{min}}K-{{max}}K",
+    "matchScore": "匹配度 {{score}}%",
+    "viewDetails": "查看详情",
+    "loadError": "加载职位列表失败"
+  },
+  "chat": {
+    "newChat": "新建对话",
+    "newChatTitle": "新建对话",
+    "newChatDesc": "输入对话标题开始新的咨询",
+    "chatTitlePlaceholder": "对话标题",
+    "create": "创建",
+    "delete": "删除",
+    "aiAssistant": "AI求职助手",
+    "emptyState": "开始新的对话吧",
+    "selectOrCreate": "选择一个对话或创建新对话",
+    "inputPlaceholder": "输入您的问题...",
+    "aiThinking": "AI正在思考...",
+    "footerHint": "AI助手可以帮您优化简历、推荐职位、解答求职问题",
+    "loadError": "加载对话列表失败",
+    "createError": "请输入对话标题",
+    "createFailed": "创建对话失败",
+    "sendFailed": "发送失败",
+    "deleteSuccess": "删除成功",
+    "deleteFailed": "删除失败",
+    "createSuccess": "创建成功",
+    "mockGreeting": "您好！我是您的AI求职助手。我可以帮您优化简历、推荐职位、解答求职相关问题。请问有什么可以帮助您的？",
+    "mockReply": "感谢您的提问！关于\"{{question}}\"，我建议您：\n\n1. 首先完善您的简历内容，突出相关技能和经验\n2. 针对目标岗位定制简历关键词\n3. 准备相关的项目案例和工作成果\n\n如果您需要更详细的建议，请告诉我您的具体情况。"
+  },
+  "tracking": {
+    "title": "求职跟踪",
+    "subtitle": "管理您的求职进度",
+    "addRecord": "添加记录",
+    "stats": {
+      "applied": "已投递",
+      "interview": "面试中",
+      "offered": "已录用",
+      "total": "总计"
+    },
+    "status": {
+      "APPLIED": "已投递",
+      "SCREENING": "筛选中",
+      "INTERVIEW": "面试中",
+      "OFFER": "已录用",
+      "REJECTED": "已拒绝",
+      "WITHDRAWN": "已撤回"
+    },
+    "recordList": "投递记录",
+    "emptyTitle": "暂无投递记录",
+    "emptyDesc": "添加您的第一笔投递记录",
+    "company": "公司",
+    "jobTitle": "职位名称",
+    "jobTitlePlaceholder": "例如：前端工程师",
+    "companyPlaceholder": "例如：阿里巴巴",
+    "currentStatus": "当前状态",
+    "notes": "备注",
+    "notesPlaceholder": "可选",
+    "add": "添加",
+    "addRecordTitle": "添加投递记录",
+    "addRecordDesc": "记录您的求职投递信息",
+    "updateSuccess": "状态更新成功",
+    "updateFailed": "更新失败",
+    "addSuccess": "添加成功",
+    "addFailed": "添加失败",
+    "deleteSuccess": "删除成功",
+    "deleteFailed": "删除失败",
+    "loadError": "加载投递记录失败",
+    "fillRequired": "请填写完整信息"
+  },
+  "resume": {
+    "list": {
+      "title": "我的简历",
+      "subtitle": "管理您的简历并跟踪解析状态。",
+      "upload": "上传简历",
+      "noResumes": "暂无简历",
+      "noResumesDesc": "上传您的第一份简历以开始使用。我们将自动解析并提取您的信息。",
+      "uploadSuccess": "简历上传成功，开始解析...",
+      "parseSuccess": "简历解析成功！",
+      "parseFailed": "简历解析失败。",
+      "parseTimeout": "解析时间较长，请稍候。",
+      "uploadFailed": "简历上传失败。",
+      "deleteConfirm": "确定要删除这份简历吗？",
+      "deleteSuccess": "简历删除成功。",
+      "deleteFailed": "简历删除失败。",
+      "uploadDialogTitle": "上传简历",
+      "uploadDialogDesc": "支持 PDF、DOCX、MD 或 TXT 格式，最大 10MB。"
+    },
+    "upload": {
+      "dragText": "点击或拖拽文件到此处上传",
+      "singleUpload": "支持单文件上传，最大 10MB。",
+      "formats": "支持格式：PDF、DOCX、MD、TXT",
+      "uploading": "上传中...",
+      "invalidType": "文件类型无效，请上传 PDF、DOCX、MD 或 TXT。",
+      "sizeExceeded": "文件大小超过 10MB 限制。",
+      "uploadError": "文件上传失败，请重试。"
+    },
+    "card": {
+      "default": "默认",
+      "versions": "版本数",
+      "latestStatus": "最新状态",
+      "viewDetails": "查看详情",
+      "deleteTitle": "删除简历",
+      "created": "创建于"
+    },
+    "detail": {
+      "notFound": "简历不存在",
+      "backToList": "返回简历列表",
+      "versionNotFound": "版本不存在",
+      "backToDetail": "返回简历详情",
+      "createdOn": "创建于",
+      "versionHistory": "版本历史",
+      "selectVersion": "选择一个版本查看详情"
+    },
+    "edit": {
+      "title": "编辑版本",
+      "back": "返回简历列表",
+      "backToDetail": "返回简历详情"
+    },
+    "timeline": {
+      "original": "原始上传",
+      "converted": "解析版本",
+      "aiOptimized": "AI优化",
+      "active": "活跃",
+      "archived": "已归档"
+    },
+    "parseStatus": {
+      "pending": "待处理",
+      "processing": "处理中",
+      "completed": "已完成",
+      "failed": "失败"
+    },
+    "versionDetail": {
+      "title": "版本详情",
+      "basicInfo": "基本信息",
+      "jobTitle": "职位",
+      "company": "公司",
+      "requirements": "岗位要求",
+      "description": "职位描述",
+      "rawContent": "原始内容",
+      "editContent": "编辑内容",
+      "parsed": "已解析",
+      "original": "原始",
+      "converted": "已转换",
+      "aiOptimized": "AI优化",
+      "noRequirements": "未提取到岗位要求。",
+      "noDescription": "暂无职位描述。",
+      "contentNotAvailable": "该版本暂无内容。"
+    },
+    "markdownEditor": {
+      "title": "编辑简历",
+      "save": "保存",
+      "cancel": "取消"
+    },
+    "download": {
+      "button": "下载",
+      "original": "原始文件",
+      "pdf": "PDF 文档",
+      "docx": "Word 文档",
+      "md": "Markdown",
+      "html": "HTML",
+      "txt": "纯文本",
+      "error": "简历下载失败"
+    }
+  },
+  "language": {
+    "en": "English",
+    "zhCN": "简体中文",
+    "zhTW": "繁體中文",
+    "switch": "切换语言"
+  }
+}

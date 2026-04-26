@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import MDEditor from '@uiw/react-md-editor';
 import { Button } from '../ui/button';
 import { Save, X } from 'lucide-react';
@@ -16,6 +17,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   onSave,
   onCancel,
 }) => {
+  const { t } = useTranslation();
   const storageKey = `resume-editor-autosave-${versionId}`;
   
   const [content, setContent] = useState<string>(() => {
@@ -54,15 +56,15 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   return (
     <div className="flex flex-col h-full w-full space-y-4" data-color-mode="light">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Edit Resume</h3>
+        <h3 className="text-lg font-semibold">{t('resume.markdownEditor.title')}</h3>
         <div className="flex space-x-2">
           <Button variant="outline" onClick={handleCancel}>
             <X className="w-4 h-4 mr-2" />
-            Cancel
+            {t('resume.markdownEditor.cancel')}
           </Button>
           <Button onClick={handleSave}>
             <Save className="w-4 h-4 mr-2" />
-            Save
+            {t('resume.markdownEditor.save')}
           </Button>
         </div>
       </div>
