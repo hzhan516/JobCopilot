@@ -64,10 +64,16 @@ async def status():
 
 
 def initialize_mq() -> None:
-    connection = create_connection()
-    channel = connection.channel()
-    setup_all_queues(channel)
-    start_all_consumers(channel)
+    try:
+        print("Starting RabbitMQ consumers...")
+        connection = create_connection()
+        channel = connection.channel()
+        setup_all_queues(channel)
+        print("RabbitMQ consumers are ready.")
+        start_all_consumers(channel)
+    except Exception as exc:
+        print(f"RabbitMQ consumer startup failed: {exc}", flush=True)
+        raise
 
 
 def _start_mq_consumer_once() -> None:
@@ -84,6 +90,7 @@ def _start_mq_consumer_once() -> None:
         )
         consumer_thread.start()
         _mq_started = True
+        print("RabbitMQ consumer thread started.")
 
 
 @app.on_event("startup")
@@ -107,5 +114,4 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
 

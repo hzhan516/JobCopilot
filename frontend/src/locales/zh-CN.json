@@ -164,6 +164,7 @@
     "selectOrCreate": "选择一个对话或创建新对话",
     "inputPlaceholder": "输入您的问题...",
     "aiThinking": "AI正在思考...",
+    "aiPending": "消息已发送，AI 回复仍在处理中。",
     "footerHint": "AI助手可以帮您优化简历、推荐职位、解答求职问题",
     "loadError": "加载对话列表失败",
     "createError": "请输入对话标题",

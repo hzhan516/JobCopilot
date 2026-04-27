@@ -45,6 +45,10 @@ def publish_ai_result(
             delivery_mode=2,
         ),
     )
+    print(
+        f"Published AI result: type={event.type}, status={event.status}, routing_key={routing_key}",
+        flush=True,
+    )
 
 
 def publish_json_payload(

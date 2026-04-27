@@ -164,6 +164,7 @@
     "selectOrCreate": "Select a conversation or create a new one",
     "inputPlaceholder": "Type your question...",
     "aiThinking": "AI is thinking...",
+    "aiPending": "Message sent. AI reply is still processing.",
     "footerHint": "AI can help you optimize resumes, recommend jobs, and answer job search questions",
     "loadError": "Failed to load conversations",
     "createError": "Please enter a chat title",

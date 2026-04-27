@@ -105,8 +105,12 @@ export interface Job {
 // 对话类型
 export interface Conversation {
   conversationId: string;
+  userId?: string;
   title: string;
+  status?: string;
   resumeId?: string;
+  resumeVersionId?: string | null;
+  messages?: Message[];
   createdAt: string;
   updatedAt: string;
 }
@@ -114,9 +118,11 @@ export interface Conversation {
 // 消息类型
 export interface Message {
   messageId: string;
-  conversationId: string;
+  conversationId?: string;
   role: 'USER' | 'ASSISTANT';
   content: string;
+  sequence?: number;
+  fileUrl?: string | null;
   createdAt: string;
 }
 
