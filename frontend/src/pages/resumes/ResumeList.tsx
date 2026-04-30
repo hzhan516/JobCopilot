@@ -49,7 +49,7 @@ export default function ResumeList() {
   };
 
   const handleView = (groupId: string) => {
-    navigate(`/resumes/${groupId}/edit`);
+    navigate(`/resumes/${groupId}`);
   };
 
   const handleDelete = async (groupId: string) => {

@@ -13,7 +13,15 @@ export default function ResumeDetail() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
   const { currentGroup, loading, fetchGroupDetail } = useResumeStore();
-  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(() => {
+    if (currentGroup && currentGroup.versions.length > 0) {
+      const sortedVersions = [...currentGroup.versions].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      return sortedVersions[0].versionId;
+    }
+    return null;
+  });
 
   useEffect(() => {
     if (groupId) {
@@ -28,7 +36,7 @@ export default function ResumeDetail() {
       );
       setSelectedVersionId(sortedVersions[0].versionId);
     }
-  }, [currentGroup, selectedVersionId]);
+  }, [currentGroup]);
 
   if (loading && !currentGroup) {
     return (

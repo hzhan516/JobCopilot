@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '@/hooks/useAuth';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -36,9 +37,10 @@ type LoginFormValues = z.infer<ReturnType<typeof useLoginSchema>>;
 export default function Login() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, loginByGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const loginSchema = useLoginSchema();
 
@@ -60,6 +62,23 @@ export default function Login() {
       navigate('/resumes', { replace: true });
     } catch {
       setError(t('auth.login.errorInvalidCredentials'));
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: { credential?: string }) => {
+    if (!credentialResponse.credential) {
+      setError(t('auth.login.googleLoginFailed'));
+      return;
+    }
+    setError('');
+    setGoogleLoading(true);
+    try {
+      await loginByGoogle(credentialResponse.credential, false);
+      navigate('/resumes', { replace: true });
+    } catch {
+      setError(t('auth.login.googleLoginFailed'));
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -171,6 +190,27 @@ export default function Login() {
                 </Button>
               </form>
             </Form>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-muted-foreground">{t('auth.login.or')}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-center">
+              {googleLoading ? (
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              ) : (
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => setError(t('auth.login.googleLoginFailed'))}
+                  useOneTap
+                />
+              )}
+            </div>
           </CardContent>
 
           <CardFooter className="flex justify-center">

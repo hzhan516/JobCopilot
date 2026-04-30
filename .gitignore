@@ -170,6 +170,7 @@
 /backend/domain/.factorypath
 /backend/domain/.project
 /backend/domain/.settings/
+
 # Python
 **/.venv/
 **/__pycache__/
@@ -185,3 +186,4 @@
 /frontend/.vite/
 /frontend/.tmp/
 /AGENTS.md
+/frontend/.env

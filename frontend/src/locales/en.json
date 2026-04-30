@@ -51,6 +51,8 @@
       "noAccount": "Don't have an account?",
       "registerNow": "Register now",
       "errorInvalidCredentials": "Invalid email or password",
+      "or": "or",
+      "googleLoginFailed": "Google login failed, please try again",
       "errors": {
         "emailRequired": "Please enter your email address",
         "emailInvalid": "Please enter a valid email address",
