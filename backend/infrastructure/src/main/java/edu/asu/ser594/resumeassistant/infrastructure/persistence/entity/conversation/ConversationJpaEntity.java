@@ -49,6 +49,9 @@ public class ConversationJpaEntity {
     @Column(name = "resume_version_id")
     private String resumeVersionId;
 
+    @Column(name = "job_id")
+    private String jobId;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

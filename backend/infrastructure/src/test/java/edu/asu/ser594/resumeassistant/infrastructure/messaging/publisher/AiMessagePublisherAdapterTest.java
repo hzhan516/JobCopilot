@@ -14,6 +14,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.util.ArrayList;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -65,17 +66,14 @@ class AiMessagePublisherAdapterTest {
     }
 
     @Test
-    void sendConversationRequest_ShouldConvertAndSend() {
+    void sendConversationRequest_ShouldExecuteChannelCallback() {
         ConversationRequestCommand command = new ConversationRequestCommand(
-                "conv-1", "user-1", new ArrayList<>(), "hello", new ArrayList<>(), null
+                "conv-1", "user-1", new ArrayList<>(), "hello", new ArrayList<>(), null,
+                null, null, null, false, "en"
         );
 
         publisher.sendConversationRequest(command);
 
-        verify(rabbitTemplate).convertAndSend(
-                RabbitMqConfig.EXCHANGE_AI_DIRECT,
-                RabbitMqConfig.ROUTING_KEY_REQ_CONVERSATION,
-                command
-        );
+        verify(rabbitTemplate).execute(any());
     }
 }

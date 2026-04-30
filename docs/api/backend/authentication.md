@@ -8,6 +8,7 @@
 
 1. [邮箱注册](#1-邮箱注册)
 2. [邮箱登录](#2-邮箱登录)
+3. [Google 登录](#3-google-登录)
 
 ---
 
@@ -18,7 +19,7 @@
 | 项目 | 值 |
 |------|-----|
 | **接口名称** | 邮箱注册 |
-| **接口路径** | `POST /v1/auth/register/email` |
+| **接口路径** | `POST /api/v1/auth/register/email` |
 | **是否需要认证** | 否 |
 
 ### 请求结构
@@ -112,7 +113,7 @@ curl -X POST http://localhost:8080/api/v1/auth/register/email \
 | 项目 | 值 |
 |------|-----|
 | **接口名称** | 邮箱登录 |
-| **接口路径** | `POST /v1/auth/login/email` |
+| **接口路径** | `POST /api/v1/auth/login/email` |
 | **是否需要认证** | 否 |
 
 ### 请求结构
@@ -199,6 +200,78 @@ curl -X POST http://localhost:8080/api/v1/auth/login/email \
 
 ---
 
+## 3. Google 登录
+
+### 基本信息
+
+| 项目 | 值 |
+|------|-----|
+| **接口名称** | Google 登录 |
+| **接口路径** | `POST /api/v1/auth/login/google` |
+| **是否需要认证** | 否 |
+
+### 请求结构
+
+#### Request Body
+
+| 字段 | 类型 | 必填 | 约束 | 说明 |
+|------|------|------|------|------|
+| `idToken` | String | 是 | 非空 | Google ID Token |
+
+#### 请求示例
+
+```json
+{
+  "idToken": "eyJhbGciOiJSUzI1NiIs..."
+}
+```
+
+### 响应结构
+
+#### 成功响应 (200)
+
+与邮箱登录响应格式相同（首次登录会自动注册并创建用户）。
+
+#### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": {
+    "userId": "d71774e0-e238-4191-b71c-33478e44b4b6",
+    "email": "user@gmail.com",
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
+    "expiresIn": 86400
+  }
+}
+```
+
+### 错误响应
+
+#### 401 - ID Token 无效或验证失败
+
+```json
+{
+  "code": 401,
+  "message": "Invalid credentials",
+  "data": null
+}
+```
+
+### 调用示例 (cURL)
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/login/google \
+  -H "Content-Type: application/json" \
+  -d '{
+    "idToken": "eyJhbGciOiJSUzI1NiIs..."
+  }'
+```
+
+---
+
 ## Token 使用说明
 
 ### Access Token
@@ -233,5 +306,6 @@ Payload 包含以下字段：
 
 | 接口 | 方法 | 路径 | 认证 |
 |------|------|------|------|
-| 邮箱注册 | POST | `/v1/auth/register/email` | 否 |
-| 邮箱登录 | POST | `/v1/auth/login/email` | 否 |
+| 邮箱注册 | POST | `/api/v1/auth/register/email` | 否 |
+| 邮箱登录 | POST | `/api/v1/auth/login/email` | 否 |
+| Google 登录 | POST | `/api/v1/auth/login/google` | 否 |

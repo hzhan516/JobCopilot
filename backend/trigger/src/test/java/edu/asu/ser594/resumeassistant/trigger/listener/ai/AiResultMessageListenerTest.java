@@ -101,7 +101,45 @@ class AiResultMessageListenerTest {
 
         listener.onConversationReply(event);
 
-        verify(conversationFacade).saveAiReply("conv-1", "Hello from AI", "http://minio/file.pdf");
+        verify(conversationFacade).saveAiReply("conv-1", "Hello from AI", "http://minio/file.pdf", null);
+    }
+
+    @Test
+    void onConversationReply_WithResumeModification_ShouldExtractMarkdown() {
+        AiResultEvent event = new AiResultEvent(
+                "conv-1",
+                "CONVERSATION_REPLY",
+                "COMPLETED",
+                Map.of(
+                        "content", "Here is your optimized resume",
+                        "resumeModification", Map.of("modified", true, "markdown", "# Optimized Resume")
+                ),
+                null,
+                null
+        );
+
+        listener.onConversationReply(event);
+
+        verify(conversationFacade).saveAiReply("conv-1", "Here is your optimized resume", null, "# Optimized Resume");
+    }
+
+    @Test
+    void onConversationReply_WithResumeModificationNotModified_ShouldPassNull() {
+        AiResultEvent event = new AiResultEvent(
+                "conv-1",
+                "CONVERSATION_REPLY",
+                "COMPLETED",
+                Map.of(
+                        "content", "No changes needed",
+                        "resumeModification", Map.of("modified", false, "markdown", "")
+                ),
+                null,
+                null
+        );
+
+        listener.onConversationReply(event);
+
+        verify(conversationFacade).saveAiReply("conv-1", "No changes needed", null, null);
     }
 
     @Test
@@ -117,6 +155,6 @@ class AiResultMessageListenerTest {
 
         listener.onConversationReply(event);
 
-        verifyNoInteractions(conversationFacade);
+        verify(conversationFacade).saveAiReply(eq("conv-1"), contains("AI response failed"), isNull(), isNull());
     }
 }

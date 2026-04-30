@@ -29,7 +29,7 @@ Content-Type: application/json
 **Response Body (`JobResponse`):**
 ```json
 {
-  "jobId": "job-uuid-1234",
+  "id": "job-uuid-1234",
   "userId": "550e8400-e29b-41d4-a716-446655440000",
   "originalUrl": "https://www.linkedin.com/jobs/view/12345",
   "status": "PENDING",
@@ -52,7 +52,7 @@ Authorization: Bearer <user-jwt-token>
 **Response Body (`JobResponse`):**
 ```json
 {
-  "jobId": "job-uuid-1234",
+  "id": "job-uuid-1234",
   "userId": "user-uuid",
   "originalUrl": "https://www.linkedin.com/jobs/view/12345",
   "status": "COMPLETED",
@@ -80,7 +80,7 @@ Authorization: Bearer <user-jwt-token>
 ```json
 [
   {
-    "jobId": "job-uuid-1234",
+    "id": "job-uuid-1234",
     "userId": "550e8400-e29b-41d4-a716-446655440000",
     "originalUrl": "https://www.linkedin.com/jobs/view/12345",
     "status": "COMPLETED",
@@ -90,6 +90,45 @@ Authorization: Bearer <user-jwt-token>
   }
 ]
 ```
+
+### 1.4 职位智能匹配 (Match Jobs)
+**Endpoint:** `POST /api/v1/jobs/match`
+**描述:** 启动异步职位匹配流程。返回处理中状态，需通过 1.5 接口轮询结果。
+
+### 1.5 查询匹配结果 (Get Match Result)
+**Endpoint:** `GET /api/v1/jobs/match/{matchId}`
+**描述:** 根据匹配任务ID查询异步匹配结果。
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+```
+
+**Response Body (`JobMatchResponse`):**
+与 1.4 响应格式相同。
+
+### 1.6 获取历史匹配列表 (Get Match History)
+**Endpoint:** `GET /api/v1/jobs/match/history`
+**描述:** 获取当前登录用户的历史匹配记录列表。
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+```
+
+**Response Body (`List<JobMatchHistoryResponse>`):**
+```json
+[
+  {
+    "matchId": "match-uuid-1234",
+    "status": "COMPLETED",
+    "total": 5,
+    "createdAt": "2026-04-15T10:30:00"
+  }
+]
+```
+
+---
 
 ### 1.4 职位智能匹配 (Match Jobs)
 **Endpoint:** `POST /api/v1/jobs/match`
@@ -104,14 +143,32 @@ Content-Type: application/json
 **Request Body (`JobMatchRequest`):**
 ```json
 {
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
   "query": "Java Spring Boot",
-  "resumeVersionId": "resume-uuid-5678"
+  "topK": 10,
+  "filters": {
+    "location": "Remote"
+  }
 }
 ```
 
 **Response Body (`JobMatchResponse`):**
 ```json
 {
+  "matchId": "match-uuid-1234",
+  "status": "PROCESSING",
+  "matches": [],
+  "total": 0,
+  "recallTime": null,
+  "rankTime": null
+}
+```
+
+异步完成后查询结果：
+```json
+{
+  "matchId": "match-uuid-1234",
+  "status": "COMPLETED",
   "matches": [
     {
       "jobId": "mock-job-1",
@@ -121,14 +178,14 @@ Content-Type: application/json
       "matchFactors": {
         "skillMatch": 0.95,
         "experienceMatch": 0.90,
-        "educationMatch": 0.88
+        "locationMatch": 0.88
       },
       "description": "Looking for an experienced Java developer with Spring Boot skills."
     }
   ],
-  "totalResults": 1,
-  "cachedCount": 12,
-  "apiCount": 45
+  "total": 1,
+  "recallTime": 120,
+  "rankTime": 45
 }
 ```
 

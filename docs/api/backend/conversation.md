@@ -466,7 +466,8 @@
 ```java
 {
   "title": String,          // 可选，对话标题
-  "resumeVersionId": String // 可选，简历版本 ID
+  "resumeVersionId": String, // 可选，简历版本 ID
+  "jobId": String           // 可选，关联职位 ID
 }
 ```
 
@@ -488,6 +489,7 @@
   "title": String,            // 标题
   "status": String,           // ACTIVE / CLOSED
   "resumeVersionId": String,  // 关联简历版本 ID
+  "jobId": String,            // 关联职位 ID
   "messages": MessageResponse[], // 消息列表（可能已分页）
   "createdAt": LocalDateTime, // 创建时间
   "updatedAt": LocalDateTime  // 更新时间

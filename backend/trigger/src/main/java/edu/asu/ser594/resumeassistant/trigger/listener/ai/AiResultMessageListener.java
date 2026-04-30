@@ -78,6 +78,7 @@ public class AiResultMessageListener {
                 conversationFacade.saveAiReply(
                     event.referenceId(),
                     "AI response failed: " + (event.errorMessage() != null ? event.errorMessage() : "Unknown error"),
+                    null,
                     null
                 );
                 return;
@@ -85,8 +86,9 @@ public class AiResultMessageListener {
 
             String content = extractReplyContent(event);
             String fileUrl = extractFileUrl(event);
+            String aiOptimizedMarkdown = extractAiOptimizedMarkdown(event);
 
-            conversationFacade.saveAiReply(event.referenceId(), content, fileUrl);
+            conversationFacade.saveAiReply(event.referenceId(), content, fileUrl, aiOptimizedMarkdown);
             log.info("Saved AI reply for conversation: {}", event.referenceId());
         } catch (Exception e) {
             log.error("Error processing AiResultEvent for CONVERSATION_REPLY referenceId: {}", event.referenceId(), e);
@@ -103,6 +105,20 @@ public class AiResultMessageListener {
     private String extractFileUrl(AiResultEvent event) {
         if (event.data() != null && event.data().containsKey("fileUrl")) {
             return (String) event.data().get("fileUrl");
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractAiOptimizedMarkdown(AiResultEvent event) {
+        if (event.data() == null) {
+            return null;
+        }
+        Object mod = event.data().get("resumeModification");
+        if (mod instanceof Map<?, ?> map) {
+            if (Boolean.TRUE.equals(map.get("modified"))) {
+                return (String) map.get("markdown");
+            }
         }
         return null;
     }

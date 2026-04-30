@@ -124,11 +124,36 @@ public final class ResumeVersion implements Entity<UUID> {
                                             String originalFileName, String storedFileName,
                                             String fileType, long fileSize, String storagePath,
                                             String storageProvider, String content,
-                                            String parsedContent, ParseStatus parseStatus, String parseErrorMessage, 
+                                            String parsedContent, ParseStatus parseStatus, String parseErrorMessage,
                                             Status status, LocalDateTime createdAt, LocalDateTime updatedAt) {
         return new ResumeVersion(id, groupId, versionType, originalFileName, storedFileName,
                 fileType, fileSize, storagePath, storageProvider, content, parsedContent,
                 parseStatus, parseErrorMessage, status, createdAt, updatedAt);
+    }
+
+    /**
+     * 创建 AI 优化版本
+     * Create AI optimized version
+     */
+    public static ResumeVersion createAiOptimized(UUID groupId, String content) {
+        return new ResumeVersion(
+                UUID.randomUUID(),
+                groupId,
+                VersionType.AI_OPTIMIZED,
+                null,
+                null,
+                "text/markdown",
+                0L,
+                null,
+                null,
+                content,
+                null,
+                ParseStatus.PENDING,
+                null,
+                Status.ACTIVE,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
     }
 
     // ==================== 领域行为 ====================

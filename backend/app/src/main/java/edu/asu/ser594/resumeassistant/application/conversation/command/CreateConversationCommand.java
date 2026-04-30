@@ -12,6 +12,7 @@ import java.util.UUID;
 public record CreateConversationCommand(
     UUID userId,
     String title,
-    UUID resumeVersionId
+    UUID resumeVersionId,
+    UUID jobId
 ) {
 }

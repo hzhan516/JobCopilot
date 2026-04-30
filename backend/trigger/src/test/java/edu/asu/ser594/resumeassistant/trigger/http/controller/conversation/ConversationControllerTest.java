@@ -45,6 +45,7 @@ class ConversationControllerTest {
                 "Test Conversation",
                 "ACTIVE",
                 null,
+                null,
                 Collections.emptyList(),
                 java.time.LocalDateTime.now(),
                 java.time.LocalDateTime.now()
@@ -54,7 +55,7 @@ class ConversationControllerTest {
     @Test
     @DisplayName("Should create conversation and return response")
     void shouldCreateConversationAndReturnResponse() {
-        CreateConversationRequest request = new CreateConversationRequest("Test", null);
+        CreateConversationRequest request = new CreateConversationRequest("Test", null, null);
         when(conversationFacade.createConversation(request, USER_ID)).thenReturn(testConversationResponse);
 
         ApiResponse<ConversationResponse> response = conversationController.createConversation(request, USER_ID);

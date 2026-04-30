@@ -101,7 +101,7 @@ Authorization: Bearer <access_token>
     "email": "user@example.com",
     "accessToken": "eyJhbGciOiJIUzI1NiIs...",
     "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
-    "expiresIn": 86400000
+    "expiresIn": 86400
   }
 }
 ```
@@ -114,7 +114,7 @@ Authorization: Bearer <access_token>
 | `email` | String | 用户邮箱 |
 | `accessToken` | String | 访问令牌 |
 | `refreshToken` | String | 刷新令牌 |
-| `expiresIn` | Long | 访问令牌有效期（毫秒） |
+| `expiresIn` | Long | 访问令牌有效期（秒） |
 
 ---
 
@@ -208,7 +208,7 @@ Content-Disposition: form-data; name="title"
 
 #### 2.2 下载简历
 
-- **URL**: `GET /api/v1/resumes/{resumeId}/download`
+- **URL**: `GET /api/v1/resumes/{versionId}/download`
 - **认证**: 需要
 - **Content-Type**: 根据文件类型返回
 
@@ -323,39 +323,103 @@ Authorization: Bearer <access_token>
 }
 ```
 
-### 3. 对话模块 (Conversation)
+### 3. 职位模块 (Job)
+
+详见 [job.md](job.md) 和 [job-matching.md](job-matching.md)
+
+本模块提供职位链接提交、异步解析、智能匹配和历史查询功能。
+
+#### 3.1 提交职位链接
+- **URL**: `POST /api/v1/jobs`
+- **认证**: 需要
+
+#### 3.2 获取职位详情
+- **URL**: `GET /api/v1/jobs/{jobId}`
+- **认证**: 需要
+
+#### 3.3 获取职位列表
+- **URL**: `GET /api/v1/jobs`
+- **认证**: 需要
+
+#### 3.4 启动职位匹配
+- **URL**: `POST /api/v1/jobs/match`
+- **认证**: 需要
+
+#### 3.5 查询匹配结果
+- **URL**: `GET /api/v1/jobs/match/{matchId}`
+- **认证**: 需要
+
+#### 3.6 获取匹配历史
+- **URL**: `GET /api/v1/jobs/match/history`
+- **认证**: 需要
+
+---
+
+### 4. 对话模块 (Conversation)
 
 详见 [conversation.md](conversation.md)
 
-#### 3.1 创建对话
+#### 4.1 创建对话
 - **URL**: `POST /api/v1/conversations`
 - **认证**: 需要
 
-#### 3.2 发送消息
+#### 4.2 发送消息
 - **URL**: `POST /api/v1/conversations/{conversationId}/messages`
 - **认证**: 需要
 
-#### 3.3 获取对话详情
+#### 4.3 获取对话详情
 - **URL**: `GET /api/v1/conversations/{conversationId}`
 - **认证**: 需要
 - **分页**: 支持 `?page=0&size=20` 对消息列表分页
 
-#### 3.4 获取对话列表
+#### 4.4 获取对话列表
 - **URL**: `GET /api/v1/conversations`
 - **认证**: 需要
 
-#### 3.5 关闭对话
+#### 4.5 关闭对话
 - **URL**: `PUT /api/v1/conversations/{conversationId}/close`
 - **认证**: 需要
 
-#### 3.6 删除对话
+#### 4.6 删除对话
 - **URL**: `DELETE /api/v1/conversations/{conversationId}`
 - **认证**: 需要
 
-#### 3.7 上传附件
+#### 4.7 上传附件
 - **URL**: `POST /api/v1/conversations/{conversationId}/files`
 - **认证**: 需要
 - **Content-Type**: `multipart/form-data`
+
+---
+
+### 5. 求职跟踪模块 (Tracking)
+
+详见 [tracking.md](tracking.md)
+
+本模块提供求职申请的状态流转、事件记录和统计分析功能。
+
+#### 5.1 创建跟踪记录
+- **URL**: `POST /api/v1/trackings`
+- **认证**: 需要
+
+#### 5.2 获取跟踪列表
+- **URL**: `GET /api/v1/trackings?status=INTERVIEWING`
+- **认证**: 需要
+
+#### 5.3 获取跟踪详情
+- **URL**: `GET /api/v1/trackings/{id}`
+- **认证**: 需要
+
+#### 5.4 更新跟踪记录
+- **URL**: `PUT /api/v1/trackings/{id}`
+- **认证**: 需要
+
+#### 5.5 删除跟踪记录
+- **URL**: `DELETE /api/v1/trackings/{id}`
+- **认证**: 需要
+
+#### 5.6 获取统计信息
+- **URL**: `GET /api/v1/trackings/stats`
+- **认证**: 需要
 
 ---
 
@@ -363,8 +427,11 @@ Authorization: Bearer <access_token>
 
 | 接口 | 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|------|
+| 邮箱注册 | POST | `/api/v1/auth/register/email` | 用户邮箱注册 | 否 |
+| 邮箱登录 | POST | `/api/v1/auth/login/email` | 用户邮箱登录 | 否 |
+| Google 登录 | POST | `/api/v1/auth/login/google` | Google OAuth 登录 | 否 |
 | 上传简历 | POST | `/api/v1/resumes` | 上传简历文件 | 是 |
-| 下载简历 | GET | `/api/v1/resumes/{versionId}/download` | 下载简历文件 | 是 |
+| 下载简历 | GET | `/api/v1/resumes/{versionId}/download` | 下载简历文件（支持格式转换） | 是 |
 | 获取所有组 | GET | `/api/v1/resumes/groups` | 获取用户所有简历组 | 是 |
 | 获取组详情 | GET | `/api/v1/resumes/groups/{groupId}` | 获取简历组详情 | 是 |
 | 删除组 | DELETE | `/api/v1/resumes/groups/{groupId}` | 删除简历组 | 是 |
@@ -372,6 +439,12 @@ Authorization: Bearer <access_token>
 | 获取版本详情 | GET | `/api/v1/resumes/versions/{versionId}` | 获取单个版本详情 | 是 |
 | 删除版本 | DELETE | `/api/v1/resumes/versions/{versionId}` | 删除简历版本 | 是 |
 | 编辑版本 | PUT | `/api/v1/resumes/versions/{versionId}` | 编辑版本内容 | 是 |
+| 提交职位 | POST | `/api/v1/jobs` | 提交职位链接异步解析 | 是 |
+| 获取职位详情 | GET | `/api/v1/jobs/{jobId}` | 获取职位解析状态 | 是 |
+| 获取职位列表 | GET | `/api/v1/jobs` | 获取用户所有职位 | 是 |
+| 启动职位匹配 | POST | `/api/v1/jobs/match` | 启动异步职位匹配 | 是 |
+| 查询匹配结果 | GET | `/api/v1/jobs/match/{matchId}` | 查询匹配任务结果 | 是 |
+| 获取匹配历史 | GET | `/api/v1/jobs/match/history` | 获取历史匹配记录 | 是 |
 | 创建对话 | POST | `/api/v1/conversations` | 创建新对话 | 是 |
 | 发送消息 | POST | `/api/v1/conversations/{conversationId}/messages` | 发送对话消息 | 是 |
 | 获取对话 | GET | `/api/v1/conversations/{conversationId}` | 获取对话详情（支持消息分页） | 是 |
@@ -379,6 +452,12 @@ Authorization: Bearer <access_token>
 | 关闭对话 | PUT | `/api/v1/conversations/{conversationId}/close` | 关闭对话 | 是 |
 | 删除对话 | DELETE | `/api/v1/conversations/{conversationId}` | 删除对话 | 是 |
 | 上传附件 | POST | `/api/v1/conversations/{conversationId}/files` | 上传对话附件 | 是 |
+| 创建跟踪 | POST | `/api/v1/trackings` | 创建求职跟踪记录 | 是 |
+| 获取跟踪列表 | GET | `/api/v1/trackings` | 获取跟踪记录列表 | 是 |
+| 获取跟踪详情 | GET | `/api/v1/trackings/{id}` | 获取跟踪详情 | 是 |
+| 更新跟踪 | PUT | `/api/v1/trackings/{id}` | 更新跟踪（含状态流转） | 是 |
+| 删除跟踪 | DELETE | `/api/v1/trackings/{id}` | 删除跟踪记录 | 是 |
+| 获取统计 | GET | `/api/v1/trackings/stats` | 获取跟踪统计 | 是 |
 
 ---
 
@@ -406,12 +485,10 @@ Authorization: Bearer <access_token>
 
 #### ResumeUploadRequest (简历上传请求)
 
-```java
-{
-  "file": MultipartFile,  // 必填，简历文件
-  "title": String         // 可选，简历标题
-}
-```
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `file` | MultipartFile | 是 | 简历文件（PDF/DOCX/MD/TXT） |
+| `title` | String | 否 | 简历标题，不传则使用文件名 |
 
 #### ResumeEditRequest (简历编辑请求)
 
@@ -432,7 +509,7 @@ Authorization: Bearer <access_token>
   "email": String,       // 用户邮箱
   "accessToken": String, // 访问令牌
   "refreshToken": String,// 刷新令牌
-  "expiresIn": Long      // 有效期（毫秒）
+  "expiresIn": Long      // 有效期（秒）
 }
 ```
 
@@ -539,6 +616,19 @@ API 支持国际化响应，通过请求头 `Accept-Language` 指定语言：
 ```http
 Accept-Language: en
 ```
+
+---
+
+## 相关文档
+
+- [认证模块详细文档](authentication.md)
+- [简历模块详细文档](resume.md)
+- [职位模块详细文档](job.md)
+- [职位匹配模块详细文档](job-matching.md)
+- [对话模块详细文档](conversation.md)
+- [求职跟踪模块详细文档](tracking.md)
+- [AI / MQ 交互接口文档](ai-mq-interfaces.md)
+- [响应格式与错误码说明](response-format.md)
 
 ---
 

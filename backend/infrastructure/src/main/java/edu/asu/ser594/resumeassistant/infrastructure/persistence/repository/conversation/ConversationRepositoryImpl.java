@@ -8,8 +8,8 @@ import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.conversa
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
-import java.util.Comparator;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -59,6 +59,7 @@ public class ConversationRepositoryImpl implements ConversationRepository {
             .title(conversation.getTitle())
             .status(conversation.getStatus())
             .resumeVersionId(conversation.getResumeVersionId() != null ? conversation.getResumeVersionId().toString() : null)
+            .jobId(conversation.getJobId() != null ? conversation.getJobId().toString() : null)
             .createdAt(conversation.getCreatedAt())
             .updatedAt(conversation.getUpdatedAt())
             .build();
@@ -103,6 +104,7 @@ public class ConversationRepositoryImpl implements ConversationRepository {
             entity.getTitle(),
             entity.getStatus(),
             entity.getResumeVersionId() != null ? java.util.UUID.fromString(entity.getResumeVersionId()) : null,
+            entity.getJobId() != null ? java.util.UUID.fromString(entity.getJobId()) : null,
             entity.getCreatedAt(),
             entity.getUpdatedAt(),
             new ArrayList<>(messages)

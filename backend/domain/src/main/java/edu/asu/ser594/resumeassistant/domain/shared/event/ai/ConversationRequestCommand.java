@@ -13,6 +13,11 @@ import java.util.Map;
  * @param currentMessage   当前用户消息 / Current user message
  * @param fileUrls         关联文件 URL 列表 / Associated file URL list
  * @param resumeVersionId  关联简历版本 ID / Associated resume version ID
+ * @param resumeText       简历 Markdown 全文 / Full resume markdown text
+ * @param primaryJobText   当前职位 JD 文本 / Primary job description text
+ * @param relatedJobTexts  相关职位 JD 文本列表 / Related job description text list
+ * @param init             是否为首次初始化 / Whether this is the first initialization
+ * @param locale           用户界面语言 / User interface locale (e.g. en, zh-CN, zh-TW)
  */
 public record ConversationRequestCommand(
     String conversationId,
@@ -20,6 +25,11 @@ public record ConversationRequestCommand(
     List<Map<String, Object>> messageHistory,
     String currentMessage,
     List<String> fileUrls,
-    String resumeVersionId
+    String resumeVersionId,
+    String resumeText,
+    String primaryJobText,
+    List<String> relatedJobTexts,
+    boolean init,
+    String locale
 ) {
 }
