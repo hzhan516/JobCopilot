@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import { formatDate } from '@/utils/i18n';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -12,13 +14,14 @@ interface ResumeCardProps {
 }
 
 export function ResumeCard({ group, onView, onDelete }: ResumeCardProps) {
+  const { t } = useTranslation();
   const latestVersion = group.versions.length > 0 
     ? group.versions.reduce((latest, current) => 
         new Date(current.createdAt) > new Date(latest.createdAt) ? current : latest
       )
     : null;
 
-  const formattedDate = new Date(group.createdAt).toLocaleDateString(undefined, {
+  const formattedDate = formatDate(group.createdAt, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -37,24 +40,24 @@ export function ResumeCard({ group, onView, onDelete }: ResumeCardProps) {
                 {group.title}
               </CardTitle>
               <CardDescription className="text-xs mt-1">
-                Created {formattedDate}
+                {t('resume.card.created')} {formattedDate}
               </CardDescription>
             </div>
           </div>
           {group.isDefault && (
-            <Badge variant="default" className="shrink-0">Default</Badge>
+            <Badge variant="default" className="shrink-0">{t('resume.card.default')}</Badge>
           )}
         </div>
       </CardHeader>
       <CardContent className="flex-grow pb-3">
         <div className="flex flex-col gap-2 text-sm">
           <div className="flex justify-between items-center">
-            <span className="text-muted-foreground">Versions:</span>
+            <span className="text-muted-foreground">{t('resume.card.versions')}</span>
             <span className="font-medium">{group.versions.length}</span>
           </div>
           {latestVersion && (
             <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Latest Status:</span>
+              <span className="text-muted-foreground">{t('resume.card.latestStatus')}</span>
               <ParseStatusBadge status={latestVersion.parseStatus} />
             </div>
           )}
@@ -68,14 +71,14 @@ export function ResumeCard({ group, onView, onDelete }: ResumeCardProps) {
           onClick={() => onView(group.groupId)}
         >
           <Eye className="w-4 h-4" />
-          View Details
+          {t('resume.card.viewDetails')}
         </Button>
         <Button 
           variant="ghost" 
           size="sm" 
           className="text-destructive hover:text-destructive hover:bg-destructive/10 px-2"
           onClick={() => onDelete(group.groupId)}
-          title="Delete Resume"
+          title={t('resume.card.deleteTitle')}
         >
           <Trash2 className="w-4 h-4" />
         </Button>

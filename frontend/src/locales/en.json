@@ -1,0 +1,320 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "loading": "Loading...",
+    "confirm": "Confirm",
+    "back": "Back",
+    "upload": "Upload",
+    "submit": "Submit",
+    "success": "Success",
+    "error": "Error",
+    "warning": "Warning",
+    "yes": "Yes",
+    "no": "No",
+    "close": "Close",
+    "viewDetails": "View Details",
+    "enter": "Enter",
+    "viewAll": "View All",
+    "viewMore": "View More",
+    "notSpecified": "Not specified",
+    "notAvailable": "Not available",
+    "optional": "Optional",
+    "appName": "Resume Assistant"
+  },
+  "layout": {
+    "nav": {
+      "resumes": "My Resumes",
+      "jobs": "Jobs",
+      "chat": "AI Chat",
+      "tracking": "Tracking"
+    },
+    "userMenu": {
+      "profile": "Profile",
+      "logout": "Logout"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome Back",
+      "subtitle": "Sign in to your account to continue",
+      "emailLabel": "Email Address",
+      "emailPlaceholder": "your@email.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "Enter your password",
+      "rememberMe": "Remember me",
+      "loginButton": "Sign In",
+      "loggingIn": "Signing in...",
+      "noAccount": "Don't have an account?",
+      "registerNow": "Register now",
+      "errorInvalidCredentials": "Invalid email or password",
+      "errors": {
+        "emailRequired": "Please enter your email address",
+        "emailInvalid": "Please enter a valid email address",
+        "passwordRequired": "Please enter your password",
+        "passwordMin": "Password must be at least 6 characters",
+        "passwordMax": "Password must be at most 32 characters"
+      }
+    },
+    "register": {
+      "title": "Create Account",
+      "subtitle": "Start your smart job search journey",
+      "emailLabel": "Email Address",
+      "emailPlaceholder": "your@email.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "6-32 characters",
+      "confirmPasswordLabel": "Confirm Password",
+      "confirmPasswordPlaceholder": "Enter password again",
+      "agreeTerms": "I have read and agree to the",
+      "termsOfService": "Terms of Service",
+      "privacyPolicy": "Privacy Policy",
+      "and": "and",
+      "registerButton": "Register",
+      "registering": "Registering...",
+      "hasAccount": "Already have an account?",
+      "loginNow": "Sign in now",
+      "errorEmailExists": "Email already registered",
+      "errorValidation": "Validation failed, please check your input",
+      "errorGeneric": "Registration failed, please try again later",
+      "errors": {
+        "emailRequired": "Please enter your email address",
+        "emailInvalid": "Please enter a valid email address",
+        "passwordRequired": "Please enter your password",
+        "passwordMin": "Password must be at least 6 characters",
+        "passwordMax": "Password must be at most 32 characters",
+        "confirmPasswordRequired": "Please confirm your password",
+        "passwordMismatch": "Passwords do not match",
+        "agreeTermsRequired": "Please read and agree to the terms"
+      },
+      "passwordStrength": {
+        "weak": "Weak",
+        "medium": "Medium",
+        "strong": "Strong",
+        "hint": "Recommend including uppercase, lowercase, numbers and special characters, 8+ chars"
+      }
+    }
+  },
+  "dashboard": {
+    "welcome": "Welcome Back!",
+    "subtitle": "Resume Assistant is ready with today's job search suggestions",
+    "uploadResume": "Upload Resume",
+    "viewJobs": "View Jobs",
+    "stats": {
+      "resumes": "Resumes",
+      "matches": "Matches",
+      "applications": "Applications",
+      "chats": "Chats"
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "resumes": "My Resumes",
+      "resumesDesc": "Manage your resumes with multiple versions",
+      "jobs": "Job Recommendations",
+      "jobsDesc": "Smart job matching based on your resume",
+      "chat": "AI Chat",
+      "chatDesc": "Get resume optimization help from AI",
+      "tracking": "Job Tracking",
+      "trackingDesc": "Track applications and interviews"
+    },
+    "recommendedJobs": {
+      "title": "Recommended for You",
+      "matchLabel": "Match"
+    },
+    "applicationProgress": {
+      "title": "Application Progress",
+      "status": {
+        "interview": "Interviewing",
+        "applied": "Applied",
+        "offered": "Offered"
+      }
+    }
+  },
+  "jobList": {
+    "title": "Job Recommendations",
+    "subtitle": "Smart matching based on your resume",
+    "searchPlaceholder": "Search jobs, companies...",
+    "locationFilter": "Location",
+    "allLocations": "All Locations",
+    "sortBy": "Sort By",
+    "sortMatch": "Match Score",
+    "sortSalary": "Salary",
+    "sortDate": "Post Date",
+    "emptyTitle": "No matching jobs",
+    "emptyDesc": "Try adjusting filters or updating your resume",
+    "salaryNegotiable": "Negotiable",
+    "salaryMin": "From {{min}}K",
+    "salaryMax": "Up to {{max}}K",
+    "salaryRange": "{{min}}K-{{max}}K",
+    "matchScore": "Match {{score}}%",
+    "viewDetails": "View Details",
+    "loadError": "Failed to load job list"
+  },
+  "chat": {
+    "newChat": "New Chat",
+    "newChatTitle": "New Chat",
+    "newChatDesc": "Enter a title to start a new conversation",
+    "chatTitlePlaceholder": "Chat title",
+    "create": "Create",
+    "delete": "Delete",
+    "aiAssistant": "AI Job Assistant",
+    "emptyState": "Start a new conversation",
+    "selectOrCreate": "Select a conversation or create a new one",
+    "inputPlaceholder": "Type your question...",
+    "aiThinking": "AI is thinking...",
+    "aiPending": "Message sent. AI reply is still processing.",
+    "footerHint": "AI can help you optimize resumes, recommend jobs, and answer job search questions",
+    "loadError": "Failed to load conversations",
+    "createError": "Please enter a chat title",
+    "createFailed": "Failed to create conversation",
+    "sendFailed": "Failed to send message",
+    "deleteSuccess": "Deleted successfully",
+    "deleteFailed": "Failed to delete",
+    "createSuccess": "Created successfully",
+    "mockGreeting": "Hello! I am your AI job assistant. I can help you optimize resumes, recommend jobs, and answer job search questions. How can I help you today?",
+    "mockReply": "Thank you for your question! Regarding \"{{question}}\", I suggest you:\n\n1. First, complete your resume content, highlighting relevant skills and experience\n2. Customize resume keywords for the target position\n3. Prepare relevant project cases and work achievements\n\nIf you need more detailed advice, please tell me your specific situation."
+  },
+  "tracking": {
+    "title": "Job Tracking",
+    "subtitle": "Manage your job application progress",
+    "addRecord": "Add Record",
+    "stats": {
+      "applied": "Applied",
+      "interview": "Interviewing",
+      "offered": "Offered",
+      "total": "Total"
+    },
+    "status": {
+      "APPLIED": "Applied",
+      "SCREENING": "Screening",
+      "INTERVIEW": "Interviewing",
+      "OFFER": "Offered",
+      "REJECTED": "Rejected",
+      "WITHDRAWN": "Withdrawn"
+    },
+    "recordList": "Application Records",
+    "emptyTitle": "No application records",
+    "emptyDesc": "Add your first application record",
+    "company": "Company",
+    "jobTitle": "Job Title",
+    "jobTitlePlaceholder": "e.g. Frontend Engineer",
+    "companyPlaceholder": "e.g. Alibaba",
+    "currentStatus": "Status",
+    "notes": "Notes",
+    "notesPlaceholder": "Optional",
+    "add": "Add",
+    "addRecordTitle": "Add Application Record",
+    "addRecordDesc": "Record your job application information",
+    "updateSuccess": "Status updated successfully",
+    "updateFailed": "Failed to update status",
+    "addSuccess": "Added successfully",
+    "addFailed": "Failed to add",
+    "deleteSuccess": "Deleted successfully",
+    "deleteFailed": "Failed to delete",
+    "loadError": "Failed to load application records",
+    "fillRequired": "Please fill in all required fields"
+  },
+  "resume": {
+    "list": {
+      "title": "My Resumes",
+      "subtitle": "Manage your resumes and track their parsing status.",
+      "upload": "Upload Resume",
+      "noResumes": "No resumes yet",
+      "noResumesDesc": "Upload your first resume to get started. We'll automatically parse it and extract your information.",
+      "uploadSuccess": "Resume uploaded successfully. Parsing started...",
+      "parseSuccess": "Resume parsed successfully!",
+      "parseFailed": "Failed to parse resume.",
+      "parseTimeout": "Parsing is taking longer than expected.",
+      "uploadFailed": "Failed to upload resume.",
+      "deleteConfirm": "Are you sure you want to delete this resume?",
+      "deleteSuccess": "Resume deleted successfully.",
+      "deleteFailed": "Failed to delete resume.",
+      "uploadDialogTitle": "Upload Resume",
+      "uploadDialogDesc": "Upload your resume in PDF, DOCX, MD, or TXT format. Maximum file size is 10MB."
+    },
+    "upload": {
+      "dragText": "Click or drag file to this area to upload",
+      "singleUpload": "Support for a single upload. Maximum file size 10MB.",
+      "formats": "Accepted formats: PDF, DOCX, MD, TXT",
+      "uploading": "Uploading...",
+      "invalidType": "Invalid file type. Please upload PDF, DOCX, MD, or TXT.",
+      "sizeExceeded": "File size exceeds 10MB limit.",
+      "uploadError": "Failed to upload file. Please try again."
+    },
+    "card": {
+      "default": "Default",
+      "versions": "Versions",
+      "latestStatus": "Latest Status",
+      "viewDetails": "View Details",
+      "deleteTitle": "Delete Resume",
+      "created": "Created"
+    },
+    "detail": {
+      "notFound": "Resume not found",
+      "backToList": "Back to Resumes",
+      "versionNotFound": "Version not found",
+      "backToDetail": "Back to Resume Details",
+      "createdOn": "Created on",
+      "versionHistory": "Version History",
+      "selectVersion": "Select a version to view details"
+    },
+    "edit": {
+      "title": "Edit Version",
+      "back": "Back to Resumes",
+      "backToDetail": "Back to Resume Details"
+    },
+    "timeline": {
+      "original": "Original Upload",
+      "converted": "Parsed Version",
+      "aiOptimized": "AI Optimized",
+      "active": "Active",
+      "archived": "Archived"
+    },
+    "parseStatus": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "versionDetail": {
+      "title": "Version Details",
+      "basicInfo": "Basic Information",
+      "jobTitle": "Title",
+      "company": "Company",
+      "requirements": "Requirements",
+      "description": "Description",
+      "rawContent": "Raw Content",
+      "editContent": "Edit Content",
+      "parsed": "Parsed",
+      "original": "Original",
+      "converted": "Converted",
+      "aiOptimized": "AI Optimized",
+      "noRequirements": "No requirements extracted.",
+      "noDescription": "No description available.",
+      "contentNotAvailable": "Content is not available for this version."
+    },
+    "markdownEditor": {
+      "title": "Edit Resume",
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "download": {
+      "button": "Download",
+      "original": "Original File",
+      "pdf": "PDF Document",
+      "docx": "Word Document",
+      "md": "Markdown",
+      "html": "HTML",
+      "txt": "Plain Text",
+      "error": "Failed to download resume"
+    }
+  },
+  "language": {
+    "en": "English",
+    "zhCN": "简体中文",
+    "zhTW": "繁體中文",
+    "switch": "Switch Language"
+  }
+}

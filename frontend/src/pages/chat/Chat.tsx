@@ -1,5 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import type { Conversation, Message } from '@/types';
+import { useTranslation } from 'react-i18next';
+import { formatTime } from '@/utils/i18n';
+import chatService from '@/services/chatService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -32,27 +35,46 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
-// 模拟消息数据
-const mockMessages: Message[] = [
-  {
-    messageId: '1',
-    conversationId: '1',
-    role: 'ASSISTANT',
-    content: '您好！我是您的AI求职助手。我可以帮您优化简历、推荐职位、解答求职相关问题。请问有什么可以帮助您的？',
-    createdAt: '2024-01-15T10:00:00',
-  },
-];
+const AI_REPLY_POLL_ATTEMPTS = 20;
+const AI_REPLY_POLL_INTERVAL_MS = 1500;
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function normalizeMessages(conversation: Conversation): Message[] {
+  return (conversation.messages ?? []).map((message) => ({
+    ...message,
+    conversationId: message.conversationId ?? conversation.conversationId,
+  }));
+}
 
 export default function Chat() {
+  const { t } = useTranslation();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [isWaitingForReply, setIsWaitingForReply] = useState(false);
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [newChatTitle, setNewChatTitle] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const syncConversation = (conversation: Conversation) => {
+    setActiveConversation(conversation);
+    setMessages(normalizeMessages(conversation));
+    setConversations((prev) => {
+      const exists = prev.some((item) => item.conversationId === conversation.conversationId);
+      if (!exists) {
+        return [conversation, ...prev];
+      }
+      return prev.map((item) =>
+        item.conversationId === conversation.conversationId ? conversation : item
+      );
+    });
+  };
 
   // 加载对话列表
   useEffect(() => {
@@ -67,63 +89,89 @@ export default function Chat() {
   const loadConversations = async () => {
     try {
       setIsLoading(true);
-      // 使用模拟数据
-      // const data = await chatService.getConversations();
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const mockConversations: Conversation[] = [
-        {
-          conversationId: '1',
-          title: '简历优化咨询',
-          createdAt: '2024-01-15T10:00:00',
-          updatedAt: '2024-01-15T10:30:00',
-        },
-      ];
-      setConversations(mockConversations);
-      if (mockConversations.length > 0) {
-        setActiveConversation(mockConversations[0]);
-        setMessages(mockMessages);
+      const data = await chatService.getConversations();
+      setConversations(data);
+      if (data.length > 0) {
+        syncConversation(data[0]);
+      } else {
+        setActiveConversation(null);
+        setMessages([]);
       }
-    } catch (error) {
-      toast.error('加载对话列表失败');
+    } catch {
+      toast.error(t('chat.loadError'));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSelectConversation = async (conversation: Conversation) => {
+    syncConversation(conversation);
+    try {
+      const detail = await chatService.getConversation(conversation.conversationId);
+      syncConversation(detail);
+    } catch {
+      toast.error(t('chat.loadError'));
     }
   };
 
   // 创建新对话
   const handleCreateConversation = async () => {
     if (!newChatTitle.trim()) {
-      toast.error('请输入对话标题');
+      toast.error(t('chat.createError'));
       return;
     }
     try {
-      // const newConversation = await chatService.createConversation(newChatTitle);
-      const newConversation: Conversation = {
-        conversationId: Date.now().toString(),
-        title: newChatTitle,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setConversations([newConversation, ...conversations]);
-      setActiveConversation(newConversation);
-      setMessages([]);
+      const newConversation = await chatService.createConversation(newChatTitle);
+      syncConversation(newConversation);
       setNewChatTitle('');
       setNewDialogOpen(false);
-      toast.success('创建成功');
-    } catch (error) {
-      toast.error('创建对话失败');
+      toast.success(t('chat.createSuccess'));
+    } catch {
+      toast.error(t('chat.createFailed'));
     }
+  };
+
+  const pollForAiReply = async (conversationId: string, previousMessageCount: number) => {
+    for (let attempt = 0; attempt < AI_REPLY_POLL_ATTEMPTS; attempt += 1) {
+      await delay(AI_REPLY_POLL_INTERVAL_MS);
+      const updatedConversation = await chatService.getConversation(conversationId);
+      const updatedMessages = normalizeMessages(updatedConversation);
+      syncConversation(updatedConversation);
+
+      const newMessages = updatedMessages.slice(previousMessageCount);
+      if (newMessages.some((message) => message.role === 'ASSISTANT')) {
+        return true;
+      }
+    }
+
+    return false;
   };
 
   // 发送消息
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || !activeConversation) return;
+    console.log('Chat send clicked', {
+      inputMessage,
+      activeConversationId: activeConversation?.conversationId,
+      isSending,
+      isWaitingForReply,
+    });
 
+    if (!inputMessage.trim() || !activeConversation) {
+      console.warn('Chat send skipped', {
+        hasInput: Boolean(inputMessage.trim()),
+        hasActiveConversation: Boolean(activeConversation),
+      });
+      return;
+    }
+
+    const content = inputMessage.trim();
+    const conversationId = activeConversation.conversationId;
+    const tempMessageId = `temp-${Date.now()}`;
     const userMessage: Message = {
-      messageId: Date.now().toString(),
-      conversationId: activeConversation.conversationId,
+      messageId: tempMessageId,
+      conversationId,
       role: 'USER',
-      content: inputMessage,
+      content,
       createdAt: new Date().toISOString(),
     };
 
@@ -132,18 +180,33 @@ export default function Chat() {
     setIsSending(true);
 
     try {
-      // 模拟AI回复
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      const aiMessage: Message = {
-        messageId: (Date.now() + 1).toString(),
-        conversationId: activeConversation.conversationId,
-        role: 'ASSISTANT',
-        content: `感谢您的提问！关于"${userMessage.content}"，我建议您：\n\n1. 首先完善您的简历内容，突出相关技能和经验\n2. 针对目标岗位定制简历关键词\n3. 准备相关的项目案例和工作成果\n\n如果您需要更详细的建议，请告诉我您的具体情况。`,
-        createdAt: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, aiMessage]);
+      console.log('Chat send request starting', { conversationId, content });
+      const updatedConversation = await chatService.sendMessage(conversationId, content);
+      console.log('Chat send request succeeded', updatedConversation);
+      const savedMessages = normalizeMessages(updatedConversation);
+      syncConversation(updatedConversation);
+
+      const lastMessage = savedMessages[savedMessages.length - 1];
+      if (lastMessage?.role !== 'ASSISTANT') {
+        setIsWaitingForReply(true);
+        void (async () => {
+          try {
+            const hasReply = await pollForAiReply(conversationId, savedMessages.length);
+            if (!hasReply) {
+              toast.info(t('chat.aiPending'));
+            }
+          } catch (error) {
+            console.error('Failed to poll AI reply', error);
+            toast.info(t('chat.aiPending'));
+          } finally {
+            setIsWaitingForReply(false);
+          }
+        })();
+      }
     } catch (error) {
-      toast.error('发送失败');
+      console.error('Failed to send chat message', error);
+      setMessages((prev) => prev.filter((message) => message.messageId !== tempMessageId));
+      toast.error(t('chat.sendFailed'));
     } finally {
       setIsSending(false);
     }
@@ -152,15 +215,15 @@ export default function Chat() {
   // 删除对话
   const handleDeleteConversation = async (conversationId: string) => {
     try {
-      // await chatService.deleteConversation(conversationId);
+      await chatService.deleteConversation(conversationId);
       setConversations((prev) => prev.filter((c) => c.conversationId !== conversationId));
       if (activeConversation?.conversationId === conversationId) {
         setActiveConversation(null);
         setMessages([]);
       }
-      toast.success('删除成功');
-    } catch (error) {
-      toast.error('删除失败');
+      toast.success(t('chat.deleteSuccess'));
+    } catch {
+      toast.error(t('chat.deleteFailed'));
     }
   };
 
@@ -199,10 +262,7 @@ export default function Chat() {
                 isUser ? 'text-blue-200' : 'text-gray-500'
               }`}
             >
-              {new Date(message.createdAt).toLocaleTimeString('zh-CN', {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
+              {formatTime(message.createdAt)}
             </span>
           </div>
         </div>
@@ -233,24 +293,24 @@ export default function Chat() {
             <DialogTrigger asChild>
               <Button className="w-full">
                 <Plus className="w-4 h-4 mr-2" />
-                新建对话
+                {t('chat.newChat')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>新建对话</DialogTitle>
-                <DialogDescription>输入对话标题开始新的咨询</DialogDescription>
+                <DialogTitle>{t('chat.newChatTitle')}</DialogTitle>
+                <DialogDescription>{t('chat.newChatDesc')}</DialogDescription>
               </DialogHeader>
               <Input
-                placeholder="对话标题"
+                placeholder={t('chat.chatTitlePlaceholder')}
                 value={newChatTitle}
                 onChange={(e) => setNewChatTitle(e.target.value)}
               />
               <DialogFooter>
                 <Button variant="outline" onClick={() => setNewDialogOpen(false)}>
-                  取消
+                  {t('common.cancel')}
                 </Button>
-                <Button onClick={handleCreateConversation}>创建</Button>
+                <Button onClick={handleCreateConversation}>{t('chat.create')}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -265,7 +325,7 @@ export default function Chat() {
                     ? 'bg-blue-50 text-blue-900'
                     : 'hover:bg-gray-100'
                 }`}
-                onClick={() => setActiveConversation(conversation)}
+                onClick={() => handleSelectConversation(conversation)}
               >
                 <div className="flex items-center space-x-3 overflow-hidden">
                   <MessageSquare className="w-4 h-4 flex-shrink-0" />
@@ -288,7 +348,7 @@ export default function Chat() {
                       onClick={() => handleDeleteConversation(conversation.conversationId)}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
-                      删除
+                      {t('chat.delete')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -311,7 +371,7 @@ export default function Chat() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">{activeConversation.title}</h3>
-                    <p className="text-xs text-gray-500">AI求职助手</p>
+                    <p className="text-xs text-gray-500">{t('chat.aiAssistant')}</p>
                   </div>
                 </div>
               </div>
@@ -322,16 +382,16 @@ export default function Chat() {
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-gray-500">
                   <Bot className="w-16 h-16 mb-4 text-gray-300" />
-                  <p>开始新的对话吧</p>
+                  <p>{t('chat.emptyState')}</p>
                 </div>
               ) : (
                 <>
                   {messages.map(renderMessage)}
-                  {isSending && (
+                  {isWaitingForReply && (
                     <div className="flex justify-start mb-4">
                       <div className="flex items-center space-x-2 bg-gray-100 rounded-2xl px-4 py-3">
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="text-sm text-gray-600">AI正在思考...</span>
+                        <span className="text-sm text-gray-600">{t('chat.aiThinking')}</span>
                       </div>
                     </div>
                   )}
@@ -344,7 +404,7 @@ export default function Chat() {
             <div className="border-t p-4">
               <div className="flex space-x-2">
                 <Input
-                  placeholder="输入您的问题..."
+                  placeholder={t('chat.inputPlaceholder')}
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyDown={(e) => {
@@ -367,18 +427,16 @@ export default function Chat() {
                   )}
                 </Button>
               </div>
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                AI助手可以帮您优化简历、推荐职位、解答求职问题
-              </p>
+              <p className="text-xs text-gray-500 mt-2 text-center">{t('chat.footerHint')}</p>
             </div>
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
             <MessageSquare className="w-16 h-16 mb-4 text-gray-300" />
-            <p className="mb-4">选择一个对话或创建新对话</p>
+            <p className="mb-4">{t('chat.selectOrCreate')}</p>
             <Button onClick={() => setNewDialogOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
-              新建对话
+              {t('chat.newChat')}
             </Button>
           </div>
         )}

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -11,20 +12,35 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FileText, Loader2, Eye, EyeOff } from 'lucide-react';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
-const loginSchema = z.object({
-  email: z.string().min(1, '请输入邮箱地址').email('请输入有效的邮箱地址'),
-  password: z.string().min(1, '请输入密码').min(6, '密码长度至少为6位').max(32, '密码长度最多为32位'),
-  rememberMe: z.boolean(),
-});
+function useLoginSchema() {
+  const { t } = useTranslation();
+  return useMemo(
+    () =>
+      z.object({
+        email: z.string().min(1, t('auth.login.errors.emailRequired')).email(t('auth.login.errors.emailInvalid')),
+        password: z
+          .string()
+          .min(1, t('auth.login.errors.passwordRequired'))
+          .min(6, t('auth.login.errors.passwordMin'))
+          .max(32, t('auth.login.errors.passwordMax')),
+        rememberMe: z.boolean(),
+      }),
+    [t]
+  );
+}
 
-type LoginFormValues = z.infer<typeof loginSchema>;
+type LoginFormValues = z.infer<ReturnType<typeof useLoginSchema>>;
 
 export default function Login() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+
+  const loginSchema = useLoginSchema();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -43,12 +59,15 @@ export default function Login() {
       await login({ email: values.email, password: values.password }, values.rememberMe);
       navigate('/resumes', { replace: true });
     } catch {
-      setError('账户或密码错误');
+      setError(t('auth.login.errorInvalidCredentials'));
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4 relative">
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher />
+      </div>
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex justify-center mb-8">
@@ -56,14 +75,14 @@ export default function Login() {
             <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
               <FileText className="w-7 h-7 text-white" />
             </div>
-            <span className="text-2xl font-bold text-gray-900">智能求职助手</span>
+            <span className="text-2xl font-bold text-gray-900">{t('common.appName')}</span>
           </div>
         </div>
 
         <Card className="shadow-xl border-0">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">欢迎回来</CardTitle>
-            <CardDescription className="text-center">登录您的账户继续</CardDescription>
+            <CardTitle className="text-2xl font-bold text-center">{t('auth.login.title')}</CardTitle>
+            <CardDescription className="text-center">{t('auth.login.subtitle')}</CardDescription>
           </CardHeader>
 
           <CardContent>
@@ -80,11 +99,11 @@ export default function Login() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>邮箱地址</FormLabel>
+                      <FormLabel>{t('auth.login.emailLabel')}</FormLabel>
                       <FormControl>
                         <Input
                           type="email"
-                          placeholder="your@email.com"
+                          placeholder={t('auth.login.emailPlaceholder')}
                           disabled={isSubmitting}
                           className="h-11"
                           {...field}
@@ -100,12 +119,12 @@ export default function Login() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>密码</FormLabel>
+                      <FormLabel>{t('auth.login.passwordLabel')}</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
                             type={showPassword ? 'text' : 'password'}
-                            placeholder="请输入密码"
+                            placeholder={t('auth.login.passwordPlaceholder')}
                             disabled={isSubmitting}
                             className="h-11 pr-10"
                             {...field}
@@ -134,7 +153,7 @@ export default function Login() {
                         <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isSubmitting} />
                       </FormControl>
                       <div className="space-y-1 leading-none">
-                        <FormLabel className="font-normal cursor-pointer">记住我</FormLabel>
+                        <FormLabel className="font-normal cursor-pointer">{t('auth.login.rememberMe')}</FormLabel>
                       </div>
                     </FormItem>
                   )}
@@ -144,10 +163,10 @@ export default function Login() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      登录中...
+                      {t('auth.login.loggingIn')}
                     </>
                   ) : (
-                    '登录'
+                    t('auth.login.loginButton')
                   )}
                 </Button>
               </form>
@@ -156,9 +175,9 @@ export default function Login() {
 
           <CardFooter className="flex justify-center">
             <p className="text-sm text-gray-600">
-              还没有账户？{' '}
+              {t('auth.login.noAccount')}{' '}
               <Link to="/register" className="text-blue-600 hover:underline font-medium">
-                立即注册
+                {t('auth.login.registerNow')}
               </Link>
             </p>
           </CardFooter>
@@ -166,7 +185,7 @@ export default function Login() {
 
         {/* 页脚 */}
         <p className="text-center text-sm text-gray-500 mt-8">
-          © 2024 智能求职助手. All rights reserved.
+          © 2024 {t('common.appName')}. All rights reserved.
         </p>
       </div>
     </div>

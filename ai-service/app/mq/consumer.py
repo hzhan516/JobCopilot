@@ -6,18 +6,28 @@ from app.config import (
     AI_DIRECT_EXCHANGE,
     CONVERSATION_REQUEST_QUEUE,
     CONVERSATION_REQUEST_ROUTING_KEY,
+    CONVERSATION_RESULT_QUEUE,
+    CONVERSATION_RESULT_ROUTING_KEY,
     JOB_RANK_REQUEST_QUEUE,
     JOB_RANK_REQUEST_ROUTING_KEY,
+    JOB_RANK_RESULT_QUEUE,
+    JOB_RANK_RESULT_ROUTING_KEY,
     JOB_PARSE_REQUEST_QUEUE,
     JOB_PARSE_REQUEST_ROUTING_KEY,
+    JOB_PARSE_RESULT_QUEUE,
+    JOB_PARSE_RESULT_ROUTING_KEY,
     RESUME_PARSE_REQUEST_QUEUE,
     RESUME_PARSE_REQUEST_ROUTING_KEY,
+    RESUME_PARSE_RESULT_QUEUE,
+    RESUME_PARSE_RESULT_ROUTING_KEY,
     RABBITMQ_HOST,
     RABBITMQ_PASSWORD,
     RABBITMQ_PORT,
     RABBITMQ_USERNAME,
     VECTOR_GEN_REQUEST_QUEUE,
     VECTOR_GEN_REQUEST_ROUTING_KEY,
+    VECTOR_GEN_RESULT_QUEUE,
+    VECTOR_GEN_RESULT_ROUTING_KEY,
 )
 
 from app.mq.publisher import publish_ai_result, publish_job_rank_result
@@ -59,12 +69,24 @@ def setup_all_queues(channel: pika.adapters.blocking_connection.BlockingChannel)
         queue=JOB_PARSE_REQUEST_QUEUE,
         routing_key=JOB_PARSE_REQUEST_ROUTING_KEY,
     )
+    channel.queue_declare(queue=JOB_PARSE_RESULT_QUEUE, durable=True)
+    channel.queue_bind(
+        exchange=AI_DIRECT_EXCHANGE,
+        queue=JOB_PARSE_RESULT_QUEUE,
+        routing_key=JOB_PARSE_RESULT_ROUTING_KEY,
+    )
 
     channel.queue_declare(queue=RESUME_PARSE_REQUEST_QUEUE, durable=True)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=RESUME_PARSE_REQUEST_QUEUE,
         routing_key=RESUME_PARSE_REQUEST_ROUTING_KEY,
+    )
+    channel.queue_declare(queue=RESUME_PARSE_RESULT_QUEUE, durable=True)
+    channel.queue_bind(
+        exchange=AI_DIRECT_EXCHANGE,
+        queue=RESUME_PARSE_RESULT_QUEUE,
+        routing_key=RESUME_PARSE_RESULT_ROUTING_KEY,
     )
 
     channel.queue_declare(queue=VECTOR_GEN_REQUEST_QUEUE, durable=True)
@@ -73,6 +95,12 @@ def setup_all_queues(channel: pika.adapters.blocking_connection.BlockingChannel)
         queue=VECTOR_GEN_REQUEST_QUEUE,
         routing_key=VECTOR_GEN_REQUEST_ROUTING_KEY,
     )
+    channel.queue_declare(queue=VECTOR_GEN_RESULT_QUEUE, durable=True)
+    channel.queue_bind(
+        exchange=AI_DIRECT_EXCHANGE,
+        queue=VECTOR_GEN_RESULT_QUEUE,
+        routing_key=VECTOR_GEN_RESULT_ROUTING_KEY,
+    )
 
     channel.queue_declare(queue=CONVERSATION_REQUEST_QUEUE, durable=True)
     channel.queue_bind(
@@ -80,12 +108,24 @@ def setup_all_queues(channel: pika.adapters.blocking_connection.BlockingChannel)
         queue=CONVERSATION_REQUEST_QUEUE,
         routing_key=CONVERSATION_REQUEST_ROUTING_KEY,
     )
+    channel.queue_declare(queue=CONVERSATION_RESULT_QUEUE, durable=True)
+    channel.queue_bind(
+        exchange=AI_DIRECT_EXCHANGE,
+        queue=CONVERSATION_RESULT_QUEUE,
+        routing_key=CONVERSATION_RESULT_ROUTING_KEY,
+    )
 
     channel.queue_declare(queue=JOB_RANK_REQUEST_QUEUE, durable=True)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=JOB_RANK_REQUEST_QUEUE,
         routing_key=JOB_RANK_REQUEST_ROUTING_KEY,
+    )
+    channel.queue_declare(queue=JOB_RANK_RESULT_QUEUE, durable=True)
+    channel.queue_bind(
+        exchange=AI_DIRECT_EXCHANGE,
+        queue=JOB_RANK_RESULT_QUEUE,
+        routing_key=JOB_RANK_RESULT_ROUTING_KEY,
     )
 
 
@@ -193,6 +233,12 @@ def handle_conversation_message(
     try:
         result = process_conversation(command)
     except Exception as exc:
+        print(
+            "Conversation processing failed:"
+            f" conversation_id={command.conversation_id},"
+            f" error={exc}",
+            flush=True,
+        )
         result = build_failed_event(
             reference_id=command.conversation_id,
             event_type="CONVERSATION_REPLY",
@@ -253,11 +299,17 @@ def vector_message_callback(ch, method, properties, body) -> None:
 
 
 def conversation_message_callback(ch, method, properties, body) -> None:
+    print(
+        "Received raw conversation MQ message:"
+        f" delivery_tag={method.delivery_tag},"
+        f" body={body.decode('utf-8', errors='replace')[:1000]}",
+        flush=True,
+    )
     try:
         handle_conversation_message(ch, body)
         ch.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as exc:
-        print(f"Failed to process conversation message: {exc}")
+        print(f"Failed to process conversation message: {exc}", flush=True)
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 

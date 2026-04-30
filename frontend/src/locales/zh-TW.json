@@ -1,0 +1,320 @@
+{
+  "common": {
+    "save": "儲存",
+    "cancel": "取消",
+    "delete": "刪除",
+    "edit": "編輯",
+    "create": "建立",
+    "loading": "載入中...",
+    "confirm": "確認",
+    "back": "返回",
+    "upload": "上傳",
+    "submit": "提交",
+    "success": "成功",
+    "error": "錯誤",
+    "warning": "警告",
+    "yes": "是",
+    "no": "否",
+    "close": "關閉",
+    "viewDetails": "查看詳情",
+    "enter": "進入",
+    "viewAll": "查看全部",
+    "viewMore": "查看更多",
+    "notSpecified": "未指定",
+    "notAvailable": "暫無",
+    "optional": "可選",
+    "appName": "智能求職助手"
+  },
+  "layout": {
+    "nav": {
+      "resumes": "我的履歷",
+      "jobs": "職位推薦",
+      "chat": "AI對話",
+      "tracking": "求職追蹤"
+    },
+    "userMenu": {
+      "profile": "個人中心",
+      "logout": "登出"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "歡迎回來",
+      "subtitle": "登入您的帳戶繼續",
+      "emailLabel": "電子郵件地址",
+      "emailPlaceholder": "your@email.com",
+      "passwordLabel": "密碼",
+      "passwordPlaceholder": "請輸入密碼",
+      "rememberMe": "記住我",
+      "loginButton": "登入",
+      "loggingIn": "登入中...",
+      "noAccount": "還沒有帳戶？",
+      "registerNow": "立即註冊",
+      "errorInvalidCredentials": "帳戶或密碼錯誤",
+      "errors": {
+        "emailRequired": "請輸入電子郵件地址",
+        "emailInvalid": "請輸入有效的電子郵件地址",
+        "passwordRequired": "請輸入密碼",
+        "passwordMin": "密碼長度至少為6位",
+        "passwordMax": "密碼長度最多為32位"
+      }
+    },
+    "register": {
+      "title": "建立帳戶",
+      "subtitle": "開始您的智能求職之旅",
+      "emailLabel": "電子郵件地址",
+      "emailPlaceholder": "your@email.com",
+      "passwordLabel": "密碼",
+      "passwordPlaceholder": "6-32位字元",
+      "confirmPasswordLabel": "確認密碼",
+      "confirmPasswordPlaceholder": "再次輸入密碼",
+      "agreeTerms": "我已閱讀並同意",
+      "termsOfService": "服務條款",
+      "privacyPolicy": "隱私政策",
+      "and": "和",
+      "registerButton": "註冊",
+      "registering": "註冊中...",
+      "hasAccount": "已有帳戶？",
+      "loginNow": "立即登入",
+      "errorEmailExists": "電子郵件已被註冊",
+      "errorValidation": "參數驗證失敗，請檢查輸入內容",
+      "errorGeneric": "註冊失敗，請稍後重試",
+      "errors": {
+        "emailRequired": "請輸入電子郵件地址",
+        "emailInvalid": "請輸入有效的電子郵件地址",
+        "passwordRequired": "請輸入密碼",
+        "passwordMin": "密碼長度至少為6位",
+        "passwordMax": "密碼長度最多為32位",
+        "confirmPasswordRequired": "請確認密碼",
+        "passwordMismatch": "兩次輸入的密碼不一致",
+        "agreeTermsRequired": "請閱讀並同意服務條款"
+      },
+      "passwordStrength": {
+        "weak": "弱",
+        "medium": "中",
+        "strong": "強",
+        "hint": "建議包含大小寫字母、數字和特殊符號，長度8位以上"
+      }
+    }
+  },
+  "dashboard": {
+    "welcome": "歡迎回來！",
+    "subtitle": "智能求職助手已為您準備好今日的工作建議",
+    "uploadResume": "上傳履歷",
+    "viewJobs": "查看職位",
+    "stats": {
+      "resumes": "履歷數量",
+      "matches": "配對職位",
+      "applications": "投遞記錄",
+      "chats": "AI對話"
+    },
+    "quickActions": {
+      "title": "快速操作",
+      "resumes": "我的履歷",
+      "resumesDesc": "管理您的履歷，支援多版本",
+      "jobs": "職位推薦",
+      "jobsDesc": "基於履歷智能配對職位",
+      "chat": "AI對話",
+      "chatDesc": "智能助手幫您優化履歷",
+      "tracking": "求職追蹤",
+      "trackingDesc": "追蹤求職進度和面試安排"
+    },
+    "recommendedJobs": {
+      "title": "為您推薦",
+      "matchLabel": "配對度"
+    },
+    "applicationProgress": {
+      "title": "求職進展",
+      "status": {
+        "interview": "面試中",
+        "applied": "已投遞",
+        "offered": "已錄取"
+      }
+    }
+  },
+  "jobList": {
+    "title": "職位推薦",
+    "subtitle": "基於您的履歷智能配對",
+    "searchPlaceholder": "搜尋職位、公司...",
+    "locationFilter": "工作地點",
+    "allLocations": "全部地點",
+    "sortBy": "排序方式",
+    "sortMatch": "配對度",
+    "sortSalary": "薪資",
+    "sortDate": "發布時間",
+    "emptyTitle": "暫無匹配的職位",
+    "emptyDesc": "請嘗試調整篩選條件或更新您的履歷",
+    "salaryNegotiable": "薪資面議",
+    "salaryMin": "{{min}}K起",
+    "salaryMax": "最高{{max}}K",
+    "salaryRange": "{{min}}K-{{max}}K",
+    "matchScore": "配對度 {{score}}%",
+    "viewDetails": "查看詳情",
+    "loadError": "載入職位列表失敗"
+  },
+  "chat": {
+    "newChat": "新建對話",
+    "newChatTitle": "新建對話",
+    "newChatDesc": "輸入對話標題開始新的諮詢",
+    "chatTitlePlaceholder": "對話標題",
+    "create": "建立",
+    "delete": "刪除",
+    "aiAssistant": "AI求職助手",
+    "emptyState": "開始新的對話吧",
+    "selectOrCreate": "選擇一個對話或建立新對話",
+    "inputPlaceholder": "輸入您的問題...",
+    "aiThinking": "AI正在思考...",
+    "aiPending": "訊息已傳送，AI 回覆仍在處理中。",
+    "footerHint": "AI助手可以幫您優化履歷、推薦職位、解答求職問題",
+    "loadError": "載入對話列表失敗",
+    "createError": "請輸入對話標題",
+    "createFailed": "建立對話失敗",
+    "sendFailed": "傳送失敗",
+    "deleteSuccess": "刪除成功",
+    "deleteFailed": "刪除失敗",
+    "createSuccess": "建立成功",
+    "mockGreeting": "您好！我是您的AI求職助手。我可以幫您優化履歷、推薦職位、解答求職相關問題。請問有什麼可以幫助您的？",
+    "mockReply": "感謝您的提問！關於\"{{question}}\"，我建議您：\n\n1. 首先完善您的履歷內容，突出相關技能和經驗\n2. 針對目標崗位定製履歷關鍵詞\n3. 準備相關的專案案例和工作成果\n\n如果您需要更詳細的建議，請告訴我您的具體情況。"
+  },
+  "tracking": {
+    "title": "求職追蹤",
+    "subtitle": "管理您的求職進度",
+    "addRecord": "添加記錄",
+    "stats": {
+      "applied": "已投遞",
+      "interview": "面試中",
+      "offered": "已錄取",
+      "total": "總計"
+    },
+    "status": {
+      "APPLIED": "已投遞",
+      "SCREENING": "篩選中",
+      "INTERVIEW": "面試中",
+      "OFFER": "已錄取",
+      "REJECTED": "已拒絕",
+      "WITHDRAWN": "已撤回"
+    },
+    "recordList": "投遞記錄",
+    "emptyTitle": "暫無投遞記錄",
+    "emptyDesc": "添加您的第一筆投遞記錄",
+    "company": "公司",
+    "jobTitle": "職位名稱",
+    "jobTitlePlaceholder": "例如：前端工程師",
+    "companyPlaceholder": "例如：阿里巴巴",
+    "currentStatus": "目前狀態",
+    "notes": "備註",
+    "notesPlaceholder": "可選",
+    "add": "添加",
+    "addRecordTitle": "添加投遞記錄",
+    "addRecordDesc": "記錄您的求職投遞資訊",
+    "updateSuccess": "狀態更新成功",
+    "updateFailed": "更新失敗",
+    "addSuccess": "添加成功",
+    "addFailed": "添加失敗",
+    "deleteSuccess": "刪除成功",
+    "deleteFailed": "刪除失敗",
+    "loadError": "載入投遞記錄失敗",
+    "fillRequired": "請填寫完整資訊"
+  },
+  "resume": {
+    "list": {
+      "title": "我的履歷",
+      "subtitle": "管理您的履歷並追蹤解析狀態。",
+      "upload": "上傳履歷",
+      "noResumes": "暫無履歷",
+      "noResumesDesc": "上傳您的第一份履歷以開始使用。我們將自動解析並提取您的資訊。",
+      "uploadSuccess": "履歷上傳成功，開始解析...",
+      "parseSuccess": "履歷解析成功！",
+      "parseFailed": "履歷解析失敗。",
+      "parseTimeout": "解析時間較長，請稍候。",
+      "uploadFailed": "履歷上傳失敗。",
+      "deleteConfirm": "確定要刪除這份履歷嗎？",
+      "deleteSuccess": "履歷刪除成功。",
+      "deleteFailed": "履歷刪除失敗。",
+      "uploadDialogTitle": "上傳履歷",
+      "uploadDialogDesc": "支援 PDF、DOCX、MD 或 TXT 格式，最大 10MB。"
+    },
+    "upload": {
+      "dragText": "點擊或拖拽檔案到此處上傳",
+      "singleUpload": "支援單檔案上傳，最大 10MB。",
+      "formats": "支援格式：PDF、DOCX、MD、TXT",
+      "uploading": "上傳中...",
+      "invalidType": "檔案類型無效，請上傳 PDF、DOCX、MD 或 TXT。",
+      "sizeExceeded": "檔案大小超過 10MB 限制。",
+      "uploadError": "檔案上傳失敗，請重試。"
+    },
+    "card": {
+      "default": "預設",
+      "versions": "版本數",
+      "latestStatus": "最新狀態",
+      "viewDetails": "查看詳情",
+      "deleteTitle": "刪除履歷",
+      "created": "建立於"
+    },
+    "detail": {
+      "notFound": "履歷不存在",
+      "backToList": "返回履歷列表",
+      "versionNotFound": "版本不存在",
+      "backToDetail": "返回履歷詳情",
+      "createdOn": "建立於",
+      "versionHistory": "版本歷史",
+      "selectVersion": "選擇一個版本查看詳情"
+    },
+    "edit": {
+      "title": "編輯版本",
+      "back": "返回履歷列表",
+      "backToDetail": "返回履歷詳情"
+    },
+    "timeline": {
+      "original": "原始上傳",
+      "converted": "解析版本",
+      "aiOptimized": "AI優化",
+      "active": "活躍",
+      "archived": "已封存"
+    },
+    "parseStatus": {
+      "pending": "待處理",
+      "processing": "處理中",
+      "completed": "已完成",
+      "failed": "失敗"
+    },
+    "versionDetail": {
+      "title": "版本詳情",
+      "basicInfo": "基本資訊",
+      "jobTitle": "職位",
+      "company": "公司",
+      "requirements": "崗位要求",
+      "description": "職位描述",
+      "rawContent": "原始內容",
+      "editContent": "編輯內容",
+      "parsed": "已解析",
+      "original": "原始",
+      "converted": "已轉換",
+      "aiOptimized": "AI優化",
+      "noRequirements": "未提取到崗位要求。",
+      "noDescription": "暫無職位描述。",
+      "contentNotAvailable": "該版本暫無內容。"
+    },
+    "markdownEditor": {
+      "title": "編輯履歷",
+      "save": "儲存",
+      "cancel": "取消"
+    },
+    "download": {
+      "button": "下載",
+      "original": "原始檔案",
+      "pdf": "PDF 文件",
+      "docx": "Word 文件",
+      "md": "Markdown",
+      "html": "HTML",
+      "txt": "純文字",
+      "error": "履歷下載失敗"
+    }
+  },
+  "language": {
+    "en": "English",
+    "zhCN": "简体中文",
+    "zhTW": "繁體中文",
+    "switch": "切換語言"
+  }
+}

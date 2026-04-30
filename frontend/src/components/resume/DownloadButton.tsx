@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/button';
 import {
   DropdownMenu,
@@ -17,6 +18,7 @@ interface DownloadButtonProps {
 }
 
 export function DownloadButton({ versionId, versionType, filename = 'resume' }: DownloadButtonProps) {
+  const { t } = useTranslation();
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async (format: DownloadFormat) => {
@@ -24,19 +26,19 @@ export function DownloadButton({ versionId, versionType, filename = 'resume' }: 
       setIsDownloading(true);
       await downloadResume(versionId, format, filename);
     } catch (error) {
-      console.error('Failed to download resume:', error);
+      console.error(t('resume.download.error'), error);
     } finally {
       setIsDownloading(false);
     }
   };
 
-  const formats: { label: string; value: DownloadFormat }[] = [
-    { label: 'Original File', value: 'original' },
-    { label: 'PDF Document', value: 'pdf' },
-    { label: 'Word Document', value: 'docx' },
-    { label: 'Markdown', value: 'md' },
-    { label: 'HTML', value: 'html' },
-    { label: 'Plain Text', value: 'txt' },
+  const formats: { labelKey: string; value: DownloadFormat }[] = [
+    { labelKey: 'resume.download.original', value: 'original' },
+    { labelKey: 'resume.download.pdf', value: 'pdf' },
+    { labelKey: 'resume.download.docx', value: 'docx' },
+    { labelKey: 'resume.download.md', value: 'md' },
+    { labelKey: 'resume.download.html', value: 'html' },
+    { labelKey: 'resume.download.txt', value: 'txt' },
   ];
 
   const availableFormats = versionType === 'ORIGINAL' 
@@ -53,7 +55,7 @@ export function DownloadButton({ versionId, versionType, filename = 'resume' }: 
         className="flex items-center gap-2"
       >
         {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-        Download
+        {t('resume.download.button')}
       </Button>
     );
   }
@@ -63,7 +65,7 @@ export function DownloadButton({ versionId, versionType, filename = 'resume' }: 
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" disabled={isDownloading} className="flex items-center gap-2">
           {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          Download
+          {t('resume.download.button')}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
@@ -73,7 +75,7 @@ export function DownloadButton({ versionId, versionType, filename = 'resume' }: 
             onClick={() => handleDownload(format.value)}
             className="cursor-pointer"
           >
-            {format.label}
+            {t(format.labelKey)}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

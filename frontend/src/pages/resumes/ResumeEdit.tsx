@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useResumeStore } from '../../store/resume.store';
 import { MarkdownEditor } from '../../components/resume/MarkdownEditor';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 
 export default function ResumeEdit() {
+  const { t } = useTranslation();
   const { groupId, versionId } = useParams<{ groupId: string; versionId: string }>();
   const navigate = useNavigate();
   const { currentGroup, loading, fetchGroupDetail, saveVersion } = useResumeStore();
@@ -27,8 +29,8 @@ export default function ResumeEdit() {
   if (!currentGroup) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-2xl font-semibold mb-4">Resume not found</h2>
-        <Button onClick={() => navigate('/resumes')}>Back to Resumes</Button>
+        <h2 className="text-2xl font-semibold mb-4">{t('resume.detail.notFound')}</h2>
+        <Button onClick={() => navigate('/resumes')}>{t('resume.edit.back')}</Button>
       </div>
     );
   }
@@ -38,8 +40,8 @@ export default function ResumeEdit() {
   if (!version) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-2xl font-semibold mb-4">Version not found</h2>
-        <Button onClick={() => navigate(`/resumes/${groupId}`)}>Back to Resume Details</Button>
+        <h2 className="text-2xl font-semibold mb-4">{t('resume.detail.versionNotFound')}</h2>
+        <Button onClick={() => navigate(`/resumes/${groupId}`)}>{t('resume.edit.backToDetail')}</Button>
       </div>
     );
   }
@@ -62,7 +64,7 @@ export default function ResumeEdit() {
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Edit Version</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t('resume.edit.title')}</h1>
           <p className="text-muted-foreground text-sm">
             {currentGroup.title} - {version.versionType}
           </p>

@@ -51,21 +51,26 @@ export const chatService = {
     page = 1,
     size = 50
   ): Promise<PaginatedResponse<Message>> => {
-    const response = await apiClient.get<ApiResponse<PaginatedResponse<Message>>>(
-      `/v1/conversations/${conversationId}/messages`,
-      {
-        params: { page, size },
-      }
+    const response = await apiClient.get<ApiResponse<Conversation>>(
+      `/v1/conversations/${conversationId}`,
+      { params: { page, size } }
     );
     if (response.data.code === 200) {
-      return response.data.data;
+      const list = response.data.data.messages ?? [];
+      return {
+        list,
+        page,
+        size,
+        total: list.length,
+        totalPages: 1,
+      };
     }
     throw new Error(response.data.message);
   },
 
   // 发送消息
-  sendMessage: async (conversationId: string, content: string): Promise<Message> => {
-    const response = await apiClient.post<ApiResponse<Message>>(
+  sendMessage: async (conversationId: string, content: string): Promise<Conversation> => {
+    const response = await apiClient.post<ApiResponse<Conversation>>(
       `/v1/conversations/${conversationId}/messages`,
       { content }
     );

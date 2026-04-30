@@ -28,7 +28,7 @@ import java.util.UUID;
  * Conversation HTTP Controller
  */
 @RestController
-@RequestMapping("/api/v1/conversations")
+@RequestMapping("/v1/conversations")
 @RequiredArgsConstructor
 @Slf4j
 public class ConversationController {

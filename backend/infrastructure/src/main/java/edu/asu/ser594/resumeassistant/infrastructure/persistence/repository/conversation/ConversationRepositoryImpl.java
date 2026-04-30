@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -104,7 +105,7 @@ public class ConversationRepositoryImpl implements ConversationRepository {
             entity.getResumeVersionId() != null ? java.util.UUID.fromString(entity.getResumeVersionId()) : null,
             entity.getCreatedAt(),
             entity.getUpdatedAt(),
-            messages
+            new ArrayList<>(messages)
         );
     }
 

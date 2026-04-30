@@ -75,6 +75,11 @@ public class AiResultMessageListener {
         try {
             if (!"COMPLETED".equals(event.status())) {
                 log.warn("Conversation AI reply failed for conversation: {}, error: {}", event.referenceId(), event.errorMessage());
+                conversationFacade.saveAiReply(
+                    event.referenceId(),
+                    "AI response failed: " + (event.errorMessage() != null ? event.errorMessage() : "Unknown error"),
+                    null
+                );
                 return;
             }
 
