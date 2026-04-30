@@ -90,11 +90,11 @@ Authorization: Bearer <access_token>
 }
 ```
 
-**成功响应** (200):
+**成功响应** (201):
 
 ```json
 {
-  "code": 200,
+  "code": 201,
   "message": "Success",
   "data": {
     "userId": "550e8400-e29b-41d4-a716-446655440000",
@@ -491,6 +491,11 @@ Authorization: Bearer <access_token>
 | `title` | String | 否 | 简历标题，不传则使用文件名 |
 
 #### ResumeEditRequest (简历编辑请求)
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `versionId` | UUID | 是 | 版本 ID（与路径参数一致） |
+| `content` | String | 是 | 简历内容（Markdown 格式） |
 
 ```java
 {

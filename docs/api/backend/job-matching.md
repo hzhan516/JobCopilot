@@ -79,7 +79,7 @@ Content-Type: application/json
       "matchFactors": {
         "skillMatch": 0.95,
         "experienceMatch": 0.90,
-        "educationMatch": 0.88
+        "locationMatch": 0.88
       },
       "description": "Looking for an experienced Java developer..."
     }
@@ -160,7 +160,7 @@ Content-Type: application/json
       "matchFactors": {
         "skillMatch": 0.95,
         "experienceMatch": 0.90,
-        "educationMatch": 0.88
+        "locationMatch": 0.88
       },
       "description": "Looking for an experienced Java developer..."
     }

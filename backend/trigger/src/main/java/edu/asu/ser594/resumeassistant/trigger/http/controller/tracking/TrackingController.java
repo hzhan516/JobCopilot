@@ -20,7 +20,7 @@ import java.util.UUID;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/trackings")
+@RequestMapping("/v1/trackings")
 @RequiredArgsConstructor
 public class TrackingController {
 

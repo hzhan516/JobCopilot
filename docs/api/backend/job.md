@@ -130,7 +130,7 @@ Authorization: Bearer <user-jwt-token>
 
 ---
 
-### 1.4 职位智能匹配 (Match Jobs)
+### 1.7 职位智能匹配 (Match Jobs)
 **Endpoint:** `POST /api/v1/jobs/match`
 **描述:** 根据用户简历或查询条件，调用 AI 服务获取匹配的职位推荐列表。
 

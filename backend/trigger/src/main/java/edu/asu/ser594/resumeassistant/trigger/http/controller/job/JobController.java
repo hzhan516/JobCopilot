@@ -18,7 +18,7 @@ import java.util.UUID;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/jobs")
+@RequestMapping("/v1/jobs")
 @RequiredArgsConstructor
 public class JobController {
 

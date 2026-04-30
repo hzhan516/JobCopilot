@@ -37,6 +37,7 @@
 |------|------|------|------|
 | `title` | String | 否 | 对话标题，不传则默认为 "New Conversation" |
 | `resumeVersionId` | String (UUID) | 否 | 关联的简历版本 ID |
+| `jobId` | String (UUID) | 否 | 关联的职位 ID |
 
 #### 请求示例
 
@@ -503,8 +504,17 @@
   "messageId": String,        // 消息 ID
   "role": String,             // USER / ASSISTANT / SYSTEM
   "content": String,          // 内容
-  "sequence": Integer,        // 序号
+  "sequence": int,            // 序号
   "fileUrl": String,          // 关联文件 URL（AI 生成文件等）
   "createdAt": LocalDateTime  // 创建时间
 }
 ```
+
+
+---
+
+## 备注
+
+### 前端流式接口调用
+
+前端 `chatService.ts` 中存在对 `/v1/conversations/{conversationId}/stream` 的调用，但当前后端 `ConversationController` 中**未实现**该端点。如需支持流式 AI 回复，请后续补充对应的 Controller 方法。
