@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.domain.user.entity;
 
+import edu.asu.ser594.resumeassistant.types.enums.OAuthProvider;
 import edu.asu.ser594.resumeassistant.types.enums.UserRole;
 import edu.asu.ser594.resumeassistant.types.enums.UserStatus;
 import org.junit.jupiter.api.DisplayName;
@@ -28,7 +29,7 @@ class UserTest {
     @DisplayName("Should create user with factory method with all required fields")
     void shouldCreateUserWithFactoryMethod() {
         // When
-        User user = User.create(TEST_EMAIL);
+        User user = User.create(TEST_EMAIL, OAuthProvider.EMAIL);
 
         // Then
         assertThat(user).isNotNull();
@@ -45,8 +46,8 @@ class UserTest {
     @DisplayName("Should generate unique ID for each created user")
     void shouldGenerateUniqueIdForEachUser() {
         // When
-        User user1 = User.create(TEST_EMAIL);
-        User user2 = User.create("another@example.com");
+        User user1 = User.create(TEST_EMAIL, OAuthProvider.EMAIL);
+        User user2 = User.create("another@example.com", OAuthProvider.EMAIL);
 
         // Then
         assertThat(user1.getId()).isNotEqualTo(user2.getId());
@@ -56,7 +57,7 @@ class UserTest {
     @DisplayName("Should verify email and update timestamp")
     void shouldVerifyEmailAndUpdateTimestamp() {
         // Given
-        User user = User.create(TEST_EMAIL);
+        User user = User.create(TEST_EMAIL, OAuthProvider.EMAIL);
         LocalDateTime beforeUpdate = user.getUpdatedAt();
 
         // When
@@ -74,7 +75,7 @@ class UserTest {
     @DisplayName("Should update role and update timestamp")
     void shouldUpdateRoleAndUpdateTimestamp() {
         // Given
-        User user = User.create(TEST_EMAIL);
+        User user = User.create(TEST_EMAIL, OAuthProvider.EMAIL);
         LocalDateTime beforeUpdate = user.getUpdatedAt();
 
         // When
@@ -92,7 +93,7 @@ class UserTest {
     @DisplayName("Should update status and update timestamp")
     void shouldUpdateStatusAndUpdateTimestamp() {
         // Given
-        User user = User.create(TEST_EMAIL);
+        User user = User.create(TEST_EMAIL, OAuthProvider.EMAIL);
         LocalDateTime beforeUpdate = user.getUpdatedAt();
 
         // When
@@ -110,7 +111,7 @@ class UserTest {
     @DisplayName("Should support all user roles")
     void shouldSupportAllUserRoles() {
         // Given
-        User user = User.create(TEST_EMAIL);
+        User user = User.create(TEST_EMAIL, OAuthProvider.EMAIL);
 
         // When & Then
         for (UserRole role : UserRole.values()) {
@@ -123,7 +124,7 @@ class UserTest {
     @DisplayName("Should support all user statuses")
     void shouldSupportAllUserStatuses() {
         // Given
-        User user = User.create(TEST_EMAIL);
+        User user = User.create(TEST_EMAIL, OAuthProvider.EMAIL);
 
         // When & Then
         for (UserStatus status : UserStatus.values()) {
@@ -136,7 +137,7 @@ class UserTest {
     @DisplayName("Should maintain email immutability")
     void shouldMaintainEmailImmutability() {
         // Given
-        User user = User.create(TEST_EMAIL);
+        User user = User.create(TEST_EMAIL, OAuthProvider.EMAIL);
 
         // Then - email should be set and immutable
         assertThat(user.getEmail()).isEqualTo(TEST_EMAIL);
@@ -146,7 +147,7 @@ class UserTest {
     @DisplayName("Should maintain createdAt immutability")
     void shouldMaintainCreatedAtImmutability() {
         // Given
-        User user = User.create(TEST_EMAIL);
+        User user = User.create(TEST_EMAIL, OAuthProvider.EMAIL);
         LocalDateTime createdAt = user.getCreatedAt();
 
         // When - perform various updates
@@ -172,6 +173,7 @@ class UserTest {
                 .emailVerified(true)
                 .role(UserRole.ADMIN)
                 .status(UserStatus.ACTIVE)
+                .authProvider(OAuthProvider.EMAIL)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -188,7 +190,7 @@ class UserTest {
     @DisplayName("Should implement Entity interface correctly")
     void shouldImplementEntityInterfaceCorrectly() {
         // Given
-        User user = User.create(TEST_EMAIL);
+        User user = User.create(TEST_EMAIL, OAuthProvider.EMAIL);
 
         // Then
         assertThat(user.getId()).isNotNull();
@@ -218,7 +220,7 @@ class UserTest {
     @DisplayName("Should handle multiple state changes correctly")
     void shouldHandleMultipleStateChangesCorrectly() {
         // Given
-        User user = User.create(TEST_EMAIL);
+        User user = User.create(TEST_EMAIL, OAuthProvider.EMAIL);
 
         // When - multiple state changes
         user.verifyEmail();

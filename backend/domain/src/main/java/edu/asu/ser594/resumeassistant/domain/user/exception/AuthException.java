@@ -20,6 +20,7 @@ public class AuthException extends DomainException {
         INVALID_CREDENTIALS,
         EMAIL_NOT_VERIFIED,
         TOKEN_EXPIRED,
-        TOKEN_INVALID
+        TOKEN_INVALID,
+        EMAIL_REGISTERED_WITH_PASSWORD
     }
 }

@@ -1,6 +1,7 @@
 package edu.asu.ser594.resumeassistant.domain.user.entity;
 
 import edu.asu.ser594.resumeassistant.domain.shared.entity.AggregateRoot;
+import edu.asu.ser594.resumeassistant.types.enums.OAuthProvider;
 import edu.asu.ser594.resumeassistant.types.enums.UserRole;
 import edu.asu.ser594.resumeassistant.types.enums.UserStatus;
 import lombok.Builder;
@@ -28,6 +29,7 @@ public class User extends AggregateRoot<UUID> {
     private boolean emailVerified;
     private UserRole role;
     private UserStatus status;
+    private OAuthProvider authProvider;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -36,28 +38,35 @@ public class User extends AggregateRoot<UUID> {
      * 注意：@Builder 生成的代码可以访问包级别或私有的全参构造器
      */
     User(UUID id, String email, boolean emailVerified, UserRole role,
-         UserStatus status, LocalDateTime createdAt, LocalDateTime updatedAt) {
+         UserStatus status, OAuthProvider authProvider, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.email = email;
         this.emailVerified = emailVerified;
         this.role = role;
         this.status = status;
+        this.authProvider = authProvider;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
     /**
      * 工厂方法：创建新用户
+     * Factory method: create new user
+     *
+     * @param email        邮箱地址
+     * @param authProvider 认证提供者
      */
-    public static User create(String email) {
+    public static User create(String email, OAuthProvider authProvider) {
         UUID id = UUID.randomUUID();
         LocalDateTime now = LocalDateTime.now();
+        boolean isEmailVerified = authProvider == OAuthProvider.GOOGLE;
         return User.builder()
                 .id(id)
                 .email(email)
-                .emailVerified(false)
+                .emailVerified(isEmailVerified)
                 .role(UserRole.JOB_SEEKER)
                 .status(UserStatus.ACTIVE)
+                .authProvider(authProvider)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();

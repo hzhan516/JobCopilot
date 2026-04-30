@@ -74,7 +74,7 @@ class AuthControllerTest {
         ResponseEntity<ApiResponse<AuthResponse>> response = authController.registerByEmail(request);
 
         // Then
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getCode() == 200).isTrue();
         assertThat(response.getBody().getData().getEmail()).isEqualTo(TEST_EMAIL);
@@ -208,7 +208,7 @@ class AuthControllerTest {
         ResponseEntity<ApiResponse<AuthResponse>> loginResponse = authController.loginByEmail(loginRequest);
 
         // Then
-        assertThat(registerResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(registerResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(loginResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 }

@@ -1,6 +1,7 @@
 package edu.asu.ser594.resumeassistant.api.user.facade;
 
 import edu.asu.ser594.resumeassistant.api.user.dto.request.LoginByEmailRequest;
+import edu.asu.ser594.resumeassistant.api.user.dto.request.LoginByGoogleRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.RegisterByEmailRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.response.AuthResponse;
 
@@ -11,4 +12,7 @@ public interface AuthFacade {
 
     // Login by email
     AuthResponse loginByEmail(LoginByEmailRequest request);
+
+    // Login by Google
+    AuthResponse loginByGoogle(LoginByGoogleRequest request);
 }

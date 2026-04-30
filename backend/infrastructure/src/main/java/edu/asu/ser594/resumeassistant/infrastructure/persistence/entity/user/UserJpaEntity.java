@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.user;
 
+import edu.asu.ser594.resumeassistant.types.enums.OAuthProvider;
 import edu.asu.ser594.resumeassistant.types.enums.UserRole;
 import edu.asu.ser594.resumeassistant.types.enums.UserStatus;
 import jakarta.persistence.*;
@@ -47,6 +48,10 @@ public class UserJpaEntity {
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private UserStatus status;
+
+    @Column(name = "auth_provider", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private OAuthProvider authProvider;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

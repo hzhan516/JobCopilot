@@ -9,10 +9,13 @@ import edu.asu.ser594.resumeassistant.domain.user.entity.UserCredential;
 import edu.asu.ser594.resumeassistant.domain.user.entity.UserProfile;
 import edu.asu.ser594.resumeassistant.domain.user.exception.AuthException;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserCredentialRepository;
+import edu.asu.ser594.resumeassistant.domain.user.repository.UserOAuthBindingRepository;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserProfileRepository;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserRepository;
 import edu.asu.ser594.resumeassistant.domain.user.service.PasswordEncoder;
+import edu.asu.ser594.resumeassistant.infrastructure.security.GoogleIdTokenVerifier;
 import edu.asu.ser594.resumeassistant.types.enums.CredentialType;
+import edu.asu.ser594.resumeassistant.types.enums.OAuthProvider;
 import edu.asu.ser594.resumeassistant.types.enums.UserRole;
 import edu.asu.ser594.resumeassistant.types.enums.UserStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -64,6 +67,12 @@ class AuthApplicationServiceTest {
     @Mock
     private TokenService tokenService;
 
+    @Mock
+    private UserOAuthBindingRepository userOAuthBindingRepository;
+
+    @Mock
+    private GoogleIdTokenVerifier googleIdTokenVerifier;
+
     @InjectMocks
     private AuthApplicationService authService;
 
@@ -79,6 +88,7 @@ class AuthApplicationServiceTest {
                 .emailVerified(false)
                 .role(UserRole.JOB_SEEKER)
                 .status(UserStatus.ACTIVE)
+                .authProvider(OAuthProvider.EMAIL)
                 .build();
 
         testProfile = UserProfile.builder()

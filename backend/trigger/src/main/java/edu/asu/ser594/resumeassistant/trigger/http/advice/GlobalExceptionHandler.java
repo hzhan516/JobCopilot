@@ -99,7 +99,7 @@ public class GlobalExceptionHandler {
         String localizedMessage = exceptionResolver.resolve(ex.getErrorType());
 
         HttpStatus status = switch (ex.getErrorType()) {
-            case EMAIL_EXISTS -> HttpStatus.CONFLICT;
+            case EMAIL_EXISTS, EMAIL_REGISTERED_WITH_PASSWORD -> HttpStatus.CONFLICT;
             case INVALID_CREDENTIALS, EMAIL_NOT_FOUND, EMAIL_NOT_VERIFIED, TOKEN_EXPIRED, TOKEN_INVALID ->
                     HttpStatus.UNAUTHORIZED;
         };
