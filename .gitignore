@@ -32,9 +32,6 @@
 /backend/trigger/.factorypath
 /backend/trigger/.project
 /backend/trigger/.settings/
-/backend/domain/.classpath
-/backend/domain/.factorypath
-/backend/domain/.project
 /backend/domain/.settings/
 /ProjectFiles/
 
@@ -187,3 +184,4 @@
 /frontend/.tmp/
 /AGENTS.md
 /frontend/.env
+/backend/logs/*.log

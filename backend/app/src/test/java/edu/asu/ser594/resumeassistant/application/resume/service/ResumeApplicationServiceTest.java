@@ -117,6 +117,7 @@ class ResumeApplicationServiceTest {
         when(versionRepository.findById(VERSION_ID)).thenReturn(Optional.of(testVersion));
         when(groupRepository.findById(testVersion.getGroupId())).thenReturn(Optional.of(testGroup));
         doNothing().when(versionRepository).save(any(ResumeVersion.class));
+        doNothing().when(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
 
         // 执行 / When
         ResumeVersion result = resumeService.handleEdit(command);
@@ -125,6 +126,72 @@ class ResumeApplicationServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.getContent()).isEqualTo("Updated markdown content");
         verify(versionRepository).save(testVersion);
+        verify(aiMessagePublisherPort).sendTextForVectorGeneration(argThat(cmd ->
+                cmd.referenceId().equals(VERSION_ID.toString())
+                        && cmd.entityType().equals("RESUME")
+                        && cmd.text().equals("Updated markdown content")
+        ));
+    }
+
+    @Test
+    @DisplayName("Should trigger vector gen when editing AI_OPTIMIZED version")
+    void shouldTriggerVectorGenWhenEditingAiOptimizedVersion() {
+        // 准备 / Given
+        testGroup = createTestGroup();
+        testVersion = createTestVersion(ResumeVersion.VersionType.AI_OPTIMIZED);
+
+        ResumeEditCommand command = new ResumeEditCommand(
+                VERSION_ID,
+                USER_ID,
+                "Updated AI content"
+        );
+
+        when(versionRepository.findById(VERSION_ID)).thenReturn(Optional.of(testVersion));
+        when(groupRepository.findById(testVersion.getGroupId())).thenReturn(Optional.of(testGroup));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
+        doNothing().when(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
+
+        // 执行 / When
+        ResumeVersion result = resumeService.handleEdit(command);
+
+        // 验证 / Then
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).isEqualTo("Updated AI content");
+        verify(aiMessagePublisherPort).sendTextForVectorGeneration(argThat(cmd ->
+                cmd.referenceId().equals(VERSION_ID.toString())
+                        && cmd.entityType().equals("RESUME")
+                        && cmd.text().equals("Updated AI content")
+        ));
+    }
+
+    @Test
+    @DisplayName("Should succeed edit even when vector gen fails")
+    void shouldSucceedEditEvenWhenVectorGenFails() {
+        // 准备 / Given
+        testGroup = createTestGroup();
+        testVersion = createTestVersion(ResumeVersion.VersionType.CONVERTED);
+
+        ResumeEditCommand command = new ResumeEditCommand(
+                VERSION_ID,
+                USER_ID,
+                "Updated content"
+        );
+
+        when(versionRepository.findById(VERSION_ID)).thenReturn(Optional.of(testVersion));
+        when(groupRepository.findById(testVersion.getGroupId())).thenReturn(Optional.of(testGroup));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
+        doThrow(new RuntimeException("MQ unavailable"))
+                .when(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
+
+        // 执行 / When
+        ResumeVersion result = resumeService.handleEdit(command);
+
+        // 验证 / Then — 编辑应成功返回，不因MQ异常而失败
+        // Edit should succeed and return normally, not fail due to MQ exception
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).isEqualTo("Updated content");
+        verify(versionRepository).save(testVersion);
+        verify(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
     }
 
     @Test

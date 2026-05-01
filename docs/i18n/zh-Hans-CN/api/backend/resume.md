@@ -824,6 +824,8 @@ curl -X DELETE http://localhost:8080/api/v1/resumes/versions/550e8400-e29b-41d4-
 
 **注意**: 请求体中的 `versionId` 会被忽略，以路径参数为准。
 
+**自动向量重生成**: 编辑 `CONVERTED` 或 `AI_OPTIMIZED` 类型的版本时，系统在内容持久化后会自动触发异步向量重生成请求，确保后续职位匹配召回使用最新的简历嵌入向量。若 MQ 消息发送失败，编辑操作仍会成功返回；向量将在下次可用时机自动补齐。
+
 #### 请求示例 (cURL)
 
 ```bash
