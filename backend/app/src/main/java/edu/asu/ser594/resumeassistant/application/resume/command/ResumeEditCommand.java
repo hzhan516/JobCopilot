@@ -10,7 +10,8 @@ import java.util.UUID;
  */
 @Builder
 public record ResumeEditCommand(
-    UUID versionId,
-    UUID userId,
-    String content
-) {}
+        UUID versionId,
+        UUID userId,
+        String content
+) {
+}

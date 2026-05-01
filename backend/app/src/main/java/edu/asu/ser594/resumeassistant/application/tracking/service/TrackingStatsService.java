@@ -70,5 +70,6 @@ public class TrackingStatsService {
             long rejected,
             long withdrawn,
             double successRate
-    ) {}
+    ) {
+    }
 }

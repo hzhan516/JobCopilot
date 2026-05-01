@@ -48,13 +48,13 @@ public class Message implements Entity<UUID> {
      */
     public static Message create(UUID conversationId, MessageRole role, String content, int sequence, String fileUrl) {
         return new Message(
-            UUID.randomUUID(),
-            conversationId,
-            role,
-            content,
-            sequence,
-            LocalDateTime.now(),
-            fileUrl
+                UUID.randomUUID(),
+                conversationId,
+                role,
+                content,
+                sequence,
+                LocalDateTime.now(),
+                fileUrl
         );
     }
 

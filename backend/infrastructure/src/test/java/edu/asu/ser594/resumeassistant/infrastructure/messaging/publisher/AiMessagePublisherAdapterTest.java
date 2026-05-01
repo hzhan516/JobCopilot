@@ -14,8 +14,12 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.util.ArrayList;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 
+/**
+ * AI 消息发布适配器测试 / AI message publisher adapter tests
+ */
 @ExtendWith(MockitoExtension.class)
 class AiMessagePublisherAdapterTest {
 
@@ -27,10 +31,13 @@ class AiMessagePublisherAdapterTest {
 
     @Test
     void sendResumeForParsing_ShouldConvertAndSend() {
+        // 准备 / Given
         ResumeParseCommand command = new ResumeParseCommand("resume-1", "http://url", "pdf");
 
+        // 执行 / When
         publisher.sendResumeForParsing(command);
 
+        // 验证 / Then
         verify(rabbitTemplate).convertAndSend(
                 RabbitMqConfig.EXCHANGE_AI_DIRECT,
                 RabbitMqConfig.ROUTING_KEY_REQ_RESUME_PARSE,
@@ -40,10 +47,13 @@ class AiMessagePublisherAdapterTest {
 
     @Test
     void sendTextForVectorGeneration_ShouldConvertAndSend() {
+        // 准备 / Given
         VectorGenCommand command = new VectorGenCommand("ref-1", "JOB", "text");
 
+        // 执行 / When
         publisher.sendTextForVectorGeneration(command);
 
+        // 验证 / Then
         verify(rabbitTemplate).convertAndSend(
                 RabbitMqConfig.EXCHANGE_AI_DIRECT,
                 RabbitMqConfig.ROUTING_KEY_REQ_VECTOR_GEN,
@@ -53,10 +63,13 @@ class AiMessagePublisherAdapterTest {
 
     @Test
     void sendJobForParsing_ShouldConvertAndSend() {
+        // 准备 / Given
         JobParseCommand command = new JobParseCommand("job-1", "http://url", true);
 
+        // 执行 / When
         publisher.sendJobForParsing(command);
 
+        // 验证 / Then
         verify(rabbitTemplate).convertAndSend(
                 RabbitMqConfig.EXCHANGE_AI_DIRECT,
                 RabbitMqConfig.ROUTING_KEY_REQ_JOB_PARSE,
@@ -65,17 +78,17 @@ class AiMessagePublisherAdapterTest {
     }
 
     @Test
-    void sendConversationRequest_ShouldConvertAndSend() {
+    void sendConversationRequest_ShouldExecuteChannelCallback() {
+        // 准备 / Given
         ConversationRequestCommand command = new ConversationRequestCommand(
-                "conv-1", "user-1", new ArrayList<>(), "hello", new ArrayList<>(), null
+                "conv-1", "user-1", new ArrayList<>(), "hello", new ArrayList<>(), null,
+                null, null, null, false, "en"
         );
 
+        // 执行 / When
         publisher.sendConversationRequest(command);
 
-        verify(rabbitTemplate).convertAndSend(
-                RabbitMqConfig.EXCHANGE_AI_DIRECT,
-                RabbitMqConfig.ROUTING_KEY_REQ_CONVERSATION,
-                command
-        );
+        // 验证 / Then
+        verify(rabbitTemplate).execute(any());
     }
 }

@@ -10,7 +10,8 @@ import java.util.UUID;
  */
 @Builder
 public record ResumeDownloadQuery(
-    UUID versionId,
-    UUID userId,
-    String targetFormat
-) {}
+        UUID versionId,
+        UUID userId,
+        String targetFormat
+) {
+}

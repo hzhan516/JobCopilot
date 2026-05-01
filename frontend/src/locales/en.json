@@ -144,6 +144,7 @@
     "sortMatch": "Match Score",
     "sortSalary": "Salary",
     "sortDate": "Post Date",
+    "sortStatus": "Status",
     "emptyTitle": "No matching jobs",
     "emptyDesc": "Try adjusting filters or updating your resume",
     "salaryNegotiable": "Negotiable",
@@ -153,6 +154,45 @@
     "matchScore": "Match {{score}}%",
     "viewDetails": "View Details",
     "loadError": "Failed to load job list"
+  },
+  "jobDetail": {
+    "loadError": "Failed to load job details",
+    "notFound": "Job not found",
+    "backToList": "Back to Jobs",
+    "unknownTitle": "Unknown Title",
+    "unknownCompany": "Unknown Company",
+    "description": "Description",
+    "requirements": "Requirements",
+    "noDescription": "No description available",
+    "noRequirements": "No requirements listed",
+    "viewSource": "View Source",
+    "matchThisJob": "Match This Job",
+    "selectResume": "Select Resume",
+    "selectResumeError": "Please select a resume to match",
+    "matchStarted": "Match started successfully",
+    "matchError": "Failed to start match",
+    "status": {
+      "PENDING": "Pending",
+      "PROCESSING": "Processing",
+      "COMPLETED": "Completed",
+      "FAILED": "Failed"
+    }
+  },
+  "jobMatch": {
+    "startMatch": "Start Matching",
+    "processing": "Matching...",
+    "processingDesc": "AI is analyzing your resume and matching jobs. This may take a moment.",
+    "selectResume": "Please select a resume version",
+    "selectResumePlaceholder": "Choose a resume version...",
+    "dialogTitle": "Smart Job Match",
+    "dialogDesc": "Select a resume version to find the best matching jobs for you.",
+    "resultTitle": "Matching Results",
+    "failed": "Match failed, please try again",
+    "timeout": "Match timed out, please try again",
+    "startError": "Failed to start matching",
+    "skillMatch": "Skills",
+    "experienceMatch": "Experience",
+    "locationMatch": "Location"
   },
   "chat": {
     "newChat": "New Chat",
@@ -260,7 +300,8 @@
       "backToDetail": "Back to Resume Details",
       "createdOn": "Created on",
       "versionHistory": "Version History",
-      "selectVersion": "Select a version to view details"
+      "selectVersion": "Select a version to view details",
+      "versionDetail": "Version Details"
     },
     "edit": {
       "title": "Edit Version",
@@ -311,7 +352,35 @@
       "html": "HTML",
       "txt": "Plain Text",
       "error": "Failed to download resume"
+    },
+    "compare": {
+      "title": "AI Optimization Compare",
+      "splitView": "Split View",
+      "originalOnly": "Original Only",
+      "aiOnly": "AI Optimized Only",
+      "noVersions": "No versions available for comparison",
+      "uploadFirst": "Please upload a resume and wait for AI optimization to complete.",
+      "versionNotAvailable": "{{version}} is not available"
     }
+  },
+  "profile": {
+    "title": "Profile",
+    "subtitle": "Manage your account and preferences",
+    "basicInfo": "Basic Information",
+    "userId": "User ID",
+    "email": "Email",
+    "accountType": "Account Type",
+    "typeEmail": "Email Account",
+    "security": "Security",
+    "changePassword": "Change Password",
+    "changePasswordDesc": "Update your account password",
+    "bindGoogle": "Bind Google Account",
+    "bindGoogleDesc": "Link your Google account for quick login",
+    "bind": "Bind",
+    "aiFeatures": "AI Features",
+    "resumeOptimization": "Resume Optimization",
+    "resumeOptimizationDesc": "Use AI to optimize your resume for better job matching",
+    "goToResumes": "Go to Resumes"
   },
   "language": {
     "en": "English",

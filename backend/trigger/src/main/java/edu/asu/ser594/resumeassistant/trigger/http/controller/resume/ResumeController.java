@@ -53,9 +53,9 @@ public class ResumeController {
      * Download resume
      *
      * @param versionId 版本ID（originalVersionId）
-     * @param userId 当前用户ID
-     * @param format 导出格式（可选）：original（默认）, pdf, docx, html, md, txt
-     *               注意：当前版本仅返回原始文件，格式转换功能待实现
+     * @param userId    当前用户ID
+     * @param format    导出格式（可选）：original（默认）, pdf, docx, html, md, txt
+     *                  注意：当前版本仅返回原始文件，格式转换功能待实现
      */
     @GetMapping("/{versionId}/download")
     public ResponseEntity<InputStreamResource> downloadResume(
@@ -83,7 +83,7 @@ public class ResumeController {
      * Get resume group details
      *
      * @param groupId 简历组ID
-     * @param userId 当前用户ID
+     * @param userId  当前用户ID
      * @return 简历组详情
      */
     @GetMapping("/groups/{groupId}")
@@ -98,7 +98,7 @@ public class ResumeController {
      * Delete resume group
      *
      * @param groupId 简历组ID
-     * @param userId 当前用户ID
+     * @param userId  当前用户ID
      * @return 空响应
      */
     @DeleteMapping("/groups/{groupId}")
@@ -113,7 +113,7 @@ public class ResumeController {
      * Get resume versions by group
      *
      * @param groupId 简历组ID
-     * @param userId 当前用户ID
+     * @param userId  当前用户ID
      * @return 版本列表
      */
     @GetMapping("/groups/{groupId}/versions")
@@ -128,7 +128,7 @@ public class ResumeController {
      * Delete resume version
      *
      * @param versionId 版本ID
-     * @param userId 当前用户ID
+     * @param userId    当前用户ID
      * @return 空响应
      */
     @DeleteMapping("/versions/{versionId}")
@@ -143,7 +143,7 @@ public class ResumeController {
      * Get single version details
      *
      * @param versionId 版本ID
-     * @param userId 当前用户ID
+     * @param userId    当前用户ID
      * @return 版本详情
      */
     @GetMapping("/versions/{versionId}")
@@ -158,8 +158,8 @@ public class ResumeController {
      * Edit version content
      *
      * @param versionId 版本ID
-     * @param request 编辑请求
-     * @param userId 当前用户ID
+     * @param request   编辑请求
+     * @param userId    当前用户ID
      * @return 更新后的版本详情
      */
     @PutMapping("/versions/{versionId}")

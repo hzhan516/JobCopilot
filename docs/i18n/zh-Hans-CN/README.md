@@ -1,4 +1,5 @@
-[中文文档](./README.zh.md) | [English Document](../README.md)
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](../../../README.md) | [简体中文](README.md) | [繁體中文](../zh-Hant-TW/README.md)
 
 # 智能求职助手 (Resume Assistant)
 
@@ -249,7 +250,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ## 部署上线
 
-详细的部署说明请参考 [DOCKER_DEPLOY.md](../DOCKER_DEPLOY.md)，内容包括：
+详细的部署说明请参考 [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md)，内容包括：
 
 - 生产环境部署检查清单
 - 环境变量配置

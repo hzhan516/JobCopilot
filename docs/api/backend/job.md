@@ -1,16 +1,19 @@
-# 职位智能解析模块 (Link-to-Match) API 文档
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](job.md) | [简体中文](../../i18n/zh-Hans-CN/api/backend/job.md) | [繁體中文](../../i18n/zh-Hant-TW/api/backend/job.md)
 
-> 所有 `userId` 字段已统一为 UUID 字符串格式（标准 36 字符，如 `550e8400-e29b-41d4-a716-446655440000`）。
+# Job Intelligent Parsing Module (Link-to-Match) API Documentation
 
-本模块提供求职者提交心仪职位链接，并利用后端通过 RabbitMQ 异步触发 Python AI 服务抓取网页、解析为结构化数据的能力。整个流程遵循 DDD 六边形架构，Java 后端仅通过 MQ 与 AI 服务交互，完全消除了 HTTP 同步直调的耦合。
+> All `userId` fields have been unified to UUID string format (standard 36 characters, e.g. `550e8400-e29b-41d4-a716-446655440000`).
+
+This module provides the capability for job seekers to submit desired job links, and leverages the backend to asynchronously trigger the Python AI service via RabbitMQ to scrape web pages and parse them into structured data. The entire process follows the DDD hexagonal architecture; the Java backend only interacts with the AI service via MQ, completely eliminating HTTP synchronous direct-call coupling.
 
 ---
 
-## 1. 客户端与后端交互接口 (Client to Backend)
+## 1. Client to Backend Interfaces
 
-### 1.1 提交职位链接 (Submit Job Link)
+### 1.1 Submit Job Link
 **Endpoint:** `POST /api/v1/jobs`
-**描述:** 接收用户提交的职位URL，并将异步解析请求发布到 RabbitMQ。立即返回任务的初始状态。
+**Description:** Receives a job URL submitted by the user and publishes an asynchronous parsing request to RabbitMQ. Returns the initial status of the task immediately.
 
 **Request Header:**
 ```http
@@ -29,7 +32,7 @@ Content-Type: application/json
 **Response Body (`JobResponse`):**
 ```json
 {
-  "jobId": "job-uuid-1234",
+  "id": "job-uuid-1234",
   "userId": "550e8400-e29b-41d4-a716-446655440000",
   "originalUrl": "https://www.linkedin.com/jobs/view/12345",
   "status": "PENDING",
@@ -38,11 +41,11 @@ Content-Type: application/json
   "errorMessage": null
 }
 ```
-**注意:** `status` 状态枚举可能为 `PENDING`, `SCRAPING`, `PARSING`, `COMPLETED`, `FAILED`。最终状态需要通过 1.2 接口轮询获取。
+**Note:** `status` enum may be `PENDING`, `SCRAPING`, `PARSING`, `COMPLETED`, `FAILED`. The final status needs to be polled via the 1.2 interface.
 
-### 1.2 获取职位详情 (Get Job Details)
+### 1.2 Get Job Details
 **Endpoint:** `GET /api/v1/jobs/{jobId}`
-**描述:** 根据职位ID获取职位解析状态及详情。
+**Description:** Gets job parsing status and details by job ID.
 
 **Request Header:**
 ```http
@@ -52,7 +55,7 @@ Authorization: Bearer <user-jwt-token>
 **Response Body (`JobResponse`):**
 ```json
 {
-  "jobId": "job-uuid-1234",
+  "id": "job-uuid-1234",
   "userId": "user-uuid",
   "originalUrl": "https://www.linkedin.com/jobs/view/12345",
   "status": "COMPLETED",
@@ -67,9 +70,9 @@ Authorization: Bearer <user-jwt-token>
 }
 ```
 
-### 1.3 获取职位列表 (List Jobs)
+### 1.3 List Jobs
 **Endpoint:** `GET /api/v1/jobs`
-**描述:** 获取当前登录用户提交的所有职位列表。
+**Description:** Gets all job links submitted by the currently logged-in user.
 
 **Request Header:**
 ```http
@@ -80,7 +83,7 @@ Authorization: Bearer <user-jwt-token>
 ```json
 [
   {
-    "jobId": "job-uuid-1234",
+    "id": "job-uuid-1234",
     "userId": "550e8400-e29b-41d4-a716-446655440000",
     "originalUrl": "https://www.linkedin.com/jobs/view/12345",
     "status": "COMPLETED",
@@ -91,9 +94,48 @@ Authorization: Bearer <user-jwt-token>
 ]
 ```
 
-### 1.4 职位智能匹配 (Match Jobs)
+### 1.4 Match Jobs
 **Endpoint:** `POST /api/v1/jobs/match`
-**描述:** 根据用户简历或查询条件，调用 AI 服务获取匹配的职位推荐列表。
+**Description:** Launches the asynchronous job matching process. Returns a processing status; results need to be polled via the 1.5 interface.
+
+### 1.5 Get Match Result
+**Endpoint:** `GET /api/v1/jobs/match/{matchId}`
+**Description:** Queries asynchronous matching results by match task ID.
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+```
+
+**Response Body (`JobMatchResponse`):**
+Same format as the 1.4 response.
+
+### 1.6 Get Match History
+**Endpoint:** `GET /api/v1/jobs/match/history`
+**Description:** Gets the historical match record list for the currently logged-in user.
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+```
+
+**Response Body (`List<JobMatchHistoryResponse>`):**
+```json
+[
+  {
+    "matchId": "match-uuid-1234",
+    "status": "COMPLETED",
+    "total": 5,
+    "createdAt": "2026-04-15T10:30:00"
+  }
+]
+```
+
+---
+
+### 1.7 Match Jobs (Intelligent)
+**Endpoint:** `POST /api/v1/jobs/match`
+**Description:** Calls the AI service to get a list of matching job recommendations based on the user's resume or query conditions.
 
 **Request Header:**
 ```http
@@ -104,14 +146,32 @@ Content-Type: application/json
 **Request Body (`JobMatchRequest`):**
 ```json
 {
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
   "query": "Java Spring Boot",
-  "resumeVersionId": "resume-uuid-5678"
+  "topK": 10,
+  "filters": {
+    "location": "Remote"
+  }
 }
 ```
 
 **Response Body (`JobMatchResponse`):**
 ```json
 {
+  "matchId": "match-uuid-1234",
+  "status": "PROCESSING",
+  "matches": [],
+  "total": 0,
+  "recallTime": null,
+  "rankTime": null
+}
+```
+
+Query result after async completion:
+```json
+{
+  "matchId": "match-uuid-1234",
+  "status": "COMPLETED",
   "matches": [
     {
       "jobId": "mock-job-1",
@@ -121,24 +181,24 @@ Content-Type: application/json
       "matchFactors": {
         "skillMatch": 0.95,
         "experienceMatch": 0.90,
-        "educationMatch": 0.88
+        "locationMatch": 0.88
       },
       "description": "Looking for an experienced Java developer with Spring Boot skills."
     }
   ],
-  "totalResults": 1,
-  "cachedCount": 12,
-  "apiCount": 45
+  "total": 1,
+  "recallTime": 120,
+  "rankTime": 45
 }
 ```
 
 ---
 
-## 2. 后端与 AI 服务层交互接口 (Backend to Python AI Service via MQ)
+## 2. Backend to AI Service Interfaces (Backend to Python AI Service via MQ)
 
-为了遵循系统架构，Java 后端不再直接通过 HTTP 同步调用 AI 服务，而是通过 **RabbitMQ** 发布异步任务请求，并监听 AI 服务的处理结果回调。
+To comply with the system architecture, the Java backend no longer directly calls the AI service via HTTP synchronously; instead, it publishes asynchronous task requests via **RabbitMQ** and listens for processing result callbacks from the AI service.
 
-### 2.1 职位解析请求 (Backend -> AI Service)
+### 2.1 Job Parse Request (Backend -> AI Service)
 **Exchange:** `ai.direct.exchange`
 **Routing Key:** `ai.req.job.parse`
 **Queue:** `ai.queue.job.parse`
@@ -152,7 +212,7 @@ Content-Type: application/json
 }
 ```
 
-### 2.2 职位解析结果回调 (AI Service -> Backend)
+### 2.2 Job Parse Result Callback (AI Service -> Backend)
 **Exchange:** `ai.direct.exchange`
 **Routing Key:** `backend.res.job.parse`
 **Queue:** `backend.queue.job.parse`
@@ -174,6 +234,6 @@ Content-Type: application/json
 }
 ```
 
-> **注意：**
-> - 如果 `status` 为 `FAILED`，则 `errorMessage` 必须包含导致失败的具体原因文本，且 `data` 可以为空。
-> - AI 服务处理完成后，必须将结果发送到 `backend.res.job.parse` 路由键，由 `AiResultMessageListener` 接收并交由 `JobFacade.handleJobProcessResult` 处理。
+> **Notes:**
+> - If `status` is `FAILED`, then `errorMessage` must contain the specific reason text causing the failure, and `data` can be empty.
+> - After the AI service finishes processing, it must send the result to the `backend.res.job.parse` routing key, received by `AiResultMessageListener` and handled by `JobFacade.handleJobProcessResult`.

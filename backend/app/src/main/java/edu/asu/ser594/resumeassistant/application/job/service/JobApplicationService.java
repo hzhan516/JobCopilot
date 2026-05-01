@@ -1,16 +1,16 @@
 package edu.asu.ser594.resumeassistant.application.job.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import edu.asu.ser594.resumeassistant.domain.job.exception.JobException;
+import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
+import edu.asu.ser594.resumeassistant.domain.job.valueobject.ParsedJobContent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
-import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
-import edu.asu.ser594.resumeassistant.domain.job.valueobject.ParsedJobContent;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,6 +20,9 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * 职位应用服务 / Job application service
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -29,15 +32,20 @@ public class JobApplicationService {
     private final AiMessagePublisherPort aiMessagePublisherPort;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * 提交职位并进行异步处理 / Submit a job for async processing
+     */
     @Transactional
     public JobResponse submitJob(UUID userId, SubmitJobRequest request) {
         log.info("Submitting new job for async processing for user: {}", userId);
-        
+
+        // 创建职位实体并标记为抓取中 / Create job entity and mark as scraping
         Job job = Job.create(userId, request.url(), request.imageCheckEnabled());
         job.markScraping();
         job = jobRepository.save(job);
 
         try {
+            // 构建解析命令并发送到消息队列 / Build parse command and send to message queue
             JobParseCommand command = new JobParseCommand(
                     job.getId(),
                     job.getOriginalUrl(),
@@ -53,6 +61,9 @@ public class JobApplicationService {
         }
     }
 
+    /**
+     * 处理 AI 解析结果 / Handle AI parse result
+     */
     @Transactional
     public void handleJobProcessResult(AiResultEvent event) {
         Job job = jobRepository.findById(event.referenceId())
@@ -60,6 +71,7 @@ public class JobApplicationService {
 
         if ("COMPLETED".equals(event.status()) && event.data() != null) {
             try {
+                // 反序列化 AI 返回的解析内容 / Deserialize AI parsed content
                 ParsedJobContent content = objectMapper.convertValue(event.data(), ParsedJobContent.class);
                 job.markCompleted(content);
             } catch (Exception e) {
@@ -70,6 +82,7 @@ public class JobApplicationService {
             }
 
             try {
+                // 触发异步向量生成 / Trigger async vector generation
                 VectorGenCommand vectorCmd = new VectorGenCommand(
                         job.getId(),
                         "JOB",
@@ -83,16 +96,20 @@ public class JobApplicationService {
         } else {
             job.markFailed(event.errorMessage() != null ? event.errorMessage() : "Unknown AI processing error");
         }
-        
+
         jobRepository.save(job);
         log.info("Job {} updated to status {}", job.getId(), job.getStatus());
     }
 
+    /**
+     * 根据 ID 获取职位 / Get job by ID
+     */
     @Transactional(readOnly = true)
     public JobResponse getJob(String jobId, UUID userId) {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new JobException("job.not.found"));
 
+        // 校验用户权限 / Verify user access
         if (!job.getUserId().equals(userId)) {
             throw new JobException("access.denied");
         }
@@ -100,6 +117,9 @@ public class JobApplicationService {
         return mapToResponse(job);
     }
 
+    /**
+     * 列出用户的所有职位 / List all jobs for a user
+     */
     @Transactional(readOnly = true)
     public List<JobResponse> listJobs(UUID userId) {
         List<Job> jobs = jobRepository.findAllByUserId(userId);
@@ -108,6 +128,7 @@ public class JobApplicationService {
                 .collect(Collectors.toList());
     }
 
+    // 将领域实体映射为响应 DTO / Map domain entity to response DTO
     private JobResponse mapToResponse(Job job) {
         JobResponse.ParsedJobContentResponse parsedContentResponse = null;
         if (job.getParsedContent() != null) {

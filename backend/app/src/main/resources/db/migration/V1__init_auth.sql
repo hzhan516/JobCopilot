@@ -1,7 +1,7 @@
--- 启用 UUID 扩展（PostgreSQL 内置）
+-- 启用 UUID 扩展（PostgreSQL 内置）/ Enable UUID extension (built-in PostgreSQL)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 用户主体表
+-- 用户主体表 / User principal table
 CREATE TABLE users
 (
     id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -13,7 +13,7 @@ CREATE TABLE users
     updated_at     TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
 );
 
--- 用户资料表
+-- 用户资料表 / User profile table
 CREATE TABLE user_profiles
 (
     id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -28,7 +28,7 @@ CREATE TABLE user_profiles
     UNIQUE (user_id)
 );
 
--- 本地认证凭证表
+-- 本地认证凭证表 / Local authentication credentials table
 CREATE TABLE user_credentials
 (
     id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -40,7 +40,7 @@ CREATE TABLE user_credentials
     UNIQUE (user_id, credential_type)
 );
 
--- OAuth绑定表
+-- OAuth绑定表 / OAuth binding table
 CREATE TABLE user_oauth_bindings
 (
     id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -59,7 +59,7 @@ CREATE TABLE user_oauth_bindings
     UNIQUE (provider, provider_user_id)
 );
 
--- 索引
+-- 索引 / Indexes
 CREATE INDEX idx_users_email ON users (email);
 CREATE INDEX idx_oauth_bindings_user ON user_oauth_bindings (user_id);
 CREATE INDEX idx_oauth_bindings_email ON user_oauth_bindings (email);

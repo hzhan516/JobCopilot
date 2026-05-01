@@ -10,7 +10,8 @@ import java.io.InputStream;
  */
 @Builder
 public record ResumeDownloadResult(
-    InputStream inputStream,
-    String fileName,
-    String contentType
-) {}
+        InputStream inputStream,
+        String fileName,
+        String contentType
+) {
+}

@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
-import type { JobApplication } from '@/types';
+import type { Tracking } from '@/types';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '@/utils/i18n';
+import { trackingService } from '@/services/trackingService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -40,15 +41,15 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
-export default function Tracking() {
+export default function TrackingPage() {
   const { t } = useTranslation();
-  const [applications, setApplications] = useState<JobApplication[]>([]);
+  const [trackings, setTrackings] = useState<Tracking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [newApplication, setNewApplication] = useState({
+  const [newTracking, setNewTracking] = useState({
     jobTitle: '',
-    company: '',
-    status: 'APPLIED' as JobApplication['status'],
+    companyName: '',
+    status: 'APPLIED' as Tracking['status'],
     notes: '',
   });
 
@@ -66,45 +67,14 @@ export default function Tracking() {
 
   // 加载投递记录
   useEffect(() => {
-    loadApplications();
+    loadTrackings();
   }, []);
 
-  const loadApplications = async () => {
+  const loadTrackings = async () => {
     try {
       setIsLoading(true);
-      // 使用模拟数据
-      // const data = await trackingService.getApplications();
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const mockApplications: JobApplication[] = [
-        {
-          applicationId: '1',
-          jobId: '1',
-          jobTitle: 'Senior Frontend Engineer',
-          company: 'Google',
-          status: 'INTERVIEW',
-          appliedAt: '2024-01-10T10:00:00',
-          notes: 'Passed initial screening, waiting for interview schedule',
-        },
-        {
-          applicationId: '2',
-          jobId: '2',
-          jobTitle: 'Java Backend Developer',
-          company: 'Amazon',
-          status: 'APPLIED',
-          appliedAt: '2024-01-12T14:30:00',
-          notes: '',
-        },
-        {
-          applicationId: '3',
-          jobId: '3',
-          jobTitle: 'Product Manager',
-          company: 'Microsoft',
-          status: 'OFFER',
-          appliedAt: '2024-01-05T09:00:00',
-          notes: 'Received offer, considering',
-        },
-      ];
-      setApplications(mockApplications);
+      const data = await trackingService.getTrackings();
+      setTrackings(data);
     } catch {
       toast.error(t('tracking.loadError'));
     } finally {
@@ -113,23 +83,19 @@ export default function Tracking() {
   };
 
   // 添加投递记录
-  const handleAddApplication = async () => {
-    if (!newApplication.jobTitle || !newApplication.company) {
+  const handleAddTracking = async () => {
+    if (!newTracking.jobTitle || !newTracking.companyName) {
       toast.error(t('tracking.fillRequired'));
       return;
     }
     try {
-      const application: JobApplication = {
-        applicationId: Date.now().toString(),
-        jobId: '',
-        jobTitle: newApplication.jobTitle,
-        company: newApplication.company,
-        status: newApplication.status,
-        appliedAt: new Date().toISOString(),
-        notes: newApplication.notes,
-      };
-      setApplications([application, ...applications]);
-      setNewApplication({ jobTitle: '', company: '', status: 'APPLIED', notes: '' });
+      await trackingService.createTracking({
+        jobTitle: newTracking.jobTitle,
+        companyName: newTracking.companyName,
+        notes: newTracking.notes || undefined,
+      });
+      await loadTrackings();
+      setNewTracking({ jobTitle: '', companyName: '', status: 'APPLIED', notes: '' });
       setAddDialogOpen(false);
       toast.success(t('tracking.addSuccess'));
     } catch {
@@ -138,11 +104,10 @@ export default function Tracking() {
   };
 
   // 更新状态
-  const handleUpdateStatus = async (applicationId: string, status: JobApplication['status']) => {
+  const handleUpdateStatus = async (trackingId: string, status: Tracking['status']) => {
     try {
-      setApplications((prev) =>
-        prev.map((app) => (app.applicationId === applicationId ? { ...app, status } : app))
-      );
+      await trackingService.updateTracking(trackingId, { status });
+      await loadTrackings();
       toast.success(t('tracking.updateSuccess'));
     } catch {
       toast.error(t('tracking.updateFailed'));
@@ -150,9 +115,10 @@ export default function Tracking() {
   };
 
   // 删除投递记录
-  const handleDeleteApplication = async (applicationId: string) => {
+  const handleDeleteTracking = async (trackingId: string) => {
     try {
-      setApplications((prev) => prev.filter((app) => app.applicationId !== applicationId));
+      await trackingService.deleteTracking(trackingId);
+      await loadTrackings();
       toast.success(t('tracking.deleteSuccess'));
     } catch {
       toast.error(t('tracking.deleteFailed'));
@@ -160,8 +126,8 @@ export default function Tracking() {
   };
 
   // 统计各状态数量
-  const statusCounts = applications.reduce((acc, app) => {
-    acc[app.status] = (acc[app.status] || 0) + 1;
+  const statusCounts = trackings.reduce((acc, t) => {
+    acc[t.status] = (acc[t.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
@@ -252,7 +218,7 @@ export default function Tracking() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">{t('tracking.stats.total')}</p>
-                <p className="text-2xl font-bold text-gray-900">{applications.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{trackings.length}</p>
               </div>
               <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
                 <Calendar className="w-5 h-5 text-gray-600" />
@@ -268,7 +234,7 @@ export default function Tracking() {
           <h3 className="text-lg font-semibold">{t('tracking.recordList')}</h3>
         </CardHeader>
         <CardContent>
-          {applications.length === 0 ? (
+          {trackings.length === 0 ? (
             <div className="text-center py-12">
               <ClipboardList className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">{t('tracking.emptyTitle')}</h3>
@@ -280,37 +246,37 @@ export default function Tracking() {
             </div>
           ) : (
             <div className="space-y-4">
-              {applications.map((application) => (
+              {trackings.map((tracking) => (
                 <div
-                  key={application.applicationId}
+                  key={tracking.trackingId}
                   className="flex items-start justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
-                      <h4 className="font-semibold text-gray-900">{application.jobTitle}</h4>
-                      <Badge className={statusConfig[application.status].color}>
-                        {t(statusConfig[application.status].labelKey)}
+                      <h4 className="font-semibold text-gray-900">{tracking.jobTitle}</h4>
+                      <Badge className={statusConfig[tracking.status].color}>
+                        {t(statusConfig[tracking.status].labelKey)}
                       </Badge>
                     </div>
                     <div className="flex items-center space-x-4 text-sm text-gray-500 mb-2">
                       <span className="flex items-center">
                         <Building2 className="w-4 h-4 mr-1" />
-                        {application.company}
+                        {tracking.companyName}
                       </span>
                       <span className="flex items-center">
                         <Calendar className="w-4 h-4 mr-1" />
-                        {formatDate(application.appliedAt)}
+                        {tracking.appliedAt ? formatDate(tracking.appliedAt) : '-'}
                       </span>
                     </div>
-                    {application.notes && (
-                      <p className="text-sm text-gray-600">{application.notes}</p>
+                    {tracking.notes && (
+                      <p className="text-sm text-gray-600">{tracking.notes}</p>
                     )}
                   </div>
                   <div className="flex items-center space-x-2">
                     <Select
-                      value={application.status}
+                      value={tracking.status}
                       onValueChange={(value) =>
-                        handleUpdateStatus(application.applicationId, value as JobApplication['status'])
+                        handleUpdateStatus(tracking.trackingId, value as Tracking['status'])
                       }
                     >
                       <SelectTrigger className="w-32">
@@ -332,7 +298,7 @@ export default function Tracking() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => handleDeleteApplication(application.applicationId)}
+                          onClick={() => handleDeleteTracking(tracking.trackingId)}
                           className="text-red-600"
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
@@ -360,9 +326,9 @@ export default function Tracking() {
               <Label>{t('tracking.jobTitle')}</Label>
               <Input
                 placeholder={t('tracking.jobTitlePlaceholder')}
-                value={newApplication.jobTitle}
+                value={newTracking.jobTitle}
                 onChange={(e) =>
-                  setNewApplication({ ...newApplication, jobTitle: e.target.value })
+                  setNewTracking({ ...newTracking, jobTitle: e.target.value })
                 }
               />
             </div>
@@ -370,20 +336,20 @@ export default function Tracking() {
               <Label>{t('tracking.company')}</Label>
               <Input
                 placeholder={t('tracking.companyPlaceholder')}
-                value={newApplication.company}
+                value={newTracking.companyName}
                 onChange={(e) =>
-                  setNewApplication({ ...newApplication, company: e.target.value })
+                  setNewTracking({ ...newTracking, companyName: e.target.value })
                 }
               />
             </div>
             <div className="space-y-2">
               <Label>{t('tracking.currentStatus')}</Label>
               <Select
-                value={newApplication.status}
+                value={newTracking.status}
                 onValueChange={(value) =>
-                  setNewApplication({
-                    ...newApplication,
-                    status: value as JobApplication['status'],
+                  setNewTracking({
+                    ...newTracking,
+                    status: value as Tracking['status'],
                   })
                 }
               >
@@ -403,9 +369,9 @@ export default function Tracking() {
               <Label>{t('tracking.notes')}</Label>
               <Input
                 placeholder={t('tracking.notesPlaceholder')}
-                value={newApplication.notes}
+                value={newTracking.notes}
                 onChange={(e) =>
-                  setNewApplication({ ...newApplication, notes: e.target.value })
+                  setNewTracking({ ...newTracking, notes: e.target.value })
                 }
               />
             </div>
@@ -414,7 +380,7 @@ export default function Tracking() {
             <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
               {t('common.cancel')}
             </Button>
-            <Button onClick={handleAddApplication}>{t('tracking.add')}</Button>
+            <Button onClick={handleAddTracking}>{t('tracking.add')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,10 +1,13 @@
-# 求职申请跟踪 (Application Tracking) API 文档
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](tracking.md) | [简体中文](../../i18n/zh-Hans-CN/api/backend/tracking.md) | [繁體中文](../../i18n/zh-Hant-TW/api/backend/tracking.md)
 
-本文档描述求职申请跟踪模块的完整 API，包含状态流转控制、事件历史和统计功能。
+# Application Tracking API Documentation
+
+This document describes the complete API for the application tracking module, including status transition control, event history, and statistics features.
 
 ---
 
-## 1. 状态流转说明
+## 1. Status Transition Description
 
 ```
 PENDING -> APPLIED
@@ -14,15 +17,15 @@ INTERVIEWING -> OFFER, REJECTED
 OFFER -> ACCEPTED, REJECTED
 ```
 
-任何非法的状态流转都会返回 `400 Bad Request` 并提示 `"Status transition from X to Y is not allowed"`。
+Any illegal status transition will return `400 Bad Request` with the message `"Status transition from X to Y is not allowed"`.
 
 ---
 
-## 2. 客户端与后端交互接口
+## 2. Client-Backend Interaction Interfaces
 
-### 2.1 创建跟踪记录
+### 2.1 Create Tracking Record
 **Endpoint:** `POST /api/v1/trackings`  
-**描述:** 创建一条新的求职申请跟踪记录，初始状态为 `PENDING`。
+**Description:** Create a new job application tracking record with initial status `PENDING`.
 
 **Request Header:**
 ```http
@@ -70,9 +73,9 @@ Content-Type: application/json
 }
 ```
 
-### 2.2 获取跟踪列表
+### 2.2 Get Tracking List
 **Endpoint:** `GET /api/v1/trackings?status=INTERVIEWING`  
-**描述:** 获取当前用户的所有跟踪记录，支持按状态过滤。
+**Description:** Get all tracking records for the current user, with optional status filtering.
 
 **Response Body (`List<TrackingResponse>`):**
 ```json
@@ -111,13 +114,13 @@ Content-Type: application/json
 ]
 ```
 
-### 2.3 获取跟踪详情
+### 2.3 Get Tracking Detail
 **Endpoint:** `GET /api/v1/trackings/{id}`  
-**描述:** 根据跟踪 ID 获取详情。
+**Description:** Get details by tracking ID.
 
-### 2.4 更新跟踪记录（含状态流转）
+### 2.4 Update Tracking Record (with Status Transition)
 **Endpoint:** `PUT /api/v1/trackings/{id}`  
-**描述:** 更新跟踪记录的备注和状态。状态变更会触发 `TrackingEvent` 记录。
+**Description:** Update the tracking record's notes and status. Status changes will trigger a `TrackingEvent` record.
 
 **Request Body (`UpdateTrackingRequest`):**
 ```json
@@ -127,15 +130,15 @@ Content-Type: application/json
 }
 ```
 
-### 2.5 删除跟踪记录
+### 2.5 Delete Tracking Record
 **Endpoint:** `DELETE /api/v1/trackings/{id}`  
-**描述:** 删除指定的跟踪记录。
+**Description:** Delete the specified tracking record.
 
-**Response:** `200 OK` (body 为 null)
+**Response:** `200 OK` (body is null)
 
-### 2.6 获取统计信息
+### 2.6 Get Statistics
 **Endpoint:** `GET /api/v1/trackings/stats`  
-**描述:** 获取当前用户所有跟踪记录的统计分布和成功率。
+**Description:** Get statistical distribution and success rate of all tracking records for the current user.
 
 **Response Body (`TrackingStatsResponse`):**
 ```json
@@ -153,10 +156,28 @@ Content-Type: application/json
 
 ---
 
-## 3. 错误码
+## 3. Error Codes
 
-| HTTP 状态码 | 业务错误码 | 说明 |
+| HTTP Status | Business Code | Description |
 |-------------|------------|------|
-| 400 | 400 | 非法状态流转 (TrackingException) |
-| 400 | 400 | Tracking not found (ID 不存在或不属于当前用户) |
-| 500 | 500 | 数据库异常 |
+| 400 | 400 | Illegal status transition (TrackingException) |
+| 400 | 400 | Tracking not found (ID does not exist or does not belong to current user) |
+| 500 | 500 | Database exception |
+
+---
+
+## Notes
+
+### Frontend API Call Path Inconsistency
+
+The paths called in frontend `trackingService.ts` are inconsistent with the backend `TrackingController` definitions:
+
+| Feature | Frontend Path | Backend Path |
+|------|----------|----------|
+| Get applications | `GET /v1/tracking/applications` | `GET /v1/trackings` |
+| Get application detail | `GET /v1/tracking/applications/{id}` | `GET /v1/trackings/{id}` |
+| Create application | `POST /v1/tracking/applications` | `POST /v1/trackings` |
+| Update application status | `PATCH /v1/tracking/applications/{id}/status` | `PUT /v1/trackings/{id}` |
+| Delete application | `DELETE /v1/tracking/applications/{id}` | `DELETE /v1/trackings/{id}` |
+
+To align frontend and backend, please synchronize modifications to either frontend `trackingService.ts` or backend `TrackingController` interface design.

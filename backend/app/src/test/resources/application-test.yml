@@ -24,6 +24,10 @@ jwt:
   access-token-expiration: 3600000
   refresh-token-expiration: 604800000
 
+# Storage - use local storage for tests (no MinIO credentials required)
+storage:
+  type: local
+
 # Logging
 logging:
   level:

@@ -5,7 +5,6 @@ import edu.asu.ser594.resumeassistant.application.tracking.command.CreateTrackin
 import edu.asu.ser594.resumeassistant.application.tracking.command.DeleteTrackingCommand;
 import edu.asu.ser594.resumeassistant.application.tracking.command.UpdateTrackingCommand;
 import edu.asu.ser594.resumeassistant.domain.tracking.entity.ApplicationTracking;
-import edu.asu.ser594.resumeassistant.domain.tracking.exception.TrackingException;
 import edu.asu.ser594.resumeassistant.domain.tracking.repository.ApplicationTrackingRepository;
 import edu.asu.ser594.resumeassistant.domain.tracking.valueobject.ApplicationStatus;
 import lombok.RequiredArgsConstructor;

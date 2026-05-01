@@ -35,7 +35,7 @@ public interface ApplicationTrackingRepository {
      * 根据ID和用户ID查询
      * Find by ID and user ID
      *
-     * @param id 跟踪ID / Tracking ID
+     * @param id     跟踪ID / Tracking ID
      * @param userId 用户ID / User ID
      * @return 跟踪实体(可选) / Optional tracking entity
      */

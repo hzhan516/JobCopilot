@@ -1,12 +1,7 @@
 package edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.tracking;
 
 import edu.asu.ser594.resumeassistant.domain.tracking.valueobject.ApplicationStatus;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;

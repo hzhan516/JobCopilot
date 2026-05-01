@@ -8,5 +8,6 @@ import lombok.Builder;
  */
 @Builder
 public record LoginByGoogleCommand(
-    String idToken
-) {}
+        String idToken
+) {
+}

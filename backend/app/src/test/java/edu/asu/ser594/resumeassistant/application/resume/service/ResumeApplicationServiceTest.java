@@ -1,21 +1,19 @@
 package edu.asu.ser594.resumeassistant.application.resume.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeEditCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeUploadCommand;
-import edu.asu.ser594.resumeassistant.application.resume.dto.ResumeDownloadResult;
-import edu.asu.ser594.resumeassistant.application.resume.query.ResumeDownloadQuery;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeGroupRepository;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
 import edu.asu.ser594.resumeassistant.domain.resume.valueobject.ParseStatus;
-import edu.asu.ser594.resumeassistant.domain.shared.exception.StorageException;
-import edu.asu.ser594.resumeassistant.domain.shared.service.DocumentFormatConverter;
-import edu.asu.ser594.resumeassistant.domain.shared.service.FileStorageService;
-import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ResumeParseCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
-import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
+import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
+import edu.asu.ser594.resumeassistant.domain.shared.service.DocumentFormatConverter;
+import edu.asu.ser594.resumeassistant.domain.shared.service.FileStorageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,19 +23,19 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
-import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * 简历应用服务单元测试 / Resume application service unit tests
+ */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Resume Application Service Tests")
 class ResumeApplicationServiceTest {
@@ -61,6 +59,9 @@ class ResumeApplicationServiceTest {
     @Mock
     private AiMessagePublisherPort aiMessagePublisherPort;
 
+    @Mock
+    private ObjectMapper objectMapper;
+
     @InjectMocks
     private ResumeApplicationService resumeService;
 
@@ -68,6 +69,7 @@ class ResumeApplicationServiceTest {
     private ResumeVersion testVersion;
     private InputStream testInputStream;
 
+    // 准备测试数据 / Prepare test data
     @BeforeEach
     void setUp() {
         testInputStream = new ByteArrayInputStream("test content".getBytes());
@@ -76,6 +78,7 @@ class ResumeApplicationServiceTest {
     @Test
     @DisplayName("Should handle resume upload successfully")
     void shouldHandleResumeUploadSuccessfully() {
+        // 准备 / Given
         ResumeUploadCommand command = new ResumeUploadCommand(
                 "resume.pdf",
                 "application/pdf",
@@ -86,8 +89,10 @@ class ResumeApplicationServiceTest {
 
         doNothing().when(groupRepository).save(any(ResumeGroup.class));
 
+        // 执行 / When
         ResumeGroup result = resumeService.handleUpload(command, USER_ID);
 
+        // 验证 / Then
         assertThat(result).isNotNull();
         assertThat(result.getUserId()).isEqualTo(USER_ID);
         assertThat(result.getTitle()).isEqualTo("My Resume");
@@ -99,6 +104,7 @@ class ResumeApplicationServiceTest {
     @Test
     @DisplayName("Should handle resume edit successfully")
     void shouldHandleResumeEditSuccessfully() {
+        // 准备 / Given
         testGroup = createTestGroup();
         testVersion = createTestVersion(ResumeVersion.VersionType.CONVERTED);
 
@@ -111,17 +117,87 @@ class ResumeApplicationServiceTest {
         when(versionRepository.findById(VERSION_ID)).thenReturn(Optional.of(testVersion));
         when(groupRepository.findById(testVersion.getGroupId())).thenReturn(Optional.of(testGroup));
         doNothing().when(versionRepository).save(any(ResumeVersion.class));
+        doNothing().when(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
 
+        // 执行 / When
         ResumeVersion result = resumeService.handleEdit(command);
 
+        // 验证 / Then
         assertThat(result).isNotNull();
         assertThat(result.getContent()).isEqualTo("Updated markdown content");
         verify(versionRepository).save(testVersion);
+        verify(aiMessagePublisherPort).sendTextForVectorGeneration(argThat(cmd ->
+                cmd.referenceId().equals(VERSION_ID.toString())
+                        && cmd.entityType().equals("RESUME")
+                        && cmd.text().equals("Updated markdown content")
+        ));
+    }
+
+    @Test
+    @DisplayName("Should trigger vector gen when editing AI_OPTIMIZED version")
+    void shouldTriggerVectorGenWhenEditingAiOptimizedVersion() {
+        // 准备 / Given
+        testGroup = createTestGroup();
+        testVersion = createTestVersion(ResumeVersion.VersionType.AI_OPTIMIZED);
+
+        ResumeEditCommand command = new ResumeEditCommand(
+                VERSION_ID,
+                USER_ID,
+                "Updated AI content"
+        );
+
+        when(versionRepository.findById(VERSION_ID)).thenReturn(Optional.of(testVersion));
+        when(groupRepository.findById(testVersion.getGroupId())).thenReturn(Optional.of(testGroup));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
+        doNothing().when(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
+
+        // 执行 / When
+        ResumeVersion result = resumeService.handleEdit(command);
+
+        // 验证 / Then
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).isEqualTo("Updated AI content");
+        verify(aiMessagePublisherPort).sendTextForVectorGeneration(argThat(cmd ->
+                cmd.referenceId().equals(VERSION_ID.toString())
+                        && cmd.entityType().equals("RESUME")
+                        && cmd.text().equals("Updated AI content")
+        ));
+    }
+
+    @Test
+    @DisplayName("Should succeed edit even when vector gen fails")
+    void shouldSucceedEditEvenWhenVectorGenFails() {
+        // 准备 / Given
+        testGroup = createTestGroup();
+        testVersion = createTestVersion(ResumeVersion.VersionType.CONVERTED);
+
+        ResumeEditCommand command = new ResumeEditCommand(
+                VERSION_ID,
+                USER_ID,
+                "Updated content"
+        );
+
+        when(versionRepository.findById(VERSION_ID)).thenReturn(Optional.of(testVersion));
+        when(groupRepository.findById(testVersion.getGroupId())).thenReturn(Optional.of(testGroup));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
+        doThrow(new RuntimeException("MQ unavailable"))
+                .when(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
+
+        // 执行 / When
+        ResumeVersion result = resumeService.handleEdit(command);
+
+        // 验证 / Then — 编辑应成功返回，不因MQ异常而失败
+        // Edit should succeed and return normally, not fail due to MQ exception
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).isEqualTo("Updated content");
+        verify(versionRepository).save(testVersion);
+        verify(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
     }
 
     @Test
     @DisplayName("Should process parse result successfully")
     void shouldProcessParseResultSuccessfully() {
+        // 准备 / Given
         testVersion = createTestVersion(ResumeVersion.VersionType.ORIGINAL);
         when(versionRepository.findById(any())).thenReturn(Optional.of(testVersion));
 
@@ -134,12 +210,15 @@ class ResumeApplicationServiceTest {
                 "RESUME"
         );
 
+        // 执行 / When
         resumeService.handleParseResult(event);
 
+        // 验证 / Then
         verify(versionRepository, times(1)).save(testVersion);
         verify(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
     }
 
+    // 创建测试简历组 / Create test resume group
     private ResumeGroup createTestGroup() {
         ResumeGroup group = ResumeGroup.create(USER_ID, "Test Resume");
         return ResumeGroup.reconstruct(
@@ -148,6 +227,7 @@ class ResumeApplicationServiceTest {
         );
     }
 
+    // 创建测试简历版本 / Create test resume version
     private ResumeVersion createTestVersion(ResumeVersion.VersionType type) {
         if (type == ResumeVersion.VersionType.ORIGINAL) {
             return ResumeVersion.reconstruct(

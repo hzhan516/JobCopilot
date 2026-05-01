@@ -53,8 +53,10 @@ public interface ConversationFacade {
     /**
      * 保存 AI 回复消息
      * Save AI reply message
+     *
+     * @param aiOptimizedMarkdown AI 优化后的简历 Markdown（可选）/ AI optimized resume markdown (optional)
      */
-    void saveAiReply(String conversationId, String content, String fileUrl);
+    void saveAiReply(String conversationId, String content, String fileUrl, String aiOptimizedMarkdown);
 
     /**
      * 上传对话附件到 MinIO

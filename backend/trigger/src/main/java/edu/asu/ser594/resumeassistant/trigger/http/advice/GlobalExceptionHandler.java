@@ -1,10 +1,10 @@
 package edu.asu.ser594.resumeassistant.trigger.http.advice;
 
 import edu.asu.ser594.resumeassistant.api.common.dto.ApiResponse;
+import edu.asu.ser594.resumeassistant.api.shared.service.ExceptionMessageResolver;
 import edu.asu.ser594.resumeassistant.domain.shared.exception.LocalizedException;
 import edu.asu.ser594.resumeassistant.domain.shared.service.MessageProvider;
 import edu.asu.ser594.resumeassistant.domain.user.exception.AuthException;
-import edu.asu.ser594.resumeassistant.api.shared.service.ExceptionMessageResolver;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +20,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import java.util.HashMap;
 import java.util.Map;
 
+// 支持国际化的全局异常处理器
 // Global exception handler with i18n support
 @Slf4j
 @RestControllerAdvice
@@ -31,6 +32,7 @@ public class GlobalExceptionHandler {
 
     /**
      * 参数校验异常 - 从 messages.properties 读取
+     * Parameter validation exception - read from messages.properties
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationExceptions(

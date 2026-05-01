@@ -8,8 +8,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 智能求职助手后端服务启动类
+ * Intelligent job search assistant back-end service startup class
  *
- * @author SER594 Team
+ * @author SER594团队 / SER594 Team
  * @date 2024
  */
 @SpringBootApplication(scanBasePackages = "edu.asu.ser594.resumeassistant")

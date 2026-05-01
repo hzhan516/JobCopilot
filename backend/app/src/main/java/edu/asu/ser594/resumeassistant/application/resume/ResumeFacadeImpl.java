@@ -41,8 +41,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ResumeFacadeImpl implements ResumeFacade {
 
-    private final ResumeApplicationService applicationService;
-
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
     private static final String[] ALLOWED_TYPES = {
             "application/pdf",
@@ -50,6 +48,7 @@ public class ResumeFacadeImpl implements ResumeFacade {
             "text/markdown",
             "text/plain"
     };
+    private final ResumeApplicationService applicationService;
 
     @Override
     public ResumeUploadResponse uploadResume(ResumeUploadRequest request, UUID userId) {
@@ -67,6 +66,7 @@ public class ResumeFacadeImpl implements ResumeFacade {
             ResumeGroup group = applicationService.handleUpload(command, userId);
 
             // 获取原始版本ID
+            // Get the original version ID
             ResumeVersion originalVersion = group.getActiveVersionByType(ResumeVersion.VersionType.ORIGINAL);
             UUID originalVersionId = originalVersion != null ? originalVersion.getId() : null;
 
@@ -177,6 +177,7 @@ public class ResumeFacadeImpl implements ResumeFacade {
     }
 
     // ==================== 映射方法 ====================
+    // ==================== Mapping method ====================
 
     private ResumeGroupResponse toGroupResponse(ResumeGroup group) {
         ResumeVersion original = group.getActiveVersionByType(ResumeVersion.VersionType.ORIGINAL);

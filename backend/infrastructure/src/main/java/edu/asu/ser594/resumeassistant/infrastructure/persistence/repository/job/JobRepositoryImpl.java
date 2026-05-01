@@ -12,6 +12,9 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * 职位仓库实现 / Job repository implementation
+ */
 @Repository
 @RequiredArgsConstructor
 public class JobRepositoryImpl implements JobRepository {
@@ -19,6 +22,9 @@ public class JobRepositoryImpl implements JobRepository {
     private final JpaJobRepository jpaJobRepository;
     private final JobPersistenceMapper jobMapper;
 
+    /**
+     * 保存职位 / Save job
+     */
     @Override
     public Job save(Job job) {
         JobJpaEntity entity = jobMapper.toEntity(job);
@@ -26,11 +32,17 @@ public class JobRepositoryImpl implements JobRepository {
         return jobMapper.toDomain(savedEntity);
     }
 
+    /**
+     * 根据 ID 查询职位 / Find job by ID
+     */
     @Override
     public Optional<Job> findById(String id) {
         return jpaJobRepository.findById(id).map(jobMapper::toDomain);
     }
 
+    /**
+     * 根据用户 ID 查询所有职位 / Find all jobs by user ID
+     */
     @Override
     public List<Job> findAllByUserId(UUID userId) {
         return jpaJobRepository.findAllByUserId(userId).stream()
@@ -38,4 +50,3 @@ public class JobRepositoryImpl implements JobRepository {
                 .collect(Collectors.toList());
     }
 }
-

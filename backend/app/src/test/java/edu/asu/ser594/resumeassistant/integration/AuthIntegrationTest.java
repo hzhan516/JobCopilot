@@ -21,12 +21,18 @@ import java.net.URI;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
+ * 身份验证集成测试
  * Auth Integration Tests
- * 
+ * <p>
+ * 身份验证流程的集成测试：
  * Integration tests for authentication flow:
+ * - 端到端注册
  * - End-to-end registration
+ * - 端到端登录
  * - End-to-end login
+ * - 代币生成
  * - Token generation
+ * - 错误处理
  * - Error handling
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -45,19 +51,23 @@ class AuthIntegrationTest {
     @Test
     @DisplayName("Should complete registration flow successfully")
     void shouldCompleteRegistrationFlowSuccessfully() {
+        // 给定
         // Given
         RegisterByEmailRequest request = RegisterByEmailRequest.builder()
                 .email(TEST_EMAIL)
                 .password(TEST_PASSWORD)
                 .build();
 
+        // 什么时候
         // When
         ResponseEntity<ApiResponse<AuthResponse>> response = restTemplate.exchange(
                 RequestEntity.post(URI.create(BASE_URL + "/register/email"))
                         .body(request),
-                new ParameterizedTypeReference<ApiResponse<AuthResponse>>() {}
+                new ParameterizedTypeReference<ApiResponse<AuthResponse>>() {
+                }
         );
 
+        // 然后
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(response.getBody()).isNotNull();
@@ -71,6 +81,7 @@ class AuthIntegrationTest {
     @Test
     @DisplayName("Should complete login flow successfully after registration")
     void shouldCompleteLoginFlowSuccessfullyAfterRegistration() {
+        // 给定 - 先注册
         // Given - Register first
         RegisterByEmailRequest registerRequest = RegisterByEmailRequest.builder()
                 .email(TEST_EMAIL + ".login")
@@ -80,9 +91,11 @@ class AuthIntegrationTest {
         restTemplate.exchange(
                 RequestEntity.post(URI.create(BASE_URL + "/register/email"))
                         .body(registerRequest),
-                new ParameterizedTypeReference<ApiResponse<AuthResponse>>() {}
+                new ParameterizedTypeReference<ApiResponse<AuthResponse>>() {
+                }
         );
 
+        // 何时 - 登录
         // When - Login
         LoginByEmailRequest loginRequest = LoginByEmailRequest.builder()
                 .email(TEST_EMAIL + ".login")
@@ -92,9 +105,11 @@ class AuthIntegrationTest {
         ResponseEntity<ApiResponse<AuthResponse>> response = restTemplate.exchange(
                 RequestEntity.post(URI.create(BASE_URL + "/login/email"))
                         .body(loginRequest),
-                new ParameterizedTypeReference<ApiResponse<AuthResponse>>() {}
+                new ParameterizedTypeReference<ApiResponse<AuthResponse>>() {
+                }
         );
 
+        // 然后
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
@@ -106,6 +121,7 @@ class AuthIntegrationTest {
     @Test
     @DisplayName("Should reject registration with duplicate email")
     void shouldRejectRegistrationWithDuplicateEmail() {
+        // 给定 - 先注册
         // Given - Register first
         RegisterByEmailRequest request = RegisterByEmailRequest.builder()
                 .email(TEST_EMAIL + ".dup")
@@ -118,6 +134,7 @@ class AuthIntegrationTest {
                 AuthResponse.class
         );
 
+        // 何时 - 尝试再次注册
         // When - Try to register again
         ResponseEntity<AuthResponse> response = restTemplate.postForEntity(
                 BASE_URL + "/register/email",
@@ -125,6 +142,7 @@ class AuthIntegrationTest {
                 AuthResponse.class
         );
 
+        // 然后
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
@@ -132,12 +150,14 @@ class AuthIntegrationTest {
     @Test
     @DisplayName("Should reject login with invalid credentials")
     void shouldRejectLoginWithInvalidCredentials() {
+        // 给定
         // Given
         LoginByEmailRequest request = LoginByEmailRequest.builder()
                 .email("nonexistent@test.com")
                 .password("wrongpassword")
                 .build();
 
+        // 什么时候
         // When
         ResponseEntity<AuthResponse> response = restTemplate.postForEntity(
                 BASE_URL + "/login/email",
@@ -145,6 +165,7 @@ class AuthIntegrationTest {
                 AuthResponse.class
         );
 
+        // 然后
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }

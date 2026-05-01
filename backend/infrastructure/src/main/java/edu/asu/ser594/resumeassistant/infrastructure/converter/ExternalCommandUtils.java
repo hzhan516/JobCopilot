@@ -1,14 +1,13 @@
 package edu.asu.ser594.resumeassistant.infrastructure.converter;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.PumpStreamHandler;
+import org.apache.commons.io.FileUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.UUID;
@@ -17,6 +16,7 @@ import java.util.UUID;
 public class ExternalCommandUtils {
 
     /**
+     * 使用临时文件运行 Pandoc 转换
      * Run Pandoc conversion using temp files
      */
     public static InputStream runPandoc(InputStream source, String sourceExt, String targetExt, String extraArgs) throws IOException {
@@ -28,15 +28,15 @@ public class ExternalCommandUtils {
 
             String commandStr = String.format("pandoc %s -o %s %s", inputFile.getAbsolutePath(), outputFile.getAbsolutePath(), extraArgs != null ? extraArgs : "");
             log.info("Executing pandoc: {}", commandStr);
-            
+
             CommandLine cmdLine = CommandLine.parse(commandStr);
             DefaultExecutor executor = new DefaultExecutor();
-            
+
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
             PumpStreamHandler streamHandler = new PumpStreamHandler(outputStream, errorStream);
             executor.setStreamHandler(streamHandler);
-            
+
             try {
                 executor.execute(cmdLine);
             } catch (Exception e) {
@@ -58,10 +58,12 @@ public class ExternalCommandUtils {
     }
 
     /**
+     * 使用临时文件运行 LibreOffice 转换
      * Run LibreOffice conversion using temp files
      */
     public static InputStream runLibreOffice(InputStream source, String sourceExt, String targetFormat) throws IOException {
         File inputFile = File.createTempFile("resume-in-" + UUID.randomUUID(), "." + sourceExt);
+        // soffice 根据输入名称自动创建输出文件
         // soffice creates an output file automatically based on the input name
         File outDir = new File(System.getProperty("java.io.tmpdir"));
         String expectedOutName = inputFile.getName().replaceAll("\\." + sourceExt + "$", "") + "." + targetFormat;
@@ -70,19 +72,20 @@ public class ExternalCommandUtils {
         try {
             FileUtils.copyInputStreamToFile(source, inputFile);
 
+            // 使用 unoconv 或 soffice 无头模式
             // Using unoconv or soffice headless
-            String commandStr = String.format("soffice --headless --convert-to %s --outdir %s %s", 
+            String commandStr = String.format("soffice --headless --convert-to %s --outdir %s %s",
                     targetFormat, outDir.getAbsolutePath(), inputFile.getAbsolutePath());
             log.info("Executing LibreOffice: {}", commandStr);
-            
+
             CommandLine cmdLine = CommandLine.parse(commandStr);
             DefaultExecutor executor = new DefaultExecutor();
-            
+
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
             PumpStreamHandler streamHandler = new PumpStreamHandler(outputStream, errorStream);
             executor.setStreamHandler(streamHandler);
-            
+
             try {
                 executor.execute(cmdLine);
             } catch (Exception e) {

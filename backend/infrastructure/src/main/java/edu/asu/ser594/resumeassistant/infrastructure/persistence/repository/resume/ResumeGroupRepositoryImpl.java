@@ -3,8 +3,6 @@ package edu.asu.ser594.resumeassistant.infrastructure.persistence.repository.res
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeGroupRepository;
-import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.resume.ResumeGroupJpaEntity;
-import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.resume.ResumeVersionJpaEntity;
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.mapper.resume.ResumeGroupPersistenceMapper;
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.mapper.resume.ResumeVersionPersistenceMapper;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +31,7 @@ public class ResumeGroupRepositoryImpl implements ResumeGroupRepository {
         jpaGroupRepo.save(groupMapper.toJpaEntity(group));
 
         // 级联保存版本
+        // Cascade save versions
         for (ResumeVersion version : group.getVersions()) {
             jpaVersionRepo.save(versionMapper.toJpaEntity(version));
         }

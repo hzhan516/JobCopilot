@@ -8,11 +8,7 @@ import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.conversa
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
-import java.util.Comparator;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * 对话仓储实现
@@ -39,8 +35,8 @@ public class ConversationRepositoryImpl implements ConversationRepository {
     @Override
     public List<Conversation> findAllByUserId(UUID userId) {
         return jpaRepository.findAllByUserId(userId.toString()).stream()
-            .map(this::mapToDomainEntity)
-            .toList();
+                .map(this::mapToDomainEntity)
+                .toList();
     }
 
     @Override
@@ -54,18 +50,19 @@ public class ConversationRepositoryImpl implements ConversationRepository {
      */
     private ConversationJpaEntity mapToJpaEntity(Conversation conversation) {
         ConversationJpaEntity entity = ConversationJpaEntity.builder()
-            .id(conversation.getId().toString())
-            .userId(conversation.getUserId().toString())
-            .title(conversation.getTitle())
-            .status(conversation.getStatus())
-            .resumeVersionId(conversation.getResumeVersionId() != null ? conversation.getResumeVersionId().toString() : null)
-            .createdAt(conversation.getCreatedAt())
-            .updatedAt(conversation.getUpdatedAt())
-            .build();
+                .id(conversation.getId().toString())
+                .userId(conversation.getUserId().toString())
+                .title(conversation.getTitle())
+                .status(conversation.getStatus())
+                .resumeVersionId(conversation.getResumeVersionId() != null ? conversation.getResumeVersionId().toString() : null)
+                .jobId(conversation.getJobId() != null ? conversation.getJobId().toString() : null)
+                .createdAt(conversation.getCreatedAt())
+                .updatedAt(conversation.getUpdatedAt())
+                .build();
 
         List<MessageJpaEntity> messageEntities = conversation.getMessages().stream()
-            .map(msg -> mapMessageToJpaEntity(msg, entity))
-            .toList();
+                .map(msg -> mapMessageToJpaEntity(msg, entity))
+                .toList();
 
         entity.setMessages(new java.util.ArrayList<>(messageEntities));
         return entity;
@@ -77,14 +74,14 @@ public class ConversationRepositoryImpl implements ConversationRepository {
      */
     private MessageJpaEntity mapMessageToJpaEntity(Message message, ConversationJpaEntity conversation) {
         return MessageJpaEntity.builder()
-            .id(message.getId().toString())
-            .conversation(conversation)
-            .role(message.getRole())
-            .content(message.getContent())
-            .sequence(message.getSequence())
-            .createdAt(message.getCreatedAt())
-            .fileUrl(message.getFileUrl())
-            .build();
+                .id(message.getId().toString())
+                .conversation(conversation)
+                .role(message.getRole())
+                .content(message.getContent())
+                .sequence(message.getSequence())
+                .createdAt(message.getCreatedAt())
+                .fileUrl(message.getFileUrl())
+                .build();
     }
 
     /**
@@ -93,19 +90,20 @@ public class ConversationRepositoryImpl implements ConversationRepository {
      */
     private Conversation mapToDomainEntity(ConversationJpaEntity entity) {
         List<Message> messages = entity.getMessages().stream()
-            .sorted(Comparator.comparingInt(MessageJpaEntity::getSequence))
-            .map(this::mapMessageToDomainEntity)
-            .toList();
+                .sorted(Comparator.comparingInt(MessageJpaEntity::getSequence))
+                .map(this::mapMessageToDomainEntity)
+                .toList();
 
         return Conversation.reconstruct(
-            java.util.UUID.fromString(entity.getId()),
-            java.util.UUID.fromString(entity.getUserId()),
-            entity.getTitle(),
-            entity.getStatus(),
-            entity.getResumeVersionId() != null ? java.util.UUID.fromString(entity.getResumeVersionId()) : null,
-            entity.getCreatedAt(),
-            entity.getUpdatedAt(),
-            new ArrayList<>(messages)
+                java.util.UUID.fromString(entity.getId()),
+                java.util.UUID.fromString(entity.getUserId()),
+                entity.getTitle(),
+                entity.getStatus(),
+                entity.getResumeVersionId() != null ? java.util.UUID.fromString(entity.getResumeVersionId()) : null,
+                entity.getJobId() != null ? java.util.UUID.fromString(entity.getJobId()) : null,
+                entity.getCreatedAt(),
+                entity.getUpdatedAt(),
+                new ArrayList<>(messages)
         );
     }
 
@@ -115,13 +113,13 @@ public class ConversationRepositoryImpl implements ConversationRepository {
      */
     private Message mapMessageToDomainEntity(MessageJpaEntity entity) {
         return Message.reconstruct(
-            java.util.UUID.fromString(entity.getId()),
-            java.util.UUID.fromString(entity.getConversation().getId()),
-            entity.getRole(),
-            entity.getContent(),
-            entity.getSequence(),
-            entity.getCreatedAt(),
-            entity.getFileUrl()
+                java.util.UUID.fromString(entity.getId()),
+                java.util.UUID.fromString(entity.getConversation().getId()),
+                entity.getRole(),
+                entity.getContent(),
+                entity.getSequence(),
+                entity.getCreatedAt(),
+                entity.getFileUrl()
         );
     }
 }
