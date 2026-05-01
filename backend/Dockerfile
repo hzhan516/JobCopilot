@@ -59,8 +59,9 @@ RUN addgroup -S resume && adduser -S resume -G resume
 # 设置工作目录
 WORKDIR /app
 
-# 创建上传目录
-RUN mkdir -p /app/uploads && chown -R resume:resume /app
+# 创建上传目录与日志目录（resume 用户需可写）
+# Create upload and log directories (resume user must be able to write)
+RUN mkdir -p /app/uploads /app/logs && chown -R resume:resume /app
 
 # 从构建阶段复制 JAR 文件
 COPY --from=builder /build/app/target/app-*.jar app.jar

@@ -119,6 +119,26 @@ public class ResumeApplicationService {
         versionRepository.save(version);
 
         log.info("Resume edited: versionId={}", version.getId());
+
+        // 对可编辑版本（CONVERTED / AI_OPTIMIZED）自动触发向量重新生成
+        // Auto-trigger vector re-generation for editable versions (CONVERTED / AI_OPTIMIZED)
+        if (version.getVersionType() == ResumeVersion.VersionType.CONVERTED
+                || version.getVersionType() == ResumeVersion.VersionType.AI_OPTIMIZED) {
+            try {
+                VectorGenCommand vectorCmd = new VectorGenCommand(
+                        version.getId().toString(),
+                        "RESUME",
+                        version.getContent()
+                );
+                aiMessagePublisherPort.sendTextForVectorGeneration(vectorCmd);
+                log.info("Triggered async vector re-generation for resume versionId={}", version.getId());
+            } catch (Exception e) {
+                log.error("Failed to publish vector re-generation request for versionId={}", version.getId(), e);
+                // 编辑已持久化，向量异步补全；不阻塞用户
+                // Edit is already persisted; vector will be completed asynchronously; do not block user
+            }
+        }
+
         return version;
     }
 

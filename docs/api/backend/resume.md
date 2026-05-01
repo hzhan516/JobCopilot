@@ -824,6 +824,8 @@ curl -X DELETE http://localhost:8080/api/v1/resumes/versions/550e8400-e29b-41d4-
 
 **Note**: The `versionId` in the request body will be ignored; the path parameter takes precedence.
 
+**Auto Vector Re-generation**: When editing a `CONVERTED` or `AI_OPTIMIZED` version, the system automatically triggers an asynchronous vector re-generation request after the content is persisted. This ensures that subsequent job-matching recall uses the latest resume embedding. If the MQ message fails to publish, the edit still succeeds; the vector will be re-synced on the next available opportunity.
+
 #### Request Example (cURL)
 
 ```bash
