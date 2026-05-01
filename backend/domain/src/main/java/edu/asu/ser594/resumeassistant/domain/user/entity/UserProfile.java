@@ -10,7 +10,7 @@ import java.util.UUID;
 /**
  * 用户资料实体
  * User profile entity
- *
+ * <p>
  * 设计说明：
  * - 使用 @Getter 暴露字段访问
  * - 使用 @Builder(toBuilder = true) 支持构建器模式和基于现有对象的更新
@@ -22,12 +22,12 @@ public class UserProfile implements Entity<UUID> {
 
     private final UUID id;
     private final UUID userId;
+    private final LocalDateTime createdAt;
     private String fullName;
     private String avatarUrl;
     private String phone;
     private String targetPosition;
     private String preferredLocation;
-    private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     /**

@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 身份验证集成测试
  * Auth Integration Tests
- * 
+ * <p>
  * 身份验证流程的集成测试：
  * Integration tests for authentication flow:
  * - 端到端注册
@@ -63,7 +63,8 @@ class AuthIntegrationTest {
         ResponseEntity<ApiResponse<AuthResponse>> response = restTemplate.exchange(
                 RequestEntity.post(URI.create(BASE_URL + "/register/email"))
                         .body(request),
-                new ParameterizedTypeReference<ApiResponse<AuthResponse>>() {}
+                new ParameterizedTypeReference<ApiResponse<AuthResponse>>() {
+                }
         );
 
         // 然后
@@ -90,7 +91,8 @@ class AuthIntegrationTest {
         restTemplate.exchange(
                 RequestEntity.post(URI.create(BASE_URL + "/register/email"))
                         .body(registerRequest),
-                new ParameterizedTypeReference<ApiResponse<AuthResponse>>() {}
+                new ParameterizedTypeReference<ApiResponse<AuthResponse>>() {
+                }
         );
 
         // 何时 - 登录
@@ -103,7 +105,8 @@ class AuthIntegrationTest {
         ResponseEntity<ApiResponse<AuthResponse>> response = restTemplate.exchange(
                 RequestEntity.post(URI.create(BASE_URL + "/login/email"))
                         .body(loginRequest),
-                new ParameterizedTypeReference<ApiResponse<AuthResponse>>() {}
+                new ParameterizedTypeReference<ApiResponse<AuthResponse>>() {
+                }
         );
 
         // 然后

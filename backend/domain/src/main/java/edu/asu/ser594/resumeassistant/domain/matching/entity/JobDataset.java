@@ -11,13 +11,14 @@ import java.util.Map;
 /**
  * 职位数据集实体
  * Job dataset entity
- *
+ * <p>
  * 对应 job_dataset 表 / Corresponds to job_dataset table
  */
 @Getter
 public class JobDataset extends AggregateRoot<Long> {
 
     private final Long id;
+    private final LocalDateTime createdAt;
     private String externalId;
     private String title;
     private String company;
@@ -27,7 +28,6 @@ public class JobDataset extends AggregateRoot<Long> {
     private String experienceLevel;
     private String source;
     private Map<String, Object> rawData;
-    private final LocalDateTime createdAt;
 
     @Builder
     public JobDataset(final Long id,

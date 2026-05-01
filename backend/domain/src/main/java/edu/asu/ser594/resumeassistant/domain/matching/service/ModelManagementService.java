@@ -12,7 +12,7 @@ import java.util.Optional;
 /**
  * 模型管理服务
  * Model management service
- *
+ * <p>
  * 领域服务：负责模型激活、切换等核心业务逻辑
  * Domain service: responsible for model activation, switching, etc.
  */

@@ -10,7 +10,7 @@ import java.util.UUID;
 /**
  * 用户凭证 JPA 实体
  * User credential JPA entity
- *
+ * <p>
  * 注意：
  * - 不使用 @Data 注解，避免 toString 暴露敏感信息
  * - @ToString 排除 credentialValue 字段

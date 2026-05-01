@@ -13,7 +13,7 @@ import java.util.UUID;
 /**
  * 用户聚合根
  * User aggregate root
- *
+ * <p>
  * 设计说明：
  * - 使用 @Getter 暴露字段访问
  * - 使用 @Builder 支持构建器模式
@@ -26,11 +26,11 @@ public class User extends AggregateRoot<UUID> {
 
     private final UUID id;
     private final String email;
+    private final LocalDateTime createdAt;
     private boolean emailVerified;
     private UserRole role;
     private UserStatus status;
     private OAuthProvider authProvider;
-    private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     /**

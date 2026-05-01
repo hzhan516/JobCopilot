@@ -11,17 +11,18 @@
 
 ```
 使用者請求 -> JobController.matchJobs()
-    -> MatchingApplicationService.startJobMatch()
-        1. 建立 PROCESSING 狀態記錄 (job_match_results)
-        2. 查詢 resume_vectors 取得履歷向量
-        3. PgVectorSearchService 本地召回 topK 職位 (job_vectors)
-        4. 發送 JobRankCommand 到 ai.req.job.rank
-        5. 立即回傳 JobMatchResponse(matchId, status=PROCESSING)
+    -> MatchingFacade.matchJobs()
+        -> MatchingApplicationService.startJobMatch()
+            1. 建立 PROCESSING 狀態記錄 (job_match_results)
+            2. 查詢 resume_vectors 取得履歷向量
+            3. VectorSearchPort 本地召回 topK 職位 (job_vectors)
+            4. 發送 JobRankCommand 到 ai.req.job.rank
+            5. 立即回傳 JobMatchResponse(matchId, status=PROCESSING)
 
 Python AI 服務 -> 消費 ai.req.job.rank -> 精排 -> 發送結果到 backend.res.job.rank
 
 JobRankResultListener -> 消費 backend.res.job.rank
-    -> JobFacade.saveJobRankResult()
+    -> MatchingFacade.saveJobRankResult()
         -> MatchingApplicationService.saveMatchResult()
             -> 更新 job_match_results 為 COMPLETED + rankedResults
 ```
@@ -43,7 +44,7 @@ Content-Type: application/json
 **請求主體 (`JobMatchRequest`):**
 ```json
 {
-  "userId": "resume-version-id-001",
+  "resumeVersionId": "resume-version-id-001",
   "query": "Senior Java Developer in San Francisco",
   "topK": 10,
   "filters": {

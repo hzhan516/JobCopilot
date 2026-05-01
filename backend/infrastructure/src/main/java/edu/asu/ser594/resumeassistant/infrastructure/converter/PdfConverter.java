@@ -39,13 +39,13 @@ public class PdfConverter extends AbstractDocumentConverter {
         if (sf.equals("pdf") && tf.equals("txt")) {
             return pdfToText(source);
         }
-        
+
         // MD 转 PDF（Pandoc 使用 weasyprint 和 CJK 主字体）
         // MD to PDF (Pandoc with weasyprint and CJK mainfont)
         if ((sf.equals("md") || sf.equals("markdown")) && tf.equals("pdf")) {
             return ExternalCommandUtils.runPandoc(source, sf, tf, "--pdf-engine=weasyprint -V CJKmainfont=\"Noto Sans SC\"");
         }
-        
+
         // HTML/TXT 转 PDF（根据简单标记可使用 LibreOffice 或 Pandoc）
         // HTML/TXT to PDF (can use LibreOffice or Pandoc depending on simple markup)
         // 由于 HTML 可能包含样式，weasyprint 是理想选择。

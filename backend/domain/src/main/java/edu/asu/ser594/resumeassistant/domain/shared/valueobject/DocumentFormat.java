@@ -5,7 +5,7 @@ import java.util.Optional;
 /**
  * 文档格式值对象
  * Document Format Value Object
- * 
+ * <p>
  * 封装格式解析、MIME类型映射以及导出文件名生成的领域规则
  * Encapsulates domain rules for format parsing, MIME type mapping, and export filename generation
  */
@@ -25,7 +25,8 @@ public class DocumentFormat {
         }
         return switch (mimeType.toLowerCase()) {
             case "application/pdf" -> new DocumentFormat("pdf", mimeType);
-            case "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword" -> new DocumentFormat("docx", mimeType);
+            case "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword" ->
+                    new DocumentFormat("docx", mimeType);
             case "text/markdown", "text/x-markdown" -> new DocumentFormat("md", mimeType);
             case "text/plain" -> new DocumentFormat("txt", mimeType);
             case "text/html" -> new DocumentFormat("html", mimeType);
@@ -41,10 +42,11 @@ public class DocumentFormat {
         if (f.startsWith(".")) {
             f = f.substring(1);
         }
-        
+
         return switch (f) {
             case "pdf" -> new DocumentFormat("pdf", "application/pdf");
-            case "docx", "doc", "word" -> new DocumentFormat("docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+            case "docx", "doc", "word" ->
+                    new DocumentFormat("docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
             case "md", "markdown" -> new DocumentFormat("md", "text/markdown");
             case "txt", "text" -> new DocumentFormat("txt", "text/plain");
             case "html" -> new DocumentFormat("html", "text/html");

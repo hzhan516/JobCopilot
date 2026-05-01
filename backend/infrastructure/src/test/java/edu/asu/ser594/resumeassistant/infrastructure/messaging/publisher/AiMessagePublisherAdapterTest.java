@@ -17,7 +17,9 @@ import java.util.ArrayList;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 
-/** AI 消息发布适配器测试 / AI message publisher adapter tests */
+/**
+ * AI 消息发布适配器测试 / AI message publisher adapter tests
+ */
 @ExtendWith(MockitoExtension.class)
 class AiMessagePublisherAdapterTest {
 

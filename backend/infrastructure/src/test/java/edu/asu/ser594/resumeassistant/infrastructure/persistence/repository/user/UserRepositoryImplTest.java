@@ -24,7 +24,7 @@ import static org.mockito.Mockito.*;
 /**
  * UserRepositoryImpl 单元测试
  * UserRepositoryImpl Unit Tests
- * 
+ * <p>
  * 测试用户仓储实现：
  * Tests the user repository implementation:
  * - CRUD 操作

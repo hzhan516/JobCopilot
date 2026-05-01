@@ -1,10 +1,10 @@
 package edu.asu.ser594.resumeassistant.trigger.http.advice;
 
 import edu.asu.ser594.resumeassistant.api.common.dto.ApiResponse;
+import edu.asu.ser594.resumeassistant.api.shared.service.ExceptionMessageResolver;
 import edu.asu.ser594.resumeassistant.domain.shared.exception.LocalizedException;
 import edu.asu.ser594.resumeassistant.domain.shared.service.MessageProvider;
 import edu.asu.ser594.resumeassistant.domain.user.exception.AuthException;
-import edu.asu.ser594.resumeassistant.api.shared.service.ExceptionMessageResolver;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;

@@ -18,14 +18,14 @@ import java.util.List;
  * @param updatedAt       更新时间 / Updated at
  */
 public record ConversationResponse(
-    String conversationId,
-    String userId,
-    String title,
-    String status,
-    String resumeVersionId,
-    String jobId,
-    List<MessageResponse> messages,
-    LocalDateTime createdAt,
-    LocalDateTime updatedAt
+        String conversationId,
+        String userId,
+        String title,
+        String status,
+        String resumeVersionId,
+        String jobId,
+        List<MessageResponse> messages,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {
 }

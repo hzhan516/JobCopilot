@@ -10,4 +10,5 @@ import java.util.UUID;
  */
 public record GetTrackingStatsQuery(
         UUID userId
-) {}
+) {
+}

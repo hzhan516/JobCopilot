@@ -6,8 +6,6 @@ import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.resume.R
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.resume.ResumeVersionJpaEntity;
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.mapper.resume.ResumeGroupPersistenceMapper;
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.mapper.resume.ResumeVersionPersistenceMapper;
-import edu.asu.ser594.resumeassistant.infrastructure.persistence.repository.resume.JpaResumeGroupRepository;
-import edu.asu.ser594.resumeassistant.infrastructure.persistence.repository.resume.JpaResumeVersionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,8 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.quality.Strictness;
 import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -31,7 +29,7 @@ import static org.mockito.Mockito.*;
 /**
  * ResumeGroupRepositoryImpl 单元测试
  * ResumeGroupRepositoryImpl Unit Tests
- * 
+ * <p>
  * 测试简历组仓储实现：
  * Tests the resume group repository implementation:
  * - CRUD 操作

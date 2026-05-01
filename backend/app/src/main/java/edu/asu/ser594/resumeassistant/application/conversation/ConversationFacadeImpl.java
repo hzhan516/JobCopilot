@@ -42,11 +42,11 @@ public class ConversationFacadeImpl implements ConversationFacade {
                 ? UUID.fromString(request.jobId())
                 : null;
         CreateConversationCommand command = CreateConversationCommand.builder()
-            .userId(userId)
-            .title(request.title())
-            .resumeVersionId(resumeVersionId)
-            .jobId(jobId)
-            .build();
+                .userId(userId)
+                .title(request.title())
+                .resumeVersionId(resumeVersionId)
+                .jobId(jobId)
+                .build();
 
         Conversation conversation = applicationService.createConversation(command);
         return mapToResponse(conversation);
@@ -55,12 +55,12 @@ public class ConversationFacadeImpl implements ConversationFacade {
     @Override
     public ConversationResponse sendMessage(String conversationId, SendMessageRequest request, UUID userId) {
         SendMessageCommand command = SendMessageCommand.builder()
-            .conversationId(UUID.fromString(conversationId))
-            .userId(userId)
-            .role(MessageRole.USER) // Assuming request comes from user
-            .content(request.content())
-            .fileUrls(request.fileUrls())
-            .build();
+                .conversationId(UUID.fromString(conversationId))
+                .userId(userId)
+                .role(MessageRole.USER) // Assuming request comes from user
+                .content(request.content())
+                .fileUrls(request.fileUrls())
+                .build();
 
         Conversation conversation = applicationService.sendMessage(command);
         return mapToResponse(conversation);
@@ -69,10 +69,10 @@ public class ConversationFacadeImpl implements ConversationFacade {
     @Override
     public ConversationResponse getConversation(String conversationId, UUID userId, Integer page, Integer size) {
         GetConversationQuery query = new GetConversationQuery(
-            UUID.fromString(conversationId),
-            userId,
-            page,
-            size
+                UUID.fromString(conversationId),
+                userId,
+                page,
+                size
         );
         Conversation conversation = queryService.getConversation(query);
         return mapToResponse(conversation, page, size);
@@ -82,8 +82,8 @@ public class ConversationFacadeImpl implements ConversationFacade {
     public List<ConversationResponse> listConversations(UUID userId) {
         ListConversationsQuery query = new ListConversationsQuery(userId);
         return queryService.listConversations(query).stream()
-            .map(this::mapToResponse)
-            .toList();
+                .map(this::mapToResponse)
+                .toList();
     }
 
     @Override
@@ -105,12 +105,12 @@ public class ConversationFacadeImpl implements ConversationFacade {
     public String uploadAttachment(String conversationId, MultipartFile file, UUID userId) {
         try {
             return applicationService.uploadAttachment(
-                UUID.fromString(conversationId),
-                userId,
-                file.getInputStream(),
-                file.getSize(),
-                file.getContentType(),
-                file.getOriginalFilename()
+                    UUID.fromString(conversationId),
+                    userId,
+                    file.getInputStream(),
+                    file.getSize(),
+                    file.getContentType(),
+                    file.getOriginalFilename()
             );
         } catch (IOException e) {
             throw new RuntimeException("Failed to read uploaded file / 读取上传文件失败", e);
@@ -123,20 +123,20 @@ public class ConversationFacadeImpl implements ConversationFacade {
      */
     private ConversationResponse mapToResponse(Conversation conversation, Integer page, Integer size) {
         List<MessageResponse> messageResponses = applyMessagePagination(conversation.getMessages(), page, size)
-            .stream()
-            .map(this::mapMessageToResponse)
-            .toList();
+                .stream()
+                .map(this::mapMessageToResponse)
+                .toList();
 
         return new ConversationResponse(
-            conversation.getId().toString(),
-            conversation.getUserId().toString(),
-            conversation.getTitle(),
-            conversation.getStatus().name(),
-            conversation.getResumeVersionId() != null ? conversation.getResumeVersionId().toString() : null,
-            conversation.getJobId() != null ? conversation.getJobId().toString() : null,
-            messageResponses,
-            conversation.getCreatedAt(),
-            conversation.getUpdatedAt()
+                conversation.getId().toString(),
+                conversation.getUserId().toString(),
+                conversation.getTitle(),
+                conversation.getStatus().name(),
+                conversation.getResumeVersionId() != null ? conversation.getResumeVersionId().toString() : null,
+                conversation.getJobId() != null ? conversation.getJobId().toString() : null,
+                messageResponses,
+                conversation.getCreatedAt(),
+                conversation.getUpdatedAt()
         );
     }
 
@@ -172,12 +172,12 @@ public class ConversationFacadeImpl implements ConversationFacade {
      */
     private MessageResponse mapMessageToResponse(Message message) {
         return new MessageResponse(
-            message.getId().toString(),
-            message.getRole().name(),
-            message.getContent(),
-            message.getSequence(),
-            message.getFileUrl(),
-            message.getCreatedAt()
+                message.getId().toString(),
+                message.getRole().name(),
+                message.getContent(),
+                message.getSequence(),
+                message.getFileUrl(),
+                message.getCreatedAt()
         );
     }
 }

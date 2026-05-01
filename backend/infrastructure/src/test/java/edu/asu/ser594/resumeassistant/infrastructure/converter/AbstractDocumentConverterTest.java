@@ -9,7 +9,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** 抽象文档转换器测试 / Abstract document converter tests */
+/**
+ * 抽象文档转换器测试 / Abstract document converter tests
+ */
 class AbstractDocumentConverterTest {
 
     private TestDocumentConverter converter;
@@ -26,7 +28,7 @@ class AbstractDocumentConverterTest {
         assertTrue(converter.supports("md", "html"));
         assertTrue(converter.supports("md", "txt"));
         assertTrue(converter.supports("MD", "HTML"));
-        
+
         // 验证不支持的格式 / Verify unsupported formats
         assertFalse(converter.supports("md", "pdf"));
         assertFalse(converter.supports("html", "md"));
@@ -60,7 +62,7 @@ class AbstractDocumentConverterTest {
         // 执行 / When
         InputStream stream = converter.testToStream(originalContent);
         assertNotNull(stream);
-        
+
         String result = converter.testToString(stream);
 
         // 验证 / Then

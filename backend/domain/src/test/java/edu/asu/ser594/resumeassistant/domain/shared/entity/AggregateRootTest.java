@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * AggregateRoot 基类单元测试
  * AggregateRoot Base Class Unit Tests
- * 
+ * <p>
  * 测试所有聚合根的基类行为：
  * Tests the base class behavior for all aggregate roots:
  * - 基于ID的实体标识

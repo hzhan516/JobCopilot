@@ -14,7 +14,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 /**
  * 六边形架构测试
  * Hexagonal Architecture Tests
- * 
+ * <p>
  * 验证DDD六边形架构合规性的测试：
  * Tests that verify DDD Hexagonal Architecture compliance:
  * - 领域层独立性

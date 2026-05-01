@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 用户凭证实体单元测试
  * UserCredential Entity Unit Tests
- * 
+ * <p>
  * 遵循DDD原则测试用户凭证实体：
  * Tests the UserCredential entity following DDD principles:
  * - 创建后凭证值不可变

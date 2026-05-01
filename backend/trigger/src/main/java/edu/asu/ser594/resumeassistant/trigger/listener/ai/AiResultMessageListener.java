@@ -9,17 +9,18 @@ import edu.asu.ser594.resumeassistant.domain.embedding.repository.JobVectorRepos
 import edu.asu.ser594.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.infrastructure.messaging.config.RabbitMqConfig;
-import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
-/** AI 结果消息监听器 / AI result message listener */
+/**
+ * AI 结果消息监听器 / AI result message listener
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -31,7 +32,9 @@ public class AiResultMessageListener {
     private final ResumeVectorRepository resumeVectorRepository;
     private final JobVectorRepository jobVectorRepository;
 
-    /** 监听职位解析结果 / Listen for job parse results */
+    /**
+     * 监听职位解析结果 / Listen for job parse results
+     */
     @RabbitListener(queues = RabbitMqConfig.QUEUE_RES_JOB_PARSE)
     public void onJobParseResult(AiResultEvent event) {
         log.info("Received AiResultEvent for JOB_PARSE, referenceId: {}, status: {}", event.referenceId(), event.status());
@@ -42,7 +45,9 @@ public class AiResultMessageListener {
         }
     }
 
-    /** 监听简历解析结果 / Listen for resume parse results */
+    /**
+     * 监听简历解析结果 / Listen for resume parse results
+     */
     @RabbitListener(queues = RabbitMqConfig.QUEUE_RES_RESUME_PARSE)
     public void onResumeParseResult(AiResultEvent event) {
         log.info("Received AiResultEvent for RESUME_PARSE, referenceId: {}, status: {}", event.referenceId(), event.status());
@@ -53,7 +58,9 @@ public class AiResultMessageListener {
         }
     }
 
-    /** 监听向量生成结果 / Listen for vector generation results */
+    /**
+     * 监听向量生成结果 / Listen for vector generation results
+     */
     @SuppressWarnings("unchecked")
     @RabbitListener(queues = RabbitMqConfig.QUEUE_RES_VECTOR_GEN)
     public void onVectorGenResult(AiResultEvent event) {
@@ -73,7 +80,9 @@ public class AiResultMessageListener {
         }
     }
 
-    /** 监听对话回复结果 / Listen for conversation reply results */
+    /**
+     * 监听对话回复结果 / Listen for conversation reply results
+     */
     @RabbitListener(queues = RabbitMqConfig.QUEUE_RES_CONVERSATION)
     public void onConversationReply(AiResultEvent event) {
         log.info("Received AiResultEvent for CONVERSATION_REPLY, referenceId: {}, status: {}", event.referenceId(), event.status());

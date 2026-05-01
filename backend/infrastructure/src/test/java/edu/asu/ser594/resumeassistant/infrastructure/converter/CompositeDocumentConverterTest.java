@@ -10,15 +10,16 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-/** 组合文档转换器测试 / Composite document converter tests */
+/**
+ * 组合文档转换器测试 / Composite document converter tests
+ */
 class CompositeDocumentConverterTest {
 
     @Mock

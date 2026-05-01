@@ -4,13 +4,17 @@ import edu.asu.ser594.resumeassistant.domain.user.service.PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Component;
 
-/** BCrypt 密码编码器实现 / BCrypt password encoder implementation */
+/**
+ * BCrypt 密码编码器实现 / BCrypt password encoder implementation
+ */
 @Component
 public class BCryptPasswordEncoderImpl implements PasswordEncoder {
 
     private static final int STRENGTH = 10;
 
-    /** 编码密码 / Encode password */
+    /**
+     * 编码密码 / Encode password
+     */
     @Override
     public String encode(String rawPassword) {
         if (rawPassword == null) {
@@ -20,7 +24,9 @@ public class BCryptPasswordEncoderImpl implements PasswordEncoder {
         return BCrypt.hashpw(truncatedPassword, BCrypt.gensalt(STRENGTH));
     }
 
-    /** 校验密码是否匹配 / Check if password matches */
+    /**
+     * 校验密码是否匹配 / Check if password matches
+     */
     @Override
     public boolean matches(String rawPassword, String encodedPassword) {
         if (rawPassword == null || encodedPassword == null) {

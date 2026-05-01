@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.application.resume.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeEditCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeUploadCommand;
 import edu.asu.ser594.resumeassistant.application.resume.dto.ResumeDownloadResult;
@@ -8,15 +9,14 @@ import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeGroupRepository;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
-import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ResumeParseCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.exception.StorageException;
+import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import edu.asu.ser594.resumeassistant.domain.shared.service.DocumentFormatConverter;
 import edu.asu.ser594.resumeassistant.domain.shared.service.FileStorageService;
 import edu.asu.ser594.resumeassistant.domain.shared.valueobject.DocumentFormat;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,7 +32,7 @@ import java.util.UUID;
 /**
  * 简历申请服务
  * Resume Application Service
- *
+ * <p>
  * 职责：编排用例，协调领域对象
  * Responsibility: Orchestrate use cases, coordinate domain objects
  */
@@ -60,7 +60,7 @@ public class ResumeApplicationService {
         // 2. 存储文件，获取路径（这让底层基础设施去决定真实存的位置，但如果接口设计需要传入Path，则生成随机键）
         // 2. Store the file and obtain the path (this lets the underlying infrastructure determine the actual storage location, but if the interface design requires passing in the Path, a random key will be generated)
         String storagePath = UUID.randomUUID().toString() + "_" + command.fileName();
-        
+
         fileStorageService.upload(storagePath, command.inputStream(),
                 command.fileSize(), command.contentType());
 
@@ -79,7 +79,7 @@ public class ResumeApplicationService {
                 .filter(v -> v.getVersionType() == ResumeVersion.VersionType.ORIGINAL)
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Original version not found after upload"));
-        
+
         originalVersion.markParsing();
         versionRepository.save(originalVersion);
 

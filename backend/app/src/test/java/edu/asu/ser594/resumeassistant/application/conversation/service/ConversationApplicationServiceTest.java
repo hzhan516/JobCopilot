@@ -8,7 +8,6 @@ import edu.asu.ser594.resumeassistant.domain.conversation.repository.Conversatio
 import edu.asu.ser594.resumeassistant.domain.conversation.valueobject.MessageRole;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
-import edu.asu.ser594.resumeassistant.domain.job.valueobject.JobStatus;
 import edu.asu.ser594.resumeassistant.domain.job.valueobject.ParsedJobContent;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
@@ -26,17 +25,15 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.ByteArrayInputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-/** 对话应用服务单元测试 / Conversation application service unit tests */
+/**
+ * 对话应用服务单元测试 / Conversation application service unit tests
+ */
 class ConversationApplicationServiceTest {
 
     @Mock

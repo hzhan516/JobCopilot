@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * BCryptPasswordEncoderImpl 单元测试
  * BCryptPasswordEncoderImpl Unit Tests
- * 
+ * <p>
  * 测试 BCrypt 密码编码器实现：
  * Tests the BCrypt password encoder implementation:
  * - 密码编码

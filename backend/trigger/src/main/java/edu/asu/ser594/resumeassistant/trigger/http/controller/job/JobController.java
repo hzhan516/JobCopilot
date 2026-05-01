@@ -3,10 +3,11 @@ package edu.asu.ser594.resumeassistant.trigger.http.controller.job;
 import edu.asu.ser594.resumeassistant.api.common.dto.ApiResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.JobMatchRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
-import edu.asu.ser594.resumeassistant.api.matching.dto.response.JobMatchHistoryResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobMatchResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
+import edu.asu.ser594.resumeassistant.api.matching.dto.response.JobMatchHistoryResponse;
+import edu.asu.ser594.resumeassistant.api.matching.facade.MatchingFacade;
 import edu.asu.ser594.resumeassistant.trigger.http.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ import java.util.UUID;
 public class JobController {
 
     private final JobFacade jobFacade;
+    private final MatchingFacade matchingFacade;
 
     @PostMapping
     public ApiResponse<JobResponse> submitJob(
@@ -61,9 +63,9 @@ public class JobController {
     @PostMapping("/match")
     public ApiResponse<JobMatchResponse> matchJobs(
             @CurrentUser UUID userId,
-            @RequestBody JobMatchRequest request) {
+            @Validated @RequestBody JobMatchRequest request) {
         log.info("User {} requesting job match", userId);
-        JobMatchResponse response = jobFacade.matchJobs(userId, request);
+        JobMatchResponse response = matchingFacade.matchJobs(userId, request);
         return ApiResponse.success(response);
     }
 
@@ -76,7 +78,7 @@ public class JobController {
             @CurrentUser UUID userId,
             @PathVariable("matchId") String matchId) {
         log.info("User {} fetching match result: {}", userId, matchId);
-        JobMatchResponse response = jobFacade.getMatchResult(matchId);
+        JobMatchResponse response = matchingFacade.getMatchResult(matchId);
         return ApiResponse.success(response);
     }
 
@@ -88,7 +90,7 @@ public class JobController {
     public ApiResponse<List<JobMatchHistoryResponse>> getMatchHistory(
             @CurrentUser UUID userId) {
         log.info("User {} fetching match history", userId);
-        List<JobMatchHistoryResponse> response = jobFacade.getMatchHistory(userId);
+        List<JobMatchHistoryResponse> response = matchingFacade.getMatchHistory(userId);
         return ApiResponse.success(response);
     }
 }

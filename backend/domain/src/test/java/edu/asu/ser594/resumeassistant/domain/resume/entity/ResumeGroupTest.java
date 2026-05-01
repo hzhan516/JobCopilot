@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * 简历组实体单元测试
  * ResumeGroup Entity Unit Tests
- * 
+ * <p>
  * 遵循DDD原则测试简历组聚合根：
  * Tests the ResumeGroup aggregate root following DDD principles:
  * - 工厂方法创建
@@ -239,13 +239,15 @@ class ResumeGroupTest {
         // When
         try {
             Thread.sleep(10);
-        } catch (InterruptedException ignored) {}
+        } catch (InterruptedException ignored) {
+        }
         group.changeTitle("New Title");
         LocalDateTime afterTitleChange = group.getUpdatedAt();
 
         try {
             Thread.sleep(10);
-        } catch (InterruptedException ignored) {}
+        } catch (InterruptedException ignored) {
+        }
         group.setAsDefault();
         LocalDateTime afterSetDefault = group.getUpdatedAt();
 

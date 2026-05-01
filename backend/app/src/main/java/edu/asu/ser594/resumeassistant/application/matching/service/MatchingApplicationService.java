@@ -1,7 +1,5 @@
 package edu.asu.ser594.resumeassistant.application.matching.service;
 
-import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchFactors;
-import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchItem;
 import edu.asu.ser594.resumeassistant.application.matching.command.SaveMatchResultCommand;
 import edu.asu.ser594.resumeassistant.application.matching.command.StartJobMatchCommand;
 import edu.asu.ser594.resumeassistant.application.matching.query.GetMatchResultQuery;
@@ -11,31 +9,25 @@ import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
 import edu.asu.ser594.resumeassistant.domain.matching.entity.JobMatchResult;
 import edu.asu.ser594.resumeassistant.domain.matching.entity.MatchingModel;
+import edu.asu.ser594.resumeassistant.domain.matching.port.VectorSearchPort;
 import edu.asu.ser594.resumeassistant.domain.matching.repository.JobMatchResultRepository;
 import edu.asu.ser594.resumeassistant.domain.matching.repository.MatchingModelRepository;
-import edu.asu.ser594.resumeassistant.domain.matching.valueobject.MatchStatus;
 import edu.asu.ser594.resumeassistant.domain.matching.valueobject.RankedJob;
 import edu.asu.ser594.resumeassistant.domain.matching.valueobject.RecallResult;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobRankCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
-import edu.asu.ser594.resumeassistant.infrastructure.search.PgVectorSearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
  * 职位匹配应用服务
  * Job matching application service
- *
+ * <p>
  * 协调召回、MQ发送、结果保存 / Coordinates recall, MQ sending, and result persistence
  */
 @Slf4j
@@ -48,7 +40,7 @@ public class MatchingApplicationService {
     private final JobMatchResultRepository jobMatchResultRepository;
     private final MatchingModelRepository matchingModelRepository;
     private final AiMessagePublisherPort aiMessagePublisherPort;
-    private final PgVectorSearchService pgVectorSearchService;
+    private final VectorSearchPort vectorSearchPort;
 
     /**
      * 启动异步职位匹配流程
@@ -81,7 +73,7 @@ public class MatchingApplicationService {
 
         final int topK = command.topK() != null && command.topK() > 0 ? command.topK() : 10;
         final long recallStart = System.currentTimeMillis();
-        final List<RecallResult> recallResults = pgVectorSearchService.findSimilarJobs(
+        final List<RecallResult> recallResults = vectorSearchPort.findSimilarJobs(
                 resumeVector.getEmbedding(), topK, modelVersion);
         final long recallTimeMs = System.currentTimeMillis() - recallStart;
 

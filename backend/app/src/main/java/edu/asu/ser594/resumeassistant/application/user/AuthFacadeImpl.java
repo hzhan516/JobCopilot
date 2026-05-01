@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.application.user;
 
+import edu.asu.ser594.resumeassistant.api.user.dto.TokenPair;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.LoginByEmailRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.LoginByGoogleRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.RegisterByEmailRequest;
@@ -8,20 +9,23 @@ import edu.asu.ser594.resumeassistant.api.user.facade.AuthFacade;
 import edu.asu.ser594.resumeassistant.application.user.command.LoginByEmailCommand;
 import edu.asu.ser594.resumeassistant.application.user.command.LoginByGoogleCommand;
 import edu.asu.ser594.resumeassistant.application.user.command.RegisterByEmailCommand;
-import edu.asu.ser594.resumeassistant.api.user.dto.TokenPair;
 import edu.asu.ser594.resumeassistant.application.user.service.AuthApplicationService;
 import edu.asu.ser594.resumeassistant.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-/** 身份验证外观实现 / Authentication facade implementation */
+/**
+ * 身份验证外观实现 / Authentication facade implementation
+ */
 @Component
 @RequiredArgsConstructor
 public class AuthFacadeImpl implements AuthFacade {
 
     private final AuthApplicationService authService;
 
-    /** 通过邮箱注册 / Register by email */
+    /**
+     * 通过邮箱注册 / Register by email
+     */
     @Override
     public AuthResponse registerByEmail(RegisterByEmailRequest request) {
         // 构建注册命令 / Build register command
@@ -43,7 +47,9 @@ public class AuthFacadeImpl implements AuthFacade {
                 .build();
     }
 
-    /** 通过邮箱登录 / Login by email */
+    /**
+     * 通过邮箱登录 / Login by email
+     */
     @Override
     public AuthResponse loginByEmail(LoginByEmailRequest request) {
         // 构建登录命令 / Build login command
@@ -65,7 +71,9 @@ public class AuthFacadeImpl implements AuthFacade {
                 .build();
     }
 
-    /** 通过 Google 登录 / Login by Google */
+    /**
+     * 通过 Google 登录 / Login by Google
+     */
     @Override
     public AuthResponse loginByGoogle(LoginByGoogleRequest request) {
         // 构建 Google 登录命令 / Build Google login command

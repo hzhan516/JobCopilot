@@ -2,7 +2,7 @@ package edu.asu.ser594.resumeassistant.trigger.listener.ai;
 
 import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchFactors;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchItem;
-import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
+import edu.asu.ser594.resumeassistant.api.matching.facade.MatchingFacade;
 import edu.asu.ser594.resumeassistant.infrastructure.messaging.config.RabbitMqConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +16,7 @@ import java.util.Map;
 /**
  * 职位精排结果监听器
  * Job rank result listener
- *
+ * <p>
  * 监听 Python AI 服务返回的精排结果并保存
  * Listens to ranking results from Python AI service and persists them
  */
@@ -25,7 +25,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class JobRankResultListener {
 
-    private final JobFacade jobFacade;
+    private final MatchingFacade matchingFacade;
 
     /**
      * 处理职位精排结果
@@ -67,7 +67,7 @@ public class JobRankResultListener {
                 }
             }
 
-            jobFacade.saveJobRankResult(matchId, matchItems, rankTimeMs);
+            matchingFacade.saveJobRankResult(matchId, matchItems, rankTimeMs);
             log.info("Job rank result saved for matchId: {}", matchId);
         } catch (Exception e) {
             log.error("Failed to process job rank result: {}", payload, e);
@@ -91,7 +91,7 @@ public class JobRankResultListener {
     private Double extractDouble(final Object value) {
         if (value instanceof Number) {
             return ((Number) value).doubleValue();
-    }
+        }
         return 0.0;
     }
 }

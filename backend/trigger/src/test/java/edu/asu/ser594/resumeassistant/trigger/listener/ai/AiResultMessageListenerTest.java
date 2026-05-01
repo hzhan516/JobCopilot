@@ -19,9 +19,10 @@ import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 
-/** AI 结果消息监听器测试 / AI result message listener tests */
+/**
+ * AI 结果消息监听器测试 / AI result message listener tests
+ */
 @ExtendWith(MockitoExtension.class)
 class AiResultMessageListenerTest {
 

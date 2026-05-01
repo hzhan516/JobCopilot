@@ -76,8 +76,7 @@ public class MarkdownConverter extends AbstractDocumentConverter {
         // TXT to HTML
         else if (sf.equals("txt") && tf.equals("html")) {
             result = "<pre>" + escapeHtml(content) + "</pre>";
-        }
-        else {
+        } else {
             throw new IOException("Unsupported conversion: " + sourceFormat + " -> " + targetFormat);
         }
 

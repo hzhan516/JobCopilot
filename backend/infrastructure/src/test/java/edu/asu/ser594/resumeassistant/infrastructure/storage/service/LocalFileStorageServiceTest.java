@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * LocalFileStorageService 单元测试
  * LocalFileStorageService Unit Tests
- * 
+ * <p>
  * 测试本地文件存储服务实现：
  * Tests the local file storage service implementation:
  * - 文件上传
@@ -35,10 +35,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("Local File Storage Service Tests")
 class LocalFileStorageServiceTest {
 
-    @FunctionalInterface
-    interface ThrowableRunnable {
-        void run() throws Exception;
-    }
+    private static final String TEST_FILE_PATH = "test/file.txt";
+    private static final String TEST_CONTENT = "Hello, World!";
+    @TempDir
+    Path tempDir;
+    private LocalFileStorageService storageService;
+    private StorageProperties storageProperties;
 
     private static org.assertj.core.api.ThrowableTypeAssert<Throwable> assertThatNoExceptionThrown(ThrowableRunnable runnable) {
         try {
@@ -50,15 +52,6 @@ class LocalFileStorageServiceTest {
         }
     }
 
-    private static final String TEST_FILE_PATH = "test/file.txt";
-    private static final String TEST_CONTENT = "Hello, World!";
-
-    @TempDir
-    Path tempDir;
-
-    private LocalFileStorageService storageService;
-    private StorageProperties storageProperties;
-
     @BeforeEach
     void setUp() {
         storageProperties = new StorageProperties();
@@ -68,9 +61,6 @@ class LocalFileStorageServiceTest {
         storageService = new LocalFileStorageService(storageProperties);
         storageService.init();
     }
-
-    // ==================== 上传测试 ====================
-    // ==================== Upload Tests ====================
 
     @Test
     @DisplayName("Should upload file successfully")
@@ -89,6 +79,9 @@ class LocalFileStorageServiceTest {
         assertThat(uploadedFile).exists();
         assertThat(Files.readString(uploadedFile)).isEqualTo(TEST_CONTENT);
     }
+
+    // ==================== 上传测试 ====================
+    // ==================== Upload Tests ====================
 
     @Test
     @DisplayName("Should create parent directories when uploading")
@@ -119,9 +112,6 @@ class LocalFileStorageServiceTest {
         ).isInstanceOf(StorageException.class);
     }
 
-    // ==================== 下载测试 ====================
-    // ==================== Download Tests ====================
-
     @Test
     @DisplayName("Should download existing file")
     void shouldDownloadExistingFile() throws IOException {
@@ -140,6 +130,9 @@ class LocalFileStorageServiceTest {
         assertThat(result).isPresent();
         assertThat(new String(result.get().readAllBytes())).isEqualTo(TEST_CONTENT);
     }
+
+    // ==================== 下载测试 ====================
+    // ==================== Download Tests ====================
 
     @Test
     @DisplayName("Should return empty when downloading non-existent file")
@@ -170,9 +163,6 @@ class LocalFileStorageServiceTest {
         assertThat(result).isEmpty();
     }
 
-    // ==================== 删除测试 ====================
-    // ==================== Delete Tests ====================
-
     @Test
     @DisplayName("Should delete existing file")
     void shouldDeleteExistingFile() throws IOException {
@@ -191,6 +181,9 @@ class LocalFileStorageServiceTest {
         assertThat(filePath).doesNotExist();
     }
 
+    // ==================== 删除测试 ====================
+    // ==================== Delete Tests ====================
+
     @Test
     @DisplayName("Should handle deleting non-existent file gracefully")
     void shouldHandleDeletingNonExistentFileGracefully() {
@@ -206,9 +199,6 @@ class LocalFileStorageServiceTest {
             // 不应到达此处
         }
     }
-
-    // ==================== 集成测试 ====================
-    // ==================== Integration Tests ====================
 
     @Test
     @DisplayName("Should handle complete upload-download-delete cycle")
@@ -243,6 +233,9 @@ class LocalFileStorageServiceTest {
         // Then - Verify delete
         assertThat(tempDir.resolve(path)).doesNotExist();
     }
+
+    // ==================== 集成测试 ====================
+    // ==================== Integration Tests ====================
 
     @Test
     @DisplayName("Should handle binary content")
@@ -298,5 +291,10 @@ class LocalFileStorageServiceTest {
         // 然后
         // Then
         assertThat(tempDir.resolve(path)).exists();
+    }
+
+    @FunctionalInterface
+    interface ThrowableRunnable {
+        void run() throws Exception;
     }
 }

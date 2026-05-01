@@ -21,6 +21,7 @@ public class ApplicationTracking extends AggregateRoot<String> {
 
     private final String id;
     private final UUID userId;
+    private final List<TrackingEvent> events;
     private String jobId;
     private String companyName;
     private String jobTitle;
@@ -28,7 +29,6 @@ public class ApplicationTracking extends AggregateRoot<String> {
     private LocalDate appliedAt;
     private String notes;
     private LocalDateTime updatedAt;
-    private final List<TrackingEvent> events;
 
     @Builder
     public ApplicationTracking(final String id,
@@ -53,21 +53,16 @@ public class ApplicationTracking extends AggregateRoot<String> {
         this.events = events != null ? new ArrayList<>(events) : new ArrayList<>();
     }
 
-    @Override
-    public String getId() {
-        return id;
-    }
-
     /**
      * 创建新的求职跟踪记录
      * Create a new application tracking record
      *
-     * @param userId 用户ID / User ID
-     * @param jobId 职位ID(可选) / Job ID (optional)
+     * @param userId      用户ID / User ID
+     * @param jobId       职位ID(可选) / Job ID (optional)
      * @param companyName 公司名称 / Company name
-     * @param jobTitle 职位标题 / Job title
-     * @param appliedAt 投递日期(可选) / Applied date (optional)
-     * @param notes 备注(可选) / Notes (optional)
+     * @param jobTitle    职位标题 / Job title
+     * @param appliedAt   投递日期(可选) / Applied date (optional)
+     * @param notes       备注(可选) / Notes (optional)
      * @return 新的跟踪实体 / New tracking entity
      */
     public static ApplicationTracking create(final UUID userId,
@@ -92,13 +87,18 @@ public class ApplicationTracking extends AggregateRoot<String> {
         return tracking;
     }
 
+    @Override
+    public String getId() {
+        return id;
+    }
+
     /**
      * 更新基本信息
      * Update basic information
      *
      * @param companyName 公司名称 / Company name
-     * @param jobTitle 职位标题 / Job title
-     * @param notes 备注 / Notes
+     * @param jobTitle    职位标题 / Job title
+     * @param notes       备注 / Notes
      */
     public void updateInfo(final String companyName, final String jobTitle, final String notes) {
         if (companyName != null) {
@@ -118,7 +118,7 @@ public class ApplicationTracking extends AggregateRoot<String> {
      * Change status
      *
      * @param newStatus 新状态 / New status
-     * @param note 备注 / Note
+     * @param note      备注 / Note
      */
     public void changeStatus(final ApplicationStatus newStatus, final String note) {
         if (!this.status.canTransitionTo(newStatus)) {

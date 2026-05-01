@@ -24,31 +24,30 @@ import java.util.Collections;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final TokenService tokenService;
-
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
+    private final TokenService tokenService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         String token = extractToken(request);
-        
+
         if (token != null && tokenService.validateToken(token)) {
             String userId = tokenService.getUserIdFromToken(token);
-            
+
             // 设置用户ID到request attribute，供CurrentUser注解使用
             request.setAttribute("userId", userId);
-            
+
             // 设置Spring Security上下文
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            
+
             log.debug("JWT authentication successful for user: {}", userId);
         }
-        
+
         filterChain.doFilter(request, response);
     }
 

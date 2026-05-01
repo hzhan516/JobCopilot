@@ -44,8 +44,8 @@ public class StorageProperties {
     @Data
     public static class Minio {
         private String endpoint = "http://localhost:9000";
-        private String accessKey = "minioadmin";
-        private String secretKey = "minioadmin";
+        private String accessKey = "";
+        private String secretKey = "";
         private String bucketName = "resumes";
         private long connectTimeout = 5000;
         private long writeTimeout = 60000;

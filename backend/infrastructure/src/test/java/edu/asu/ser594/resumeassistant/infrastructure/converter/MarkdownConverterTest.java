@@ -6,11 +6,12 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Markdown 转换器测试 / Markdown converter tests */
+/**
+ * Markdown 转换器测试 / Markdown converter tests
+ */
 class MarkdownConverterTest {
 
     private MarkdownConverter converter;

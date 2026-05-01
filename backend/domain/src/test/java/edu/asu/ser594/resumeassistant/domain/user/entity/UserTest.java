@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 用户实体单元测试
  * User Entity Unit Tests
- * 
+ * <p>
  * 遵循DDD原则测试用户聚合根：
  * Tests the User aggregate root following DDD principles:
  * - 工厂方法创建
@@ -76,7 +76,8 @@ class UserTest {
         try {
             Thread.sleep(10); // 确保时间戳差异
             // Ensure timestamp difference
-        } catch (InterruptedException ignored) {}
+        } catch (InterruptedException ignored) {
+        }
         user.verifyEmail();
 
         // 那么
@@ -98,7 +99,8 @@ class UserTest {
         try {
             Thread.sleep(10); // 确保时间戳差异
             // Ensure timestamp difference
-        } catch (InterruptedException ignored) {}
+        } catch (InterruptedException ignored) {
+        }
         user.updateRole(UserRole.ADMIN);
 
         // 那么
@@ -120,7 +122,8 @@ class UserTest {
         try {
             Thread.sleep(10); // 确保时间戳差异
             // Ensure timestamp difference
-        } catch (InterruptedException ignored) {}
+        } catch (InterruptedException ignored) {
+        }
         user.updateStatus(UserStatus.SUSPENDED);
 
         // 那么

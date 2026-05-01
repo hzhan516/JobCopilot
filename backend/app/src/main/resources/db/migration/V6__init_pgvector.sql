@@ -5,31 +5,33 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- 简历版本嵌入向量表 / Resume version embedding vectors table
-CREATE TABLE IF NOT EXISTS resume_vectors (
-    id VARCHAR(64) PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS resume_vectors
+(
+    id                VARCHAR(64) PRIMARY KEY,
     resume_version_id VARCHAR(64) NOT NULL UNIQUE,
-    embedding vector(1536),
-    status VARCHAR(32) NOT NULL,
-    error_message TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    embedding         vector(1536),
+    status            VARCHAR(32) NOT NULL,
+    error_message     TEXT,
+    created_at        TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 索引 / Indexes
-CREATE INDEX idx_resume_vectors_version_id ON resume_vectors(resume_version_id);
-CREATE INDEX idx_resume_vectors_status ON resume_vectors(status);
+CREATE INDEX idx_resume_vectors_version_id ON resume_vectors (resume_version_id);
+CREATE INDEX idx_resume_vectors_status ON resume_vectors (status);
 
 -- 职位嵌入向量表 / Job embedding vectors table
-CREATE TABLE IF NOT EXISTS job_vectors (
-    id VARCHAR(64) PRIMARY KEY,
-    job_id VARCHAR(64) NOT NULL UNIQUE,
-    embedding vector(1536),
-    status VARCHAR(32) NOT NULL,
+CREATE TABLE IF NOT EXISTS job_vectors
+(
+    id            VARCHAR(64) PRIMARY KEY,
+    job_id        VARCHAR(64) NOT NULL UNIQUE,
+    embedding     vector(1536),
+    status        VARCHAR(32) NOT NULL,
     error_message TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at    TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 索引 / Indexes
-CREATE INDEX idx_job_vectors_job_id ON job_vectors(job_id);
-CREATE INDEX idx_job_vectors_status ON job_vectors(status);
+CREATE INDEX idx_job_vectors_job_id ON job_vectors (job_id);
+CREATE INDEX idx_job_vectors_status ON job_vectors (status);

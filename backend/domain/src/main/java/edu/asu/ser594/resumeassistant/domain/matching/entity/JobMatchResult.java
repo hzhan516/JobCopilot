@@ -15,7 +15,7 @@ import java.util.UUID;
 /**
  * 职位匹配结果实体
  * Job match result entity
- *
+ * <p>
  * 对应 job_match_results 表 / Corresponds to job_match_results table
  */
 @Getter
@@ -23,6 +23,7 @@ public class JobMatchResult extends AggregateRoot<String> {
 
     private final String id;
     private final UUID userId;
+    private final LocalDateTime createdAt;
     private String resumeVersionId;
     private String query;
     private MatchStatus status;
@@ -31,7 +32,6 @@ public class JobMatchResult extends AggregateRoot<String> {
     private Long recallTimeMs;
     private Long rankTimeMs;
     private String modelVersion;
-    private final LocalDateTime createdAt;
     private LocalDateTime completedAt;
 
     @Builder
@@ -61,20 +61,15 @@ public class JobMatchResult extends AggregateRoot<String> {
         this.completedAt = completedAt;
     }
 
-    @Override
-    public String getId() {
-        return id;
-    }
-
     /**
      * 创建新的匹配结果（初始状态为处理中）
      * Create a new match result with PROCESSING status
      *
-     * @param matchId 匹配ID / Match ID
-     * @param userId 用户ID / User ID
+     * @param matchId         匹配ID / Match ID
+     * @param userId          用户ID / User ID
      * @param resumeVersionId 简历版本ID / Resume version ID
-     * @param query 查询词 / Query
-     * @param modelVersion 模型版本 / Model version
+     * @param query           查询词 / Query
+     * @param modelVersion    模型版本 / Model version
      * @return 新的匹配结果实体 / New match result entity
      */
     public static JobMatchResult createProcessing(final String matchId,
@@ -95,11 +90,16 @@ public class JobMatchResult extends AggregateRoot<String> {
                 .build();
     }
 
+    @Override
+    public String getId() {
+        return id;
+    }
+
     /**
      * 设置召回结果
      * Set recall results
      *
-     * @param results 召回结果列表 / Recall result list
+     * @param results      召回结果列表 / Recall result list
      * @param recallTimeMs 召回耗时(毫秒) / Recall time in ms
      */
     public void setRecallResults(final List<RecallResult> results, final Long recallTimeMs) {

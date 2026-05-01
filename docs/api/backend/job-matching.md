@@ -11,17 +11,18 @@ This document describes the asynchronous recall + ranking flow of the job intell
 
 ```
 User request -> JobController.matchJobs()
-    -> MatchingApplicationService.startJobMatch()
-        1. Create PROCESSING status record (job_match_results)
-        2. Query resume_vectors to get resume vector
-        3. PgVectorSearchService local recall topK jobs (job_vectors)
-        4. Send JobRankCommand to ai.req.job.rank
-        5. Immediately return JobMatchResponse(matchId, status=PROCESSING)
+    -> MatchingFacade.matchJobs()
+        -> MatchingApplicationService.startJobMatch()
+            1. Create PROCESSING status record (job_match_results)
+            2. Query resume_vectors to get resume vector
+            3. VectorSearchPort local recall topK jobs (job_vectors)
+            4. Send JobRankCommand to ai.req.job.rank
+            5. Immediately return JobMatchResponse(matchId, status=PROCESSING)
 
 Python AI service -> Consume ai.req.job.rank -> Rank -> Send result to backend.res.job.rank
 
 JobRankResultListener -> Consume backend.res.job.rank
-    -> JobFacade.saveJobRankResult()
+    -> MatchingFacade.saveJobRankResult()
         -> MatchingApplicationService.saveMatchResult()
             -> Update job_match_results to COMPLETED + rankedResults
 ```
@@ -43,7 +44,7 @@ Content-Type: application/json
 **Request Body (`JobMatchRequest`):**
 ```json
 {
-  "userId": "resume-version-id-001",
+  "resumeVersionId": "resume-version-id-001",
   "query": "Senior Java Developer in San Francisco",
   "topK": 10,
   "filters": {

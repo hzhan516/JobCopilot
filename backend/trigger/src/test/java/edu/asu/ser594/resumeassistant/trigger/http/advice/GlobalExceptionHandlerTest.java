@@ -20,13 +20,12 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 /**
  * GlobalExceptionHandler 单元测试
  * GlobalExceptionHandler Unit Tests
- * 
+ * <p>
  * 测试全局异常处理器：
  * Tests the global exception handler:
  * - 业务异常处理
@@ -134,7 +133,8 @@ class GlobalExceptionHandlerTest {
     void shouldHandleGenericBusinessException() {
         // 给定
         // Given
-        BusinessException businessException = new BusinessException("BUSINESS_ERROR", "Business rule violated") {};
+        BusinessException businessException = new BusinessException("BUSINESS_ERROR", "Business rule violated") {
+        };
         when(messageProvider.getMessage("BUSINESS_ERROR", new Object[]{"Business rule violated"})).thenReturn("Business rule violated");
 
         // 当
@@ -157,7 +157,7 @@ class GlobalExceptionHandlerTest {
         BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "object");
         bindingResult.addError(new FieldError("object", "email", "Email is required"));
         bindingResult.addError(new FieldError("object", "password", "Password must be at least 8 characters"));
-        
+
         MethodArgumentNotValidException exception = new MethodArgumentNotValidException(null, bindingResult);
         when(messageProvider.getMessage("validation.failed")).thenReturn("Validation failed");
 

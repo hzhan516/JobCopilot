@@ -2,20 +2,17 @@ package edu.asu.ser594.resumeassistant.application.resume.service;
 
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeEditCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeUploadCommand;
-import edu.asu.ser594.resumeassistant.application.resume.dto.ResumeDownloadResult;
-import edu.asu.ser594.resumeassistant.application.resume.query.ResumeDownloadQuery;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeGroupRepository;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
 import edu.asu.ser594.resumeassistant.domain.resume.valueobject.ParseStatus;
-import edu.asu.ser594.resumeassistant.domain.shared.exception.StorageException;
-import edu.asu.ser594.resumeassistant.domain.shared.service.DocumentFormatConverter;
-import edu.asu.ser594.resumeassistant.domain.shared.service.FileStorageService;
-import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ResumeParseCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
-import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
+import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
+import edu.asu.ser594.resumeassistant.domain.shared.service.DocumentFormatConverter;
+import edu.asu.ser594.resumeassistant.domain.shared.service.FileStorageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,20 +22,19 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
-import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-/** 简历应用服务单元测试 / Resume application service unit tests */
+/**
+ * 简历应用服务单元测试 / Resume application service unit tests
+ */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Resume Application Service Tests")
 class ResumeApplicationServiceTest {

@@ -60,8 +60,8 @@ public interface ResumeFacade {
      * Download resume
      *
      * @param versionId 版本ID
-     * @param userId 用户ID
-     * @param format 导出格式（可选）：original, pdf, docx, html, md, txt
+     * @param userId    用户ID
+     * @param format    导出格式（可选）：original, pdf, docx, html, md, txt
      * @return 文件流响应
      */
     ResponseEntity<InputStreamResource> downloadResume(UUID versionId, UUID userId, String format);
@@ -77,7 +77,7 @@ public interface ResumeFacade {
      * Delete resume version
      *
      * @param versionId 版本ID
-     * @param userId 用户ID
+     * @param userId    用户ID
      * @return 空响应
      */
     ApiResponse<Void> deleteVersion(UUID versionId, UUID userId);

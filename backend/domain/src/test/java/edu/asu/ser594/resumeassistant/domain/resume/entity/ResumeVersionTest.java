@@ -4,13 +4,13 @@ import edu.asu.ser594.resumeassistant.domain.resume.valueobject.ParseStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** 简历版本实体测试 / Resume version entity tests */
+/**
+ * 简历版本实体测试 / Resume version entity tests
+ */
 @DisplayName("ResumeVersion Entity Tests")
 class ResumeVersionTest {
 

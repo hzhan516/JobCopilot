@@ -29,13 +29,13 @@ public class WordConverter extends AbstractDocumentConverter {
         if ((sf.equals("docx") || sf.equals("doc")) && (tf.equals("md") || tf.equals("txt"))) {
             return ExternalCommandUtils.runPandoc(source, sf, tf, null);
         }
-        
+
         // MD 转 DOCX
         // MD to DOCX
         if ((sf.equals("md") || sf.equals("markdown")) && tf.equals("docx")) {
             return ExternalCommandUtils.runPandoc(source, "md", "docx", null);
         }
-        
+
         // DOCX 转 PDF
         // DOCX to PDF
         if ((sf.equals("docx") || sf.equals("doc")) && tf.equals("pdf")) {

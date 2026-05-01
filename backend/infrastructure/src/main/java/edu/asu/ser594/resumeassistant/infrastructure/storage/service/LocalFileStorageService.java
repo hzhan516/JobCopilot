@@ -106,14 +106,14 @@ public class LocalFileStorageService implements FileStorageService {
         // In production, you might want to implement a token-based access mechanism
         StorageProperties.Local local = storageProperties.getLocal();
         String urlPrefix = local.getUrlPrefix();
-        
+
         if (urlPrefix == null || urlPrefix.isEmpty()) {
             // 如果未配置 URL 前缀，则返回带有过期信息的占位符
             // If no URL prefix configured, return a placeholder with expiration info
             Instant expiryTime = Instant.now().plus(expiration);
             return String.format("/api/storage/download?key=%s&expiry=%s", objectKey, expiryTime.toEpochMilli());
         }
-        
+
         // 如果配置了 URL 前缀（例如，位于 CDN 或 nginx 之后），则使用它
         // If URL prefix is configured (e.g., behind a CDN or nginx), use it
         Instant expiryTime = Instant.now().plus(expiration);
@@ -129,7 +129,7 @@ public class LocalFileStorageService implements FileStorageService {
         // Sanitize objectKey to prevent directory traversal
         String sanitizedKey = objectKey.replaceAll("\\.\\.", "")
                 .replaceAll("[:*?\"<>|]", "_");
-        
+
         StorageProperties.Local local = storageProperties.getLocal();
         if (local.isDateSubdirectory()) {
             // 创建基于日期的子目录：basePath/YYYY/MM/DD/objectKey
@@ -138,7 +138,7 @@ public class LocalFileStorageService implements FileStorageService {
             String datePath = String.format("%d/%02d/%02d", now.getYear(), now.getMonthValue(), now.getDayOfMonth());
             return basePath.resolve(datePath).resolve(sanitizedKey);
         }
-        
+
         return basePath.resolve(sanitizedKey);
     }
 

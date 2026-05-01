@@ -1,6 +1,7 @@
 package edu.asu.ser594.resumeassistant.infrastructure.security;
 
 import edu.asu.ser594.resumeassistant.domain.user.exception.AuthException;
+import edu.asu.ser594.resumeassistant.domain.user.port.GoogleTokenVerifierPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -12,14 +13,14 @@ import java.util.Map;
 /**
  * Google ID Token 验证器
  * Google ID Token verifier
- *
+ * <p>
  * 调用 Google tokeninfo 端点验证 ID Token 的真实性
  * Calls Google tokeninfo endpoint to verify ID Token authenticity
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class GoogleIdTokenVerifier {
+public class GoogleIdTokenVerifier implements GoogleTokenVerifierPort {
 
     private static final String GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo?id_token={idToken}";
 
@@ -30,8 +31,9 @@ public class GoogleIdTokenVerifier {
      * Verify Google ID Token
      *
      * @param idToken Google ID Token
-     * @return 解析后的 Google 用户信息
+     * @return 解析后的 Google 用户信息 / Parsed Google user info
      */
+    @Override
     public GoogleUserInfo verify(String idToken) {
         try {
             Map<String, Object> response = restTemplate.getForObject(
@@ -65,16 +67,4 @@ public class GoogleIdTokenVerifier {
             throw new AuthException(AuthException.ErrorType.INVALID_CREDENTIALS);
         }
     }
-
-    /**
-     * Google 用户信息
-     * Google user info
-     */
-    public record GoogleUserInfo(
-            String email,
-            String providerUserId,
-            String displayName,
-            String avatarUrl,
-            boolean emailVerified
-    ) {}
 }

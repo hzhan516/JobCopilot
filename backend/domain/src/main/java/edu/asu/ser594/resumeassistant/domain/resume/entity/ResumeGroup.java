@@ -23,14 +23,14 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
     @Getter
     private final UUID userId;
     @Getter
+    private final LocalDateTime createdAt;
+    private final List<ResumeVersion> versions;
+    @Getter
     private String title;
     @Getter
     private boolean isDefault;
     @Getter
-    private final LocalDateTime createdAt;
-    @Getter
     private LocalDateTime updatedAt;
-    private final List<ResumeVersion> versions;
 
     private ResumeGroup(UUID id, UUID userId, String title, boolean isDefault,
                         LocalDateTime createdAt, LocalDateTime updatedAt,

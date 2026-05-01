@@ -12,14 +12,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -27,7 +24,7 @@ import static org.mockito.Mockito.*;
 /**
  * JwtAuthenticationFilter 单元测试
  * JwtAuthenticationFilter Unit Tests
- * 
+ * <p>
  * 测试 JWT 认证过滤器：
  * Tests the JWT authentication filter:
  * - 从请求头提取令牌

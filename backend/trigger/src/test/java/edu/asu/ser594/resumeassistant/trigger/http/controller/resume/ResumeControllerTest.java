@@ -13,6 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,9 +25,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -33,7 +32,7 @@ import static org.mockito.Mockito.*;
 /**
  * ResumeController 单元测试
  * ResumeController Unit Tests
- * 
+ * <p>
  * 测试简历控制器：
  * Tests the resume controller:
  * - 上传处理
@@ -101,7 +100,7 @@ class ResumeControllerTest {
 
         // 当
         // When
-        ResponseEntity<ApiResponse<ResumeUploadResponse>> response = 
+        ResponseEntity<ApiResponse<ResumeUploadResponse>> response =
                 resumeController.uploadResume(mockFile, "My Resume", USER_ID);
 
         // 那么
@@ -168,7 +167,7 @@ class ResumeControllerTest {
 
         // 当
         // When
-        ResponseEntity<InputStreamResource> response = 
+        ResponseEntity<InputStreamResource> response =
                 resumeController.downloadResume(VERSION_ID, USER_ID, "pdf");
 
         // 那么
@@ -201,13 +200,13 @@ class ResumeControllerTest {
     void shouldGetResumeGroups() {
         // 给定
         // Given
-        ApiResponse<List<ResumeGroupResponse>> apiResponse = 
+        ApiResponse<List<ResumeGroupResponse>> apiResponse =
                 ApiResponse.success(List.of(testGroupResponse));
         when(resumeFacade.getResumeGroups(USER_ID)).thenReturn(apiResponse);
 
         // 当
         // When
-        ResponseEntity<ApiResponse<List<ResumeGroupResponse>>> response = 
+        ResponseEntity<ApiResponse<List<ResumeGroupResponse>>> response =
                 resumeController.getResumeGroups(USER_ID);
 
         // 那么
@@ -226,7 +225,7 @@ class ResumeControllerTest {
 
         // 当
         // When
-        ResponseEntity<ApiResponse<ResumeGroupResponse>> response = 
+        ResponseEntity<ApiResponse<ResumeGroupResponse>> response =
                 resumeController.getResumeGroup(GROUP_ID, USER_ID);
 
         // 那么
@@ -245,7 +244,7 @@ class ResumeControllerTest {
 
         // 当
         // When
-        ResponseEntity<ApiResponse<Void>> response = 
+        ResponseEntity<ApiResponse<Void>> response =
                 resumeController.deleteResumeGroup(GROUP_ID, USER_ID);
 
         // 那么
@@ -262,13 +261,13 @@ class ResumeControllerTest {
     void shouldGetVersionsByGroup() {
         // 给定
         // Given
-        ApiResponse<List<ResumeVersionResponse>> apiResponse = 
+        ApiResponse<List<ResumeVersionResponse>> apiResponse =
                 ApiResponse.success(List.of(testVersionResponse));
         when(resumeFacade.getVersionsByGroup(GROUP_ID, USER_ID)).thenReturn(apiResponse);
 
         // 当
         // When
-        ResponseEntity<ApiResponse<List<ResumeVersionResponse>>> response = 
+        ResponseEntity<ApiResponse<List<ResumeVersionResponse>>> response =
                 resumeController.getVersionsByGroup(GROUP_ID, USER_ID);
 
         // 那么
@@ -287,7 +286,7 @@ class ResumeControllerTest {
 
         // 当
         // When
-        ResponseEntity<ApiResponse<ResumeVersionResponse>> response = 
+        ResponseEntity<ApiResponse<ResumeVersionResponse>> response =
                 resumeController.getVersion(VERSION_ID, USER_ID);
 
         // 那么
@@ -306,7 +305,7 @@ class ResumeControllerTest {
 
         // 当
         // When
-        ResponseEntity<ApiResponse<Void>> response = 
+        ResponseEntity<ApiResponse<Void>> response =
                 resumeController.deleteVersion(VERSION_ID, USER_ID);
 
         // 那么
@@ -333,7 +332,7 @@ class ResumeControllerTest {
 
         // 当
         // When
-        ResponseEntity<ApiResponse<ResumeVersionResponse>> response = 
+        ResponseEntity<ApiResponse<ResumeVersionResponse>> response =
                 resumeController.editVersion(VERSION_ID, request, USER_ID);
 
         // 那么
@@ -370,13 +369,13 @@ class ResumeControllerTest {
     void shouldHandleEmptyGroupsList() {
         // 给定
         // Given
-        ApiResponse<List<ResumeGroupResponse>> apiResponse = 
+        ApiResponse<List<ResumeGroupResponse>> apiResponse =
                 ApiResponse.success(Collections.emptyList());
         when(resumeFacade.getResumeGroups(USER_ID)).thenReturn(apiResponse);
 
         // 当
         // When
-        ResponseEntity<ApiResponse<List<ResumeGroupResponse>>> response = 
+        ResponseEntity<ApiResponse<List<ResumeGroupResponse>>> response =
                 resumeController.getResumeGroups(USER_ID);
 
         // 那么

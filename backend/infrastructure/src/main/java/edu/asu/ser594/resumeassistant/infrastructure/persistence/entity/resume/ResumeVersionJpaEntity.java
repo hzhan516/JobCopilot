@@ -1,12 +1,7 @@
 package edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.resume;
 
 import edu.asu.ser594.resumeassistant.domain.resume.valueobject.ParseStatus;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -17,7 +12,7 @@ import java.util.UUID;
 /**
  * 简历版本 JPA 实体
  * Resume Version JPA Entity
- *
+ * <p>
  * 注意：
  * - 不使用 @Data 注解
  * - 使用 @EqualsAndHashCode(onlyExplicitlyIncluded = true) 仅基于 ID
@@ -76,11 +71,11 @@ public class ResumeVersionJpaEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     // 注意：不在 toString 中包含 JSON 内容
     private String parsedContent;
-    
+
     @Enumerated(EnumType.STRING)
     @Column(name = "parse_status", nullable = false, length = 20)
     private ParseStatus parseStatus;
-    
+
     @Column(name = "parse_error_message", columnDefinition = "TEXT")
     private String parseErrorMessage;
 

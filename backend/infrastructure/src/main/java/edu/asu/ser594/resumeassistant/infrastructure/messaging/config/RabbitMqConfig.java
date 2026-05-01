@@ -10,7 +10,9 @@ import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** RabbitMQ 配置类 / RabbitMQ configuration */
+/**
+ * RabbitMQ 配置类 / RabbitMQ configuration
+ */
 @Configuration
 public class RabbitMqConfig {
 
@@ -46,7 +48,9 @@ public class RabbitMqConfig {
     public static final String ROUTING_KEY_RES_JOB_RANK = "backend.res.job.rank";
     public static final String QUEUE_RES_JOB_RANK = "backend.queue.job.rank";
 
-    /** Jackson JSON 消息转换器 / Jackson JSON message converter */
+    /**
+     * Jackson JSON 消息转换器 / Jackson JSON message converter
+     */
     @Bean
     public MessageConverter jackson2JsonMessageConverter() {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -54,7 +58,9 @@ public class RabbitMqConfig {
         return new Jackson2JsonMessageConverter(objectMapper);
     }
 
-    /** RabbitTemplate 配置 / RabbitTemplate configuration */
+    /**
+     * RabbitTemplate 配置 / RabbitTemplate configuration
+     */
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, MessageConverter messageConverter) {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
@@ -62,7 +68,9 @@ public class RabbitMqConfig {
         return rabbitTemplate;
     }
 
-    /** AI 直连交换机 / AI direct exchange */
+    /**
+     * AI 直连交换机 / AI direct exchange
+     */
     @Bean
     public DirectExchange aiDirectExchange() {
         return new DirectExchange(EXCHANGE_AI_DIRECT);

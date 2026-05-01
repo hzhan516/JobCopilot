@@ -5,14 +5,12 @@ import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import edu.asu.ser594.resumeassistant.domain.job.exception.JobException;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
-import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
-import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
-import edu.asu.ser594.resumeassistant.domain.job.valueobject.ParsedJobContent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -24,15 +22,16 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-
 import static org.mockito.Mockito.*;
 
-/** 职位应用服务单元测试 / Job application service unit tests */
+/**
+ * 职位应用服务单元测试 / Job application service unit tests
+ */
 class JobApplicationServiceTest {
 
     @Mock
     private JobRepository jobRepository;
-    
+
     @Mock
     private AiMessagePublisherPort aiMessagePublisherPort;
 
@@ -75,12 +74,12 @@ class JobApplicationServiceTest {
         job.markScraping();
         job.markParsing();
         when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
-        
+
         Map<String, Object> mockParsedData = Map.of(
-            "title", "Software Engineer",
-            "company", "Tech Corp",
-            "description", "A great job",
-            "requirements", List.of("Java", "Spring")
+                "title", "Software Engineer",
+                "company", "Tech Corp",
+                "description", "A great job",
+                "requirements", List.of("Java", "Spring")
         );
 
         AiResultEvent event = new AiResultEvent(jobId, "JOB_PARSE", "COMPLETED", mockParsedData, null, "JOB");
@@ -103,7 +102,7 @@ class JobApplicationServiceTest {
         String jobId = "job123";
         UUID userId = UUID.randomUUID();
         Job job = Job.create(userId, "http://example.com", false);
-        
+
         when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
 
         // 执行 / When

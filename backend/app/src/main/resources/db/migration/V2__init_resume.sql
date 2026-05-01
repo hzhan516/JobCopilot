@@ -7,12 +7,12 @@
 -- 创建简历组表（一份简历的整体概念）/ Create resume group table (overall concept of a resume)
 CREATE TABLE IF NOT EXISTS resume_groups
 (
-    id          UUID PRIMARY KEY                  DEFAULT uuid_generate_v4(),
-    user_id     UUID                     NOT NULL,
-    title       VARCHAR(255)             NOT NULL,
-    is_default  BOOLEAN                  NOT NULL DEFAULT FALSE,
-    created_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id         UUID PRIMARY KEY                  DEFAULT uuid_generate_v4(),
+    user_id    UUID                     NOT NULL,
+    title      VARCHAR(255)             NOT NULL,
+    is_default BOOLEAN                  NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_resume_group_user FOREIGN KEY (user_id)
         REFERENCES users (id) ON DELETE CASCADE
@@ -35,10 +35,10 @@ CREATE TABLE IF NOT EXISTS resume_versions
     -- 文件信息（原版用）/ File info (for original version)
     original_file_name VARCHAR(255),
     stored_file_name   VARCHAR(255),
-    file_type          VARCHAR(100),            -- application/pdf, text/markdown
+    file_type          VARCHAR(100), -- application/pdf, text/markdown
     file_size          BIGINT,
     storage_path       TEXT,
-    storage_provider   VARCHAR(50)              DEFAULT 'minio',
+    storage_provider   VARCHAR(50)                       DEFAULT 'minio',
 
     -- 内容（转换版/AI版用，Markdown格式）/ Content (for converted/AI versions, Markdown format)
     content            TEXT,
@@ -88,10 +88,14 @@ $$ language 'plpgsql';
 -- 触发器 / Triggers
 DROP TRIGGER IF EXISTS update_resume_groups_updated_at ON resume_groups;
 CREATE TRIGGER update_resume_groups_updated_at
-    BEFORE UPDATE ON resume_groups
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    BEFORE UPDATE
+    ON resume_groups
+    FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
 
 DROP TRIGGER IF EXISTS update_resume_versions_updated_at ON resume_versions;
 CREATE TRIGGER update_resume_versions_updated_at
-    BEFORE UPDATE ON resume_versions
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    BEFORE UPDATE
+    ON resume_versions
+    FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();

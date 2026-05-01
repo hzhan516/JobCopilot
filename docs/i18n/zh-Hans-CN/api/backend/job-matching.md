@@ -11,17 +11,18 @@
 
 ```
 用户请求 -> JobController.matchJobs()
-    -> MatchingApplicationService.startJobMatch()
-        1. 创建 PROCESSING 状态记录 (job_match_results)
-        2. 查询 resume_vectors 获取简历向量
-        3. PgVectorSearchService 本地召回 topK 职位 (job_vectors)
-        4. 发送 JobRankCommand 到 ai.req.job.rank
-        5. 立即返回 JobMatchResponse(matchId, status=PROCESSING)
+    -> MatchingFacade.matchJobs()
+        -> MatchingApplicationService.startJobMatch()
+            1. 创建 PROCESSING 状态记录 (job_match_results)
+            2. 查询 resume_vectors 获取简历向量
+            3. VectorSearchPort 本地召回 topK 职位 (job_vectors)
+            4. 发送 JobRankCommand 到 ai.req.job.rank
+            5. 立即返回 JobMatchResponse(matchId, status=PROCESSING)
 
 Python AI 服务 -> 消费 ai.req.job.rank -> 精排 -> 发送结果到 backend.res.job.rank
 
 JobRankResultListener -> 消费 backend.res.job.rank
-    -> JobFacade.saveJobRankResult()
+    -> MatchingFacade.saveJobRankResult()
         -> MatchingApplicationService.saveMatchResult()
             -> 更新 job_match_results 为 COMPLETED + rankedResults
 ```
@@ -43,7 +44,7 @@ Content-Type: application/json
 **Request Body (`JobMatchRequest`):**
 ```json
 {
-  "userId": "resume-version-id-001",
+  "resumeVersionId": "resume-version-id-001",
   "query": "Senior Java Developer in San Francisco",
   "topK": 10,
   "filters": {

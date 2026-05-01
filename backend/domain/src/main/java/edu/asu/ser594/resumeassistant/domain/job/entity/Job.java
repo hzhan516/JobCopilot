@@ -45,22 +45,22 @@ public class Job extends AggregateRoot<String> {
         this.status = status;
     }
 
-    @Override
-    public String getId() {
-        return id;
-    }
-
     /**
      * 创建新职位用于处理
      * Creates a new Job for processing.
-     * 
-     * @param userId The ID of the user requesting the job parse.
-     * @param url The URL of the job posting.
+     *
+     * @param userId            The ID of the user requesting the job parse.
+     * @param url               The URL of the job posting.
      * @param imageCheckEnabled Whether visual verification is required.
      * @return A newly initialized Job aggregate root.
      */
     public static Job create(UUID userId, String url, boolean imageCheckEnabled) {
         return new Job(UUID.randomUUID().toString(), userId, url, imageCheckEnabled, JobStatus.PENDING);
+    }
+
+    @Override
+    public String getId() {
+        return id;
     }
 
     /**
@@ -88,7 +88,7 @@ public class Job extends AggregateRoot<String> {
     /**
      * 标记职位为成功完成并携带解析内容
      * Marks the job as successfully completed with the parsed content.
-     * 
+     *
      * @param parsedContent The structured data extracted from the job posting.
      */
     public void markCompleted(ParsedJobContent parsedContent) {
@@ -102,7 +102,7 @@ public class Job extends AggregateRoot<String> {
     /**
      * 标记职位为失败并记录错误原因
      * Marks the job as failed and records the error reason.
-     * 
+     *
      * @param error A description of why the job processing failed.
      */
     public void markFailed(String error) {

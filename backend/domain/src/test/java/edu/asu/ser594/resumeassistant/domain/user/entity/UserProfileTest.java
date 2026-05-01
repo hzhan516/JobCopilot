@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 用户资料实体单元测试
  * UserProfile Entity Unit Tests
- * 
+ * <p>
  * 遵循DDD原则测试用户资料实体：
  * Tests the UserProfile entity following DDD principles:
  * - 工厂方法创建
@@ -60,7 +60,8 @@ class UserProfileTest {
         // When
         try {
             Thread.sleep(10);
-        } catch (InterruptedException ignored) {}
+        } catch (InterruptedException ignored) {
+        }
         profile.updateAvatar(avatarUrl);
 
         // 那么
@@ -233,13 +234,15 @@ class UserProfileTest {
         // When
         try {
             Thread.sleep(10);
-        } catch (InterruptedException ignored) {}
+        } catch (InterruptedException ignored) {
+        }
         profile.updateAvatar("url1");
         LocalDateTime afterAvatarUpdate = profile.getUpdatedAt();
 
         try {
             Thread.sleep(10);
-        } catch (InterruptedException ignored) {}
+        } catch (InterruptedException ignored) {
+        }
         profile.updateProfile("Name", null, null, null);
         LocalDateTime afterProfileUpdate = profile.getUpdatedAt();
 

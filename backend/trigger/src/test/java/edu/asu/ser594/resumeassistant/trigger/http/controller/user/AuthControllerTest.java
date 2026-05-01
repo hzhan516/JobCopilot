@@ -24,7 +24,7 @@ import static org.mockito.Mockito.*;
 /**
  * AuthController 单元测试
  * AuthController Unit Tests
- * 
+ * <p>
  * 测试认证控制器：
  * Tests the authentication controller:
  * - 请求处理

@@ -1,19 +1,19 @@
 package edu.asu.ser594.resumeassistant.application.user.service;
 
-import edu.asu.ser594.resumeassistant.application.user.command.LoginByEmailCommand;
-import edu.asu.ser594.resumeassistant.application.user.command.RegisterByEmailCommand;
 import edu.asu.ser594.resumeassistant.api.user.dto.TokenPair;
 import edu.asu.ser594.resumeassistant.api.user.service.TokenService;
+import edu.asu.ser594.resumeassistant.application.user.command.LoginByEmailCommand;
+import edu.asu.ser594.resumeassistant.application.user.command.RegisterByEmailCommand;
 import edu.asu.ser594.resumeassistant.domain.user.entity.User;
 import edu.asu.ser594.resumeassistant.domain.user.entity.UserCredential;
 import edu.asu.ser594.resumeassistant.domain.user.entity.UserProfile;
 import edu.asu.ser594.resumeassistant.domain.user.exception.AuthException;
+import edu.asu.ser594.resumeassistant.domain.user.port.GoogleTokenVerifierPort;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserCredentialRepository;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserOAuthBindingRepository;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserProfileRepository;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserRepository;
 import edu.asu.ser594.resumeassistant.domain.user.service.PasswordEncoder;
-import edu.asu.ser594.resumeassistant.infrastructure.security.GoogleIdTokenVerifier;
 import edu.asu.ser594.resumeassistant.types.enums.CredentialType;
 import edu.asu.ser594.resumeassistant.types.enums.OAuthProvider;
 import edu.asu.ser594.resumeassistant.types.enums.UserRole;
@@ -38,7 +38,7 @@ import static org.mockito.Mockito.*;
 /**
  * AuthApplicationService 单元测试
  * AuthApplicationService Unit Tests
- * 
+ * <p>
  * 按照 DDD 应用程序层模式测试应用程序服务：
  * Tests the application service following DDD Application Layer patterns:
  * - 用例编排
@@ -77,7 +77,7 @@ class AuthApplicationServiceTest {
     private UserOAuthBindingRepository userOAuthBindingRepository;
 
     @Mock
-    private GoogleIdTokenVerifier googleIdTokenVerifier;
+    private GoogleTokenVerifierPort googleTokenVerifierPort;
 
     @InjectMocks
     private AuthApplicationService authService;

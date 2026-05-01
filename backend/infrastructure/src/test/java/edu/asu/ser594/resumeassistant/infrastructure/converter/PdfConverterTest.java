@@ -18,7 +18,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-/** PDF 文档转换器测试 / PDF document converter tests */
+/**
+ * PDF 文档转换器测试 / PDF document converter tests
+ */
 class PdfConverterTest {
 
     private PdfConverter converter;
@@ -91,9 +93,9 @@ class PdfConverterTest {
 
         // 执行 / When
         try (MockedStatic<Loader> loaderMock = mockStatic(Loader.class);
-             MockedConstruction<PDFTextStripper> stripperConstruction = mockConstruction(PDFTextStripper.class, 
+             MockedConstruction<PDFTextStripper> stripperConstruction = mockConstruction(PDFTextStripper.class,
                      (mock, context) -> when(mock.getText(mockedDocument)).thenReturn("Extracted Text"))) {
-            
+
             loaderMock.when(() -> Loader.loadPDF(any(byte[].class))).thenReturn(mockedDocument);
 
             InputStream result = converter.convert(input, "pdf", "txt");

@@ -9,12 +9,15 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
 
-/** Word 文档转换器测试 / Word document converter tests */
+/**
+ * Word 文档转换器测试 / Word document converter tests
+ */
 class WordConverterTest {
 
     private WordConverter converter;

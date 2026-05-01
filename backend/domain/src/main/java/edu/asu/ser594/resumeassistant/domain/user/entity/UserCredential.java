@@ -11,7 +11,7 @@ import java.util.UUID;
 /**
  * 用户凭证实体
  * User credential entity
- *
+ * <p>
  * 不变性：凭证创建后不可变，密码修改创建新凭证记录
  * Immutability: credentials are immutable after creation, password changes create new credential records
  */

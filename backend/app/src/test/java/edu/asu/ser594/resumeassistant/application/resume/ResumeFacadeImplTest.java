@@ -6,7 +6,6 @@ import edu.asu.ser594.resumeassistant.api.resume.dto.request.ResumeUploadRequest
 import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeGroupResponse;
 import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeUploadResponse;
 import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeVersionResponse;
-import edu.asu.ser594.resumeassistant.api.resume.facade.ResumeFacade;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeEditCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeUploadCommand;
 import edu.asu.ser594.resumeassistant.application.resume.dto.ResumeDownloadResult;
@@ -36,13 +35,14 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
  * ResumeFacadeImpl 单元测试
  * ResumeFacadeImpl Unit Tests
- * 
+ * <p>
  * 按照 DDD 反腐败层模式测试简历外观实现：
  * Tests the resume facade implementation following DDD anti-corruption layer patterns:
  * - 请求到命令的转换

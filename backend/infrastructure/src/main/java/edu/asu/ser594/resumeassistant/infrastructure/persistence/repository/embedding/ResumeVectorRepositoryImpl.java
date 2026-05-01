@@ -8,14 +8,18 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
-/** 简历向量仓库实现 / Resume vector repository implementation */
+/**
+ * 简历向量仓库实现 / Resume vector repository implementation
+ */
 @Repository
 @RequiredArgsConstructor
 public class ResumeVectorRepositoryImpl implements ResumeVectorRepository {
 
     private final ResumeVectorJpaRepository jpaRepository;
 
-    /** 保存向量（存在则更新） / Save vector (update if exists) */
+    /**
+     * 保存向量（存在则更新） / Save vector (update if exists)
+     */
     @Override
     public void save(ResumeVector vector) {
         Optional<ResumeVectorJpaEntity> existing = jpaRepository.findByResumeVersionId(vector.getResumeVersionId());
@@ -24,7 +28,9 @@ public class ResumeVectorRepositoryImpl implements ResumeVectorRepository {
         jpaRepository.save(entity);
     }
 
-    /** 根据简历版本 ID 查询向量 / Find vector by resume version ID */
+    /**
+     * 根据简历版本 ID 查询向量 / Find vector by resume version ID
+     */
     @Override
     public Optional<ResumeVector> findByResumeVersionId(String resumeVersionId) {
         return jpaRepository.findByResumeVersionId(resumeVersionId)

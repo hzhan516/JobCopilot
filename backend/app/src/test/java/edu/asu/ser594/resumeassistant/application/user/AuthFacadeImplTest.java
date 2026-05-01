@@ -1,9 +1,9 @@
 package edu.asu.ser594.resumeassistant.application.user;
 
+import edu.asu.ser594.resumeassistant.api.user.dto.TokenPair;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.LoginByEmailRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.RegisterByEmailRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.response.AuthResponse;
-import edu.asu.ser594.resumeassistant.api.user.dto.TokenPair;
 import edu.asu.ser594.resumeassistant.application.user.service.AuthApplicationService;
 import edu.asu.ser594.resumeassistant.domain.user.entity.User;
 import edu.asu.ser594.resumeassistant.types.enums.UserRole;
@@ -25,7 +25,7 @@ import static org.mockito.Mockito.*;
 /**
  * AuthFacadeImpl 单元测试
  * AuthFacadeImpl Unit Tests
- * 
+ * <p>
  * 测试充当反腐败层的外观实现：
  * Tests the facade implementation that acts as an anti-corruption layer:
  * - DTO 到命令的转换

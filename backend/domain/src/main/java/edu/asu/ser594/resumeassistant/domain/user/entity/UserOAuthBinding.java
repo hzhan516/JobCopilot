@@ -11,7 +11,7 @@ import java.util.UUID;
 /**
  * OAuth 绑定实体
  * OAuth binding entity
- *
+ * <p>
  * 记录用户与第三方认证提供商的绑定关系
  * Records the binding relationship between user and third-party auth provider
  */
@@ -24,9 +24,9 @@ public class UserOAuthBinding implements Entity<UUID> {
     private final OAuthProvider provider;
     private final String providerUserId;
     private final String email;
+    private final LocalDateTime createdAt;
     private String displayName;
     private String avatarUrl;
-    private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     /**
