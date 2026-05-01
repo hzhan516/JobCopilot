@@ -23,11 +23,16 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 /**
+ * AuthFacadeImpl 单元测试
  * AuthFacadeImpl Unit Tests
  * 
+ * 测试充当反腐败层的外观实现：
  * Tests the facade implementation that acts as an anti-corruption layer:
+ * - DTO 到命令的转换
  * - DTO to Command conversion
+ * - 响应组装
  * - Response assembly
+ * - 与应用程序服务协调
  * - Coordination with application service
  */
 @ExtendWith(MockitoExtension.class)
@@ -66,6 +71,7 @@ class AuthFacadeImplTest {
     @Test
     @DisplayName("Should register user and return auth response")
     void shouldRegisterUserAndReturnAuthResponse() {
+        // 给定
         // Given
         RegisterByEmailRequest request = RegisterByEmailRequest.builder()
                 .email(TEST_EMAIL)
@@ -75,9 +81,11 @@ class AuthFacadeImplTest {
         when(authService.registerByEmail(any())).thenReturn(testUser);
         when(authService.generateTokenPair(testUser)).thenReturn(testTokenPair);
 
+        // 什么时候
         // When
         AuthResponse result = authFacade.registerByEmail(request);
 
+        // 然后
         // Then
         assertThat(result).isNotNull();
         assertThat(result.getUserId()).isEqualTo(testUser.getId());
@@ -90,6 +98,7 @@ class AuthFacadeImplTest {
     @Test
     @DisplayName("Should pass correct command to service during registration")
     void shouldPassCorrectCommandToServiceDuringRegistration() {
+        // 给定
         // Given
         RegisterByEmailRequest request = RegisterByEmailRequest.builder()
                 .email(TEST_EMAIL)
@@ -99,9 +108,11 @@ class AuthFacadeImplTest {
         when(authService.registerByEmail(any())).thenReturn(testUser);
         when(authService.generateTokenPair(any())).thenReturn(testTokenPair);
 
+        // 什么时候
         // When
         authFacade.registerByEmail(request);
 
+        // 然后
         // Then
         verify(authService).registerByEmail(argThat(command ->
                 command.email().equals(TEST_EMAIL) &&
@@ -111,6 +122,7 @@ class AuthFacadeImplTest {
     @Test
     @DisplayName("Should login user and return auth response")
     void shouldLoginUserAndReturnAuthResponse() {
+        // 给定
         // Given
         LoginByEmailRequest request = LoginByEmailRequest.builder()
                 .email(TEST_EMAIL)
@@ -120,9 +132,11 @@ class AuthFacadeImplTest {
         when(authService.loginByEmail(any())).thenReturn(testUser);
         when(authService.generateTokenPair(testUser)).thenReturn(testTokenPair);
 
+        // 什么时候
         // When
         AuthResponse result = authFacade.loginByEmail(request);
 
+        // 然后
         // Then
         assertThat(result).isNotNull();
         assertThat(result.getUserId()).isEqualTo(testUser.getId());
@@ -134,6 +148,7 @@ class AuthFacadeImplTest {
     @Test
     @DisplayName("Should pass correct command to service during login")
     void shouldPassCorrectCommandToServiceDuringLogin() {
+        // 给定
         // Given
         LoginByEmailRequest request = LoginByEmailRequest.builder()
                 .email(TEST_EMAIL)
@@ -143,9 +158,11 @@ class AuthFacadeImplTest {
         when(authService.loginByEmail(any())).thenReturn(testUser);
         when(authService.generateTokenPair(any())).thenReturn(testTokenPair);
 
+        // 什么时候
         // When
         authFacade.loginByEmail(request);
 
+        // 然后
         // Then
         verify(authService).loginByEmail(argThat(command ->
                 command.email().equals(TEST_EMAIL) &&
@@ -155,6 +172,7 @@ class AuthFacadeImplTest {
     @Test
     @DisplayName("Should generate tokens after successful registration")
     void shouldGenerateTokensAfterSuccessfulRegistration() {
+        // 给定
         // Given
         RegisterByEmailRequest request = RegisterByEmailRequest.builder()
                 .email(TEST_EMAIL)
@@ -164,9 +182,11 @@ class AuthFacadeImplTest {
         when(authService.registerByEmail(any())).thenReturn(testUser);
         when(authService.generateTokenPair(testUser)).thenReturn(testTokenPair);
 
+        // 什么时候
         // When
         authFacade.registerByEmail(request);
 
+        // 然后
         // Then
         verify(authService).generateTokenPair(testUser);
     }
@@ -174,6 +194,7 @@ class AuthFacadeImplTest {
     @Test
     @DisplayName("Should generate tokens after successful login")
     void shouldGenerateTokensAfterSuccessfulLogin() {
+        // 给定
         // Given
         LoginByEmailRequest request = LoginByEmailRequest.builder()
                 .email(TEST_EMAIL)
@@ -183,9 +204,11 @@ class AuthFacadeImplTest {
         when(authService.loginByEmail(any())).thenReturn(testUser);
         when(authService.generateTokenPair(testUser)).thenReturn(testTokenPair);
 
+        // 什么时候
         // When
         authFacade.loginByEmail(request);
 
+        // 然后
         // Then
         verify(authService).generateTokenPair(testUser);
     }

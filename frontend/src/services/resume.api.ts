@@ -1,4 +1,5 @@
 import axios from 'axios';
+import tokenStorage from './tokenStorage';
 import type { ResumeGroup, ResumeVersion, UploadResponse, DownloadFormat } from '../types/resume';
 
 const api = axios.create({
@@ -7,7 +8,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem('token');
+  const token = tokenStorage.getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

@@ -22,6 +22,7 @@ public class Conversation extends AggregateRoot<UUID> {
     private String title;
     private ConversationStatus status;
     private final UUID resumeVersionId;
+    private final UUID jobId;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private final List<Message> messages;
@@ -30,14 +31,15 @@ public class Conversation extends AggregateRoot<UUID> {
      * 保护级别的原生构造函数
      * Protected native constructor
      */
-    protected Conversation(UUID id, UUID userId, String title, ConversationStatus status, 
-                           UUID resumeVersionId, LocalDateTime createdAt, LocalDateTime updatedAt, 
+    protected Conversation(UUID id, UUID userId, String title, ConversationStatus status,
+                           UUID resumeVersionId, UUID jobId, LocalDateTime createdAt, LocalDateTime updatedAt,
                            List<Message> messages) {
         this.id = id;
         this.userId = userId;
         this.title = title;
         this.status = status;
         this.resumeVersionId = resumeVersionId;
+        this.jobId = jobId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.messages = messages != null ? messages : new ArrayList<>();
@@ -47,7 +49,7 @@ public class Conversation extends AggregateRoot<UUID> {
      * 静态工厂方法：创建新对话
      * Static factory method: create new conversation
      */
-    public static Conversation create(UUID userId, String title, UUID resumeVersionId) {
+    public static Conversation create(UUID userId, String title, UUID resumeVersionId, UUID jobId) {
         String finalTitle = (title == null || title.trim().isEmpty()) ? "New Conversation" : title;
         LocalDateTime now = LocalDateTime.now();
         return new Conversation(
@@ -56,6 +58,7 @@ public class Conversation extends AggregateRoot<UUID> {
             finalTitle,
             ConversationStatus.ACTIVE,
             resumeVersionId,
+            jobId,
             now,
             now,
             new ArrayList<>()
@@ -66,10 +69,10 @@ public class Conversation extends AggregateRoot<UUID> {
      * 从仓储恢复聚合根
      * Reconstruct aggregate root from repository
      */
-    public static Conversation reconstruct(UUID id, UUID userId, String title, ConversationStatus status, 
-                                           UUID resumeVersionId, LocalDateTime createdAt, LocalDateTime updatedAt, 
+    public static Conversation reconstruct(UUID id, UUID userId, String title, ConversationStatus status,
+                                           UUID resumeVersionId, UUID jobId, LocalDateTime createdAt, LocalDateTime updatedAt,
                                            List<Message> messages) {
-        return new Conversation(id, userId, title, status, resumeVersionId, createdAt, updatedAt, messages);
+        return new Conversation(id, userId, title, status, resumeVersionId, jobId, createdAt, updatedAt, messages);
     }
 
     /**
@@ -164,6 +167,10 @@ public class Conversation extends AggregateRoot<UUID> {
 
     public UUID getResumeVersionId() {
         return resumeVersionId;
+    }
+
+    public UUID getJobId() {
+        return jobId;
     }
 
     public LocalDateTime getCreatedAt() {

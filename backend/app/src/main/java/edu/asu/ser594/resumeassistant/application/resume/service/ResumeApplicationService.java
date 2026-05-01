@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
+ * 简历申请服务
  * Resume Application Service
  *
  * 职责：编排用例，协调领域对象
@@ -53,22 +54,27 @@ public class ResumeApplicationService {
     @Transactional
     public ResumeGroup handleUpload(ResumeUploadCommand command, UUID userId) {
         // 1. 创建简历组
+        // 1. Create a resume group
         ResumeGroup group = ResumeGroup.create(userId, command.title());
 
         // 2. 存储文件，获取路径（这让底层基础设施去决定真实存的位置，但如果接口设计需要传入Path，则生成随机键）
+        // 2. Store the file and obtain the path (this lets the underlying infrastructure determine the actual storage location, but if the interface design requires passing in the Path, a random key will be generated)
         String storagePath = UUID.randomUUID().toString() + "_" + command.fileName();
         
         fileStorageService.upload(storagePath, command.inputStream(),
                 command.fileSize(), command.contentType());
 
         // 3. 将原版添加进简历组（包含创建衍生版本等生命周期都在聚合内）
+        // 3. Add the original version to the resume group (the life cycle including creating derivative versions is all within the aggregation)
         group.uploadOriginalVersion(command.fileName(), command.contentType(),
                 command.fileSize(), storagePath);
 
         // 4. 保存聚合
+        // 4. Save the aggregation
         groupRepository.save(group);
 
         // 5. 触发 AI 异步解析
+        // 5. Trigger AI asynchronous parsing
         ResumeVersion originalVersion = group.getVersions().stream()
                 .filter(v -> v.getVersionType() == ResumeVersion.VersionType.ORIGINAL)
                 .findFirst()
@@ -108,6 +114,7 @@ public class ResumeApplicationService {
         }
 
         // 调用领域方法
+        // Calling domain methods
         version.editContent(command.content());
         versionRepository.save(version);
 
@@ -123,6 +130,7 @@ public class ResumeApplicationService {
         List<ResumeVersion> versions = versionRepository.findAllByGroupId(groupId);
 
         // 删除文件
+        // Delete files
         for (ResumeVersion v : versions) {
             if (v.getStoragePath() != null) {
                 try {
@@ -152,11 +160,13 @@ public class ResumeApplicationService {
         }
 
         // 如果是 ORIGINAL 版本，不允许单独删除（必须通过删除组来删除）
+        // If it is an ORIGINAL version, individual deletion is not allowed (must be deleted by deleting the group)
         if (version.getVersionType() == ResumeVersion.VersionType.ORIGINAL) {
             throw new StorageException("version.original.cannot.delete");
         }
 
         // 删除文件（如果有存储路径）
+        // Delete the file (if there is a storage path)
         if (version.getStoragePath() != null) {
             try {
                 fileStorageService.delete(version.getStoragePath());
@@ -189,6 +199,7 @@ public class ResumeApplicationService {
             log.info("Resume parsing completed for versionId={}", originalVersion.getId());
 
             // 触发向量生成
+            // Trigger vector generation
             VectorGenCommand vectorCmd = new VectorGenCommand(
                     originalVersion.getId().toString(),
                     "RESUME",
@@ -246,6 +257,7 @@ public class ResumeApplicationService {
         }
 
         // 格式转换
+        // format conversion
         DocumentFormat targetFormat = DocumentFormat.fromFormatString(query.targetFormat());
         InputStream resultStream = sourceStream;
         DocumentFormat resultFormat = sourceFormat;

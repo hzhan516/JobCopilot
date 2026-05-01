@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 
 import static org.mockito.Mockito.*;
 
+/** 职位应用服务单元测试 / Job application service unit tests */
 class JobApplicationServiceTest {
 
     @Mock
@@ -38,6 +39,7 @@ class JobApplicationServiceTest {
     @InjectMocks
     private JobApplicationService jobApplicationService;
 
+    // 准备 / Given
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
@@ -45,6 +47,7 @@ class JobApplicationServiceTest {
 
     @Test
     void submitJob_Success() {
+        // 准备 / Given
         UUID userId = UUID.randomUUID();
         String url = "http://example.com/job";
         SubmitJobRequest request = new SubmitJobRequest(url, false);
@@ -52,8 +55,10 @@ class JobApplicationServiceTest {
         Job job = Job.create(userId, url, false);
         when(jobRepository.save(any(Job.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
+        // 执行 / When
         JobResponse response = jobApplicationService.submitJob(userId, request);
 
+        // 验证 / Then
         assertNotNull(response);
         assertEquals(userId.toString(), response.userId());
         assertEquals("SCRAPING", response.status());
@@ -64,6 +69,7 @@ class JobApplicationServiceTest {
 
     @Test
     void handleJobProcessResult_Success_TriggersVectorGen() {
+        // 准备 / Given
         String jobId = "job123";
         Job job = Job.create(UUID.randomUUID(), "http://example.com/job", false);
         job.markScraping();
@@ -79,8 +85,10 @@ class JobApplicationServiceTest {
 
         AiResultEvent event = new AiResultEvent(jobId, "JOB_PARSE", "COMPLETED", mockParsedData, null, "JOB");
 
+        // 执行 / When
         jobApplicationService.handleJobProcessResult(event);
 
+        // 验证 / Then
         assertEquals("COMPLETED", job.getStatus().name());
         assertNotNull(job.getParsedContent());
         assertEquals("Software Engineer", job.getParsedContent().title());
@@ -91,22 +99,27 @@ class JobApplicationServiceTest {
 
     @Test
     void getJob_Success() {
+        // 准备 / Given
         String jobId = "job123";
         UUID userId = UUID.randomUUID();
         Job job = Job.create(userId, "http://example.com", false);
         
         when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
 
+        // 执行 / When
         JobResponse response = jobApplicationService.getJob(jobId, userId);
 
+        // 验证 / Then
         assertNotNull(response);
         assertEquals(userId.toString(), response.userId());
     }
 
     @Test
     void getJob_NotFound_ThrowsException() {
+        // 准备 / Given
         when(jobRepository.findById(anyString())).thenReturn(Optional.empty());
 
+        // 执行与验证 / When & Then
         JobException exception = assertThrows(JobException.class, () -> {
             jobApplicationService.getJob("invalid-id", UUID.randomUUID());
         });
@@ -115,9 +128,11 @@ class JobApplicationServiceTest {
 
     @Test
     void getJob_WrongUser_ThrowsException() {
+        // 准备 / Given
         Job job = Job.create(UUID.randomUUID(), "http://example.com", false);
         when(jobRepository.findById("job123")).thenReturn(Optional.of(job));
 
+        // 执行与验证 / When & Then
         JobException exception = assertThrows(JobException.class, () -> {
             jobApplicationService.getJob("job123", UUID.randomUUID());
         });

@@ -7,6 +7,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (data: LoginRequest, rememberMe?: boolean) => Promise<void>;
+  loginByGoogle: (idToken: string, rememberMe?: boolean) => Promise<void>;
   register: (data: RegisterRequest, rememberMe?: boolean) => Promise<void>;
   logout: () => void;
 }
@@ -23,6 +24,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       const response = await authService.login(data, rememberMe);
+      setUser({ userId: response.userId, email: response.email });
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const loginByGoogle = useCallback(async (idToken: string, rememberMe = false) => {
+    setIsLoading(true);
+    try {
+      const response = await authService.loginByGoogle({ idToken }, rememberMe);
       setUser({ userId: response.userId, email: response.email });
     } finally {
       setIsLoading(false);
@@ -51,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         isLoading,
         login,
+        loginByGoogle,
         register,
         logout,
       }}

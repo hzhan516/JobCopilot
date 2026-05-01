@@ -40,6 +40,10 @@ export interface RegisterRequest {
   password: string;
 }
 
+export interface LoginByGoogleRequest {
+  idToken: string;
+}
+
 // 版本摘要
 export interface VersionSummary {
   versionId: string;

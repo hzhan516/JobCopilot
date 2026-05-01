@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+// 认证申请服务
 // Authentication application service
 @Service
 @RequiredArgsConstructor
@@ -75,20 +76,24 @@ public class AuthApplicationService {
 
     @Transactional
     public User loginByGoogle(LoginByGoogleCommand command) {
+        // 1. 验证 Google ID 令牌
         // 1. Verify Google ID Token
         GoogleIdTokenVerifier.GoogleUserInfo googleUserInfo = googleIdTokenVerifier.verify(command.idToken());
 
+        // 2.通过邮箱查找用户
         // 2. Find user by email
         var existingUser = userRepository.findByEmail(googleUserInfo.email());
 
         if (existingUser.isPresent()) {
             User user = existingUser.get();
 
+            // 如果使用EMAIL注册，拒绝Google登录
             // If registered with EMAIL, reject Google login
             if (user.getAuthProvider() == OAuthProvider.EMAIL) {
                 throw new AuthException(AuthException.ErrorType.EMAIL_REGISTERED_WITH_PASSWORD);
             }
 
+            // 如果使用 GOOGLE 注册，则更新 OAuth 绑定并返回
             // If registered with GOOGLE, update OAuth binding and return
             if (user.getAuthProvider() == OAuthProvider.GOOGLE) {
                 updateOAuthBindingIfNeeded(user.getId(), googleUserInfo);
@@ -96,6 +101,7 @@ public class AuthApplicationService {
             }
         }
 
+        // 3.自动注册新用户
         // 3. Auto-register new user
         User user = User.create(googleUserInfo.email(), OAuthProvider.GOOGLE);
         User savedUser = userRepository.save(user);

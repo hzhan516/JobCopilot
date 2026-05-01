@@ -67,6 +67,7 @@ public class ResumeFacadeImpl implements ResumeFacade {
             ResumeGroup group = applicationService.handleUpload(command, userId);
 
             // 获取原始版本ID
+            // Get the original version ID
             ResumeVersion originalVersion = group.getActiveVersionByType(ResumeVersion.VersionType.ORIGINAL);
             UUID originalVersionId = originalVersion != null ? originalVersion.getId() : null;
 
@@ -177,6 +178,7 @@ public class ResumeFacadeImpl implements ResumeFacade {
     }
 
     // ==================== 映射方法 ====================
+    // ==================== Mapping method ====================
 
     private ResumeGroupResponse toGroupResponse(ResumeGroup group) {
         ResumeVersion original = group.getActiveVersionByType(ResumeVersion.VersionType.ORIGINAL);

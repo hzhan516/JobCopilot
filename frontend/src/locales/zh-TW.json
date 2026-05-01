@@ -51,6 +51,8 @@
       "noAccount": "還沒有帳戶？",
       "registerNow": "立即註冊",
       "errorInvalidCredentials": "帳戶或密碼錯誤",
+      "or": "或",
+      "googleLoginFailed": "Google 登入失敗，請重試",
       "errors": {
         "emailRequired": "請輸入電子郵件地址",
         "emailInvalid": "請輸入有效的電子郵件地址",

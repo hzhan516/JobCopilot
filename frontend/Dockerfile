@@ -14,6 +14,10 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
+# Accept build-time environment variables
+ARG VITE_GOOGLE_CLIENT_ID
+ARG VITE_API_BASE_URL
+
 # Build frontend
 COPY . .
 RUN npm run build

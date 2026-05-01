@@ -32,6 +32,7 @@ public class UserProfile implements Entity<UUID> {
 
     /**
      * 全参构造函数 - 由 Lombok @Builder 使用
+     * All-args constructor used by Lombok @Builder
      */
     UserProfile(UUID id, UUID userId, String fullName, String avatarUrl,
                 String phone, String targetPosition, String preferredLocation,
@@ -49,6 +50,7 @@ public class UserProfile implements Entity<UUID> {
 
     /**
      * 工厂方法：创建新用户资料
+     * Factory method: create new user profile
      */
     public static UserProfile create(UUID userId) {
         UUID id = UUID.randomUUID();
@@ -63,6 +65,7 @@ public class UserProfile implements Entity<UUID> {
 
     /**
      * 更新头像
+     * Update avatar
      */
     public void updateAvatar(String avatarUrl) {
         this.avatarUrl = avatarUrl;
@@ -71,6 +74,7 @@ public class UserProfile implements Entity<UUID> {
 
     /**
      * 更新个人资料
+     * Update profile
      */
     public void updateProfile(String fullName, String phone, String targetPosition, String preferredLocation) {
         if (fullName != null) {

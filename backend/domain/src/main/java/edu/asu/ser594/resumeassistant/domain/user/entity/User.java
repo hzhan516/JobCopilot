@@ -35,7 +35,9 @@ public class User extends AggregateRoot<UUID> {
 
     /**
      * 全参构造函数 - 由 Lombok @Builder 使用
+     * All-args constructor used by Lombok @Builder
      * 注意：@Builder 生成的代码可以访问包级别或私有的全参构造器
+     * Note: @Builder generated code can access package-level or private all-args constructor
      */
     User(UUID id, String email, boolean emailVerified, UserRole role,
          UserStatus status, OAuthProvider authProvider, LocalDateTime createdAt, LocalDateTime updatedAt) {
@@ -74,6 +76,7 @@ public class User extends AggregateRoot<UUID> {
 
     /**
      * 验证邮箱
+     * Verify email
      */
     public void verifyEmail() {
         this.emailVerified = true;
@@ -82,6 +85,7 @@ public class User extends AggregateRoot<UUID> {
 
     /**
      * 更新用户角色
+     * Update user role
      */
     public void updateRole(UserRole newRole) {
         this.role = newRole;
@@ -90,6 +94,7 @@ public class User extends AggregateRoot<UUID> {
 
     /**
      * 更新用户状态
+     * Update user status
      */
     public void updateStatus(UserStatus newStatus) {
         this.status = newStatus;

@@ -38,12 +38,16 @@ public class ConversationFacadeImpl implements ConversationFacade {
         UUID resumeVersionId = request.resumeVersionId() != null && !request.resumeVersionId().isEmpty()
                 ? UUID.fromString(request.resumeVersionId())
                 : null;
+        UUID jobId = request.jobId() != null && !request.jobId().isEmpty()
+                ? UUID.fromString(request.jobId())
+                : null;
         CreateConversationCommand command = CreateConversationCommand.builder()
             .userId(userId)
             .title(request.title())
             .resumeVersionId(resumeVersionId)
+            .jobId(jobId)
             .build();
-            
+
         Conversation conversation = applicationService.createConversation(command);
         return mapToResponse(conversation);
     }
@@ -57,7 +61,7 @@ public class ConversationFacadeImpl implements ConversationFacade {
             .content(request.content())
             .fileUrls(request.fileUrls())
             .build();
-            
+
         Conversation conversation = applicationService.sendMessage(command);
         return mapToResponse(conversation);
     }
@@ -93,8 +97,8 @@ public class ConversationFacadeImpl implements ConversationFacade {
     }
 
     @Override
-    public void saveAiReply(String conversationId, String content, String fileUrl) {
-        applicationService.saveAiReply(UUID.fromString(conversationId), content, fileUrl);
+    public void saveAiReply(String conversationId, String content, String fileUrl, String aiOptimizedMarkdown) {
+        applicationService.saveAiReply(UUID.fromString(conversationId), content, fileUrl, aiOptimizedMarkdown);
     }
 
     @Override
@@ -129,6 +133,7 @@ public class ConversationFacadeImpl implements ConversationFacade {
             conversation.getTitle(),
             conversation.getStatus().name(),
             conversation.getResumeVersionId() != null ? conversation.getResumeVersionId().toString() : null,
+            conversation.getJobId() != null ? conversation.getJobId().toString() : null,
             messageResponses,
             conversation.getCreatedAt(),
             conversation.getUpdatedAt()

@@ -25,6 +25,7 @@ public class ResumeGroupResponse {
 
     /**
      * 版本摘要信息
+     * Version summary information
      */
     @Getter
     @Builder

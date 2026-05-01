@@ -15,6 +15,7 @@ import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/** 职位 JPA 实体 / Job JPA entity */
 @Entity
 @Table(name = "jobs")
 @Getter
@@ -51,12 +52,14 @@ public class JobJpaEntity {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    /** 持久化前设置时间戳 / Set timestamps before persist */
     @jakarta.persistence.PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
 
+    /** 更新前刷新时间戳 / Refresh timestamp before update */
     @jakarta.persistence.PreUpdate
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();

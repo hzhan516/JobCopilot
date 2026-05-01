@@ -1,4 +1,5 @@
 import apiClient from './api';
+import tokenStorage from './tokenStorage';
 import type { ApiResponse, Conversation, Message, PaginatedResponse } from '@/types';
 
 // 对话服务
@@ -93,7 +94,7 @@ export const chatService = {
         {
           method: 'GET',
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+            Authorization: `Bearer ${tokenStorage.getAccessToken()}`,
           },
         }
       );

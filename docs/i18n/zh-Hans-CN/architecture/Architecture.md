@@ -1,6 +1,8 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](../../../architecture/Architecture.md) | [简体中文](Architecture.md) | [繁體中文](../../zh-Hant-TW/architecture/Architecture.md)
+
 # 智能求职助手 - 架构设计文档
 
-**语言**: 中文 | [English](Architecture_EN.md)
 
 ---
 

@@ -17,6 +17,7 @@ profile:
 #include:
 #  - name: <SomeEnabledInspectionId>
 
+
 #Disable inspections
 #exclude:
 #  - name: <SomeDisabledInspectionId>

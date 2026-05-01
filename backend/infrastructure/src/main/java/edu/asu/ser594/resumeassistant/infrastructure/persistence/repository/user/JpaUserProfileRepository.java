@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 import java.util.UUID;
 
+// 用户资料 JPA 仓储
 // User profile JPA repository
 @Repository
 public interface JpaUserProfileRepository extends JpaRepository<UserProfileJpaEntity, UUID> {

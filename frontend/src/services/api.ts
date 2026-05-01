@@ -1,5 +1,5 @@
 import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig } from 'axios';
-import type { ApiResponse, AuthResponse, LoginRequest, RegisterRequest } from '@/types';
+import type { ApiResponse, AuthResponse, LoginRequest, RegisterRequest, LoginByGoogleRequest } from '@/types';
 import tokenStorage from './tokenStorage';
 
 // 创建 axios 实例
@@ -132,6 +132,18 @@ export const authService = {
   // 邮箱登录
   login: async (data: LoginRequest, rememberMe = false): Promise<AuthResponse> => {
     const response = await apiClient.post<ApiResponse<AuthResponse>>('/v1/auth/login/email', data);
+    if (response.data.code === 200) {
+      const { accessToken, refreshToken, expiresIn, ...user } = response.data.data;
+      tokenStorage.setTokens(accessToken, refreshToken, expiresIn, rememberMe);
+      tokenStorage.setUser({ userId: user.userId, email: user.email }, rememberMe);
+      return response.data.data;
+    }
+    throw new Error(response.data.message);
+  },
+
+  // Google 登录
+  loginByGoogle: async (data: LoginByGoogleRequest, rememberMe = false): Promise<AuthResponse> => {
+    const response = await apiClient.post<ApiResponse<AuthResponse>>('/v1/auth/login/google', data);
     if (response.data.code === 200) {
       const { accessToken, refreshToken, expiresIn, ...user } = response.data.data;
       tokenStorage.setTokens(accessToken, refreshToken, expiresIn, rememberMe);

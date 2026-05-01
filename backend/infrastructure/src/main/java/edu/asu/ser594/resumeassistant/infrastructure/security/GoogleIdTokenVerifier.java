@@ -45,6 +45,7 @@ public class GoogleIdTokenVerifier {
                 throw new AuthException(AuthException.ErrorType.INVALID_CREDENTIALS);
             }
 
+            // 检查错误字段（无效令牌）
             // Check for error field (invalid token)
             if (response.containsKey("error")) {
                 log.warn("Google tokeninfo returned error: {}", response.get("error"));

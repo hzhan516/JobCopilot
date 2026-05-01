@@ -1,4 +1,5 @@
-[中文文档](./docs/README.zh.md) | [English Document](./README.md)
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](README.md) | [简体中文](docs/i18n/zh-Hans-CN/README.md) | [繁體中文](docs/i18n/zh-Hant-TW/README.md)
 
 # Resume Assistant
 

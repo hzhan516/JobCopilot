@@ -3,7 +3,9 @@ package edu.asu.ser594.resumeassistant.domain.job.valueobject;
 import java.util.List;
 
 /**
+ * 表示从职位发布中解析出的结构化数据
  * Represents the structured data parsed from a job posting.
+ * 包含由LLM提取的核心信息
  * Contains core information extracted by the LLM.
  * 
  * @param title The job title.
