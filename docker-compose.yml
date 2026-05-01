@@ -1,0 +1,243 @@
+# =============================================================================
+# Resume Assistant - Docker Compose Configuration File
+# 智能求职助手 - Docker Compose 配置文件
+# 智慧求職助手 - Docker Compose 設定檔案
+# Compatible with Docker and Podman
+# 兼容 Docker 和 Podman
+# 相容 Docker 和 Podman
+# =============================================================================
+# Usage Instructions / 使用说明 / 使用說明：
+#   Docker:  docker-compose up -d
+#   Podman:  podman-compose up -d  或  podman compose up -d
+# =============================================================================
+
+version: '3.8'
+
+# =============================================================================
+# Service Definitions / 服务定义 / 服務定義
+# =============================================================================
+services:
+  # ==========================================================================
+  # 1. Frontend Service (Nginx + React)
+  # 1. 前端服务 (Nginx + React)
+  # 1. 前端服務 (Nginx + React)
+  # ==========================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-}
+    container_name: resume-assistant-frontend
+    ports:
+      - "80:80"
+    networks:
+      - resume-network
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    # Resource limits (optional, recommended for production)
+    # 资源限制（可选，生产环境建议开启）
+    # 資源限制（可選，建議生產環境開啟）
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '0.5'
+    #       memory: 512M
+
+  # ==========================================================================
+  # 2. Backend Service (Java Spring Boot)
+  # 2. 后端服务 (Java Spring Boot)
+  # 2. 後端服務 (Java Spring Boot)
+  # ==========================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: resume-assistant-backend
+    ports:
+      - "8080:8080"
+    environment:
+      # Database Configuration / 数据库配置 / 資料庫設定
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/resume_assistant
+      - SPRING_DATASOURCE_USERNAME=resume_user
+      - SPRING_DATASOURCE_PASSWORD=resume_pass
+      # RabbitMQ Configuration / RabbitMQ配置 / RabbitMQ 設定
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=guest
+      - SPRING_RABBITMQ_PASSWORD=guest
+      # File Storage Path / 文件存储路径 / 檔案儲存路徑
+      - FILE_STORAGE_PATH=/app/uploads
+      # Use local file storage for local deployment to avoid dependency on undeployed MinIO
+      # 本地部署使用本地文件存储，避免依赖未部署的 MinIO
+      # 本地部署使用本地檔案儲存，避免依賴未部署的 MinIO
+      - STORAGE_TYPE=local
+      - LOCAL_STORAGE_BASE_PATH=/app/uploads
+      # JWT Secret (please use a strong key in production)
+      # JWT密钥（生产环境请使用强密钥）
+      # JWT 金鑰（生產環境請使用強金鑰）
+      - JWT_SECRET=${JWT_SECRET:-your-256-bit-secret-key-change-in-production}
+      # Activate dev/prod profile
+      # 激活开发/生产配置
+      # 啟用開發/生產設定檔
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+    volumes:
+      # Shared storage volume (resume files)
+      # 共享存储卷（简历文件）
+      # 共享儲存卷（履歷檔案）
+      - shared-storage:/app/uploads
+    networks:
+      - resume-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    # Health Check / 健康检查 / 健康檢查
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/api/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ==========================================================================
+  # 3. AI Service (Python FastAPI)
+  # 3. AI服务 (Python FastAPI)
+  # 3. AI 服務 (Python FastAPI)
+  # ==========================================================================
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: resume-assistant-ai
+    ports:
+      - "8000:8000"
+    environment:
+      # RabbitMQ Configuration / RabbitMQ配置 / RabbitMQ 設定
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=guest
+      - RABBITMQ_PASSWORD=guest
+      # File Storage Path (shared with backend)
+      # 文件存储路径（与后端共享）
+      # 檔案儲存路徑（與後端共享）
+      - FILE_STORAGE_PATH=/app/uploads
+      # Vertex AI Configuration (ADC credentials still required when running in container)
+      # Vertex AI配置（容器化运行时仍需额外提供ADC凭证）
+      # Vertex AI 設定（容器化執行時仍需額外提供 ADC 憑證）
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-ser594-ai-service}
+      - VERTEX_AI_LOCATION=${VERTEX_AI_LOCATION:-us-central1}
+      - GEMINI_TEXT_MODEL=${GEMINI_TEXT_MODEL:-gemini-2.5-flash}
+      - GEMINI_VISION_MODEL=${GEMINI_VISION_MODEL:-gemini-2.5-flash}
+      - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
+      - EMBEDDING_OUTPUT_DIMENSION=${EMBEDDING_OUTPUT_DIMENSION:-1536}
+      # Log Level / 日志级别 / 日誌層級
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      # Shared Storage Volume (read-only access to resume files)
+      # 共享存储卷（只读访问简历文件）
+      # 共享儲存卷（唯讀存取履歷檔案）
+      - shared-storage:/app/uploads:ro
+    networks:
+      - resume-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    # AI service does not expose database, purely message-driven
+    # AI服务不暴露数据库，纯消息驱动
+    # AI 服務不暴露資料庫，純訊息驅動
+
+  # ==========================================================================
+  # 4. PostgreSQL 15 + pgvector (Unified storage for business data and vectors)
+  # 4. PostgreSQL 15 + pgvector（业务和向量统一存储）
+  # 4. PostgreSQL 15 + pgvector（業務與向量統一儲存）
+  # ==========================================================================
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: resume-assistant-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=resume_assistant
+      - POSTGRES_USER=resume_user
+      - POSTGRES_PASSWORD=resume_pass
+    volumes:
+      # Data Persistence / 数据持久化 / 資料持久化
+      - postgres-data:/var/lib/postgresql/data
+      # Initialization Scripts (Flyway Migration Scripts)
+      # 初始化脚本（Flyway迁移脚本）
+      # 初始化腳本（Flyway 遷移腳本）
+      - ./backend/app/src/main/resources/db/migration:/docker-entrypoint-initdb.d:ro
+    networks:
+      - resume-network
+    restart: unless-stopped
+    # Health Check / 健康检查 / 健康檢查
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U resume_user -d resume_assistant" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ==========================================================================
+  # 5. RabbitMQ Message Queue
+  # 5. RabbitMQ 消息队列
+  # 5. RabbitMQ 訊息佇列
+  # ==========================================================================
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: resume-assistant-rabbitmq
+    ports:
+      - "5672:5672"     # AMQP Port / AMQP端口 / AMQP 連接埠
+      - "15672:15672"   # Management UI / 管理界面 / 管理介面
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+      # Increase message size limit (10MB, for passing vectors and resume summaries)
+      # 增加消息大小限制（10MB，用于传递向量和简历简介）
+      # 增加訊息大小限制（10MB，用於傳遞向量和履歷摘要）
+      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit max_message_size 10485760
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - resume-network
+    restart: unless-stopped
+    # Health Check / 健康检查 / 健康檢查
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+# =============================================================================
+# Network Configuration / 网络配置 / 網路設定
+# =============================================================================
+networks:
+  resume-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# =============================================================================
+# Volume Configuration / 数据卷配置 / 資料卷設定
+# =============================================================================
+volumes:
+  # PostgreSQL Data / PostgreSQL数据 / PostgreSQL 資料
+  postgres-data:
+    driver: local
+  # RabbitMQ Data / RabbitMQ数据 / RabbitMQ 資料
+  rabbitmq-data:
+    driver: local
+  # Shared Storage (Resume Files)
+  # 共享存储（简历文件）
+  # 共享儲存（履歷檔案）
+  shared-storage:
+    driver: local

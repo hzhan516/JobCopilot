@@ -1,5 +1,5 @@
 <!-- Language Switcher / 语言切换 / 語言切換 -->
-> [English](README.en_US.md) | [简体中文](README.zh-Hans-CN.md) | [繁體中文](README.zh-Hant-TW.md)
+> [English](README.md) | [简体中文](docs/i18n/zh-Hans-CN/README.md) | [繁體中文](docs/i18n/zh-Hant-TW/README.md)
 
 # Resume Assistant
 
@@ -75,7 +75,7 @@ This project adopts a microservices architecture with the following components:
 ├── docs/                 # Documentation
 ├── eval/                 # Evaluation scripts
 ├── tests/                # Test scripts
-├── docker-compose.en_US.yml    # Docker Compose configuration
+├── docker-compose.yml    # Docker Compose configuration
 └── .env.example          # Environment variables template
 ```
 
@@ -268,7 +268,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ## Deployment
 
-See [DOCKER_DEPLOY.en_US.md](./DOCKER_DEPLOY.en_US.md) for detailed deployment instructions including:
+See [DOCKER_DEPLOY.md](./DOCKER_DEPLOY.md) for detailed deployment instructions including:
 
 - Production deployment checklist
 - Environment configuration
