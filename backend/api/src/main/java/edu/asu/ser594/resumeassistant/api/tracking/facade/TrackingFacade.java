@@ -18,7 +18,7 @@ public interface TrackingFacade {
      * 创建跟踪记录
      * Create tracking record
      *
-     * @param userId 用户ID / User ID
+     * @param userId  用户ID / User ID
      * @param request 创建请求 / Create request
      * @return 跟踪响应 / Tracking response
      */
@@ -28,9 +28,9 @@ public interface TrackingFacade {
      * 更新跟踪记录
      * Update tracking record
      *
-     * @param userId 用户ID / User ID
+     * @param userId     用户ID / User ID
      * @param trackingId 跟踪ID / Tracking ID
-     * @param request 更新请求 / Update request
+     * @param request    更新请求 / Update request
      * @return 跟踪响应 / Tracking response
      */
     TrackingResponse updateTracking(UUID userId, String trackingId, UpdateTrackingRequest request);
@@ -39,7 +39,7 @@ public interface TrackingFacade {
      * 获取跟踪详情
      * Get tracking detail
      *
-     * @param userId 用户ID / User ID
+     * @param userId     用户ID / User ID
      * @param trackingId 跟踪ID / Tracking ID
      * @return 跟踪响应 / Tracking response
      */
@@ -59,7 +59,7 @@ public interface TrackingFacade {
      * 删除跟踪记录
      * Delete tracking record
      *
-     * @param userId 用户ID / User ID
+     * @param userId     用户ID / User ID
      * @param trackingId 跟踪ID / Tracking ID
      */
     void deleteTracking(UUID userId, String trackingId);

@@ -32,9 +32,11 @@ public class CompositeDocumentConverter implements DocumentFormatConverter {
         }
 
         // 查找具体实现（排除自己）
+        // Find specific implementation (excluding self)
         for (DocumentFormatConverter converter : converters) {
             if (converter instanceof CompositeDocumentConverter) {
                 continue; // 跳过自己
+                // Skip self
             }
             if (converter.supports(sf, tf)) {
                 return converter.convert(source, sf, tf);
@@ -48,6 +50,7 @@ public class CompositeDocumentConverter implements DocumentFormatConverter {
     public boolean supports(String sourceFormat, String targetFormat) {
         return converters.stream()
                 .filter(c -> !(c instanceof CompositeDocumentConverter)) // 排除自己
+                // Exclude self
                 .anyMatch(c -> c.supports(sourceFormat, targetFormat));
     }
 
@@ -60,6 +63,7 @@ public class CompositeDocumentConverter implements DocumentFormatConverter {
     }
 
     /**
+     * 规范化格式名称
      * Normalize format name
      */
     private String normalize(String format) {
@@ -69,6 +73,7 @@ public class CompositeDocumentConverter implements DocumentFormatConverter {
             case "markdown" -> "md";
             case "word" -> "docx";
             case "doc" -> "docx"; // Treat DOC as DOCX for simplicity
+            // 为简单起见，将 DOC 视为 DOCX
             case "text" -> "txt";
             default -> f;
         };

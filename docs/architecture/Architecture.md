@@ -1,6 +1,8 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](Architecture.md) | [简体中文](../i18n/zh-Hans-CN/architecture/Architecture.md) | [繁體中文](../i18n/zh-Hant-TW/architecture/Architecture.md)
+
 # Intelligent Job Assistant - Architecture Document
 
-**[中文](Architecture_CN.md) | English**
 
 ---
 

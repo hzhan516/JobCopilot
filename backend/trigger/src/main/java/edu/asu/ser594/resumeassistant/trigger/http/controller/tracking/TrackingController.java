@@ -9,6 +9,7 @@ import edu.asu.ser594.resumeassistant.api.tracking.facade.TrackingFacade;
 import edu.asu.ser594.resumeassistant.trigger.http.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/trackings")
 @RequiredArgsConstructor
+@Validated
 public class TrackingController {
 
     private final TrackingFacade trackingFacade;
@@ -33,7 +35,7 @@ public class TrackingController {
     @PostMapping
     public ApiResponse<TrackingResponse> createTracking(
             @CurrentUser UUID userId,
-            @RequestBody CreateTrackingRequest request) {
+            @Validated @RequestBody CreateTrackingRequest request) {
         log.info("User {} creating tracking for company: {}", userId, request.companyName());
         TrackingResponse response = trackingFacade.createTracking(userId, request);
         return ApiResponse.success(response);
@@ -73,7 +75,7 @@ public class TrackingController {
     public ApiResponse<TrackingResponse> updateTracking(
             @CurrentUser UUID userId,
             @PathVariable("id") String id,
-            @RequestBody UpdateTrackingRequest request) {
+            @Validated @RequestBody UpdateTrackingRequest request) {
         log.info("User {} updating tracking: {}, status: {}", userId, id, request.status());
         TrackingResponse response = trackingFacade.updateTracking(userId, id, request);
         return ApiResponse.success(response);

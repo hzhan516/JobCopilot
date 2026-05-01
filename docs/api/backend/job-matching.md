@@ -1,35 +1,39 @@
-# 职位智能匹配 (Job Matching) API 文档
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](job-matching.md) | [简体中文](../../i18n/zh-Hans-CN/api/backend/job-matching.md) | [繁體中文](../../i18n/zh-Hant-TW/api/backend/job-matching.md)
 
-本文档描述职位智能匹配模块的异步召回 + 精排流程。Java 后端通过本地 PGVector 完成召回，再通过 RabbitMQ 将召回结果异步发送给 Python AI 服务进行精排，最终持久化到数据库。
+# Job Intelligent Matching API Documentation
+
+This document describes the asynchronous recall + ranking flow of the job intelligent matching module. The Java backend completes recall through local PGVector, then asynchronously sends recall results to the Python AI service for ranking via RabbitMQ, and finally persists to the database.
 
 ---
 
-## 1. 异步流程说明
+## 1. Asynchronous Flow Description
 
 ```
-用户请求 -> JobController.matchJobs()
-    -> MatchingApplicationService.startJobMatch()
-        1. 创建 PROCESSING 状态记录 (job_match_results)
-        2. 查询 resume_vectors 获取简历向量
-        3. PgVectorSearchService 本地召回 topK 职位 (job_vectors)
-        4. 发送 JobRankCommand 到 ai.req.job.rank
-        5. 立即返回 JobMatchResponse(matchId, status=PROCESSING)
+User request -> JobController.matchJobs()
+    -> MatchingFacade.matchJobs()
+        -> MatchingApplicationService.startJobMatch()
+            1. Create PROCESSING status record (job_match_results)
+            2. Query resume_vectors to get resume vector
+            3. VectorSearchPort local recall topK jobs (job_vectors)
+            4. Send JobRankCommand to ai.req.job.rank
+            5. Immediately return JobMatchResponse(matchId, status=PROCESSING)
 
-Python AI 服务 -> 消费 ai.req.job.rank -> 精排 -> 发送结果到 backend.res.job.rank
+Python AI service -> Consume ai.req.job.rank -> Rank -> Send result to backend.res.job.rank
 
-JobRankResultListener -> 消费 backend.res.job.rank
-    -> JobFacade.saveJobRankResult()
+JobRankResultListener -> Consume backend.res.job.rank
+    -> MatchingFacade.saveJobRankResult()
         -> MatchingApplicationService.saveMatchResult()
-            -> 更新 job_match_results 为 COMPLETED + rankedResults
+            -> Update job_match_results to COMPLETED + rankedResults
 ```
 
 ---
 
-## 2. 客户端与后端交互接口
+## 2. Client-Backend Interaction Interfaces
 
-### 2.1 启动异步职位匹配
+### 2.1 Start Asynchronous Job Matching
 **Endpoint:** `POST /api/v1/jobs/match`  
-**描述:** 启动异步匹配流程，返回 `matchId` 和 `PROCESSING` 状态。
+**Description:** Start the asynchronous matching flow, returning `matchId` and `PROCESSING` status.
 
 **Request Header:**
 ```http
@@ -40,7 +44,7 @@ Content-Type: application/json
 **Request Body (`JobMatchRequest`):**
 ```json
 {
-  "userId": "resume-version-id-001",
+  "resumeVersionId": "resume-version-id-001",
   "query": "Senior Java Developer in San Francisco",
   "topK": 10,
   "filters": {
@@ -61,11 +65,11 @@ Content-Type: application/json
 }
 ```
 
-### 2.2 查询匹配结果
+### 2.2 Query Matching Result
 **Endpoint:** `GET /api/v1/jobs/match/{matchId}`  
-**描述:** 根据 `matchId` 查询当前匹配状态。若已完成，返回精排后的职位列表。
+**Description:** Query the current matching status by `matchId`. If completed, returns the ranked job list.
 
-**Response Body (`JobMatchResponse`) - 已完成示例:**
+**Response Body (`JobMatchResponse`) - Completed Example:**
 ```json
 {
   "matchId": "match-uuid-1234",
@@ -90,9 +94,9 @@ Content-Type: application/json
 }
 ```
 
-### 2.3 查询匹配历史
+### 2.3 Query Matching History
 **Endpoint:** `GET /api/v1/jobs/match/history`  
-**描述:** 获取当前用户的所有历史匹配记录（按时间倒序）。
+**Description:** Get all historical matching records for the current user (sorted by time descending).
 
 **Response Body (`List<JobMatchHistoryResponse>`):**
 ```json
@@ -116,9 +120,9 @@ Content-Type: application/json
 
 ---
 
-## 3. MQ 数据格式
+## 3. MQ Data Format
 
-### 3.1 Ranking 请求 (Java -> Python)
+### 3.1 Ranking Request (Java -> Python)
 **Exchange:** `ai.direct.exchange`  
 **Routing Key:** `ai.req.job.rank`  
 **Queue:** `ai.queue.job.rank`
@@ -141,7 +145,7 @@ Content-Type: application/json
 }
 ```
 
-### 3.2 Ranking 响应 (Python -> Java)
+### 3.2 Ranking Response (Python -> Java)
 **Exchange:** `ai.direct.exchange`  
 **Routing Key:** `backend.res.job.rank`  
 **Queue:** `backend.queue.job.rank`
@@ -170,10 +174,10 @@ Content-Type: application/json
 
 ---
 
-## 4. 错误码
+## 4. Error Codes
 
-| HTTP 状态码 | 业务错误码 | 说明 |
+| HTTP Status | Business Code | Description |
 |-------------|------------|------|
-| 400 | 400 | 简历向量不存在或 embedding 为 null |
-| 400 | 400 | Match result not found (matchId 不存在) |
-| 500 | 500 | MQ 发送失败或数据库异常 |
+| 400 | 400 | Resume vector does not exist or embedding is null |
+| 400 | 400 | Match result not found (matchId does not exist) |
+| 500 | 500 | MQ send failure or database exception |

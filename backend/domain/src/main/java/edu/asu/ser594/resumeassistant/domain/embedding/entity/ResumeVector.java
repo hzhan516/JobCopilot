@@ -1,8 +1,6 @@
 package edu.asu.ser594.resumeassistant.domain.embedding.entity;
 
 import edu.asu.ser594.resumeassistant.domain.embedding.valueobject.VectorStatus;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.time.LocalDateTime;

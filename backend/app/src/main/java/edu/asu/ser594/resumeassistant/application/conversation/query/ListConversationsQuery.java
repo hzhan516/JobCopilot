@@ -7,5 +7,6 @@ import java.util.UUID;
  * List user conversations query
  */
 public record ListConversationsQuery(
-    UUID userId
-) {}
+        UUID userId
+) {
+}

@@ -8,7 +8,6 @@ import edu.asu.ser594.resumeassistant.domain.conversation.repository.Conversatio
 import edu.asu.ser594.resumeassistant.domain.conversation.valueobject.MessageRole;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
-import edu.asu.ser594.resumeassistant.domain.job.valueobject.JobStatus;
 import edu.asu.ser594.resumeassistant.domain.job.valueobject.ParsedJobContent;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
@@ -26,16 +25,15 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.ByteArrayInputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+/**
+ * 对话应用服务单元测试 / Conversation application service unit tests
+ */
 class ConversationApplicationServiceTest {
 
     @Mock
@@ -62,6 +60,7 @@ class ConversationApplicationServiceTest {
     @InjectMocks
     private ConversationApplicationService applicationService;
 
+    // 准备 / Given
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
@@ -70,6 +69,7 @@ class ConversationApplicationServiceTest {
 
     @Test
     void createConversation_Success() {
+        // 准备 / Given
         UUID userId = UUID.randomUUID();
         CreateConversationCommand command = CreateConversationCommand.builder()
                 .userId(userId)
@@ -81,8 +81,10 @@ class ConversationApplicationServiceTest {
         when(conversationRepository.save(any(Conversation.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
+        // 执行 / When
         Conversation conversation = applicationService.createConversation(command);
 
+        // 验证 / Then
         assertNotNull(conversation);
         assertEquals("Test Conversation", conversation.getTitle());
         assertEquals(userId, conversation.getUserId());
@@ -92,6 +94,7 @@ class ConversationApplicationServiceTest {
 
     @Test
     void createConversation_WithResumeVersionAndJob_Success() {
+        // 准备 / Given
         UUID userId = UUID.randomUUID();
         UUID resumeVersionId = UUID.randomUUID();
         UUID jobId = UUID.randomUUID();
@@ -117,8 +120,10 @@ class ConversationApplicationServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(jobRepository.findAllByUserId(userId)).thenReturn(Collections.emptyList());
 
+        // 执行 / When
         Conversation conversation = applicationService.createConversation(command);
 
+        // 验证 / Then
         assertNotNull(conversation);
         assertEquals(resumeVersionId, conversation.getResumeVersionId());
         assertEquals(jobId, conversation.getJobId());
@@ -129,6 +134,7 @@ class ConversationApplicationServiceTest {
 
     @Test
     void createConversation_WithInvalidResumeVersion_ThrowsException() {
+        // 准备 / Given
         UUID userId = UUID.randomUUID();
         UUID resumeVersionId = UUID.randomUUID();
         CreateConversationCommand command = CreateConversationCommand.builder()
@@ -140,11 +146,13 @@ class ConversationApplicationServiceTest {
 
         when(resumeVersionRepository.findById(resumeVersionId)).thenReturn(Optional.empty());
 
+        // 执行与验证 / When & Then
         assertThrows(ConversationException.class, () -> applicationService.createConversation(command));
     }
 
     @Test
     void createConversation_WithInvalidJob_ThrowsException() {
+        // 准备 / Given
         UUID userId = UUID.randomUUID();
         UUID jobId = UUID.randomUUID();
         CreateConversationCommand command = CreateConversationCommand.builder()
@@ -156,11 +164,13 @@ class ConversationApplicationServiceTest {
 
         when(jobRepository.findById(jobId.toString())).thenReturn(Optional.empty());
 
+        // 执行与验证 / When & Then
         assertThrows(ConversationException.class, () -> applicationService.createConversation(command));
     }
 
     @Test
     void sendMessage_Success_PublishesMqEvent() {
+        // 准备 / Given
         UUID userId = UUID.randomUUID();
         UUID conversationId = UUID.randomUUID();
         Conversation conversation = Conversation.create(userId, "New Conversation", null, null);
@@ -177,8 +187,10 @@ class ConversationApplicationServiceTest {
                 .fileUrls(new ArrayList<>())
                 .build();
 
+        // 执行 / When
         Conversation result = applicationService.sendMessage(command);
 
+        // 验证 / Then
         assertNotNull(result);
         assertEquals(1, result.getMessages().size());
         assertEquals("Hello AI", result.getMessages().get(0).getContent());
@@ -194,6 +206,7 @@ class ConversationApplicationServiceTest {
 
     @Test
     void sendMessage_NotOwned_ThrowsException() {
+        // 准备 / Given
         UUID ownerId = UUID.randomUUID();
         UUID otherId = UUID.randomUUID();
         UUID conversationId = UUID.randomUUID();
@@ -208,11 +221,13 @@ class ConversationApplicationServiceTest {
                 .content("Hello")
                 .build();
 
+        // 执行与验证 / When & Then
         assertThrows(ConversationException.class, () -> applicationService.sendMessage(command));
     }
 
     @Test
     void saveAiReply_Success() {
+        // 准备 / Given
         UUID conversationId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         Conversation conversation = Conversation.create(userId, "Title", null, null);
@@ -221,8 +236,10 @@ class ConversationApplicationServiceTest {
         when(conversationRepository.save(any(Conversation.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
+        // 执行 / When
         applicationService.saveAiReply(conversationId, "AI reply", "https://minio.example.com/file.pdf");
 
+        // 验证 / Then
         assertEquals(1, conversation.getMessages().size());
         assertEquals("AI reply", conversation.getMessages().get(0).getContent());
         assertEquals(MessageRole.ASSISTANT, conversation.getMessages().get(0).getRole());
@@ -231,6 +248,7 @@ class ConversationApplicationServiceTest {
 
     @Test
     void saveAiReply_WithAiOptimizedMarkdown_SavesOptimizedResume() {
+        // 准备 / Given
         UUID conversationId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID resumeVersionId = UUID.randomUUID();
@@ -248,8 +266,10 @@ class ConversationApplicationServiceTest {
         when(resumeVersionRepository.findById(resumeVersionId)).thenReturn(Optional.of(version));
         when(resumeGroupRepository.findById(groupId)).thenReturn(Optional.of(group));
 
+        // 执行 / When
         applicationService.saveAiReply(conversationId, "AI reply", null, "# Optimized Resume");
 
+        // 验证 / Then
         assertEquals(1, conversation.getMessages().size());
         verify(resumeVersionRepository).save(any(ResumeVersion.class));
         verify(aiMessagePublisherPort).sendTextForVectorGeneration(any());
@@ -257,6 +277,7 @@ class ConversationApplicationServiceTest {
 
     @Test
     void uploadAttachment_Success() {
+        // 准备 / Given
         UUID userId = UUID.randomUUID();
         UUID conversationId = UUID.randomUUID();
         Conversation conversation = Conversation.create(userId, "Title", null, null);
@@ -265,18 +286,21 @@ class ConversationApplicationServiceTest {
         when(fileStorageService.generatePresignedUrl(anyString(), any()))
                 .thenReturn("https://minio.example.com/presigned-url");
 
+        // 执行 / When
         String url = applicationService.uploadAttachment(
                 conversationId, userId,
                 new ByteArrayInputStream("content".getBytes()),
                 100L, "text/plain", "test.txt"
         );
 
+        // 验证 / Then
         assertEquals("https://minio.example.com/presigned-url", url);
         verify(fileStorageService, times(1)).upload(anyString(), any(), anyLong(), anyString());
     }
 
     @Test
     void closeConversation_Success() {
+        // 准备 / Given
         UUID userId = UUID.randomUUID();
         UUID conversationId = UUID.randomUUID();
         Conversation conversation = Conversation.create(userId, "Title", null, null);
@@ -285,21 +309,26 @@ class ConversationApplicationServiceTest {
         when(conversationRepository.save(any(Conversation.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
+        // 执行 / When
         applicationService.closeConversation(conversationId, userId);
 
+        // 验证 / Then
         assertTrue(conversation.getStatus().name().equals("CLOSED"));
     }
 
     @Test
     void deleteConversation_Success() {
+        // 准备 / Given
         UUID userId = UUID.randomUUID();
         UUID conversationId = UUID.randomUUID();
         Conversation conversation = Conversation.create(userId, "Title", null, null);
 
         when(conversationRepository.findById(conversationId)).thenReturn(Optional.of(conversation));
 
+        // 执行 / When
         applicationService.deleteConversation(conversationId, userId);
 
+        // 验证 / Then
         verify(conversationRepository, times(1)).deleteById(conversationId);
     }
 }

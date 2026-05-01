@@ -10,36 +10,47 @@ import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * RabbitMQ 配置类 / RabbitMQ configuration
+ */
 @Configuration
 public class RabbitMqConfig {
 
     public static final String EXCHANGE_AI_DIRECT = "ai.direct.exchange";
 
+    // 职位解析队列与路由键 / Job parse queue and routing keys
     public static final String ROUTING_KEY_REQ_JOB_PARSE = "ai.req.job.parse";
     public static final String QUEUE_REQ_JOB_PARSE = "ai.queue.job.parse";
     public static final String ROUTING_KEY_RES_JOB_PARSE = "backend.res.job.parse";
     public static final String QUEUE_RES_JOB_PARSE = "backend.queue.job.parse";
 
+    // 简历解析队列与路由键 / Resume parse queue and routing keys
     public static final String ROUTING_KEY_REQ_RESUME_PARSE = "ai.req.resume.parse";
     public static final String QUEUE_REQ_RESUME_PARSE = "ai.queue.resume.parse";
     public static final String ROUTING_KEY_RES_RESUME_PARSE = "backend.res.resume.parse";
     public static final String QUEUE_RES_RESUME_PARSE = "backend.queue.resume.parse";
 
+    // 向量生成队列与路由键 / Vector generation queue and routing keys
     public static final String ROUTING_KEY_REQ_VECTOR_GEN = "ai.req.vector.gen";
     public static final String QUEUE_REQ_VECTOR_GEN = "ai.queue.vector.gen";
     public static final String ROUTING_KEY_RES_VECTOR_GEN = "backend.res.vector.gen";
     public static final String QUEUE_RES_VECTOR_GEN = "backend.queue.vector.gen";
 
+    // 对话队列与路由键 / Conversation queue and routing keys
     public static final String ROUTING_KEY_REQ_CONVERSATION = "ai.req.conversation";
     public static final String QUEUE_REQ_CONVERSATION = "ai.queue.conversation";
     public static final String ROUTING_KEY_RES_CONVERSATION = "backend.res.conversation";
     public static final String QUEUE_RES_CONVERSATION = "backend.queue.conversation";
 
+    // 职位排名队列与路由键 / Job rank queue and routing keys
     public static final String ROUTING_KEY_REQ_JOB_RANK = "ai.req.job.rank";
     public static final String QUEUE_REQ_JOB_RANK = "ai.queue.job.rank";
     public static final String ROUTING_KEY_RES_JOB_RANK = "backend.res.job.rank";
     public static final String QUEUE_RES_JOB_RANK = "backend.queue.job.rank";
 
+    /**
+     * Jackson JSON 消息转换器 / Jackson JSON message converter
+     */
     @Bean
     public MessageConverter jackson2JsonMessageConverter() {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -47,6 +58,9 @@ public class RabbitMqConfig {
         return new Jackson2JsonMessageConverter(objectMapper);
     }
 
+    /**
+     * RabbitTemplate 配置 / RabbitTemplate configuration
+     */
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, MessageConverter messageConverter) {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
@@ -54,10 +68,15 @@ public class RabbitMqConfig {
         return rabbitTemplate;
     }
 
+    /**
+     * AI 直连交换机 / AI direct exchange
+     */
     @Bean
     public DirectExchange aiDirectExchange() {
         return new DirectExchange(EXCHANGE_AI_DIRECT);
     }
+
+    // ========== 职位解析队列绑定 / Job parse queue bindings ==========
 
     @Bean
     public Queue reqJobParseQueue() {
@@ -79,6 +98,8 @@ public class RabbitMqConfig {
         return BindingBuilder.bind(resJobParseQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_JOB_PARSE);
     }
 
+    // ========== 简历解析队列绑定 / Resume parse queue bindings ==========
+
     @Bean
     public Queue reqResumeParseQueue() {
         return QueueBuilder.durable(QUEUE_REQ_RESUME_PARSE).build();
@@ -98,6 +119,8 @@ public class RabbitMqConfig {
     public Binding resResumeParseBinding(Queue resResumeParseQueue, DirectExchange aiDirectExchange) {
         return BindingBuilder.bind(resResumeParseQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_RESUME_PARSE);
     }
+
+    // ========== 向量生成队列绑定 / Vector generation queue bindings ==========
 
     @Bean
     public Queue reqVectorGenQueue() {
@@ -119,6 +142,8 @@ public class RabbitMqConfig {
         return BindingBuilder.bind(resVectorGenQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_VECTOR_GEN);
     }
 
+    // ========== 对话队列绑定 / Conversation queue bindings ==========
+
     @Bean
     public Queue reqConversationQueue() {
         return QueueBuilder.durable(QUEUE_REQ_CONVERSATION).build();
@@ -138,6 +163,8 @@ public class RabbitMqConfig {
     public Binding resConversationBinding(Queue resConversationQueue, DirectExchange aiDirectExchange) {
         return BindingBuilder.bind(resConversationQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_CONVERSATION);
     }
+
+    // ========== 职位排名队列绑定 / Job rank queue bindings ==========
 
     @Bean
     public Queue reqJobRankQueue() {

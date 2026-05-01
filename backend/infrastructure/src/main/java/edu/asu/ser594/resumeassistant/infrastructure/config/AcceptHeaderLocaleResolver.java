@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+// 基于 Accept-Language 请求头的语言解析器
 // Locale resolver based on Accept-Language header
 public class AcceptHeaderLocaleResolver implements LocaleResolver {
     @Setter

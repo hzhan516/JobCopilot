@@ -16,6 +16,7 @@ public class ApiResponse<T> {
     private final T data;
 
     /**
+     * 注入 MessageProvider 以支持国际化。由 ApiResponseConfigurer 在启动时调用。
      * Inject MessageProvider for i18n support. Called by ApiResponseConfigurer on startup.
      */
     public static void setMessageProvider(MessageProvider provider) {
@@ -29,6 +30,7 @@ public class ApiResponse<T> {
         return "Success";
     }
 
+    // 带数据的成功响应
     // Success response with data
     public static <T> ApiResponse<T> success(T data) {
         return ApiResponse.<T>builder()
@@ -38,6 +40,7 @@ public class ApiResponse<T> {
                 .build();
     }
 
+    // 带消息和数据的成功响应
     // Success response with message and data
     public static <T> ApiResponse<T> success(String message, T data) {
         return ApiResponse.<T>builder()
@@ -47,6 +50,7 @@ public class ApiResponse<T> {
                 .build();
     }
 
+    // 仅带消息的错误响应
     // Error response with message only
     public static <T> ApiResponse<T> error(int code, String message) {
         return ApiResponse.<T>builder()
@@ -56,6 +60,7 @@ public class ApiResponse<T> {
                 .build();
     }
 
+    // 带数据的错误响应（例如校验错误）
     // Error response with data (e.g., validation errors)
     public static <T> ApiResponse<T> error(int code, String message, T data) {
         return ApiResponse.<T>builder()

@@ -13,7 +13,7 @@ import java.util.UUID;
 /**
  * 用户聚合根
  * User aggregate root
- *
+ * <p>
  * 设计说明：
  * - 使用 @Getter 暴露字段访问
  * - 使用 @Builder 支持构建器模式
@@ -26,26 +26,28 @@ public class User extends AggregateRoot<UUID> {
 
     private final UUID id;
     private final String email;
+    private final LocalDateTime createdAt;
     private boolean emailVerified;
     private UserRole role;
     private UserStatus status;
     private OAuthProvider authProvider;
-    private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     /**
      * 全参构造函数 - 由 Lombok @Builder 使用
+     * All-args constructor used by Lombok @Builder
      * 注意：@Builder 生成的代码可以访问包级别或私有的全参构造器
+     * Note: @Builder generated code can access package-level or private all-args constructor
      */
-    User(UUID id, String email, boolean emailVerified, UserRole role,
-         UserStatus status, OAuthProvider authProvider, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    User(UUID id, String email, LocalDateTime createdAt, boolean emailVerified, UserRole role,
+         UserStatus status, OAuthProvider authProvider, LocalDateTime updatedAt) {
         this.id = id;
         this.email = email;
+        this.createdAt = createdAt;
         this.emailVerified = emailVerified;
         this.role = role;
         this.status = status;
         this.authProvider = authProvider;
-        this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
@@ -74,6 +76,7 @@ public class User extends AggregateRoot<UUID> {
 
     /**
      * 验证邮箱
+     * Verify email
      */
     public void verifyEmail() {
         this.emailVerified = true;
@@ -82,6 +85,7 @@ public class User extends AggregateRoot<UUID> {
 
     /**
      * 更新用户角色
+     * Update user role
      */
     public void updateRole(UserRole newRole) {
         this.role = newRole;
@@ -90,6 +94,7 @@ public class User extends AggregateRoot<UUID> {
 
     /**
      * 更新用户状态
+     * Update user status
      */
     public void updateStatus(UserStatus newStatus) {
         this.status = newStatus;

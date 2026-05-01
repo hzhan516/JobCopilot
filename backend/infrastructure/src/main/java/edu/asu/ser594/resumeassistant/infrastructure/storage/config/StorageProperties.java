@@ -27,6 +27,7 @@ public class StorageProperties {
 
     /**
      * 本地存储配置
+     * Local storage configuration
      */
     private Local local = new Local();
 
@@ -43,8 +44,8 @@ public class StorageProperties {
     @Data
     public static class Minio {
         private String endpoint = "http://localhost:9000";
-        private String accessKey = "minioadmin";
-        private String secretKey = "minioadmin";
+        private String accessKey = "";
+        private String secretKey = "";
         private String bucketName = "resumes";
         private long connectTimeout = 5000;
         private long writeTimeout = 60000;
@@ -55,16 +56,19 @@ public class StorageProperties {
     public static class Local {
         /**
          * 文件存储根目录
+         * File storage root directory
          */
         private String basePath = "./uploads";
 
         /**
          * 简历文件子目录
+         * Resume file subdirectory
          */
         private String resumePath = "resumes";
 
         /**
          * 是否按日期创建子目录
+         * Whether to create subdirectories by date
          */
         private boolean dateSubdirectory = true;
 
@@ -83,21 +87,25 @@ public class StorageProperties {
 
         /**
          * 自定义端点（用于兼容 S3 的第三方存储）
+         * Custom endpoint (for S3-compatible third-party storage)
          */
         private String endpoint = "";
 
         /**
          * 访问密钥
+         * Access key
          */
         private String accessKey = "";
 
         /**
          * 秘密密钥
+         * Secret key
          */
         private String secretKey = "";
 
         /**
          * 存储桶名称
+         * Bucket name
          */
         private String bucketName = "";
 
@@ -108,6 +116,7 @@ public class StorageProperties {
 
         /**
          * 连接超时（毫秒）
+         * Connection timeout (milliseconds)
          */
         private int connectionTimeout = 5000;
 
@@ -118,11 +127,13 @@ public class StorageProperties {
 
         /**
          * 最大连接数
+         * Maximum number of connections
          */
         private int maxConnections = 50;
 
         /**
          * 是否启用服务器端加密
+         * Whether to enable server-side encryption
          */
         private boolean encryptionEnabled = false;
 
@@ -136,6 +147,7 @@ public class StorageProperties {
     public static class Oss {
         /**
          * 访问域名/端点
+         * Access domain/endpoint
          */
         private String endpoint = "";
 
@@ -146,11 +158,13 @@ public class StorageProperties {
 
         /**
          * 访问密钥密码
+         * Access key password
          */
         private String accessKeySecret = "";
 
         /**
          * 存储桶名称
+         * Bucket name
          */
         private String bucketName = "";
 
@@ -161,6 +175,7 @@ public class StorageProperties {
 
         /**
          * 连接超时（毫秒）
+         * Connection timeout (milliseconds)
          */
         private int connectionTimeout = 5000;
 
@@ -171,6 +186,7 @@ public class StorageProperties {
 
         /**
          * 最大连接数
+         * Maximum number of connections
          */
         private int maxConnections = 50;
 

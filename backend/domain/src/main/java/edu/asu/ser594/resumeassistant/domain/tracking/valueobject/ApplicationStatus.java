@@ -39,5 +39,6 @@ public enum ApplicationStatus {
         return VALID_TRANSITIONS.contains(new Transition(this, targetStatus));
     }
 
-    private record Transition(ApplicationStatus from, ApplicationStatus to) {}
+    private record Transition(ApplicationStatus from, ApplicationStatus to) {
+    }
 }

@@ -9,8 +9,8 @@ package edu.asu.ser594.resumeassistant.api.conversation.dto;
  * @param jobId           职位 ID / Job ID
  */
 public record CreateConversationRequest(
-    String title,
-    String resumeVersionId,
-    String jobId
+        String title,
+        String resumeVersionId,
+        String jobId
 ) {
 }

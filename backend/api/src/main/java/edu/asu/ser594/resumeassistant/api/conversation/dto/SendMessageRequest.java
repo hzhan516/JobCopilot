@@ -10,8 +10,8 @@ import java.util.List;
  * @param fileUrls 关联文件 URL 列表 / Associated file URL list
  */
 public record SendMessageRequest(
-    String content,
-    List<String> fileUrls
+        String content,
+        List<String> fileUrls
 ) {
     public SendMessageRequest {
         if (content == null || content.trim().isEmpty()) {

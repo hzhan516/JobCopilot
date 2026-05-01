@@ -1,37 +1,40 @@
-# 认证 API
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](authentication.md) | [简体中文](../../i18n/zh-Hans-CN/api/backend/authentication.md) | [繁體中文](../../i18n/zh-Hant-TW/api/backend/authentication.md)
 
-> 用户注册、登录和 Token 管理相关接口
+# Authentication API
 
----
-
-## 目录
-
-1. [邮箱注册](#1-邮箱注册)
-2. [邮箱登录](#2-邮箱登录)
-3. [Google 登录](#3-google-登录)
+> User registration, login, and token management interfaces
 
 ---
 
-## 1. 邮箱注册
+## Table of Contents
 
-### 基本信息
+1. [Email Registration](#1-email-registration)
+2. [Email Login](#2-email-login)
+3. [Google Login](#3-google-login)
 
-| 项目 | 值 |
-|------|-----|
-| **接口名称** | 邮箱注册 |
-| **接口路径** | `POST /api/v1/auth/register/email` |
-| **是否需要认证** | 否 |
+---
 
-### 请求结构
+## 1. Email Registration
+
+### Basic Information
+
+| Item | Value |
+|------|-------|
+| **Interface Name** | Email Registration |
+| **Interface Path** | `POST /api/v1/auth/register/email` |
+| **Authentication Required** | No |
+
+### Request Structure
 
 #### Request Body
 
-| 字段 | 类型 | 必填 | 约束 | 说明 |
-|------|------|------|------|------|
-| `email` | String | 是 | 邮箱格式 | 用户邮箱地址 |
-| `password` | String | 是 | 6-32位 | 用户密码 |
+| Field | Type | Required | Constraints | Description |
+|-------|------|----------|-------------|-------------|
+| `email` | String | Yes | Email format | User email address |
+| `password` | String | Yes | 6-32 chars | User password |
 
-#### 请求示例
+#### Request Example
 
 ```json
 {
@@ -40,19 +43,19 @@
 }
 ```
 
-### 响应结构
+### Response Structure
 
-#### 成功响应 (201)
+#### Success Response (201)
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `userId` | String (UUID) | 用户唯一标识 |
-| `email` | String | 用户邮箱 |
-| `accessToken` | String | 访问令牌（有效期24小时） |
-| `refreshToken` | String | 刷新令牌（有效期7天） |
-| `expiresIn` | Long | accessToken 有效期（秒） |
+| Field | Type | Description |
+|-------|------|-------------|
+| `userId` | String (UUID) | User unique identifier |
+| `email` | String | User email |
+| `accessToken` | String | Access token (valid for 24 hours) |
+| `refreshToken` | String | Refresh token (valid for 7 days) |
+| `expiresIn` | Long | accessToken validity period (seconds) |
 
-#### 响应示例
+#### Response Example
 
 ```json
 {
@@ -68,9 +71,9 @@
 }
 ```
 
-### 错误响应
+### Error Responses
 
-#### 400 - 参数校验错误
+#### 400 - Parameter Validation Error
 
 ```json
 {
@@ -83,7 +86,7 @@
 }
 ```
 
-#### 409 - 邮箱已存在
+#### 409 - Email Already Exists
 
 ```json
 {
@@ -93,7 +96,7 @@
 }
 ```
 
-### 调用示例 (cURL)
+### cURL Example
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/auth/register/email \
@@ -106,26 +109,26 @@ curl -X POST http://localhost:8080/api/v1/auth/register/email \
 
 ---
 
-## 2. 邮箱登录
+## 2. Email Login
 
-### 基本信息
+### Basic Information
 
-| 项目 | 值 |
-|------|-----|
-| **接口名称** | 邮箱登录 |
-| **接口路径** | `POST /api/v1/auth/login/email` |
-| **是否需要认证** | 否 |
+| Item | Value |
+|------|-------|
+| **Interface Name** | Email Login |
+| **Interface Path** | `POST /api/v1/auth/login/email` |
+| **Authentication Required** | No |
 
-### 请求结构
+### Request Structure
 
 #### Request Body
 
-| 字段 | 类型 | 必填 | 约束 | 说明 |
-|------|------|------|------|------|
-| `email` | String | 是 | 邮箱格式 | 用户邮箱地址 |
-| `password` | String | 是 | 非空 | 用户密码 |
+| Field | Type | Required | Constraints | Description |
+|-------|------|----------|-------------|-------------|
+| `email` | String | Yes | Email format | User email address |
+| `password` | String | Yes | Non-empty | User password |
 
-#### 请求示例
+#### Request Example
 
 ```json
 {
@@ -134,19 +137,19 @@ curl -X POST http://localhost:8080/api/v1/auth/register/email \
 }
 ```
 
-### 响应结构
+### Response Structure
 
-#### 成功响应 (200)
+#### Success Response (200)
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `userId` | String (UUID) | 用户唯一标识 |
-| `email` | String | 用户邮箱 |
-| `accessToken` | String | 访问令牌（有效期24小时） |
-| `refreshToken` | String | 刷新令牌（有效期7天） |
-| `expiresIn` | Long | accessToken 有效期（秒） |
+| Field | Type | Description |
+|-------|------|-------------|
+| `userId` | String (UUID) | User unique identifier |
+| `email` | String | User email |
+| `accessToken` | String | Access token (valid for 24 hours) |
+| `refreshToken` | String | Refresh token (valid for 7 days) |
+| `expiresIn` | Long | accessToken validity period (seconds) |
 
-#### 响应示例
+#### Response Example
 
 ```json
 {
@@ -162,9 +165,9 @@ curl -X POST http://localhost:8080/api/v1/auth/register/email \
 }
 ```
 
-### 错误响应
+### Error Responses
 
-#### 401 - 邮箱或密码错误
+#### 401 - Invalid Email or Password
 
 ```json
 {
@@ -174,7 +177,7 @@ curl -X POST http://localhost:8080/api/v1/auth/register/email \
 }
 ```
 
-#### 400 - 参数校验错误
+#### 400 - Parameter Validation Error
 
 ```json
 {
@@ -187,7 +190,7 @@ curl -X POST http://localhost:8080/api/v1/auth/register/email \
 }
 ```
 
-### 调用示例 (cURL)
+### cURL Example
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/auth/login/email \
@@ -200,25 +203,25 @@ curl -X POST http://localhost:8080/api/v1/auth/login/email \
 
 ---
 
-## 3. Google 登录
+## 3. Google Login
 
-### 基本信息
+### Basic Information
 
-| 项目 | 值 |
-|------|-----|
-| **接口名称** | Google 登录 |
-| **接口路径** | `POST /api/v1/auth/login/google` |
-| **是否需要认证** | 否 |
+| Item | Value |
+|------|-------|
+| **Interface Name** | Google Login |
+| **Interface Path** | `POST /api/v1/auth/login/google` |
+| **Authentication Required** | No |
 
-### 请求结构
+### Request Structure
 
 #### Request Body
 
-| 字段 | 类型 | 必填 | 约束 | 说明 |
-|------|------|------|------|------|
-| `idToken` | String | 是 | 非空 | Google ID Token |
+| Field | Type | Required | Constraints | Description |
+|-------|------|----------|-------------|-------------|
+| `idToken` | String | Yes | Non-empty | Google ID Token |
 
-#### 请求示例
+#### Request Example
 
 ```json
 {
@@ -226,13 +229,13 @@ curl -X POST http://localhost:8080/api/v1/auth/login/email \
 }
 ```
 
-### 响应结构
+### Response Structure
 
-#### 成功响应 (200)
+#### Success Response (200)
 
-与邮箱登录响应格式相同（首次登录会自动注册并创建用户）。
+Same response format as email login (first login will automatically register and create a user).
 
-#### 响应示例
+#### Response Example
 
 ```json
 {
@@ -248,9 +251,9 @@ curl -X POST http://localhost:8080/api/v1/auth/login/email \
 }
 ```
 
-### 错误响应
+### Error Responses
 
-#### 401 - ID Token 无效或验证失败
+#### 401 - Invalid ID Token or Verification Failed
 
 ```json
 {
@@ -260,7 +263,7 @@ curl -X POST http://localhost:8080/api/v1/auth/login/email \
 }
 ```
 
-### 调用示例 (cURL)
+### cURL Example
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/auth/login/google \
@@ -272,40 +275,40 @@ curl -X POST http://localhost:8080/api/v1/auth/login/google \
 
 ---
 
-## Token 使用说明
+## Token Usage
 
 ### Access Token
 
-- **有效期**: 24小时 (86400秒)
-- **用途**: 访问需要认证的 API 接口
-- **传递方式**: HTTP Header `Authorization: Bearer <token>`
+- **Validity**: 24 hours (86400 seconds)
+- **Purpose**: Access APIs requiring authentication
+- **Transmission**: HTTP Header `Authorization: Bearer <token>`
 
 ### Refresh Token
 
-- **有效期**: 7天 (604800秒)
-- **用途**: Access Token 过期后获取新的 Token 对
-- **存储建议**: 安全存储，用于 Token 刷新机制
+- **Validity**: 7 days (604800 seconds)
+- **Purpose**: Obtain a new token pair after Access Token expiration
+- **Storage Recommendation**: Store securely for token refresh mechanism
 
-### Token 结构 (JWT)
+### Token Structure (JWT)
 
 ```
 Header.Payload.Signature
 ```
 
-Payload 包含以下字段：
+Payload contains the following fields:
 
-| 字段 | 说明 |
-|------|------|
-| `sub` | 用户ID |
-| `iat` | 签发时间 |
-| `exp` | 过期时间 |
+| Field | Description |
+|-------|-------------|
+| `sub` | User ID |
+| `iat` | Issued at |
+| `exp` | Expiration time |
 
 ---
 
-## 接口汇总
+## Interface Summary
 
-| 接口 | 方法 | 路径 | 认证 |
-|------|------|------|------|
-| 邮箱注册 | POST | `/api/v1/auth/register/email` | 否 |
-| 邮箱登录 | POST | `/api/v1/auth/login/email` | 否 |
-| Google 登录 | POST | `/api/v1/auth/login/google` | 否 |
+| Interface | Method | Path | Authentication |
+|-----------|--------|------|----------------|
+| Email Registration | POST | `/api/v1/auth/register/email` | No |
+| Email Login | POST | `/api/v1/auth/login/email` | No |
+| Google Login | POST | `/api/v1/auth/login/google` | No |

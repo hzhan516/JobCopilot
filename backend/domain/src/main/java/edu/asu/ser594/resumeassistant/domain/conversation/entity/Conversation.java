@@ -19,13 +19,13 @@ public class Conversation extends AggregateRoot<UUID> {
 
     private final UUID id;
     private final UUID userId;
-    private String title;
-    private ConversationStatus status;
     private final UUID resumeVersionId;
     private final UUID jobId;
     private final LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
     private final List<Message> messages;
+    private String title;
+    private ConversationStatus status;
+    private LocalDateTime updatedAt;
 
     /**
      * 保护级别的原生构造函数
@@ -53,15 +53,15 @@ public class Conversation extends AggregateRoot<UUID> {
         String finalTitle = (title == null || title.trim().isEmpty()) ? "New Conversation" : title;
         LocalDateTime now = LocalDateTime.now();
         return new Conversation(
-            UUID.randomUUID(),
-            userId,
-            finalTitle,
-            ConversationStatus.ACTIVE,
-            resumeVersionId,
-            jobId,
-            now,
-            now,
-            new ArrayList<>()
+                UUID.randomUUID(),
+                userId,
+                finalTitle,
+                ConversationStatus.ACTIVE,
+                resumeVersionId,
+                jobId,
+                now,
+                now,
+                new ArrayList<>()
         );
     }
 

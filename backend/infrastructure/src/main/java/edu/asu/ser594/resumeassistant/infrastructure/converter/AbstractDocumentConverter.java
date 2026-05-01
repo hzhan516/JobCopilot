@@ -37,6 +37,7 @@ public abstract class AbstractDocumentConverter implements DocumentFormatConvert
     }
 
     /**
+     * 将字符串内容写入 ByteArrayInputStream
      * Write string content to ByteArrayInputStream
      */
     protected InputStream toStream(String content) {
@@ -44,6 +45,7 @@ public abstract class AbstractDocumentConverter implements DocumentFormatConvert
     }
 
     /**
+     * 将输入流读取为字符串
      * Read input stream to string
      */
     protected String toString(InputStream stream) throws IOException {

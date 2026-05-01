@@ -100,17 +100,21 @@ public class LocalFileStorageService implements FileStorageService {
 
     @Override
     public String generatePresignedUrl(String objectKey, Duration expiration) {
+        // 对于本地存储，我们生成一个带有过期时间戳的临时访问 URL
         // For local storage, we generate a temporary access URL with expiration timestamp
+        // 在生产环境中，您可能需要实现基于令牌的访问机制
         // In production, you might want to implement a token-based access mechanism
         StorageProperties.Local local = storageProperties.getLocal();
         String urlPrefix = local.getUrlPrefix();
-        
+
         if (urlPrefix == null || urlPrefix.isEmpty()) {
+            // 如果未配置 URL 前缀，则返回带有过期信息的占位符
             // If no URL prefix configured, return a placeholder with expiration info
             Instant expiryTime = Instant.now().plus(expiration);
             return String.format("/api/storage/download?key=%s&expiry=%s", objectKey, expiryTime.toEpochMilli());
         }
-        
+
+        // 如果配置了 URL 前缀（例如，位于 CDN 或 nginx 之后），则使用它
         // If URL prefix is configured (e.g., behind a CDN or nginx), use it
         Instant expiryTime = Instant.now().plus(expiration);
         return String.format("%s/%s?expiry=%s", urlPrefix, objectKey, expiryTime.toEpochMilli());
@@ -121,18 +125,20 @@ public class LocalFileStorageService implements FileStorageService {
      * Resolve file path based on configuration
      */
     private Path resolvePath(String objectKey) {
+        // 清理 objectKey 以防止目录遍历
         // Sanitize objectKey to prevent directory traversal
         String sanitizedKey = objectKey.replaceAll("\\.\\.", "")
                 .replaceAll("[:*?\"<>|]", "_");
-        
+
         StorageProperties.Local local = storageProperties.getLocal();
         if (local.isDateSubdirectory()) {
+            // 创建基于日期的子目录：basePath/YYYY/MM/DD/objectKey
             // Create date-based subdirectory: basePath/YYYY/MM/DD/objectKey
             java.time.LocalDate now = java.time.LocalDate.now();
             String datePath = String.format("%d/%02d/%02d", now.getYear(), now.getMonthValue(), now.getDayOfMonth());
             return basePath.resolve(datePath).resolve(sanitizedKey);
         }
-        
+
         return basePath.resolve(sanitizedKey);
     }
 

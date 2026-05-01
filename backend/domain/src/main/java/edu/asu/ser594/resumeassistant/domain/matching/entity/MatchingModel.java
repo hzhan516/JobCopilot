@@ -11,20 +11,20 @@ import java.util.Map;
 /**
  * 匹配模型实体
  * Matching model entity
- *
+ * <p>
  * 对应 job_matching_models 表 / Corresponds to job_matching_models table
  */
 @Getter
 public class MatchingModel extends AggregateRoot<Long> {
 
     private final Long id;
+    private final LocalDateTime createdAt;
     private String modelName;
     private String version;
     private ModelType type;
     private String storagePath;
     private Map<String, Object> evaluationMetrics;
     private boolean isActive;
-    private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     @Builder

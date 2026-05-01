@@ -8,6 +8,7 @@ import lombok.Getter;
 import java.util.UUID;
 
 /**
+ * 职位聚合根。管理职位发布URL的处理生命周期
  * The Job aggregate root. Manages the lifecycle of processing a job posting url.
  */
 public class Job extends AggregateRoot<String> {
@@ -44,16 +45,12 @@ public class Job extends AggregateRoot<String> {
         this.status = status;
     }
 
-    @Override
-    public String getId() {
-        return id;
-    }
-
     /**
+     * 创建新职位用于处理
      * Creates a new Job for processing.
-     * 
-     * @param userId The ID of the user requesting the job parse.
-     * @param url The URL of the job posting.
+     *
+     * @param userId            The ID of the user requesting the job parse.
+     * @param url               The URL of the job posting.
      * @param imageCheckEnabled Whether visual verification is required.
      * @return A newly initialized Job aggregate root.
      */
@@ -61,7 +58,13 @@ public class Job extends AggregateRoot<String> {
         return new Job(UUID.randomUUID().toString(), userId, url, imageCheckEnabled, JobStatus.PENDING);
     }
 
+    @Override
+    public String getId() {
+        return id;
+    }
+
     /**
+     * 转换职位状态以表示抓取已开始
      * Transitions the job state to indicate scraping has started.
      */
     public void markScraping() {
@@ -72,6 +75,7 @@ public class Job extends AggregateRoot<String> {
     }
 
     /**
+     * 转换职位状态以表示解析已开始
      * Transitions the job state to indicate parsing has started.
      */
     public void markParsing() {
@@ -82,8 +86,9 @@ public class Job extends AggregateRoot<String> {
     }
 
     /**
+     * 标记职位为成功完成并携带解析内容
      * Marks the job as successfully completed with the parsed content.
-     * 
+     *
      * @param parsedContent The structured data extracted from the job posting.
      */
     public void markCompleted(ParsedJobContent parsedContent) {
@@ -95,8 +100,9 @@ public class Job extends AggregateRoot<String> {
     }
 
     /**
+     * 标记职位为失败并记录错误原因
      * Marks the job as failed and records the error reason.
-     * 
+     *
      * @param error A description of why the job processing failed.
      */
     public void markFailed(String error) {

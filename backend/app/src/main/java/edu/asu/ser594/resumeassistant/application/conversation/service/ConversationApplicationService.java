@@ -27,12 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * 对话应用服务
@@ -183,12 +178,14 @@ public class ConversationApplicationService {
     @Transactional
     public void deleteConversation(UUID conversationId, UUID userId) {
         log.info("Deleting conversation: {}", conversationId);
+        // 确保所有权
         // Ensure ownership
         getConversationWithOwnershipCheck(conversationId, userId);
         conversationRepository.deleteById(conversationId);
     }
 
     // ==================== 私有辅助方法 ====================
+    // ==================== Private helper methods ====================
 
     /**
      * 获取对话并进行所有权校验

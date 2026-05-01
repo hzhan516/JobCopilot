@@ -1,21 +1,21 @@
 package edu.asu.ser594.resumeassistant.application.user.service;
 
+import edu.asu.ser594.resumeassistant.api.user.dto.TokenPair;
+import edu.asu.ser594.resumeassistant.api.user.service.TokenService;
 import edu.asu.ser594.resumeassistant.application.user.command.LoginByEmailCommand;
 import edu.asu.ser594.resumeassistant.application.user.command.LoginByGoogleCommand;
 import edu.asu.ser594.resumeassistant.application.user.command.RegisterByEmailCommand;
-import edu.asu.ser594.resumeassistant.api.user.dto.TokenPair;
-import edu.asu.ser594.resumeassistant.api.user.service.TokenService;
 import edu.asu.ser594.resumeassistant.domain.user.entity.User;
 import edu.asu.ser594.resumeassistant.domain.user.entity.UserCredential;
 import edu.asu.ser594.resumeassistant.domain.user.entity.UserOAuthBinding;
 import edu.asu.ser594.resumeassistant.domain.user.entity.UserProfile;
 import edu.asu.ser594.resumeassistant.domain.user.exception.AuthException;
+import edu.asu.ser594.resumeassistant.domain.user.port.GoogleTokenVerifierPort;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserCredentialRepository;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserOAuthBindingRepository;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserProfileRepository;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserRepository;
 import edu.asu.ser594.resumeassistant.domain.user.service.PasswordEncoder;
-import edu.asu.ser594.resumeassistant.infrastructure.security.GoogleIdTokenVerifier;
 import edu.asu.ser594.resumeassistant.types.enums.CredentialType;
 import edu.asu.ser594.resumeassistant.types.enums.OAuthProvider;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+// 认证申请服务
 // Authentication application service
 @Service
 @RequiredArgsConstructor
@@ -35,7 +36,7 @@ public class AuthApplicationService {
     private final UserOAuthBindingRepository userOAuthBindingRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
-    private final GoogleIdTokenVerifier googleIdTokenVerifier;
+    private final GoogleTokenVerifierPort googleTokenVerifierPort;
 
     @Transactional
     public User registerByEmail(RegisterByEmailCommand command) {
@@ -75,20 +76,24 @@ public class AuthApplicationService {
 
     @Transactional
     public User loginByGoogle(LoginByGoogleCommand command) {
+        // 1. 验证 Google ID 令牌
         // 1. Verify Google ID Token
-        GoogleIdTokenVerifier.GoogleUserInfo googleUserInfo = googleIdTokenVerifier.verify(command.idToken());
+        GoogleTokenVerifierPort.GoogleUserInfo googleUserInfo = googleTokenVerifierPort.verify(command.idToken());
 
+        // 2.通过邮箱查找用户
         // 2. Find user by email
         var existingUser = userRepository.findByEmail(googleUserInfo.email());
 
         if (existingUser.isPresent()) {
             User user = existingUser.get();
 
+            // 如果使用EMAIL注册，拒绝Google登录
             // If registered with EMAIL, reject Google login
             if (user.getAuthProvider() == OAuthProvider.EMAIL) {
                 throw new AuthException(AuthException.ErrorType.EMAIL_REGISTERED_WITH_PASSWORD);
             }
 
+            // 如果使用 GOOGLE 注册，则更新 OAuth 绑定并返回
             // If registered with GOOGLE, update OAuth binding and return
             if (user.getAuthProvider() == OAuthProvider.GOOGLE) {
                 updateOAuthBindingIfNeeded(user.getId(), googleUserInfo);
@@ -96,6 +101,7 @@ public class AuthApplicationService {
             }
         }
 
+        // 3.自动注册新用户
         // 3. Auto-register new user
         User user = User.create(googleUserInfo.email(), OAuthProvider.GOOGLE);
         User savedUser = userRepository.save(user);
@@ -122,7 +128,7 @@ public class AuthApplicationService {
         return savedUser;
     }
 
-    private void updateOAuthBindingIfNeeded(UUID userId, GoogleIdTokenVerifier.GoogleUserInfo googleUserInfo) {
+    private void updateOAuthBindingIfNeeded(UUID userId, GoogleTokenVerifierPort.GoogleUserInfo googleUserInfo) {
         var bindingOpt = userOAuthBindingRepository.findByProviderAndProviderUserId(
                 OAuthProvider.GOOGLE, googleUserInfo.providerUserId());
 

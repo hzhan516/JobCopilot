@@ -27,26 +27,31 @@ public interface ResumeFacade {
 
     /**
      * 获取用户的所有简历组
+     * Get all resume groups of the user
      */
     ApiResponse<List<ResumeGroupResponse>> getResumeGroups(UUID userId);
 
     /**
      * 获取单个简历组详情
+     * Get details of a single resume group
      */
     ApiResponse<ResumeGroupResponse> getResumeGroup(UUID groupId, UUID userId);
 
     /**
      * 获取简历组下的所有版本
+     * Get all versions under the resume group
      */
     ApiResponse<List<ResumeVersionResponse>> getVersionsByGroup(UUID groupId, UUID userId);
 
     /**
      * 获取单个版本详情
+     * Get details of a single version
      */
     ApiResponse<ResumeVersionResponse> getVersion(UUID versionId, UUID userId);
 
     /**
      * 编辑版本内容
+     * Edit version content
      */
     ApiResponse<ResumeVersionResponse> editVersion(ResumeEditRequest request, UUID userId);
 
@@ -55,14 +60,15 @@ public interface ResumeFacade {
      * Download resume
      *
      * @param versionId 版本ID
-     * @param userId 用户ID
-     * @param format 导出格式（可选）：original, pdf, docx, html, md, txt
+     * @param userId    用户ID
+     * @param format    导出格式（可选）：original, pdf, docx, html, md, txt
      * @return 文件流响应
      */
     ResponseEntity<InputStreamResource> downloadResume(UUID versionId, UUID userId, String format);
 
     /**
      * 删除简历组
+     * Delete resume group
      */
     ApiResponse<Void> deleteResumeGroup(UUID groupId, UUID userId);
 
@@ -71,23 +77,26 @@ public interface ResumeFacade {
      * Delete resume version
      *
      * @param versionId 版本ID
-     * @param userId 用户ID
+     * @param userId    用户ID
      * @return 空响应
      */
     ApiResponse<Void> deleteVersion(UUID versionId, UUID userId);
 
     /**
      * 设置默认简历组
+     * Set default resume group
      */
     ApiResponse<ResumeGroupResponse> setDefaultGroup(UUID groupId, UUID userId);
 
     /**
      * 创建AI优化版本
+     * Create AI-optimized version
      */
     ApiResponse<ResumeVersionResponse> createAiVersion(UUID groupId, UUID userId);
 
     /**
      * 回滚到指定版本
+     * Rollback to specified version
      */
     ApiResponse<ResumeVersionResponse> rollbackToVersion(UUID versionId, UUID userId);
 

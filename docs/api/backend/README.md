@@ -1,27 +1,30 @@
-# Backend API 文档
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](README.md) | [简体中文](../../i18n/zh-Hans-CN/api/backend/README.md) | [繁體中文](../../i18n/zh-Hant-TW/api/backend/README.md)
 
-本文档包含 Resume Assistant 后端 API 的完整接口定义。
+# Backend API Documentation
 
-## 基础信息
+This document contains the complete interface definitions for the Resume Assistant backend API.
 
-| 项目 | 说明 |
-|------|------|
-| 基础路径 | `/api` |
-| API 版本 | `v1` |
-| 内容类型 | `application/json` (除文件上传外) |
-| 认证方式 | JWT Bearer Token |
+## Basic Information
 
-## 认证方式
+| Item | Description |
+|------|-------------|
+| Base Path | `/api` |
+| API Version | `v1` |
+| Content-Type | `application/json` (except for file uploads) |
+| Authentication | JWT Bearer Token |
 
-API 使用 JWT (JSON Web Token) 进行认证。除了在 `/api/v1/auth/**` 路径下的接口外，其他所有接口都需要在请求头中携带有效的访问令牌：
+## Authentication
+
+The API uses JWT (JSON Web Token) for authentication. Except for endpoints under `/api/v1/auth/**`, all other endpoints require a valid access token in the request header:
 
 ```
 Authorization: Bearer <access_token>
 ```
 
-## 全局响应格式
+## Global Response Format
 
-所有 API 响应都遵循统一的格式：
+All API responses follow a unified format:
 
 ```json
 {
@@ -31,57 +34,57 @@ Authorization: Bearer <access_token>
 }
 ```
 
-### 响应字段说明
+### Response Field Descriptions
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `code` | Integer | 状态码，200 表示成功，其他表示错误 |
-| `message` | String | 响应消息 |
-| `data` | Object | 响应数据，成功时包含具体数据，错误时可能包含详细错误信息 |
+| Field | Type | Description |
+|-------|------|-------------|
+| `code` | Integer | Status code; 200 indicates success, others indicate errors |
+| `message` | String | Response message |
+| `data` | Object | Response data; contains specific data on success, and may contain detailed error information on failure |
 
-## 错误处理
+## Error Handling
 
-### 错误响应格式
+### Error Response Format
 
 ```json
 {
   "code": 400,
-  "message": "错误描述",
+  "message": "Error description",
   "data": null
 }
 ```
 
-### 常见错误码
+### Common Error Codes
 
-| 状态码 | 说明 |
-|--------|------|
-| 400 | 请求参数错误 |
-| 401 | 未认证或认证失败 |
-| 403 | 权限不足 |
-| 404 | 资源不存在 |
-| 409 | 资源冲突（如邮箱已存在） |
-| 500 | 服务器内部错误 |
+| Status Code | Description |
+|-------------|-------------|
+| 400 | Request parameter error |
+| 401 | Not authenticated or authentication failed |
+| 403 | Insufficient permissions |
+| 404 | Resource not found |
+| 409 | Resource conflict (e.g., email already exists) |
+| 500 | Internal server error |
 
 ---
 
-## API 端点列表
+## API Endpoint List
 
-### 1. 认证模块 (Auth)
+### 1. Authentication Module (Auth)
 
-#### 1.1 邮箱注册
+#### 1.1 Email Registration
 
 - **URL**: `POST /api/v1/auth/register/email`
-- **认证**: 不需要
+- **Authentication**: Not required
 - **Content-Type**: `application/json`
 
-**请求参数**:
+**Request Parameters**:
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `email` | String | 是 | 邮箱地址，需符合邮箱格式 |
-| `password` | String | 是 | 密码，长度 6-32 字符 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `email` | String | Yes | Email address; must conform to email format |
+| `password` | String | Yes | Password; 6-32 characters |
 
-**请求示例**:
+**Request Example**:
 
 ```json
 {
@@ -90,7 +93,7 @@ Authorization: Bearer <access_token>
 }
 ```
 
-**成功响应** (201):
+**Success Response** (201):
 
 ```json
 {
@@ -106,32 +109,32 @@ Authorization: Bearer <access_token>
 }
 ```
 
-**响应字段说明**:
+**Response Field Descriptions**:
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `userId` | UUID | 用户唯一标识 |
-| `email` | String | 用户邮箱 |
-| `accessToken` | String | 访问令牌 |
-| `refreshToken` | String | 刷新令牌 |
-| `expiresIn` | Long | 访问令牌有效期（秒） |
+| Field | Type | Description |
+|-------|------|-------------|
+| `userId` | UUID | User unique identifier |
+| `email` | String | User email |
+| `accessToken` | String | Access token |
+| `refreshToken` | String | Refresh token |
+| `expiresIn` | Long | Access token validity period (seconds) |
 
 ---
 
-#### 1.2 邮箱登录
+#### 1.2 Email Login
 
 - **URL**: `POST /api/v1/auth/login/email`
-- **认证**: 不需要
+- **Authentication**: Not required
 - **Content-Type**: `application/json`
 
-**请求参数**:
+**Request Parameters**:
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `email` | String | 是 | 邮箱地址 |
-| `password` | String | 是 | 密码 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `email` | String | Yes | Email address |
+| `password` | String | Yes | Password |
 
-**请求示例**:
+**Request Example**:
 
 ```json
 {
@@ -140,28 +143,28 @@ Authorization: Bearer <access_token>
 }
 ```
 
-**成功响应** (200):
+**Success Response** (200):
 
-与邮箱注册响应格式相同。
+Same response format as email registration.
 
 ---
 
-### 2. 简历模块 (Resume)
+### 2. Resume Module (Resume)
 
-#### 2.1 上传简历
+#### 2.1 Upload Resume
 
 - **URL**: `POST /api/v1/resumes`
-- **认证**: 需要
+- **Authentication**: Required
 - **Content-Type**: `multipart/form-data`
 
-**请求参数**:
+**Request Parameters**:
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `file` | File | 是 | 简历文件（支持 PDF、DOC、DOCX 等格式） |
-| `title` | String | 否 | 简历标题，不传则使用文件名 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file` | File | Yes | Resume file (supports PDF, DOC, DOCX, etc.) |
+| `title` | String | No | Resume title; uses filename if not provided |
 
-**请求示例**:
+**Request Example**:
 
 ```http
 POST /api/v1/resumes
@@ -172,15 +175,15 @@ Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
 Content-Disposition: form-data; name="file"; filename="resume.pdf"
 Content-Type: application/pdf
 
-<文件内容>
+<file content>
 ------WebKitFormBoundary
 Content-Disposition: form-data; name="title"
 
-我的简历
+My Resume
 ------WebKitFormBoundary--
 ```
 
-**成功响应** (200):
+**Success Response** (200):
 
 ```json
 {
@@ -189,93 +192,93 @@ Content-Disposition: form-data; name="title"
   "data": {
     "groupId": "550e8400-e29b-41d4-a716-446655440000",
     "originalVersionId": "550e8400-e29b-41d4-a716-446655440001",
-    "title": "我的简历",
+    "title": "My Resume",
     "createdAt": "2024-01-15T10:30:00"
   }
 }
 ```
 
-**响应字段说明**:
+**Response Field Descriptions**:
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `groupId` | UUID | 简历组 ID |
-| `originalVersionId` | UUID | 原始版本 ID（可直接用于下载） |
-| `title` | String | 简历标题 |
-| `createdAt` | LocalDateTime | 创建时间 |
+| Field | Type | Description |
+|-------|------|-------------|
+| `groupId` | UUID | Resume group ID |
+| `originalVersionId` | UUID | Original version ID (can be used directly for download) |
+| `title` | String | Resume title |
+| `createdAt` | LocalDateTime | Creation time |
 
 ---
 
-#### 2.2 下载简历
+#### 2.2 Download Resume
 
 - **URL**: `GET /api/v1/resumes/{versionId}/download`
-- **认证**: 需要
-- **Content-Type**: 根据文件类型返回
+- **Authentication**: Required
+- **Content-Type**: Returned based on file type
 
-**路径参数**:
+**Path Parameters**:
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `versionId` | UUID | 版本 ID（上传返回的 originalVersionId） |
+| Field | Type | Description |
+|-------|------|-------------|
+| `versionId` | UUID | Version ID (originalVersionId returned by upload) |
 
-**查询参数**:
+**Query Parameters**:
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `format` | String | 否 | 导出格式：`original`（默认）、`pdf`、`docx`、`html`、`md`、`txt` |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `format` | String | No | Export format: `original` (default), `pdf`, `docx`, `html`, `md`, `txt` |
 
-**请求示例**:
+**Request Example**:
 
 ```http
 GET /api/v1/resumes/550e8400-e29b-41d4-a716-446655440000/download?format=pdf
 Authorization: Bearer <access_token>
 ```
 
-**成功响应** (200):
+**Success Response** (200):
 
-返回文件流，Content-Disposition 头包含文件名。
+Returns file stream; Content-Disposition header contains the filename.
 
-**注意**: 当前版本仅支持返回原始文件，格式转换功能待实现。
+**Note**: The current version only supports returning the original file; format conversion will be implemented in a future version.
 
-#### 2.3 获取用户所有简历组
+#### 2.3 Get All Resume Groups for User
 
 - **URL**: `GET /api/v1/resumes/groups`
-- **认证**: 需要
+- **Authentication**: Required
 - **Content-Type**: `application/json`
 
-**成功响应** (200):
+**Success Response** (200):
 
-返回当前用户的所有简历组列表。
+Returns a list of all resume groups for the current user.
 
-#### 2.4 获取简历组详情
+#### 2.4 Get Resume Group Details
 
 - **URL**: `GET /api/v1/resumes/groups/{groupId}`
-- **认证**: 需要
+- **Authentication**: Required
 - **Content-Type**: `application/json`
 
-**路径参数**:
+**Path Parameters**:
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `groupId` | UUID | 简历组唯一标识 |
+| Field | Type | Description |
+|-------|------|-------------|
+| `groupId` | UUID | Resume group unique identifier |
 
-**成功响应** (200):
+**Success Response** (200):
 
-返回简历组详情，包含各个版本的摘要信息。
+Returns resume group details, including summary information for each version.
 
-#### 2.5 删除简历组
+#### 2.5 Delete Resume Group
 
 - **URL**: `DELETE /api/v1/resumes/groups/{groupId}`
-- **认证**: 需要
+- **Authentication**: Required
 - **Content-Type**: `application/json`
 
-**路径参数**:
+**Path Parameters**:
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `groupId` | UUID | 简历组唯一标识 |
+| Field | Type | Description |
+|-------|------|-------------|
+| `groupId` | UUID | Resume group unique identifier |
 
-**成功响应** (200):
+**Success Response** (200):
 
 ```json
 {
@@ -285,35 +288,35 @@ Authorization: Bearer <access_token>
 }
 ```
 
-#### 2.6 获取简历组版本列表
+#### 2.6 Get Resume Group Version List
 
 - **URL**: `GET /api/v1/resumes/groups/{groupId}/versions`
-- **认证**: 需要
+- **Authentication**: Required
 - **Content-Type**: `application/json`
 
-**路径参数**:
+**Path Parameters**:
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `groupId` | UUID | 简历组唯一标识 |
+| Field | Type | Description |
+|-------|------|-------------|
+| `groupId` | UUID | Resume group unique identifier |
 
-**成功响应** (200):
+**Success Response** (200):
 
-返回该组下所有版本的详细信息列表。
+Returns a detailed list of all versions under this group.
 
-#### 2.7 删除简历版本
+#### 2.7 Delete Resume Version
 
 - **URL**: `DELETE /api/v1/resumes/versions/{versionId}`
-- **认证**: 需要
+- **Authentication**: Required
 - **Content-Type**: `application/json`
 
-**路径参数**:
+**Path Parameters**:
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `versionId` | UUID | 版本唯一标识 |
+| Field | Type | Description |
+|-------|------|-------------|
+| `versionId` | UUID | Version unique identifier |
 
-**成功响应** (200):
+**Success Response** (200):
 
 ```json
 {
@@ -323,224 +326,224 @@ Authorization: Bearer <access_token>
 }
 ```
 
-### 3. 职位模块 (Job)
+### 3. Job Module (Job)
 
-详见 [job.md](job.md) 和 [job-matching.md](job-matching.md)
+See [job.md](job_EN.md) and [job-matching.md](job-matching_EN.md)
 
-本模块提供职位链接提交、异步解析、智能匹配和历史查询功能。
+This module provides job link submission, async parsing, intelligent matching, and history query functions.
 
-#### 3.1 提交职位链接
+#### 3.1 Submit Job Link
 - **URL**: `POST /api/v1/jobs`
-- **认证**: 需要
+- **Authentication**: Required
 
-#### 3.2 获取职位详情
+#### 3.2 Get Job Details
 - **URL**: `GET /api/v1/jobs/{jobId}`
-- **认证**: 需要
+- **Authentication**: Required
 
-#### 3.3 获取职位列表
+#### 3.3 Get Job List
 - **URL**: `GET /api/v1/jobs`
-- **认证**: 需要
+- **Authentication**: Required
 
-#### 3.4 启动职位匹配
+#### 3.4 Start Job Matching
 - **URL**: `POST /api/v1/jobs/match`
-- **认证**: 需要
+- **Authentication**: Required
 
-#### 3.5 查询匹配结果
+#### 3.5 Query Match Results
 - **URL**: `GET /api/v1/jobs/match/{matchId}`
-- **认证**: 需要
+- **Authentication**: Required
 
-#### 3.6 获取匹配历史
+#### 3.6 Get Match History
 - **URL**: `GET /api/v1/jobs/match/history`
-- **认证**: 需要
+- **Authentication**: Required
 
 ---
 
-### 4. 对话模块 (Conversation)
+### 4. Conversation Module (Conversation)
 
-详见 [conversation.md](conversation.md)
+See [conversation.md](conversation_EN.md)
 
-#### 4.1 创建对话
+#### 4.1 Create Conversation
 - **URL**: `POST /api/v1/conversations`
-- **认证**: 需要
+- **Authentication**: Required
 
-#### 4.2 发送消息
+#### 4.2 Send Message
 - **URL**: `POST /api/v1/conversations/{conversationId}/messages`
-- **认证**: 需要
+- **Authentication**: Required
 
-#### 4.3 获取对话详情
+#### 4.3 Get Conversation Details
 - **URL**: `GET /api/v1/conversations/{conversationId}`
-- **认证**: 需要
-- **分页**: 支持 `?page=0&size=20` 对消息列表分页
+- **Authentication**: Required
+- **Pagination**: Supports `?page=0&size=20` for paginating the message list
 
-#### 4.4 获取对话列表
+#### 4.4 Get Conversation List
 - **URL**: `GET /api/v1/conversations`
-- **认证**: 需要
+- **Authentication**: Required
 
-#### 4.5 关闭对话
+#### 4.5 Close Conversation
 - **URL**: `PUT /api/v1/conversations/{conversationId}/close`
-- **认证**: 需要
+- **Authentication**: Required
 
-#### 4.6 删除对话
+#### 4.6 Delete Conversation
 - **URL**: `DELETE /api/v1/conversations/{conversationId}`
-- **认证**: 需要
+- **Authentication**: Required
 
-#### 4.7 上传附件
+#### 4.7 Upload Attachment
 - **URL**: `POST /api/v1/conversations/{conversationId}/files`
-- **认证**: 需要
+- **Authentication**: Required
 - **Content-Type**: `multipart/form-data`
 
 ---
 
-### 5. 求职跟踪模块 (Tracking)
+### 5. Job Tracking Module (Tracking)
 
-详见 [tracking.md](tracking.md)
+See [tracking.md](tracking_EN.md)
 
-本模块提供求职申请的状态流转、事件记录和统计分析功能。
+This module provides application status flow, event recording, and statistical analysis functions.
 
-#### 5.1 创建跟踪记录
+#### 5.1 Create Tracking Record
 - **URL**: `POST /api/v1/trackings`
-- **认证**: 需要
+- **Authentication**: Required
 
-#### 5.2 获取跟踪列表
+#### 5.2 Get Tracking List
 - **URL**: `GET /api/v1/trackings?status=INTERVIEWING`
-- **认证**: 需要
+- **Authentication**: Required
 
-#### 5.3 获取跟踪详情
+#### 5.3 Get Tracking Details
 - **URL**: `GET /api/v1/trackings/{id}`
-- **认证**: 需要
+- **Authentication**: Required
 
-#### 5.4 更新跟踪记录
+#### 5.4 Update Tracking Record
 - **URL**: `PUT /api/v1/trackings/{id}`
-- **认证**: 需要
+- **Authentication**: Required
 
-#### 5.5 删除跟踪记录
+#### 5.5 Delete Tracking Record
 - **URL**: `DELETE /api/v1/trackings/{id}`
-- **认证**: 需要
+- **Authentication**: Required
 
-#### 5.6 获取统计信息
+#### 5.6 Get Statistics
 - **URL**: `GET /api/v1/trackings/stats`
-- **认证**: 需要
+- **Authentication**: Required
 
 ---
 
-### 接口汇总
+### Endpoint Summary
 
-| 接口 | 方法 | 路径 | 说明 | 认证 |
-|------|------|------|------|------|
-| 邮箱注册 | POST | `/api/v1/auth/register/email` | 用户邮箱注册 | 否 |
-| 邮箱登录 | POST | `/api/v1/auth/login/email` | 用户邮箱登录 | 否 |
-| Google 登录 | POST | `/api/v1/auth/login/google` | Google OAuth 登录 | 否 |
-| 上传简历 | POST | `/api/v1/resumes` | 上传简历文件 | 是 |
-| 下载简历 | GET | `/api/v1/resumes/{versionId}/download` | 下载简历文件（支持格式转换） | 是 |
-| 获取所有组 | GET | `/api/v1/resumes/groups` | 获取用户所有简历组 | 是 |
-| 获取组详情 | GET | `/api/v1/resumes/groups/{groupId}` | 获取简历组详情 | 是 |
-| 删除组 | DELETE | `/api/v1/resumes/groups/{groupId}` | 删除简历组 | 是 |
-| 获取版本列表 | GET | `/api/v1/resumes/groups/{groupId}/versions` | 获取组内所有版本 | 是 |
-| 获取版本详情 | GET | `/api/v1/resumes/versions/{versionId}` | 获取单个版本详情 | 是 |
-| 删除版本 | DELETE | `/api/v1/resumes/versions/{versionId}` | 删除简历版本 | 是 |
-| 编辑版本 | PUT | `/api/v1/resumes/versions/{versionId}` | 编辑版本内容 | 是 |
-| 提交职位 | POST | `/api/v1/jobs` | 提交职位链接异步解析 | 是 |
-| 获取职位详情 | GET | `/api/v1/jobs/{jobId}` | 获取职位解析状态 | 是 |
-| 获取职位列表 | GET | `/api/v1/jobs` | 获取用户所有职位 | 是 |
-| 启动职位匹配 | POST | `/api/v1/jobs/match` | 启动异步职位匹配 | 是 |
-| 查询匹配结果 | GET | `/api/v1/jobs/match/{matchId}` | 查询匹配任务结果 | 是 |
-| 获取匹配历史 | GET | `/api/v1/jobs/match/history` | 获取历史匹配记录 | 是 |
-| 创建对话 | POST | `/api/v1/conversations` | 创建新对话 | 是 |
-| 发送消息 | POST | `/api/v1/conversations/{conversationId}/messages` | 发送对话消息 | 是 |
-| 获取对话 | GET | `/api/v1/conversations/{conversationId}` | 获取对话详情（支持消息分页） | 是 |
-| 获取对话列表 | GET | `/api/v1/conversations` | 获取所有对话 | 是 |
-| 关闭对话 | PUT | `/api/v1/conversations/{conversationId}/close` | 关闭对话 | 是 |
-| 删除对话 | DELETE | `/api/v1/conversations/{conversationId}` | 删除对话 | 是 |
-| 上传附件 | POST | `/api/v1/conversations/{conversationId}/files` | 上传对话附件 | 是 |
-| 创建跟踪 | POST | `/api/v1/trackings` | 创建求职跟踪记录 | 是 |
-| 获取跟踪列表 | GET | `/api/v1/trackings` | 获取跟踪记录列表 | 是 |
-| 获取跟踪详情 | GET | `/api/v1/trackings/{id}` | 获取跟踪详情 | 是 |
-| 更新跟踪 | PUT | `/api/v1/trackings/{id}` | 更新跟踪（含状态流转） | 是 |
-| 删除跟踪 | DELETE | `/api/v1/trackings/{id}` | 删除跟踪记录 | 是 |
-| 获取统计 | GET | `/api/v1/trackings/stats` | 获取跟踪统计 | 是 |
+| Endpoint | Method | Path | Description | Auth |
+|----------|--------|------|-------------|------|
+| Email Registration | POST | `/api/v1/auth/register/email` | User email registration | No |
+| Email Login | POST | `/api/v1/auth/login/email` | User email login | No |
+| Google Login | POST | `/api/v1/auth/login/google` | Google OAuth login | No |
+| Upload Resume | POST | `/api/v1/resumes` | Upload resume file | Yes |
+| Download Resume | GET | `/api/v1/resumes/{versionId}/download` | Download resume file (supports format conversion) | Yes |
+| Get All Groups | GET | `/api/v1/resumes/groups` | Get all resume groups for user | Yes |
+| Get Group Details | GET | `/api/v1/resumes/groups/{groupId}` | Get resume group details | Yes |
+| Delete Group | DELETE | `/api/v1/resumes/groups/{groupId}` | Delete resume group | Yes |
+| Get Version List | GET | `/api/v1/resumes/groups/{groupId}/versions` | Get all versions in group | Yes |
+| Get Version Details | GET | `/api/v1/resumes/versions/{versionId}` | Get single version details | Yes |
+| Delete Version | DELETE | `/api/v1/resumes/versions/{versionId}` | Delete resume version | Yes |
+| Edit Version | PUT | `/api/v1/resumes/versions/{versionId}` | Edit version content | Yes |
+| Submit Job | POST | `/api/v1/jobs` | Submit job link for async parsing | Yes |
+| Get Job Details | GET | `/api/v1/jobs/{jobId}` | Get job parsing status | Yes |
+| Get Job List | GET | `/api/v1/jobs` | Get all jobs for user | Yes |
+| Start Job Matching | POST | `/api/v1/jobs/match` | Start async job matching | Yes |
+| Query Match Results | GET | `/api/v1/jobs/match/{matchId}` | Query match task results | Yes |
+| Get Match History | GET | `/api/v1/jobs/match/history` | Get historical match records | Yes |
+| Create Conversation | POST | `/api/v1/conversations` | Create new conversation | Yes |
+| Send Message | POST | `/api/v1/conversations/{conversationId}/messages` | Send conversation message | Yes |
+| Get Conversation | GET | `/api/v1/conversations/{conversationId}` | Get conversation details (supports message pagination) | Yes |
+| Get Conversation List | GET | `/api/v1/conversations` | Get all conversations | Yes |
+| Close Conversation | PUT | `/api/v1/conversations/{conversationId}/close` | Close conversation | Yes |
+| Delete Conversation | DELETE | `/api/v1/conversations/{conversationId}` | Delete conversation | Yes |
+| Upload Attachment | POST | `/api/v1/conversations/{conversationId}/files` | Upload conversation attachment | Yes |
+| Create Tracking | POST | `/api/v1/trackings` | Create job tracking record | Yes |
+| Get Tracking List | GET | `/api/v1/trackings` | Get tracking record list | Yes |
+| Get Tracking Details | GET | `/api/v1/trackings/{id}` | Get tracking details | Yes |
+| Update Tracking | PUT | `/api/v1/trackings/{id}` | Update tracking (includes status flow) | Yes |
+| Delete Tracking | DELETE | `/api/v1/trackings/{id}` | Delete tracking record | Yes |
+| Get Statistics | GET | `/api/v1/trackings/stats` | Get tracking statistics | Yes |
 
 ---
 
-## DTO 详细定义
+## DTO Detailed Definitions
 
-### 请求 DTO
+### Request DTOs
 
-#### RegisterByEmailRequest (邮箱注册请求)
+#### RegisterByEmailRequest (Email Registration Request)
 
 ```java
 {
-  "email": String,      // 必填，邮箱格式
-  "password": String    // 必填，6-32 字符
+  "email": String,      // Required, email format
+  "password": String    // Required, 6-32 characters
 }
 ```
 
-#### LoginByEmailRequest (邮箱登录请求)
+#### LoginByEmailRequest (Email Login Request)
 
 ```java
 {
-  "email": String,      // 必填，邮箱格式
-  "password": String    // 必填
+  "email": String,      // Required, email format
+  "password": String    // Required
 }
 ```
 
-#### ResumeUploadRequest (简历上传请求)
+#### ResumeUploadRequest (Resume Upload Request)
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `file` | MultipartFile | 是 | 简历文件（PDF/DOCX/MD/TXT） |
-| `title` | String | 否 | 简历标题，不传则使用文件名 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file` | MultipartFile | Yes | Resume file (PDF/DOCX/MD/TXT) |
+| `title` | String | No | Resume title; uses filename if not provided |
 
-#### ResumeEditRequest (简历编辑请求)
+#### ResumeEditRequest (Resume Edit Request)
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `versionId` | UUID | 是 | 版本 ID（与路径参数一致） |
-| `content` | String | 是 | 简历内容（Markdown 格式） |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `versionId` | UUID | Yes | Version ID (consistent with path parameter) |
+| `content` | String | Yes | Resume content (Markdown format) |
 
 ```java
 {
-  "versionId": UUID,   // 必填，版本 ID
-  "content": String    // 必填，简历内容
+  "versionId": UUID,   // Required, version ID
+  "content": String    // Required, resume content
 }
 ```
 
-### 响应 DTO
+### Response DTOs
 
-#### AuthResponse (认证响应)
+#### AuthResponse (Authentication Response)
 
 ```java
 {
-  "userId": UUID,        // 用户 ID
-  "email": String,       // 用户邮箱
-  "accessToken": String, // 访问令牌
-  "refreshToken": String,// 刷新令牌
-  "expiresIn": Long      // 有效期（秒）
+  "userId": UUID,        // User ID
+  "email": String,       // User email
+  "accessToken": String, // Access token
+  "refreshToken": String,// Refresh token
+  "expiresIn": Long      // Validity period (seconds)
 }
 ```
 
-#### ResumeUploadResponse (简历上传响应)
+#### ResumeUploadResponse (Resume Upload Response)
 
 ```java
 {
-  "groupId": UUID,              // 简历组 ID
-  "originalVersionId": UUID,    // 原始版本 ID（可直接用于下载）
-  "title": String,              // 简历标题
-  "createdAt": LocalDateTime    // 创建时间
+  "groupId": UUID,              // Resume group ID
+  "originalVersionId": UUID,    // Original version ID (can be used directly for download)
+  "title": String,              // Resume title
+  "createdAt": LocalDateTime    // Creation time
 }
 ```
 
-#### ResumeGroupResponse (简历组响应)
+#### ResumeGroupResponse (Resume Group Response)
 
 ```java
 {
-  "groupId": UUID,              // 组 ID
-  "title": String,              // 标题
-  "isDefault": boolean,         // 是否为默认组
-  "createdAt": LocalDateTime,   // 创建时间
-  "updatedAt": LocalDateTime,   // 更新时间
-  "originalVersion": VersionSummary,    // 原始版本
-  "convertedVersion": VersionSummary,   // 转换版本
-  "aiOptimizedVersion": VersionSummary  // AI 优化版本
+  "groupId": UUID,              // Group ID
+  "title": String,              // Title
+  "isDefault": boolean,         // Whether it is the default group
+  "createdAt": LocalDateTime,   // Creation time
+  "updatedAt": LocalDateTime,   // Update time
+  "originalVersion": VersionSummary,    // Original version
+  "convertedVersion": VersionSummary,   // Converted version
+  "aiOptimizedVersion": VersionSummary  // AI-optimized version
 }
 ```
 
@@ -548,75 +551,75 @@ Authorization: Bearer <access_token>
 
 ```java
 {
-  "versionId": UUID,        // 版本 ID
-  "status": String,         // 状态
-  "createdAt": LocalDateTime,// 创建时间
-  "exists": boolean         // 是否存在
+  "versionId": UUID,        // Version ID
+  "status": String,         // Status
+  "createdAt": LocalDateTime,// Creation time
+  "exists": boolean         // Whether it exists
 }
 ```
 
-#### ResumeVersionResponse (简历版本响应)
+#### ResumeVersionResponse (Resume Version Response)
 
 ```java
 {
-  "versionId": UUID,          // 版本 ID
-  "groupId": UUID,            // 所属组 ID
-  "versionType": String,      // 版本类型
-  "status": String,           // 状态
-  "originalFileName": String, // 原始文件名
-  "fileType": String,         // 文件类型
-  "fileSize": long,           // 文件大小
-  "content": String,          // 内容
-  "editable": boolean,        // 是否可编辑
-  "createdAt": LocalDateTime, // 创建时间
-  "updatedAt": LocalDateTime  // 更新时间
+  "versionId": UUID,          // Version ID
+  "groupId": UUID,            // Belonging group ID
+  "versionType": String,      // Version type
+  "status": String,           // Status
+  "originalFileName": String, // Original filename
+  "fileType": String,         // File type
+  "fileSize": long,           // File size
+  "content": String,          // Content
+  "editable": boolean,        // Whether editable
+  "createdAt": LocalDateTime, // Creation time
+  "updatedAt": LocalDateTime  // Update time
 }
 ```
 
-#### ApiResponse<T> (通用响应包装)
+#### ApiResponse<T> (Generic Response Wrapper)
 
 ```java
 {
-  "code": Integer,    // 状态码
-  "message": String,  // 消息
-  "data": T           // 数据
+  "code": Integer,    // Status code
+  "message": String,  // Message
+  "data": T           // Data
 }
 ```
 
 ---
 
-## 校验规则
+## Validation Rules
 
-### 邮箱注册/登录
+### Email Registration/Login
 
-| 字段 | 规则 |
-|------|------|
-| `email` | 必填，必须符合邮箱格式 |
-| `password` | 必填，长度 6-32 字符（注册时） |
+| Field | Rule |
+|-------|------|
+| `email` | Required, must conform to email format |
+| `password` | Required, length 6-32 characters (for registration) |
 
-### 简历上传
+### Resume Upload
 
-| 字段 | 规则 |
-|------|------|
-| `file` | 必填，必须是有效的文件 |
+| Field | Rule |
+|-------|------|
+| `file` | Required, must be a valid file |
 
-### 简历编辑
+### Resume Edit
 
-| 字段 | 规则 |
-|------|------|
-| `versionId` | 必填 |
-| `content` | 必填，不能为空 |
+| Field | Rule |
+|-------|------|
+| `versionId` | Required |
+| `content` | Required, cannot be empty |
 
 ---
 
-## 国际化支持
+## Internationalization Support
 
-API 支持国际化响应，通过请求头 `Accept-Language` 指定语言：
+The API supports internationalized responses; specify the language via the `Accept-Language` request header:
 
-- `zh-CN` - 简体中文（默认）
-- `en` - 英文
+- `zh-CN` - Simplified Chinese (default)
+- `en` - English
 
-示例:
+Example:
 
 ```http
 Accept-Language: en
@@ -624,22 +627,22 @@ Accept-Language: en
 
 ---
 
-## 相关文档
+## Related Documents
 
-- [认证模块详细文档](authentication.md)
-- [简历模块详细文档](resume.md)
-- [职位模块详细文档](job.md)
-- [职位匹配模块详细文档](job-matching.md)
-- [对话模块详细文档](conversation.md)
-- [求职跟踪模块详细文档](tracking.md)
-- [AI / MQ 交互接口文档](ai-mq-interfaces.md)
-- [响应格式与错误码说明](response-format.md)
+- [Authentication Module Detailed Documentation](authentication_EN.md)
+- [Resume Module Detailed Documentation](resume_EN.md)
+- [Job Module Detailed Documentation](job_EN.md)
+- [Job Matching Module Detailed Documentation](job-matching_EN.md)
+- [Conversation Module Detailed Documentation](conversation_EN.md)
+- [Job Tracking Module Detailed Documentation](tracking_EN.md)
+- [AI / MQ Interaction Interface Documentation](ai-mq-interfaces_EN.md)
+- [Response Format and Error Code Description](response-format_EN.md)
 
 ---
 
-## 备注
+## Notes
 
-1. 所有时间字段均采用 ISO 8601 格式（如：`2024-01-15T10:30:00`）
-2. UUID 格式为标准 36 字符 UUID 字符串（如：`550e8400-e29b-41d4-a716-446655440000`）
-3. 文件上传大小限制请参考具体部署配置
-4. 当前已实现的端点已列出，Facade 中定义的其他方法将在后续版本中实现
+1. All time fields use ISO 8601 format (e.g., `2024-01-15T10:30:00`)
+2. UUID format is the standard 36-character UUID string (e.g., `550e8400-e29b-41d4-a716-446655440000`)
+3. File upload size limits refer to the specific deployment configuration
+4. Currently implemented endpoints are listed; other methods defined in the Facade will be implemented in subsequent versions

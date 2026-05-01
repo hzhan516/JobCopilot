@@ -23,14 +23,14 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
     @Getter
     private final UUID userId;
     @Getter
+    private final LocalDateTime createdAt;
+    private final List<ResumeVersion> versions;
+    @Getter
     private String title;
     @Getter
     private boolean isDefault;
     @Getter
-    private final LocalDateTime createdAt;
-    @Getter
     private LocalDateTime updatedAt;
-    private final List<ResumeVersion> versions;
 
     private ResumeGroup(UUID id, UUID userId, String title, boolean isDefault,
                         LocalDateTime createdAt, LocalDateTime updatedAt,
@@ -71,10 +71,13 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
     }
 
     // ==================== 领域行为 ====================
+    // Domain behaviors
 
     /**
      * 上传并添加原版简历
+     * Upload and add original resume
      * 业务规则：自动创建对应的转换版（空白）
+     * Business rule: automatically create corresponding converted version (blank)
      */
     public void uploadOriginalVersion(String fileName, String fileType, long fileSize, String storagePath) {
         ResumeVersion original = ResumeVersion.createOriginal(
@@ -87,7 +90,9 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
 
     /**
      * 添加版本到组
+     * Add version to group
      * 业务规则：同类型ACTIVE版本自动归档
+     * Business rule: auto-archive ACTIVE version of same type
      */
     public ResumeVersion addVersion(ResumeVersion newVersion) {
         versions.stream()
@@ -103,6 +108,7 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
 
     /**
      * 获取指定类型的ACTIVE版本
+     * Get ACTIVE version of specified type
      */
     public ResumeVersion getActiveVersionByType(ResumeVersion.VersionType type) {
         return versions.stream()
@@ -114,6 +120,7 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
 
     /**
      * 获取所有版本（只读）
+     * Get all versions (read-only)
      */
     public List<ResumeVersion> getVersions() {
         return Collections.unmodifiableList(versions);
@@ -121,6 +128,7 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
 
     /**
      * 设为默认简历
+     * Set as default resume
      */
     public void setAsDefault() {
         this.isDefault = true;
@@ -129,6 +137,7 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
 
     /**
      * 更新标题
+     * Update title
      */
     public void changeTitle(String newTitle) {
         this.title = newTitle != null ? newTitle : this.title;
@@ -137,6 +146,7 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
 
     /**
      * 检查用户所有权
+     * Check user ownership
      */
     public boolean isOwnedBy(UUID userId) {
         return this.userId.equals(userId);
