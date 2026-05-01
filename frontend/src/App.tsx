@@ -15,8 +15,10 @@ import ResumeList from '@/pages/resumes/ResumeList';
 import ResumeDetail from '@/pages/resumes/ResumeDetail';
 import ResumeEdit from '@/pages/resumes/ResumeEdit';
 import JobList from '@/pages/jobs/JobList';
+import JobDetail from '@/pages/jobs/JobDetail';
 import Chat from '@/pages/chat/Chat';
 import Tracking from '@/pages/tracking/Tracking';
+import Profile from '@/pages/profile/Profile';
 
 function App() {
   return (
@@ -93,6 +95,16 @@ function App() {
             }
           />
           <Route
+            path="/jobs/:jobId"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <JobDetail />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/chat"
             element={
               <ProtectedRoute>
@@ -108,6 +120,16 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <Tracking />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Profile />
                 </MainLayout>
               </ProtectedRoute>
             }

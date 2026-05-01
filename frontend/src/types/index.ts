@@ -92,21 +92,81 @@ export interface ResumeEditRequest {
   content: string;
 }
 
-// 职位类型
+// ========== 职位类型 ==========
+
+// 职位内容（解析后）
+export interface ParsedJobContent {
+  title: string;
+  company: string;
+  description: string;
+  requirements: string[];
+}
+
+// 职位基础类型
 export interface Job {
+  id: string;
+  userId: string;
+  originalUrl: string;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  parsedContent: ParsedJobContent | null;
+  imageCheckEnabled: boolean;
+  errorMessage: string | null;
+  createdAt?: string;
+}
+
+// 匹配因子
+export interface MatchFactors {
+  skillMatch: number;
+  experienceMatch: number;
+  locationMatch: number;
+}
+
+// 匹配项
+export interface MatchItem {
   jobId: string;
   title: string;
   company: string;
-  location: string;
+  matchScore: number;
+  matchFactors: MatchFactors;
   description: string;
-  requirements: string[];
-  salaryMin?: number;
-  salaryMax?: number;
-  postedAt: string;
-  matchScore?: number;
 }
 
-// 对话类型
+// 发起匹配请求
+export interface JobMatchRequest {
+  resumeVersionId: string;
+  query?: string;
+  topK?: number;
+  filters?: Record<string, string>;
+}
+
+// 匹配响应
+export interface JobMatchResponse {
+  matchId: string;
+  status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  matches: MatchItem[];
+  total: number;
+  recallTime: number;
+  rankTime: number;
+}
+
+// 匹配历史
+export interface JobMatchHistoryResponse {
+  matchId: string;
+  userId: string;
+  resumeVersionId: string;
+  query: string;
+  status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  matches: MatchItem[];
+  total: number;
+  recallTime: number;
+  rankTime: number;
+  modelVersion: string;
+  createdAt: string;
+  completedAt: string;
+}
+
+// ========== 对话类型 ==========
+
 export interface Conversation {
   conversationId: string;
   userId?: string;
@@ -114,6 +174,7 @@ export interface Conversation {
   status?: string;
   resumeId?: string;
   resumeVersionId?: string | null;
+  jobId?: string | null;
   messages?: Message[];
   createdAt: string;
   updatedAt: string;
@@ -130,7 +191,53 @@ export interface Message {
   createdAt: string;
 }
 
-// 求职投递记录
+// ========== 求职跟踪类型 ==========
+
+export interface TrackingEvent {
+  eventId: string;
+  trackingId: string;
+  eventType: string;
+  description: string;
+  createdAt: string;
+}
+
+export interface Tracking {
+  trackingId: string;
+  userId: string;
+  job: Job | null;
+  companyName: string;
+  jobTitle: string;
+  status: 'APPLIED' | 'SCREENING' | 'INTERVIEW' | 'OFFER' | 'REJECTED' | 'WITHDRAWN';
+  appliedAt: string;
+  updatedAt: string;
+  notes: string | null;
+  events: TrackingEvent[];
+}
+
+export interface CreateTrackingRequest {
+  jobId?: string;
+  companyName: string;
+  jobTitle: string;
+  appliedAt?: string;
+  notes?: string;
+}
+
+export interface UpdateTrackingRequest {
+  status: Tracking['status'];
+  notes?: string;
+}
+
+export interface TrackingStatsResponse {
+  total: number;
+  applied: number;
+  screening: number;
+  interview: number;
+  offer: number;
+  rejected: number;
+  withdrawn: number;
+}
+
+// 保留旧名称以兼容现有代码（将被逐步替换）
 export interface JobApplication {
   applicationId: string;
   jobId: string;
