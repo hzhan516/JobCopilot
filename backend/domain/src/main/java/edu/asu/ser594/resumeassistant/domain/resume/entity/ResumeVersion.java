@@ -34,6 +34,7 @@ public final class ResumeVersion implements Entity<UUID> {
     private String parseErrorMessage;
     private Status status;
     private LocalDateTime updatedAt;
+
     private ResumeVersion(UUID id, UUID groupId, VersionType versionType,
                           String originalFileName, String storedFileName,
                           String fileType, long fileSize, String storagePath,

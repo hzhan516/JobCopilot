@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.application.resume.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeEditCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeUploadCommand;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
@@ -57,6 +58,9 @@ class ResumeApplicationServiceTest {
 
     @Mock
     private AiMessagePublisherPort aiMessagePublisherPort;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private ResumeApplicationService resumeService;

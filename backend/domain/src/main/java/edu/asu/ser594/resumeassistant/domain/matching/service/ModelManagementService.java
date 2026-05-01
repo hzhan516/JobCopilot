@@ -52,15 +52,19 @@ public class ModelManagementService {
         MatchingModel target = matchingModelRepository.findById(modelId)
                 .orElseThrow(() -> new MatchingException("matching.not.found"));
 
-        matchingModelRepository.findActiveByType(target.getType())
-                .ifPresent(currentActive -> {
-                    if (!currentActive.getId().equals(modelId)) {
-                        currentActive.deactivate();
-                        matchingModelRepository.save(currentActive);
-                        log.info("Deactivated previous model: {} version {}",
-                                currentActive.getModelName(), currentActive.getVersion());
-                    }
-                });
+        Optional<MatchingModel> currentActiveOpt = matchingModelRepository.findActiveByType(target.getType());
+        if (currentActiveOpt.isPresent()) {
+            MatchingModel currentActive = currentActiveOpt.get();
+            if (currentActive.getId().equals(modelId)) {
+                // 目标模型已经是当前激活模型，无需操作
+                // Target model is already active, no operation needed
+                return;
+            }
+            currentActive.deactivate();
+            matchingModelRepository.save(currentActive);
+            log.info("Deactivated previous model: {} version {}",
+                    currentActive.getModelName(), currentActive.getVersion());
+        }
 
         target.activate();
         matchingModelRepository.save(target);

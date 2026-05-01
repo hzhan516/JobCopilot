@@ -1,6 +1,7 @@
 package edu.asu.ser594.resumeassistant.api.user.service;
 
 import edu.asu.ser594.resumeassistant.api.user.dto.TokenPair;
+import edu.asu.ser594.resumeassistant.api.user.dto.TokenValidationResult;
 
 /**
  * Token 服务接口
@@ -41,4 +42,13 @@ public interface TokenService {
      * @return true if token is valid
      */
     boolean validateToken(String token);
+
+    /**
+     * 详细校验令牌，区分过期与无效
+     * Validate token with detailed result, distinguishing expired from invalid
+     *
+     * @param token JWT 令牌 / JWT token
+     * @return 校验结果 / Validation result
+     */
+    TokenValidationResult validateTokenDetailed(String token);
 }

@@ -34,17 +34,17 @@ public class UserProfile implements Entity<UUID> {
      * 全参构造函数 - 由 Lombok @Builder 使用
      * All-args constructor used by Lombok @Builder
      */
-    UserProfile(UUID id, UUID userId, String fullName, String avatarUrl,
+    UserProfile(UUID id, UUID userId, LocalDateTime createdAt, String fullName, String avatarUrl,
                 String phone, String targetPosition, String preferredLocation,
-                LocalDateTime createdAt, LocalDateTime updatedAt) {
+                LocalDateTime updatedAt) {
         this.id = id;
         this.userId = userId;
+        this.createdAt = createdAt;
         this.fullName = fullName;
         this.avatarUrl = avatarUrl;
         this.phone = phone;
         this.targetPosition = targetPosition;
         this.preferredLocation = preferredLocation;
-        this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 

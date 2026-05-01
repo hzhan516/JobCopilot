@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.trigger.http.security;
 
+import edu.asu.ser594.resumeassistant.api.user.dto.TokenValidationResult;
 import edu.asu.ser594.resumeassistant.api.user.service.TokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -17,6 +18,8 @@ import org.mockito.quality.Strictness;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -122,7 +125,7 @@ class JwtAuthenticationFilterTest {
         // Given
         when(request.getRequestURI()).thenReturn("/v1/resumes");
         when(request.getHeader("Authorization")).thenReturn("Bearer " + VALID_TOKEN);
-        when(tokenService.validateToken(VALID_TOKEN)).thenReturn(true);
+        when(tokenService.validateTokenDetailed(VALID_TOKEN)).thenReturn(TokenValidationResult.VALID);
         when(tokenService.getUserIdFromToken(VALID_TOKEN)).thenReturn(TEST_USER_ID);
 
         // 当
@@ -180,7 +183,11 @@ class JwtAuthenticationFilterTest {
         // Given
         when(request.getRequestURI()).thenReturn("/v1/resumes");
         when(request.getHeader("Authorization")).thenReturn("Bearer invalid_token");
-        when(tokenService.validateToken("invalid_token")).thenReturn(false);
+        when(tokenService.validateTokenDetailed("invalid_token")).thenReturn(TokenValidationResult.INVALID);
+
+        StringWriter stringWriter = new StringWriter();
+        PrintWriter printWriter = new PrintWriter(stringWriter);
+        when(response.getWriter()).thenReturn(printWriter);
 
         // 当
         // When
@@ -188,7 +195,9 @@ class JwtAuthenticationFilterTest {
 
         // 那么
         // Then
-        verify(filterChain).doFilter(request, response);
+        verify(filterChain, never()).doFilter(request, response);
+        verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        assertThat(stringWriter.toString()).contains("Invalid token");
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
@@ -199,7 +208,7 @@ class JwtAuthenticationFilterTest {
         // Given
         when(request.getRequestURI()).thenReturn("/v1/resumes");
         when(request.getHeader("Authorization")).thenReturn("bearer " + VALID_TOKEN);
-        when(tokenService.validateToken(VALID_TOKEN)).thenReturn(true);
+        when(tokenService.validateTokenDetailed(VALID_TOKEN)).thenReturn(TokenValidationResult.VALID);
         when(tokenService.getUserIdFromToken(VALID_TOKEN)).thenReturn(TEST_USER_ID);
 
         // 当
@@ -218,7 +227,7 @@ class JwtAuthenticationFilterTest {
         // Given
         when(request.getRequestURI()).thenReturn("/v1/resumes");
         when(request.getHeader("Authorization")).thenReturn("Bearer " + VALID_TOKEN);
-        when(tokenService.validateToken(VALID_TOKEN)).thenReturn(true);
+        when(tokenService.validateTokenDetailed(VALID_TOKEN)).thenReturn(TokenValidationResult.VALID);
         when(tokenService.getUserIdFromToken(VALID_TOKEN)).thenReturn(TEST_USER_ID);
 
         // 当
@@ -227,7 +236,7 @@ class JwtAuthenticationFilterTest {
 
         // 那么
         // Then
-        verify(tokenService).validateToken(VALID_TOKEN);
+        verify(tokenService).validateTokenDetailed(VALID_TOKEN);
         verify(tokenService).getUserIdFromToken(VALID_TOKEN);
     }
 
@@ -238,9 +247,9 @@ class JwtAuthenticationFilterTest {
         // Given - filter extracts token with spaces
         when(request.getRequestURI()).thenReturn("/v1/resumes");
         when(request.getHeader("Authorization")).thenReturn("Bearer   " + VALID_TOKEN);
-        // 过滤器将带有额外空格的令牌传递给 validateToken
-        // The filter passes the token WITH the extra spaces to validateToken
-        when(tokenService.validateToken("  " + VALID_TOKEN)).thenReturn(true);
+        // 过滤器将带有额外空格的令牌传递给 validateTokenDetailed
+        // The filter passes the token WITH the extra spaces to validateTokenDetailed
+        when(tokenService.validateTokenDetailed("  " + VALID_TOKEN)).thenReturn(TokenValidationResult.VALID);
         when(tokenService.getUserIdFromToken("  " + VALID_TOKEN)).thenReturn(TEST_USER_ID);
 
         // 当
@@ -249,7 +258,32 @@ class JwtAuthenticationFilterTest {
 
         // 那么
         // Then
-        verify(tokenService).validateToken("  " + VALID_TOKEN);
+        verify(tokenService).validateTokenDetailed("  " + VALID_TOKEN);
+    }
+
+    @Test
+    @DisplayName("Should return 401 for expired token")
+    void shouldReturn401ForExpiredToken() throws ServletException, IOException {
+        // 给定
+        // Given
+        when(request.getRequestURI()).thenReturn("/v1/resumes");
+        when(request.getHeader("Authorization")).thenReturn("Bearer expired_token");
+        when(tokenService.validateTokenDetailed("expired_token")).thenReturn(TokenValidationResult.EXPIRED);
+
+        StringWriter stringWriter = new StringWriter();
+        PrintWriter printWriter = new PrintWriter(stringWriter);
+        when(response.getWriter()).thenReturn(printWriter);
+
+        // 当
+        // When
+        jwtFilter.doFilterInternal(request, response, filterChain);
+
+        // 那么
+        // Then
+        verify(filterChain, never()).doFilter(request, response);
+        verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        assertThat(stringWriter.toString()).contains("Token expired");
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
     @Test

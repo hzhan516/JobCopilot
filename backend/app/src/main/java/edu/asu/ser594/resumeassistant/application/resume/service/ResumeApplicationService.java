@@ -47,7 +47,7 @@ public class ResumeApplicationService {
     private final FileStorageService fileStorageService;
     private final DocumentFormatConverter documentFormatConverter;
     private final AiMessagePublisherPort aiMessagePublisherPort;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     // ==================== 命令处理 Command Handlers ====================
 

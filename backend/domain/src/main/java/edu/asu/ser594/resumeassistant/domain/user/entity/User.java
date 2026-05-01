@@ -39,15 +39,15 @@ public class User extends AggregateRoot<UUID> {
      * 注意：@Builder 生成的代码可以访问包级别或私有的全参构造器
      * Note: @Builder generated code can access package-level or private all-args constructor
      */
-    User(UUID id, String email, boolean emailVerified, UserRole role,
-         UserStatus status, OAuthProvider authProvider, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    User(UUID id, String email, LocalDateTime createdAt, boolean emailVerified, UserRole role,
+         UserStatus status, OAuthProvider authProvider, LocalDateTime updatedAt) {
         this.id = id;
         this.email = email;
+        this.createdAt = createdAt;
         this.emailVerified = emailVerified;
         this.role = role;
         this.status = status;
         this.authProvider = authProvider;
-        this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 

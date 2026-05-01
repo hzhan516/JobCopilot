@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.trigger.http.security;
 
+import edu.asu.ser594.resumeassistant.api.user.dto.TokenValidationResult;
 import edu.asu.ser594.resumeassistant.api.user.service.TokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -34,21 +35,43 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String token = extractToken(request);
 
-        if (token != null && tokenService.validateToken(token)) {
-            String userId = tokenService.getUserIdFromToken(token);
-
-            // 设置用户ID到request attribute，供CurrentUser注解使用
-            request.setAttribute("userId", userId);
-
-            // 设置Spring Security上下文
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-
-            log.debug("JWT authentication successful for user: {}", userId);
+        if (token == null) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        filterChain.doFilter(request, response);
+        TokenValidationResult result = tokenService.validateTokenDetailed(token);
+
+        switch (result) {
+            case VALID -> {
+                String userId = tokenService.getUserIdFromToken(token);
+
+                // 设置用户ID到request attribute，供CurrentUser注解使用
+                request.setAttribute("userId", userId);
+
+                // 设置Spring Security上下文
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                log.debug("JWT authentication successful for user: {}", userId);
+                filterChain.doFilter(request, response);
+            }
+            case EXPIRED -> {
+                log.warn("JWT token expired for request: {}", request.getRequestURI());
+                writeUnauthorizedResponse(response, "Token expired / Token 已过期");
+            }
+            case INVALID -> {
+                log.warn("Invalid JWT token for request: {}", request.getRequestURI());
+                writeUnauthorizedResponse(response, "Invalid token / Token 无效");
+            }
+        }
+    }
+
+    private void writeUnauthorizedResponse(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write(String.format("{\"code\":401,\"message\":\"%s\"}", message));
     }
 
     private String extractToken(HttpServletRequest request) {

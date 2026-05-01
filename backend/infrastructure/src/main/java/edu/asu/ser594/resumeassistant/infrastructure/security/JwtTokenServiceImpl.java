@@ -1,7 +1,9 @@
 package edu.asu.ser594.resumeassistant.infrastructure.security;
 
 import edu.asu.ser594.resumeassistant.api.user.dto.TokenPair;
+import edu.asu.ser594.resumeassistant.api.user.dto.TokenValidationResult;
 import edu.asu.ser594.resumeassistant.api.user.service.TokenService;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
@@ -93,6 +95,24 @@ public class JwtTokenServiceImpl implements TokenService {
         } catch (Exception e) {
             log.warn("Invalid JWT token: {}", e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * 详细校验令牌，区分过期与无效
+     * Validate token with detailed result, distinguishing expired from invalid
+     */
+    @Override
+    public TokenValidationResult validateTokenDetailed(String token) {
+        try {
+            Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token);
+            return TokenValidationResult.VALID;
+        } catch (ExpiredJwtException e) {
+            log.warn("JWT token expired: {}", e.getMessage());
+            return TokenValidationResult.EXPIRED;
+        } catch (Exception e) {
+            log.warn("Invalid JWT token: {}", e.getMessage());
+            return TokenValidationResult.INVALID;
         }
     }
 }

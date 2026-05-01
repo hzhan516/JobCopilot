@@ -1,6 +1,7 @@
 package edu.asu.ser594.resumeassistant.infrastructure.security;
 
 import edu.asu.ser594.resumeassistant.api.user.dto.TokenPair;
+import edu.asu.ser594.resumeassistant.api.user.dto.TokenValidationResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -261,5 +262,59 @@ class JwtTokenServiceImplTest {
         assertThat(extractedUserId1).isEqualTo(userId1);
         assertThat(extractedUserId2).isEqualTo(userId2);
         assertThat(extractedUserId1).isNotEqualTo(extractedUserId2);
+    }
+
+    // ==================== 详细校验测试 ====================
+    // ==================== Detailed Validation Tests ====================
+
+    @Test
+    @DisplayName("Should return VALID for valid token via detailed validation")
+    void shouldReturnValidForValidTokenViaDetailedValidation() {
+        // 给定
+        // Given
+        TokenPair tokenPair = tokenService.generateTokenPair(TEST_USER_ID);
+
+        // 当
+        // When
+        TokenValidationResult result = tokenService.validateTokenDetailed(tokenPair.getAccessToken());
+
+        // 然后
+        // Then
+        assertThat(result).isEqualTo(TokenValidationResult.VALID);
+    }
+
+    @Test
+    @DisplayName("Should return EXPIRED for expired token via detailed validation")
+    void shouldReturnExpiredForExpiredTokenViaDetailedValidation() throws InterruptedException {
+        // 给定
+        // Given
+        ReflectionTestUtils.setField(tokenService, "accessTokenExpiration", 1); // 1 ms
+        tokenService.init();
+        TokenPair tokenPair = tokenService.generateTokenPair(TEST_USER_ID);
+        Thread.sleep(10); // ensure expiration
+
+        // 当
+        // When
+        TokenValidationResult result = tokenService.validateTokenDetailed(tokenPair.getAccessToken());
+
+        // 然后
+        // Then
+        assertThat(result).isEqualTo(TokenValidationResult.EXPIRED);
+    }
+
+    @Test
+    @DisplayName("Should return INVALID for malformed token via detailed validation")
+    void shouldReturnInvalidForMalformedTokenViaDetailedValidation() {
+        // 给定
+        // Given
+        String malformedToken = "not.a.valid.token";
+
+        // 当
+        // When
+        TokenValidationResult result = tokenService.validateTokenDetailed(malformedToken);
+
+        // 然后
+        // Then
+        assertThat(result).isEqualTo(TokenValidationResult.INVALID);
     }
 }

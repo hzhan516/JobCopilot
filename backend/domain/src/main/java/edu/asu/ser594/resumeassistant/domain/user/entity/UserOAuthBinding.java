@@ -34,16 +34,16 @@ public class UserOAuthBinding implements Entity<UUID> {
      * All-args constructor used by Lombok @Builder
      */
     UserOAuthBinding(UUID id, UUID userId, OAuthProvider provider, String providerUserId,
-                     String email, String displayName, String avatarUrl,
-                     LocalDateTime createdAt, LocalDateTime updatedAt) {
+                     String email, LocalDateTime createdAt, String displayName, String avatarUrl,
+                     LocalDateTime updatedAt) {
         this.id = id;
         this.userId = userId;
         this.provider = provider;
         this.providerUserId = providerUserId;
         this.email = email;
+        this.createdAt = createdAt;
         this.displayName = displayName;
         this.avatarUrl = avatarUrl;
-        this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
