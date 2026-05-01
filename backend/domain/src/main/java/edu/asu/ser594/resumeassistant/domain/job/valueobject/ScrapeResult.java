@@ -1,6 +1,7 @@
 package edu.asu.ser594.resumeassistant.domain.job.valueobject;
 
 /**
+ * 表示网页抓取阶段的原始输出
  * Represents the raw output from the web scraping phase.
  * 
  * @param markdownText The scraped content converted to Markdown.

@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/** AI 结果消息监听器 / AI result message listener */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -30,6 +31,7 @@ public class AiResultMessageListener {
     private final ResumeVectorRepository resumeVectorRepository;
     private final JobVectorRepository jobVectorRepository;
 
+    /** 监听职位解析结果 / Listen for job parse results */
     @RabbitListener(queues = RabbitMqConfig.QUEUE_RES_JOB_PARSE)
     public void onJobParseResult(AiResultEvent event) {
         log.info("Received AiResultEvent for JOB_PARSE, referenceId: {}, status: {}", event.referenceId(), event.status());
@@ -40,6 +42,7 @@ public class AiResultMessageListener {
         }
     }
 
+    /** 监听简历解析结果 / Listen for resume parse results */
     @RabbitListener(queues = RabbitMqConfig.QUEUE_RES_RESUME_PARSE)
     public void onResumeParseResult(AiResultEvent event) {
         log.info("Received AiResultEvent for RESUME_PARSE, referenceId: {}, status: {}", event.referenceId(), event.status());
@@ -50,6 +53,7 @@ public class AiResultMessageListener {
         }
     }
 
+    /** 监听向量生成结果 / Listen for vector generation results */
     @SuppressWarnings("unchecked")
     @RabbitListener(queues = RabbitMqConfig.QUEUE_RES_VECTOR_GEN)
     public void onVectorGenResult(AiResultEvent event) {
@@ -69,6 +73,7 @@ public class AiResultMessageListener {
         }
     }
 
+    /** 监听对话回复结果 / Listen for conversation reply results */
     @RabbitListener(queues = RabbitMqConfig.QUEUE_RES_CONVERSATION)
     public void onConversationReply(AiResultEvent event) {
         log.info("Received AiResultEvent for CONVERSATION_REPLY, referenceId: {}, status: {}", event.referenceId(), event.status());
@@ -76,14 +81,15 @@ public class AiResultMessageListener {
             if (!"COMPLETED".equals(event.status())) {
                 log.warn("Conversation AI reply failed for conversation: {}, error: {}", event.referenceId(), event.errorMessage());
                 conversationFacade.saveAiReply(
-                    event.referenceId(),
-                    "AI response failed: " + (event.errorMessage() != null ? event.errorMessage() : "Unknown error"),
-                    null,
-                    null
+                        event.referenceId(),
+                        "AI response failed: " + (event.errorMessage() != null ? event.errorMessage() : "Unknown error"),
+                        null,
+                        null
                 );
                 return;
             }
 
+            // 提取回复内容、文件 URL 和 AI 优化简历 / Extract reply content, file URL and AI optimized resume
             String content = extractReplyContent(event);
             String fileUrl = extractFileUrl(event);
             String aiOptimizedMarkdown = extractAiOptimizedMarkdown(event);
@@ -95,6 +101,7 @@ public class AiResultMessageListener {
         }
     }
 
+    // 提取回复内容 / Extract reply content
     private String extractReplyContent(AiResultEvent event) {
         if (event.data() != null && event.data().containsKey("content")) {
             return (String) event.data().get("content");
@@ -102,6 +109,7 @@ public class AiResultMessageListener {
         return "";
     }
 
+    // 提取文件 URL / Extract file URL
     private String extractFileUrl(AiResultEvent event) {
         if (event.data() != null && event.data().containsKey("fileUrl")) {
             return (String) event.data().get("fileUrl");
@@ -109,6 +117,7 @@ public class AiResultMessageListener {
         return null;
     }
 
+    // 提取 AI 优化后的 Markdown / Extract AI optimized markdown
     @SuppressWarnings("unchecked")
     private String extractAiOptimizedMarkdown(AiResultEvent event) {
         if (event.data() == null) {
@@ -123,6 +132,7 @@ public class AiResultMessageListener {
         return null;
     }
 
+    // 提取实体类型 / Extract entity type
     private String extractEntityType(AiResultEvent event) {
         if (event.data() != null && event.data().containsKey("entityType")) {
             return (String) event.data().get("entityType");
@@ -131,6 +141,7 @@ public class AiResultMessageListener {
         return "JOB";
     }
 
+    // 提取嵌入向量 / Extract embedding vector
     @SuppressWarnings("unchecked")
     private float[] extractEmbedding(AiResultEvent event) {
         if (event.data() != null && event.data().containsKey("embedding")) {
@@ -149,6 +160,7 @@ public class AiResultMessageListener {
         return null;
     }
 
+    // 保存成功的向量 / Save completed vector
     private void saveCompletedVector(String referenceId, String entityType, float[] embedding) {
         String id = UUID.randomUUID().toString();
         if ("RESUME".equalsIgnoreCase(entityType) || "RESUME_VECTOR".equalsIgnoreCase(entityType)) {
@@ -162,6 +174,7 @@ public class AiResultMessageListener {
         }
     }
 
+    // 保存失败的向量 / Save failed vector
     private void saveFailedVector(String referenceId, String entityType, String errorMessage) {
         String id = UUID.randomUUID().toString();
         if ("RESUME".equalsIgnoreCase(entityType) || "RESUME_VECTOR".equalsIgnoreCase(entityType)) {

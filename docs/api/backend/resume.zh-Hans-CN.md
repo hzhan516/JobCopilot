@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](resume.en_US.md) | [简体中文](resume.zh-Hans-CN.md) | [繁體中文](resume.zh-Hant-TW.md)
+
 # 简历管理 API
 
 > 简历上传、下载和管理相关接口

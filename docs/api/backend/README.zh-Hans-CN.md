@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](README.en_US.md) | [简体中文](README.zh-Hans-CN.md) | [繁體中文](README.zh-Hant-TW.md)
+
 # Backend API 文档
 
 本文档包含 Resume Assistant 后端 API 的完整接口定义。
@@ -325,7 +328,7 @@ Authorization: Bearer <access_token>
 
 ### 3. 职位模块 (Job)
 
-详见 [job.md](job.md) 和 [job-matching.md](job-matching.md)
+详见 [job.md](job_CN.md) 和 [job-matching.md](job-matching_CN.md)
 
 本模块提供职位链接提交、异步解析、智能匹配和历史查询功能。
 
@@ -357,7 +360,7 @@ Authorization: Bearer <access_token>
 
 ### 4. 对话模块 (Conversation)
 
-详见 [conversation.md](conversation.md)
+详见 [conversation.md](conversation_CN.md)
 
 #### 4.1 创建对话
 - **URL**: `POST /api/v1/conversations`
@@ -393,7 +396,7 @@ Authorization: Bearer <access_token>
 
 ### 5. 求职跟踪模块 (Tracking)
 
-详见 [tracking.md](tracking.md)
+详见 [tracking.md](tracking_CN.md)
 
 本模块提供求职申请的状态流转、事件记录和统计分析功能。
 
@@ -626,14 +629,14 @@ Accept-Language: en
 
 ## 相关文档
 
-- [认证模块详细文档](authentication.md)
-- [简历模块详细文档](resume.md)
-- [职位模块详细文档](job.md)
-- [职位匹配模块详细文档](job-matching.md)
-- [对话模块详细文档](conversation.md)
-- [求职跟踪模块详细文档](tracking.md)
-- [AI / MQ 交互接口文档](ai-mq-interfaces.md)
-- [响应格式与错误码说明](response-format.md)
+- [认证模块详细文档](authentication_CN.md)
+- [简历模块详细文档](resume_CN.md)
+- [职位模块详细文档](job_CN.md)
+- [职位匹配模块详细文档](job-matching_CN.md)
+- [对话模块详细文档](conversation_CN.md)
+- [求职跟踪模块详细文档](tracking_CN.md)
+- [AI / MQ 交互接口文档](ai-mq-interfaces_CN.md)
+- [响应格式与错误码说明](response-format_CN.md)
 
 ---
 

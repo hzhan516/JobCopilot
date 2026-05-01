@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](conversation.en_US.md) | [简体中文](conversation.zh-Hans-CN.md) | [繁體中文](conversation.zh-Hant-TW.md)
+
 # 对话管理 API
 
 > 基于简历上下文的多轮 AI 对话接口，支持异步 MQ 交互、附件上传与消息分页

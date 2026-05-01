@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](Resume_Assistant_Proposal.en_US.md) | [简体中文](Resume_Assistant_Proposal.zh-Hans-CN.md) | [繁體中文](Resume_Assistant_Proposal.zh-Hant-TW.md)
+
 # Course Project Proposal: Resume Assistant
 
 **Course:** SER 594: AI for Software Engineers  

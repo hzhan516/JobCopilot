@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](authentication.en_US.md) | [简体中文](authentication.zh-Hans-CN.md) | [繁體中文](authentication.zh-Hant-TW.md)
+
 # 认证 API
 
 > 用户注册、登录和 Token 管理相关接口

@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](DOCKER_DEPLOY.en_US.md) | [简体中文](DOCKER_DEPLOY.zh-Hans-CN.md) | [繁體中文](DOCKER_DEPLOY.zh-Hant-TW.md)
+
 # Docker/Podman 部署指南
 
 ## 环境要求
@@ -149,7 +152,7 @@ docker-compose exec -T postgres psql -U resume_user resume_assistant < backup.sq
 
 ### 端口冲突
 
-如果启动时报端口冲突错误，修改 `docker-compose.yml` 中的端口映射：
+如果启动时报端口冲突错误，修改 `docker-compose.en_US.yml` 中的端口映射：
 
 ```yaml
 ports:
@@ -189,7 +192,7 @@ docker-compose up -d --build --force-recreate
 
 2. 使用生产环境配置：
    ```bash
-   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+   docker-compose -f docker-compose.en_US.yml -f docker-compose.prod.yml up -d
    ```
 
 3. 配置反向代理（Nginx/Traefik）

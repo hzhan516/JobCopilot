@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](response-format.en_US.md) | [简体中文](response-format.zh-Hans-CN.md) | [繁體中文](response-format.zh-Hant-TW.md)
+
 # 响应格式规范
 
 > 所有 API 接口的统一响应格式说明

@@ -6,6 +6,7 @@ import edu.asu.ser594.resumeassistant.types.enums.CredentialType;
 import java.util.Optional;
 import java.util.UUID;
 
+// 用户凭证仓储接口
 // User credential repository interface
 public interface UserCredentialRepository {
     UserCredential save(UserCredential credential);

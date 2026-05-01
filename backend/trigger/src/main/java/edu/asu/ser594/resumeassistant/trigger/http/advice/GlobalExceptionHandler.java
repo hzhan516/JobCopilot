@@ -20,6 +20,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import java.util.HashMap;
 import java.util.Map;
 
+// 支持国际化的全局异常处理器
 // Global exception handler with i18n support
 @Slf4j
 @RestControllerAdvice
@@ -31,6 +32,7 @@ public class GlobalExceptionHandler {
 
     /**
      * 参数校验异常 - 从 messages.properties 读取
+     * Parameter validation exception - read from messages.properties
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationExceptions(

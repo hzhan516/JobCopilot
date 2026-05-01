@@ -1,5 +1,6 @@
 -- V3__init_job.sql
 -- Database schema for Job module (Link-to-Match)
+-- 职位模块数据库结构（链接解析与匹配）
 
 CREATE TABLE IF NOT EXISTS jobs (
     id VARCHAR(64) PRIMARY KEY,
@@ -13,5 +14,6 @@ CREATE TABLE IF NOT EXISTS jobs (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 索引 / Indexes
 CREATE INDEX idx_jobs_user_id ON jobs(user_id);
 CREATE INDEX idx_jobs_status ON jobs(status);

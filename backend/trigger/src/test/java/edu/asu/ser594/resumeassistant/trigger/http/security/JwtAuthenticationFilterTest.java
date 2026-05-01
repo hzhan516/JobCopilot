@@ -25,12 +25,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 /**
+ * JwtAuthenticationFilter 单元测试
  * JwtAuthenticationFilter Unit Tests
  * 
+ * 测试 JWT 认证过滤器：
  * Tests the JWT authentication filter:
+ * - 从请求头提取令牌
  * - Token extraction from header
+ * - 令牌校验
  * - Token validation
+ * - 认证上下文设置
  * - Authentication context setup
+ * - 错误处理
  * - Error handling
  */
 @ExtendWith(MockitoExtension.class)
@@ -64,12 +70,15 @@ class JwtAuthenticationFilterTest {
     @Test
     @DisplayName("Should skip filter for public endpoints")
     void shouldSkipFilterForPublicEndpoints() throws ServletException, IOException {
+        // 给定
         // Given
         when(request.getRequestURI()).thenReturn("/v1/auth/login/email");
 
+        // 当
         // When
         jwtFilter.doFilterInternal(request, response, filterChain);
 
+        // 那么
         // Then
         verify(filterChain).doFilter(request, response);
         verify(tokenService, never()).validateToken(any());
@@ -78,12 +87,15 @@ class JwtAuthenticationFilterTest {
     @Test
     @DisplayName("Should skip filter for swagger endpoints")
     void shouldSkipFilterForSwaggerEndpoints() throws ServletException, IOException {
+        // 给定
         // Given
         when(request.getRequestURI()).thenReturn("/swagger-ui/index.html");
 
+        // 当
         // When
         jwtFilter.doFilterInternal(request, response, filterChain);
 
+        // 那么
         // Then
         verify(filterChain).doFilter(request, response);
         verify(tokenService, never()).validateToken(any());
@@ -92,12 +104,15 @@ class JwtAuthenticationFilterTest {
     @Test
     @DisplayName("Should skip filter for actuator endpoints")
     void shouldSkipFilterForActuatorEndpoints() throws ServletException, IOException {
+        // 给定
         // Given
         when(request.getRequestURI()).thenReturn("/actuator/health");
 
+        // 当
         // When
         jwtFilter.doFilterInternal(request, response, filterChain);
 
+        // 那么
         // Then
         verify(filterChain).doFilter(request, response);
         verify(tokenService, never()).validateToken(any());
@@ -106,15 +121,18 @@ class JwtAuthenticationFilterTest {
     @Test
     @DisplayName("Should authenticate with valid token")
     void shouldAuthenticateWithValidToken() throws ServletException, IOException {
+        // 给定
         // Given
         when(request.getRequestURI()).thenReturn("/v1/resumes");
         when(request.getHeader("Authorization")).thenReturn("Bearer " + VALID_TOKEN);
         when(tokenService.validateToken(VALID_TOKEN)).thenReturn(true);
         when(tokenService.getUserIdFromToken(VALID_TOKEN)).thenReturn(TEST_USER_ID);
 
+        // 当
         // When
         jwtFilter.doFilterInternal(request, response, filterChain);
 
+        // 那么
         // Then
         verify(filterChain).doFilter(request, response);
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNotNull();
@@ -125,13 +143,16 @@ class JwtAuthenticationFilterTest {
     @Test
     @DisplayName("Should reject request without authorization header")
     void shouldRejectRequestWithoutAuthorizationHeader() throws ServletException, IOException {
+        // 给定
         // Given
         when(request.getRequestURI()).thenReturn("/v1/resumes");
         when(request.getHeader("Authorization")).thenReturn(null);
 
+        // 当
         // When
         jwtFilter.doFilterInternal(request, response, filterChain);
 
+        // 那么
         // Then
         verify(filterChain).doFilter(request, response);
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
@@ -140,13 +161,16 @@ class JwtAuthenticationFilterTest {
     @Test
     @DisplayName("Should reject request with invalid authorization format")
     void shouldRejectRequestWithInvalidAuthorizationFormat() throws ServletException, IOException {
+        // 给定
         // Given
         when(request.getRequestURI()).thenReturn("/v1/resumes");
         when(request.getHeader("Authorization")).thenReturn("InvalidFormat token");
 
+        // 当
         // When
         jwtFilter.doFilterInternal(request, response, filterChain);
 
+        // 那么
         // Then
         verify(filterChain).doFilter(request, response);
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
@@ -155,14 +179,17 @@ class JwtAuthenticationFilterTest {
     @Test
     @DisplayName("Should reject request with invalid token")
     void shouldRejectRequestWithInvalidToken() throws ServletException, IOException {
+        // 给定
         // Given
         when(request.getRequestURI()).thenReturn("/v1/resumes");
         when(request.getHeader("Authorization")).thenReturn("Bearer invalid_token");
         when(tokenService.validateToken("invalid_token")).thenReturn(false);
 
+        // 当
         // When
         jwtFilter.doFilterInternal(request, response, filterChain);
 
+        // 那么
         // Then
         verify(filterChain).doFilter(request, response);
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
@@ -171,15 +198,18 @@ class JwtAuthenticationFilterTest {
     @Test
     @DisplayName("Should handle case-insensitive bearer prefix")
     void shouldHandleCaseInsensitiveBearerPrefix() throws ServletException, IOException {
+        // 给定
         // Given
         when(request.getRequestURI()).thenReturn("/v1/resumes");
         when(request.getHeader("Authorization")).thenReturn("bearer " + VALID_TOKEN);
         when(tokenService.validateToken(VALID_TOKEN)).thenReturn(true);
         when(tokenService.getUserIdFromToken(VALID_TOKEN)).thenReturn(TEST_USER_ID);
 
+        // 当
         // When
         jwtFilter.doFilterInternal(request, response, filterChain);
 
+        // 那么
         // Then
         verify(filterChain).doFilter(request, response);
     }
@@ -187,15 +217,18 @@ class JwtAuthenticationFilterTest {
     @Test
     @DisplayName("Should extract token correctly from header")
     void shouldExtractTokenCorrectlyFromHeader() throws ServletException, IOException {
+        // 给定
         // Given
         when(request.getRequestURI()).thenReturn("/v1/resumes");
         when(request.getHeader("Authorization")).thenReturn("Bearer " + VALID_TOKEN);
         when(tokenService.validateToken(VALID_TOKEN)).thenReturn(true);
         when(tokenService.getUserIdFromToken(VALID_TOKEN)).thenReturn(TEST_USER_ID);
 
+        // 当
         // When
         jwtFilter.doFilterInternal(request, response, filterChain);
 
+        // 那么
         // Then
         verify(tokenService).validateToken(VALID_TOKEN);
         verify(tokenService).getUserIdFromToken(VALID_TOKEN);
@@ -204,16 +237,20 @@ class JwtAuthenticationFilterTest {
     @Test
     @DisplayName("Should handle token extraction with extra spaces")
     void shouldHandleTokenExtractionWithExtraSpaces() throws ServletException, IOException {
+        // 给定 - 过滤器提取带有空格的令牌
         // Given - filter extracts token with spaces
         when(request.getRequestURI()).thenReturn("/v1/resumes");
         when(request.getHeader("Authorization")).thenReturn("Bearer   " + VALID_TOKEN);
+        // 过滤器将带有额外空格的令牌传递给 validateToken
         // The filter passes the token WITH the extra spaces to validateToken
         when(tokenService.validateToken("  " + VALID_TOKEN)).thenReturn(true);
         when(tokenService.getUserIdFromToken("  " + VALID_TOKEN)).thenReturn(TEST_USER_ID);
 
+        // 当
         // When
         jwtFilter.doFilterInternal(request, response, filterChain);
 
+        // 那么
         // Then
         verify(tokenService).validateToken("  " + VALID_TOKEN);
     }
@@ -221,13 +258,16 @@ class JwtAuthenticationFilterTest {
     @Test
     @DisplayName("Should continue chain when no authorization header")
     void shouldContinueChainWhenNoAuthorizationHeader() throws ServletException, IOException {
+        // 给定
         // Given
         when(request.getRequestURI()).thenReturn("/v1/resumes");
         when(request.getHeader("Authorization")).thenReturn(null);
 
+        // 当
         // When
         jwtFilter.doFilterInternal(request, response, filterChain);
 
+        // 那么
         // Then
         verify(filterChain).doFilter(request, response);
     }

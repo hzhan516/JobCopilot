@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](ai-mq-interfaces.en_US.md) | [简体中文](ai-mq-interfaces.zh-Hans-CN.md) | [繁體中文](ai-mq-interfaces.zh-Hant-TW.md)
+
 # AI 服务交互 API 与 MQ 事件契约汇总
 
 > 本文档集中汇总 Java 后端与 Python AI 服务之间的所有 REST API（如有）和 RabbitMQ 消息队列契约。

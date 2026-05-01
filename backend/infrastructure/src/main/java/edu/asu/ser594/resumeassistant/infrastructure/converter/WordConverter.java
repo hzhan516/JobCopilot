@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
+ * Word 转换器：DOCX ↔ MD/PDF，由 Pandoc 和 LibreOffice 提供支持
  * Word converter: DOCX ↔ MD/PDF, powered by Pandoc and LibreOffice
  */
 @Slf4j
@@ -23,16 +24,19 @@ public class WordConverter extends AbstractDocumentConverter {
         String sf = sourceFormat.toLowerCase();
         String tf = targetFormat.toLowerCase();
 
+        // DOCX 转 MD 或 TXT
         // DOCX to MD or TXT
         if ((sf.equals("docx") || sf.equals("doc")) && (tf.equals("md") || tf.equals("txt"))) {
             return ExternalCommandUtils.runPandoc(source, sf, tf, null);
         }
         
+        // MD 转 DOCX
         // MD to DOCX
         if ((sf.equals("md") || sf.equals("markdown")) && tf.equals("docx")) {
             return ExternalCommandUtils.runPandoc(source, "md", "docx", null);
         }
         
+        // DOCX 转 PDF
         // DOCX to PDF
         if ((sf.equals("docx") || sf.equals("doc")) && tf.equals("pdf")) {
             return ExternalCommandUtils.runLibreOffice(source, sf, "pdf");

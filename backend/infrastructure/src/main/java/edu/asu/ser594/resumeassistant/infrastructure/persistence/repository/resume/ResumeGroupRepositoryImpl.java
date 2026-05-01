@@ -33,6 +33,7 @@ public class ResumeGroupRepositoryImpl implements ResumeGroupRepository {
         jpaGroupRepo.save(groupMapper.toJpaEntity(group));
 
         // 级联保存版本
+        // Cascade save versions
         for (ResumeVersion version : group.getVersions()) {
             jpaVersionRepo.save(versionMapper.toJpaEntity(version));
         }

@@ -17,21 +17,21 @@ import java.util.UUID;
 public final class ResumeVersion implements Entity<UUID> {
 
     public enum VersionType {
-        ORIGINAL,      // 原版 - 只读
-        CONVERTED,     // 转换版 - 可编辑Markdown
-        AI_OPTIMIZED   // AI版 - 可编辑Markdown
+        ORIGINAL,      // 原版 - 只读 / Original version - read-only
+        CONVERTED,     // 转换版 - 可编辑Markdown / Converted version - editable Markdown
+        AI_OPTIMIZED   // AI版 - 可编辑Markdown / AI version - editable Markdown
     }
 
     public enum Status {
-        ACTIVE,    // 活跃
-        ARCHIVED   // 已归档
+        ACTIVE,    // 活跃 / Active
+        ARCHIVED   // 已归档 / Archived
     }
 
     private final UUID id;
     private final UUID groupId;
     private final VersionType versionType;
 
-    // 文件信息（原版特有）
+    // 文件信息（原版特有） / File info (original version only)
     private final String originalFileName;
     private final String storedFileName;
     private final String fileType;
@@ -39,7 +39,7 @@ public final class ResumeVersion implements Entity<UUID> {
     private final String storagePath;
     private final String storageProvider;
 
-    // 内容（转换版/AI版特有）
+    // 内容（转换版/AI版特有） / Content (converted/AI version only)
     private String content;
     private String parsedContent;
 
@@ -75,6 +75,7 @@ public final class ResumeVersion implements Entity<UUID> {
     }
 
     // ==================== 工厂方法 ====================
+    // Factory methods
 
     public static ResumeVersion createOriginal(UUID groupId, String originalFileName,
                                                String fileType, long fileSize,
@@ -110,7 +111,7 @@ public final class ResumeVersion implements Entity<UUID> {
                 0L,
                 null,
                 null,
-                "",  // 空内容待填充
+                "",  // 空内容待填充 / Empty content to be filled
                 null,
                 ParseStatus.PENDING,
                 null,
@@ -157,9 +158,11 @@ public final class ResumeVersion implements Entity<UUID> {
     }
 
     // ==================== 领域行为 ====================
+    // Domain behaviors
 
     /**
      * 编辑内容
+     * Edit content
      * @throws IllegalStateException if not editable
      */
     public void editContent(String newContent) {
@@ -192,6 +195,7 @@ public final class ResumeVersion implements Entity<UUID> {
 
     /**
      * 应用解析后的结构化内容
+     * Apply parsed structured content
      */
     public void applyParsedContent(String parsedJson) {
         this.parsedContent = parsedJson;
@@ -200,6 +204,7 @@ public final class ResumeVersion implements Entity<UUID> {
 
     /**
      * 归档此版本
+     * Archive this version
      */
     public void archive() {
         this.status = Status.ARCHIVED;
@@ -208,11 +213,13 @@ public final class ResumeVersion implements Entity<UUID> {
 
     /**
      * 检查是否可编辑
+     * Check if editable
      */
     public boolean isEditable() {
         return versionType != VersionType.ORIGINAL && status == Status.ACTIVE;
     }
 
+    // 属性访问器
     // ==================== Getters ====================
 
     @Override

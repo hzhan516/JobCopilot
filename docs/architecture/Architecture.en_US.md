@@ -1,6 +1,9 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](Architecture.en_US.md) | [简体中文](Architecture.zh-Hans-CN.md) | [繁體中文](Architecture.zh-Hant-TW.md)
+
 # Intelligent Job Assistant - Architecture Document
 
-**[中文](Architecture_CN.md) | English**
+**[中文](Architecture.zh-Hans-CN.md) | English**
 
 ---
 
@@ -1596,7 +1599,7 @@ class LLMClient:
 ### 9.1 Docker Compose Configuration
 
 ```yaml
-# docker-compose.yml (Simplified)
+# docker-compose.en_US.yml (Simplified)
 version: '3.8'
 
 services:

@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](job-matching.en_US.md) | [简体中文](job-matching.zh-Hans-CN.md) | [繁體中文](job-matching.zh-Hant-TW.md)
+
 # 职位智能匹配 (Job Matching) API 文档
 
 本文档描述职位智能匹配模块的异步召回 + 精排流程。Java 后端通过本地 PGVector 完成召回，再通过 RabbitMQ 将召回结果异步发送给 Python AI 服务进行精排，最终持久化到数据库。

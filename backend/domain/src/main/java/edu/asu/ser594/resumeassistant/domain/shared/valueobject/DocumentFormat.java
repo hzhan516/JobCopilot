@@ -7,6 +7,7 @@ import java.util.Optional;
  * Document Format Value Object
  * 
  * 封装格式解析、MIME类型映射以及导出文件名生成的领域规则
+ * Encapsulates domain rules for format parsing, MIME type mapping, and export filename generation
  */
 public class DocumentFormat {
 

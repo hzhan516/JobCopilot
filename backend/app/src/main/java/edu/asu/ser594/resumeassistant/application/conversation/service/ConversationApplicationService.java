@@ -183,12 +183,14 @@ public class ConversationApplicationService {
     @Transactional
     public void deleteConversation(UUID conversationId, UUID userId) {
         log.info("Deleting conversation: {}", conversationId);
+        // 确保所有权
         // Ensure ownership
         getConversationWithOwnershipCheck(conversationId, userId);
         conversationRepository.deleteById(conversationId);
     }
 
     // ==================== 私有辅助方法 ====================
+    // ==================== Private helper methods ====================
 
     /**
      * 获取对话并进行所有权校验

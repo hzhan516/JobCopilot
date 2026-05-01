@@ -36,12 +36,18 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
+ * AuthApplicationService 单元测试
  * AuthApplicationService Unit Tests
  * 
+ * 按照 DDD 应用程序层模式测试应用程序服务：
  * Tests the application service following DDD Application Layer patterns:
+ * - 用例编排
  * - Use case orchestration
+ * - 交易边界
  * - Transaction boundary
+ * - 域对象之间的协调
  * - Coordination between domain objects
+ * - 没有领域逻辑，只有工作流程
  * - No domain logic, only workflow
  */
 @ExtendWith(MockitoExtension.class)
@@ -104,11 +110,13 @@ class AuthApplicationServiceTest {
                 .build();
     }
 
+    // ==================== 注册测试 ====================
     // ==================== Register Tests ====================
 
     @Test
     @DisplayName("Should successfully register new user with email")
     void shouldSuccessfullyRegisterNewUserWithEmail() {
+        // 给定
         // Given
         RegisterByEmailCommand command = RegisterByEmailCommand.builder()
                 .email(TEST_EMAIL)
@@ -121,9 +129,11 @@ class AuthApplicationServiceTest {
         when(userCredentialRepository.save(any(UserCredential.class))).thenReturn(testCredential);
         when(passwordEncoder.encode(TEST_PASSWORD)).thenReturn(TEST_HASHED_PASSWORD);
 
+        // 什么时候
         // When
         User result = authService.registerByEmail(command);
 
+        // 然后
         // Then
         assertThat(result).isNotNull();
         assertThat(result.getEmail()).isEqualTo(TEST_EMAIL);
@@ -137,6 +147,7 @@ class AuthApplicationServiceTest {
     @Test
     @DisplayName("Should throw exception when registering with existing email")
     void shouldThrowExceptionWhenRegisteringWithExistingEmail() {
+        // 给定
         // Given
         RegisterByEmailCommand command = RegisterByEmailCommand.builder()
                 .email(TEST_EMAIL)
@@ -145,6 +156,7 @@ class AuthApplicationServiceTest {
 
         when(userRepository.existsByEmail(TEST_EMAIL)).thenReturn(true);
 
+        // 什么时候&然后
         // When & Then
         assertThatThrownBy(() -> authService.registerByEmail(command))
                 .isInstanceOf(AuthException.class)
@@ -157,6 +169,7 @@ class AuthApplicationServiceTest {
     @Test
     @DisplayName("Should create user profile during registration")
     void shouldCreateUserProfileDuringRegistration() {
+        // 给定
         // Given
         RegisterByEmailCommand command = RegisterByEmailCommand.builder()
                 .email(TEST_EMAIL)
@@ -169,9 +182,11 @@ class AuthApplicationServiceTest {
         when(userCredentialRepository.save(any(UserCredential.class))).thenReturn(testCredential);
         when(passwordEncoder.encode(anyString())).thenReturn(TEST_HASHED_PASSWORD);
 
+        // 什么时候
         // When
         authService.registerByEmail(command);
 
+        // 然后
         // Then
         verify(userProfileRepository).save(argThat(profile ->
                 profile.getUserId().equals(testUser.getId())));
@@ -180,6 +195,7 @@ class AuthApplicationServiceTest {
     @Test
     @DisplayName("Should create user credential during registration")
     void shouldCreateUserCredentialDuringRegistration() {
+        // 给定
         // Given
         RegisterByEmailCommand command = RegisterByEmailCommand.builder()
                 .email(TEST_EMAIL)
@@ -192,20 +208,24 @@ class AuthApplicationServiceTest {
         when(userCredentialRepository.save(any(UserCredential.class))).thenReturn(testCredential);
         when(passwordEncoder.encode(TEST_PASSWORD)).thenReturn(TEST_HASHED_PASSWORD);
 
+        // 什么时候
         // When
         authService.registerByEmail(command);
 
+        // 然后
         // Then
         verify(userCredentialRepository).save(argThat(credential ->
                 credential.getCredentialType() == CredentialType.PASSWORD &&
                         credential.getCredentialValue().equals(TEST_HASHED_PASSWORD)));
     }
 
+    // ==================== 登录测试 ====================
     // ==================== Login Tests ====================
 
     @Test
     @DisplayName("Should successfully login with valid credentials")
     void shouldSuccessfullyLoginWithValidCredentials() {
+        // 给定
         // Given
         LoginByEmailCommand command = LoginByEmailCommand.builder()
                 .email(TEST_EMAIL)
@@ -217,9 +237,11 @@ class AuthApplicationServiceTest {
                 .thenReturn(Optional.of(testCredential));
         when(passwordEncoder.matches(TEST_PASSWORD, TEST_HASHED_PASSWORD)).thenReturn(true);
 
+        // 什么时候
         // When
         User result = authService.loginByEmail(command);
 
+        // 然后
         // Then
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(testUser.getId());
@@ -229,6 +251,7 @@ class AuthApplicationServiceTest {
     @Test
     @DisplayName("Should throw exception when login with non-existent email")
     void shouldThrowExceptionWhenLoginWithNonExistentEmail() {
+        // 给定
         // Given
         LoginByEmailCommand command = LoginByEmailCommand.builder()
                 .email("nonexistent@example.com")
@@ -237,6 +260,7 @@ class AuthApplicationServiceTest {
 
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
 
+        // 什么时候&然后
         // When & Then
         assertThatThrownBy(() -> authService.loginByEmail(command))
                 .isInstanceOf(AuthException.class)
@@ -246,6 +270,7 @@ class AuthApplicationServiceTest {
     @Test
     @DisplayName("Should throw exception when login without password credential")
     void shouldThrowExceptionWhenLoginWithoutPasswordCredential() {
+        // 给定
         // Given
         LoginByEmailCommand command = LoginByEmailCommand.builder()
                 .email(TEST_EMAIL)
@@ -256,6 +281,7 @@ class AuthApplicationServiceTest {
         when(userCredentialRepository.findByUserIdAndType(testUser.getId(), CredentialType.PASSWORD))
                 .thenReturn(Optional.empty());
 
+        // 什么时候&然后
         // When & Then
         assertThatThrownBy(() -> authService.loginByEmail(command))
                 .isInstanceOf(AuthException.class)
@@ -265,6 +291,7 @@ class AuthApplicationServiceTest {
     @Test
     @DisplayName("Should throw exception when login with wrong password")
     void shouldThrowExceptionWhenLoginWithWrongPassword() {
+        // 给定
         // Given
         LoginByEmailCommand command = LoginByEmailCommand.builder()
                 .email(TEST_EMAIL)
@@ -276,17 +303,20 @@ class AuthApplicationServiceTest {
                 .thenReturn(Optional.of(testCredential));
         when(passwordEncoder.matches("wrongPassword", TEST_HASHED_PASSWORD)).thenReturn(false);
 
+        // 什么时候&然后
         // When & Then
         assertThatThrownBy(() -> authService.loginByEmail(command))
                 .isInstanceOf(AuthException.class)
                 .hasMessageContaining("INVALID_CREDENTIALS");
     }
 
+    // ==================== 令牌测试 ====================
     // ==================== Token Tests ====================
 
     @Test
     @DisplayName("Should generate token pair for user")
     void shouldGenerateTokenPairForUser() {
+        // 给定
         // Given
         TokenPair expectedTokenPair = TokenPair.builder()
                 .accessToken("access-token")
@@ -296,9 +326,11 @@ class AuthApplicationServiceTest {
 
         when(tokenService.generateTokenPair(testUser.getId().toString())).thenReturn(expectedTokenPair);
 
+        // 什么时候
         // When
         TokenPair result = authService.generateTokenPair(testUser);
 
+        // 然后
         // Then
         assertThat(result).isNotNull();
         assertThat(result.getAccessToken()).isEqualTo("access-token");
@@ -310,12 +342,15 @@ class AuthApplicationServiceTest {
     @Test
     @DisplayName("Should call token service with correct user ID")
     void shouldCallTokenServiceWithCorrectUserId() {
+        // 给定
         // Given
         when(tokenService.generateTokenPair(anyString())).thenReturn(TokenPair.builder().build());
 
+        // 什么时候
         // When
         authService.generateTokenPair(testUser);
 
+        // 然后
         // Then
         verify(tokenService).generateTokenPair(testUser.getId().toString());
     }
