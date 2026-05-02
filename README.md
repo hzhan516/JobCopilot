@@ -98,8 +98,8 @@ The backend adopts **Hexagonal Architecture / Domain-Driven Design (DDD)** with 
 
 - Docker 20.10+ and Docker Compose 2.0+
 - Or Podman with podman-compose
-- Google Cloud project with Vertex AI enabled
-- Google Cloud CLI authenticated via Application Default Credentials (ADC)
+- One LiteLLM-compatible AI provider key for local AI features, such as Gemini, OpenAI, Anthropic, or Groq
+- Google Cloud / Vertex AI is optional and is not required for local development
 
 ### 1. Clone the Repository
 
@@ -117,40 +117,47 @@ cp .env.example .env
 
 Required environment variables:
 
-| Variable                 | Required | Description                                        |
-|--------------------------|----------|----------------------------------------------------|
-| `GOOGLE_CLOUD_PROJECT`   | Yes      | Google Cloud project used by Vertex AI             |
-| `VERTEX_AI_LOCATION`     | Yes      | Vertex AI region, e.g. `us-central1`               |
+| Variable                 | Required | Description |
+|--------------------------|----------|-------------|
 | `JWT_SECRET`             | Yes      | Secret key for JWT token generation (min 32 chars) |
-| `SPRING_PROFILES_ACTIVE` | No       | Spring profile: `dev` (default) or `prod`          |
-| `LOG_LEVEL`              | No       | AI service log level: `INFO` (default) or `DEBUG`  |
+| `GEMINI_API_KEY`         | Optional | Gemini API key used when `LLM_*_MODEL` uses the `gemini/` prefix |
+| `OPENAI_API_KEY`         | Optional | OpenAI API key used when `LLM_*_MODEL` uses the `openai/` prefix |
+| `ANTHROPIC_API_KEY`      | Optional | Anthropic API key used when `LLM_*_MODEL` uses the `anthropic/` prefix |
+| `GROQ_API_KEY`           | Optional | Groq API key used when `LLM_*_MODEL` uses the `groq/` prefix |
+| `LLM_TEXT_MODEL`         | Yes      | LiteLLM text model name, e.g. `gemini/gemini-2.5-flash` |
+| `LLM_VISION_MODEL`       | Yes      | LiteLLM vision model name |
+| `LLM_EMBEDDING_MODEL`    | Yes      | LiteLLM embedding model name |
+| `SPRING_PROFILES_ACTIVE` | No       | Spring profile: `dev` (default) or `prod` |
+| `LOG_LEVEL`              | No       | AI service log level: `INFO` (default) or `DEBUG` |
 
-Before starting the AI service locally, authenticate ADC:
+For local development, copy `.env.example` to `.env` and provide one API key that matches the LiteLLM model prefix you choose. For example, the default Gemini models use `GEMINI_API_KEY`.
 
-```bash
-gcloud auth application-default login
-gcloud config set project "$GOOGLE_CLOUD_PROJECT"
-```
+Google Cloud ADC is only needed if you intentionally configure the project to use Vertex AI-based models.
+
 
 ### 3. Start Core Services
 
 Using Docker Compose:
+```bash
+docker compose up -d
+```
 
+If your environment still uses the legacy Compose CLI, use:
 ```bash
 docker-compose up -d
 ```
 
 Using Podman:
-
 ```bash
 podman-compose up -d
 # or
 podman compose up -d
 ```
 
-For local development, we usually start PostgreSQL, RabbitMQ, backend, and frontend with Docker Compose, then run the
-AI service locally so it can reuse local ADC credentials. The `ai-service` container needs ADC credentials mounted
-separately if you want to run it fully inside Docker.
+For local development, `.env` is loaded by Docker Compose and by the local AI service process. The AI service uses LiteLLM, so provide an API key that matches the configured model provider, such as `GEMINI_API_KEY` for the default Gemini models.
+
+If you run the AI service locally instead of in Docker, source the root `.env` before starting Uvicorn so RabbitMQ and LLM settings match the Compose environment.
+
 
 ### 4. Verify Services
 
@@ -246,25 +253,28 @@ Requirements:
 
 - Python 3.11+
 - pip or poetry
-- Google Cloud CLI with ADC configured
+- A LiteLLM-compatible provider key configured in the root `.env` file
 
 ```bash
 cd ai-service
 
 # Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Authenticate Vertex AI locally
-gcloud auth application-default login
-gcloud config set project "$GOOGLE_CLOUD_PROJECT"
+# Load root environment variables
+set -a
+source ../.env
+set +a
 
 # Run development server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+Google Cloud ADC is not required for local development unless you intentionally configure LiteLLM to use a Vertex AI-based model.
+
 
 ## Deployment
 
