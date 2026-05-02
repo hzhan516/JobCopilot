@@ -134,6 +134,7 @@ class JobRankResultItem(AppBaseModel):
     match_score: float = Field(alias="matchScore")
     match_factors: MatchFactors = Field(alias="matchFactors")
     description: str
+    match_reason: str | None = Field(default=None, alias="matchReason")
 
 
 class JobRankResultPayload(AppBaseModel):
