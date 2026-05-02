@@ -50,7 +50,7 @@ docs/
 # Docker 相关（避免循环）
 .dockerignore
 Dockerfile*
-docker-compose*.yml
+docker-compose.yml.example
 
 # 临时文件
 *.tmp

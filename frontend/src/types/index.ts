@@ -29,6 +29,34 @@ export interface AuthResponse {
   expiresIn: number;
 }
 
+// 用户资料类型
+// User profile type
+export interface Profile {
+  userId: string;
+  fullName: string | null;
+  avatarUrl: string | null;
+  phone: string | null;
+  targetPosition: string | null;
+  preferredLocation: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 更新资料请求
+// Update profile request
+export interface UpdateProfileRequest {
+  fullName: string;
+  phone: string;
+  targetPosition: string;
+  preferredLocation: string;
+}
+
+// 更新头像请求
+// Update avatar request
+export interface UpdateAvatarRequest {
+  avatarUrl: string;
+}
+
 // 登录/注册请求
 export interface LoginRequest {
   email: string;

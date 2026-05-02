@@ -301,7 +301,11 @@
       "createdOn": "Created on",
       "versionHistory": "Version History",
       "selectVersion": "Select a version to view details",
-      "versionDetail": "Version Details"
+      "versionDetail": "Version Details",
+      "manualEdit": "Manual Edit",
+      "manualEditDesc": "Create a copy and edit manually",
+      "createCopySuccess": "Copy created successfully",
+      "createCopyError": "Failed to create copy"
     },
     "edit": {
       "title": "Edit Version",
@@ -330,6 +334,7 @@
       "description": "Description",
       "rawContent": "Raw Content",
       "editContent": "Edit Content",
+      "createCopy": "Create Copy",
       "parsed": "Parsed",
       "original": "Original",
       "converted": "Converted",
@@ -341,7 +346,10 @@
     "markdownEditor": {
       "title": "Edit Resume",
       "save": "Save",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "autoSaving": "Saving...",
+      "autoSaveSuccess": "Auto-saved",
+      "autoSaveError": "Auto-save failed"
     },
     "download": {
       "button": "Download",
@@ -371,6 +379,21 @@
     "email": "Email",
     "accountType": "Account Type",
     "typeEmail": "Email Account",
+    "fullName": "Full Name",
+    "fullNamePlaceholder": "Enter your full name",
+    "phone": "Phone",
+    "phonePlaceholder": "Enter your phone number",
+    "targetPosition": "Target Position",
+    "targetPositionPlaceholder": "e.g. Software Engineer",
+    "preferredLocation": "Preferred Location",
+    "preferredLocationPlaceholder": "e.g. San Francisco, CA",
+    "avatar": "Avatar URL",
+    "avatarPlaceholder": "https://example.com/avatar.png",
+    "saveSuccess": "Profile updated successfully",
+    "saveError": "Failed to update profile",
+    "validation": {
+      "maxLength": "Value is too long"
+    },
     "security": "Security",
     "changePassword": "Change Password",
     "changePasswordDesc": "Update your account password",

@@ -31,4 +31,6 @@ public interface JpaResumeVersionRepository extends JpaRepository<ResumeVersionJ
     @Modifying
     @Query("DELETE FROM ResumeVersionJpaEntity v WHERE v.groupId = :groupId")
     void deleteAllByGroupId(@Param("groupId") UUID groupId);
+
+    List<ResumeVersionJpaEntity> findAllByGroupIdAndVersionTypeOrderByCreatedAtAsc(UUID groupId, String versionType);
 }

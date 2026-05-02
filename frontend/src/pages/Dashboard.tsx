@@ -120,7 +120,7 @@ export default function Dashboard() {
             <Button
               variant="outline"
               onClick={() => navigate('/jobs')}
-              className="border-white text-white hover:bg-white/10"
+              className="border-white text-white bg-transparent hover:bg-white/10"
             >
               <Briefcase className="w-4 h-4 mr-2" />
               {t('dashboard.viewJobs')}

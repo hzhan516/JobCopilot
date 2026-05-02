@@ -3,7 +3,7 @@
 # 基于FastAPI + Uvicorn
 # =============================================================================
 
-FROM python:3.11-slim
+FROM docker.io/library/python:3.11-slim
 
 # 标签信息
 LABEL maintainer="SER594 Team"
@@ -39,10 +39,6 @@ RUN mkdir -p /app/uploads
 
 # 暴露端口
 EXPOSE 8000
-
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
 
 # 启动命令（Uvicorn单进程模式，适合容器）
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

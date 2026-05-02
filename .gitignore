@@ -185,3 +185,5 @@
 /AGENTS.md
 /frontend/.env
 /backend/logs/*.log
+/docker-compose.yml
+/.env

@@ -17,8 +17,8 @@ CREATE TABLE IF NOT EXISTS resume_vectors
 );
 
 -- 索引 / Indexes
-CREATE INDEX idx_resume_vectors_version_id ON resume_vectors (resume_version_id);
-CREATE INDEX idx_resume_vectors_status ON resume_vectors (status);
+CREATE INDEX IF NOT EXISTS idx_resume_vectors_version_id ON resume_vectors (resume_version_id);
+CREATE INDEX IF NOT EXISTS idx_resume_vectors_status ON resume_vectors (status);
 
 -- 职位嵌入向量表 / Job embedding vectors table
 CREATE TABLE IF NOT EXISTS job_vectors
@@ -33,5 +33,5 @@ CREATE TABLE IF NOT EXISTS job_vectors
 );
 
 -- 索引 / Indexes
-CREATE INDEX idx_job_vectors_job_id ON job_vectors (job_id);
-CREATE INDEX idx_job_vectors_status ON job_vectors (status);
+CREATE INDEX IF NOT EXISTS idx_job_vectors_job_id ON job_vectors (job_id);
+CREATE INDEX IF NOT EXISTS idx_job_vectors_status ON job_vectors (status);

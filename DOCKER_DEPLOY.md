@@ -77,13 +77,13 @@ curl http://localhost/health
 
 ## Service Access URLs
 
-| Service          | URL                                   | Description          |
-|------------------|---------------------------------------|----------------------|
-| Frontend UI      | http://localhost                      | Job seeker interface |
-| Backend API      | http://localhost:8080/api            | REST API             |
-| AI Service       | http://localhost:8000                | FastAPI docs         |
-| RabbitMQ Management | http://localhost:15672            | guest/guest          |
-| H2 Console       | http://localhost:8080/api/h2-console | Development environment |
+| Service             | URL                                  | Description             |
+|---------------------|--------------------------------------|-------------------------|
+| Frontend UI         | http://localhost                     | Job seeker interface    |
+| Backend API         | http://localhost:8080/api            | REST API                |
+| AI Service          | http://localhost:8000                | FastAPI docs            |
+| RabbitMQ Management | http://localhost:15672               | guest/guest             |
+| H2 Console          | http://localhost:8080/api/h2-console | Development environment |
 
 ## Common Commands
 
@@ -192,7 +192,7 @@ docker-compose up -d --build --force-recreate
 
 2. Use production environment configuration:
    ```bash
-   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+   docker-compose -f docker-compose.yml.example -f docker-compose.prod.yml up -d
    ```
 
 3. Configure reverse proxy (Nginx/Traefik)

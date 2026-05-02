@@ -1,6 +1,7 @@
 package edu.asu.ser594.resumeassistant.application.resume.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.asu.ser594.resumeassistant.application.resume.command.CreateVersionCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeEditCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeUploadCommand;
 import edu.asu.ser594.resumeassistant.application.resume.dto.ResumeDownloadResult;
@@ -50,6 +51,12 @@ public class ResumeApplicationService {
     private final ObjectMapper objectMapper;
 
     // ==================== 命令处理 Command Handlers ====================
+
+    /**
+     * 版本链最大长度限制
+     * Maximum version chain length limit
+     */
+    private static final int MAX_VERSION_CHAIN_LENGTH = 50;
 
     @Transactional
     public ResumeGroup handleUpload(ResumeUploadCommand command, UUID userId) {
@@ -140,6 +147,64 @@ public class ResumeApplicationService {
         }
 
         return version;
+    }
+
+    @Transactional
+    public ResumeVersion handleCreateVersion(CreateVersionCommand command) {
+        // 1. 查询简历组并校验所有权
+        // 1. Query resume group and verify ownership
+        ResumeGroup group = groupRepository.findByIdAndUserId(command.groupId(), command.userId())
+                .orElseThrow(() -> new StorageException("group.not.found"));
+
+        // 2. 确定源版本内容
+        // 2. Determine source version content
+        String sourceContent = "";
+        if (command.sourceVersionId() != null) {
+            ResumeVersion sourceVersion = versionRepository.findById(command.sourceVersionId())
+                    .orElseThrow(() -> new StorageException("version.not.found"));
+            // 校验源版本是否属于当前组
+            // Verify source version belongs to current group
+            if (!sourceVersion.getGroupId().equals(command.groupId())) {
+                throw new StorageException("version.group.mismatch");
+            }
+            sourceContent = sourceVersion.getContent() != null ? sourceVersion.getContent() : "";
+        } else {
+            ResumeVersion activeConverted = group.getActiveVersionByType(ResumeVersion.VersionType.CONVERTED);
+            if (activeConverted != null) {
+                sourceContent = activeConverted.getContent() != null ? activeConverted.getContent() : "";
+            }
+        }
+
+        // 3. 版本链长度限制：若 CONVERTED 版本数量超过上限，轮询删除最旧的 ARCHIVED 版本
+        // 3. Version chain length limit: if CONVERTED count exceeds limit, delete oldest ARCHIVED
+        List<ResumeVersion> convertedVersions = versionRepository.findAllByGroupIdAndType(
+                command.groupId(), ResumeVersion.VersionType.CONVERTED);
+        if (convertedVersions.size() >= MAX_VERSION_CHAIN_LENGTH) {
+            convertedVersions.stream()
+                    .filter(v -> v.getStatus() == ResumeVersion.Status.ARCHIVED)
+                    .findFirst()
+                    .ifPresent(oldest -> {
+                        versionRepository.delete(oldest.getId());
+                        log.info("Version chain limit reached. Deleted oldest archived version: versionId={}",
+                                oldest.getId());
+                    });
+        }
+
+        // 4. 创建新的 CONVERTED 版本并写入源内容
+        // 4. Create new CONVERTED version and write source content
+        ResumeVersion newVersion = ResumeVersion.createConverted(command.groupId());
+        newVersion.editContent(sourceContent);
+
+        // 5. 添加到组（自动归档旧的 ACTIVE CONVERTED）并持久化
+        // 5. Add to group (auto-archives old ACTIVE CONVERTED) and persist
+        group.addVersion(newVersion);
+        versionRepository.save(newVersion);
+        groupRepository.save(group);
+
+        log.info("Resume version created: groupId={}, newVersionId={}, sourceVersionId={}",
+                command.groupId(), newVersion.getId(), command.sourceVersionId());
+
+        return newVersion;
     }
 
     @Transactional

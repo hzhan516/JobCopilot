@@ -109,6 +109,19 @@ export const resumeService = {
     }
     throw new Error(response.data.message);
   },
+
+  // 创建简历版本副本
+  // Create resume version copy
+  createVersion: async (groupId: string, sourceVersionId?: string): Promise<ResumeVersion> => {
+    const response = await apiClient.post<ApiResponse<ResumeVersion>>(
+      `/v1/resumes/groups/${groupId}/versions`,
+      { sourceVersionId: sourceVersionId || null }
+    );
+    if (response.data.code === 200) {
+      return response.data.data;
+    }
+    throw new Error(response.data.message);
+  },
 };
 
 export default resumeService;
