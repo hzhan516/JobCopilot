@@ -39,6 +39,8 @@
 **/.venv/
 **/__pycache__/
 *.pyc
+*.env
+.env
 
 # macOS
 .DS_Store
@@ -83,6 +85,8 @@
 **/.venv/
 **/__pycache__/
 *.pyc
+*.env
+.env
 
 # macOS
 .DS_Store
@@ -127,6 +131,8 @@
 **/.venv/
 **/__pycache__/
 *.pyc
+*.env
+.env
 
 # macOS
 .DS_Store
@@ -172,6 +178,8 @@
 **/.venv/
 **/__pycache__/
 *.pyc
+*.env
+.env
 
 # macOS
 .DS_Store

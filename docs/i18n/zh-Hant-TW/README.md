@@ -97,9 +97,10 @@
 ### 環境要求
 
 - Docker 20.10+ 和 Docker Compose 2.0+
-- 或使用 Podman 和 podman-compose
-- Google Cloud 專案（已啟用 Vertex AI）
-- Google Cloud CLI（已透過應用程式預設憑證 ADC 認證）
+- 或帶有 podman-compose 的 Podman
+- 一個用於本地 AI 功能的 LiteLLM 相容模型服務金鑰，例如 Gemini、OpenAI、Anthropic 或 Groq
+- Google Cloud / Vertex AI 是選用項，本地開發不需要強制設定
+
 
 ### 1. 複製倉庫
 
@@ -117,20 +118,23 @@ cp .env.example .env
 
 必要的環境變數：
 
-| 變數                 | 必需 | 說明                                        |
-|--------------------------|----------|----------------------------------------------------|
-| `GOOGLE_CLOUD_PROJECT`   | 是      | Vertex AI 使用的 Google Cloud 專案             |
-| `VERTEX_AI_LOCATION`     | 是      | Vertex AI 區域，例如 `us-central1`               |
-| `JWT_SECRET`             | 是      | JWT 權杖生成的密鑰（至少 32 個字元） |
-| `SPRING_PROFILES_ACTIVE` | 否       | Spring 設定檔：`dev`（預設）或 `prod`          |
-| `LOG_LEVEL`              | 否       | AI 服務日誌層級：`INFO`（預設）或 `DEBUG`  |
+| 變數                     | 必需 | 說明 |
+|--------------------------|------|------|
+| `JWT_SECRET`             | 是   | JWT token 產生金鑰（至少 32 個字元） |
+| `GEMINI_API_KEY`         | 選用 | 當 `LLM_*_MODEL` 使用 `gemini/` 前綴時使用的 Gemini API 金鑰 |
+| `OPENAI_API_KEY`         | 選用 | 當 `LLM_*_MODEL` 使用 `openai/` 前綴時使用的 OpenAI API 金鑰 |
+| `ANTHROPIC_API_KEY`      | 選用 | 當 `LLM_*_MODEL` 使用 `anthropic/` 前綴時使用的 Anthropic API 金鑰 |
+| `GROQ_API_KEY`           | 選用 | 當 `LLM_*_MODEL` 使用 `groq/` 前綴時使用的 Groq API 金鑰 |
+| `LLM_TEXT_MODEL`         | 是   | LiteLLM 文字模型名稱，例如 `gemini/gemini-2.5-flash` |
+| `LLM_VISION_MODEL`       | 是   | LiteLLM 視覺模型名稱 |
+| `LLM_EMBEDDING_MODEL`    | 是   | LiteLLM 嵌入模型名稱 |
+| `SPRING_PROFILES_ACTIVE` | 否   | Spring profile：`dev`（預設）或 `prod` |
+| `LOG_LEVEL`              | 否   | AI service 日誌等級：`INFO`（預設）或 `DEBUG` |
 
-在本機啟動 AI 服務前，先認證 ADC：
+本地開發時，請將 `.env.example` 複製為 `.env`，並提供一個與所選 LiteLLM 模型前綴匹配的 API key。例如，預設 Gemini 模型使用 `GEMINI_API_KEY`。
 
-```bash
-gcloud auth application-default login
-gcloud config set project "$GOOGLE_CLOUD_PROJECT"
-```
+只有在您主動將專案設定為使用 Vertex AI 模型時，才需要 Google Cloud ADC。
+
 
 ### 3. 啟動核心服務
 
@@ -148,7 +152,10 @@ podman-compose up -d
 podman compose up -d
 ```
 
-對於本地開發，我們通常使用 Docker Compose 啟動 PostgreSQL、RabbitMQ、後端和前端，然後在本機執行 AI 服務，以便它可以重複使用本機 ADC 憑證。如果你想在 Docker 中完全執行 AI 服務容器，則需要單獨掛載 ADC 憑證。
+對於本地開發，Docker Compose 和本地 AI 服務程序都會讀取 `.env`。AI 服務使用 LiteLLM，因此請提供一個與所選模型服務匹配的 API key，例如預設 Gemini 模型使用 `GEMINI_API_KEY`。
+
+如果您選擇在本機執行 AI 服務，而不是在 Docker 中執行，請在啟動 Uvicorn 前載入專案根目錄的 `.env`，以確保 RabbitMQ 和 LLM 設定與 Compose 環境一致。
+
 
 ### 4. 驗證服務
 
@@ -244,25 +251,30 @@ mvn spring-boot:run -pl app -Dspring-boot.run.profiles=prod
 
 - Python 3.11+
 - pip 或 poetry
-- Google Cloud CLI（已設定 ADC）
+- 已在專案根目錄 `.env` 檔案中設定相容 LiteLLM 的模型服務金鑰
 
 ```bash
 cd ai-service
 
 # 建立虛擬環境
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
 # 安裝依賴
 pip install -r requirements.txt
 
-# 在本機認證 Vertex AI
-gcloud auth application-default login
-gcloud config set project "$GOOGLE_CLOUD_PROJECT"
+# 載入專案根目錄環境變數
+set -a
+source ../.env
+set +a
 
 # 執行開發伺服器
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+本地開發不需要 Google Cloud ADC，除非您主動將 LiteLLM 設定為使用 Vertex AI 模型。
+
+
 
 ## 部署上線
 

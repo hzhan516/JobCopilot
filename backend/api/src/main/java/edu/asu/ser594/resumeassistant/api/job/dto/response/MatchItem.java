@@ -10,6 +10,7 @@ package edu.asu.ser594.resumeassistant.api.job.dto.response;
  * @param matchScore   综合匹配得分 / Overall match score
  * @param matchFactors 详细匹配因子 / Detailed match factors
  * @param description  职位描述片段 / Job description snippet
+ * @param matchReason  AI生成的匹配理由 / AI generated match reason
  */
 public record MatchItem(
         String jobId,
@@ -17,6 +18,7 @@ public record MatchItem(
         String company,
         Double matchScore,
         MatchFactors matchFactors,
-        String description
+        String description,
+        String matchReason
 ) {
 }

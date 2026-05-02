@@ -1,32 +1,32 @@
-# Python AI服务依赖
-# =================
+# Python AI服务依赖 / Python AI Service Dependencies
+# ================= / =================
 
-# Web框架
+# Web框架 / Web Framework
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
 
-# 消息队列
+# 消息队列 / Message Queue
 pika==1.3.2
 
-# 数据处理
+# 数据处理 / Data Processing
 pydantic==2.9.0
 python-multipart==0.0.12
 
-# PDF解析
+# PDF解析 / PDF Parsing
 PyPDF2==3.0.1
 
-# 向量嵌入
+# 向量嵌入 / Vector Embeddings
 sentence-transformers==3.2.0
 numpy==1.26.4
 
-# 工具
+# 工具 / Utilities
 python-dotenv==1.0.1
 httpx==0.28.1
 playwright==1.55.0
 
-# 日志
+# 日志 / Logging
 structlog==24.4.0
 
-# Google Cloud / Vertex AI
-google-auth==2.40.3
-google-genai==1.30.0
+# LLM网关 / LLM Gateway
+litellm==1.61.11
+tenacity==8.4.1

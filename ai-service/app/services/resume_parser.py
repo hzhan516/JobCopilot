@@ -1,7 +1,7 @@
 from typing import Any
 
 from app.schemas import ParsedResumeContent
-from app.services.gemini_client import generate_json_from_text_prompt
+from app.services.llm_client import generate_json_from_text_prompt
 
 
 def _normalize_skills(value: Any) -> list[str]:

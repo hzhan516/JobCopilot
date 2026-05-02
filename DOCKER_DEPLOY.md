@@ -24,8 +24,14 @@ vim .env
 
 Required configurations:
 
-- `OPENAI_API_KEY`: Your OpenAI API key
 - `JWT_SECRET`: JWT signing secret (must be changed in production)
+- One LiteLLM-compatible provider key, such as `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GROQ_API_KEY`
+- `LLM_TEXT_MODEL`, `LLM_VISION_MODEL`, and `LLM_EMBEDDING_MODEL`: model names that match the provider key prefix
+
+By default, the project can use Gemini models through LiteLLM, so local development only requires `GEMINI_API_KEY` unless you choose a different provider.
+
+Google Cloud ADC is optional and is only needed if you intentionally configure LiteLLM to use a Vertex AI-based model.
+
 
 ### 2. Start Services
 

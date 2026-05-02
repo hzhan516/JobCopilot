@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 from app.schemas import AiResultEvent, ConversationRequestCommand
 from app.services.file_parser import download_file_bytes, extract_resume_text
-from app.services.gemini_client import generate_json_from_text_prompt
+from app.services.llm_client import generate_json_from_text_prompt
 
 
 def _infer_file_format(file_url: str) -> str | None:

@@ -9,12 +9,14 @@ package edu.asu.ser594.resumeassistant.domain.matching.valueobject;
  * @param company     公司名称 / Company name
  * @param matchScore  匹配得分 / Match score
  * @param description 职位描述 / Job description
+ * @param matchReason AI生成的匹配理由 / AI generated match reason
  */
 public record RankedJob(
         String jobId,
         String title,
         String company,
         Double matchScore,
-        String description
+        String description,
+        String matchReason
 ) {
 }

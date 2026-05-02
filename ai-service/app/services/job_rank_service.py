@@ -1,5 +1,7 @@
 import time
+import litellm
 
+from app.config import LLM_TEXT_MODEL
 from app.schemas import JobRankCommand, JobRankResultPayload, JobRankResultItem, MatchFactors
 from app.services.vector_service import generate_embedding
 
@@ -102,8 +104,48 @@ def _rank_single_job(
             locationMatch=0.0,
         ),
         description=short_description,
+        matchReason=None,
     )
 
+
+def _generate_match_reason(command: JobRankCommand, job: JobRankResultItem) -> str | None:
+    if not command.resume_text:
+        return None
+
+    # Safe truncation to prevent token overflow
+    resume_snippet = command.resume_text[:3000]
+    
+    details = command.job_details.get(job.job_id, {})
+    if not isinstance(details, dict):
+        details = {}
+        
+    job_desc = str(details.get("description", ""))[:2000]
+    
+    prompt = f"""
+You are an expert career advisor.
+Briefly explain in 1-2 sentences why this job is a good fit for the candidate.
+Focus on matching skills and experience.
+
+Candidate Resume:
+{resume_snippet}
+
+Job Title: {job.title}
+Job Company: {job.company}
+Job Description:
+{job_desc}
+"""
+
+    try:
+        response = litellm.completion(
+            model=LLM_TEXT_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=150
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"Failed to generate match reason for job {job.job_id}: {e}")
+        return None
 
 def rank_jobs(command: JobRankCommand) -> JobRankResultPayload:
     rank_start = time.perf_counter()
@@ -119,6 +161,12 @@ def rank_jobs(command: JobRankCommand) -> JobRankResultPayload:
         for job_id in command.recalled_job_ids
     ]
     ranked_results.sort(key=lambda item: item.match_score, reverse=True)
+
+    # RAG Generation: Generate match reasons for top 3 candidates
+    for i in range(min(3, len(ranked_results))):
+        reason = _generate_match_reason(command, ranked_results[i])
+        if reason:
+            ranked_results[i].match_reason = reason
 
     rank_time_ms = int((time.perf_counter() - rank_start) * 1000)
 

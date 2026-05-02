@@ -75,7 +75,8 @@ public class MatchingFacadeImpl implements MatchingFacade {
                         rj.company(),
                         rj.matchScore(),
                         new MatchFactors(0.0, 0.0, 0.0),
-                        rj.description()
+                        rj.description(),
+                        rj.matchReason()
                 ))
                 .collect(Collectors.toList());
 
@@ -99,7 +100,8 @@ public class MatchingFacadeImpl implements MatchingFacade {
                         rj.company(),
                         rj.matchScore(),
                         new MatchFactors(0.0, 0.0, 0.0),
-                        rj.description()
+                        rj.description(),
+                        rj.matchReason()
                 ))
                 .collect(Collectors.toList());
 
