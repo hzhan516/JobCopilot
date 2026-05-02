@@ -24,8 +24,13 @@ vim .env
 
 必需配置项：
 
-- `OPENAI_API_KEY`: 你的 OpenAI API 密钥
 - `JWT_SECRET`: JWT 签名密钥（生产环境必须修改）
+- 一个兼容 LiteLLM 的模型服务密钥，例如 `GEMINI_API_KEY`、`OPENAI_API_KEY`、`ANTHROPIC_API_KEY` 或 `GROQ_API_KEY`
+- `LLM_TEXT_MODEL`、`LLM_VISION_MODEL` 和 `LLM_EMBEDDING_MODEL`: 与所选模型服务前缀匹配的模型名称
+
+默认情况下，项目可以通过 LiteLLM 使用 Gemini 模型，因此本地开发只需要配置 `GEMINI_API_KEY`，除非您选择其他模型服务。
+
+Google Cloud ADC 是可选项。只有在您主动将 LiteLLM 配置为使用 Vertex AI 模型时才需要。
 
 ### 2. 启动服务
 
