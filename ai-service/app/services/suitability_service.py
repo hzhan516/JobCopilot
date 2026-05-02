@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 from app.schemas import SuitabilityBreakdown, SuitabilityRequest, SuitabilityResponse
-from app.services.gemini_client import generate_json_from_text_prompt
+from app.services.llm_client import generate_json_from_text_prompt
 
 
 BASELINE_MODEL_FILE = Path(__file__).resolve().parents[2] / "data_pipeline" / "output" / "baseline_model.json"

@@ -3,7 +3,7 @@ from typing import Any
 import httpx
 
 from app.schemas import ParsedJobContent
-from app.services.gemini_client import (
+from app.services.llm_client import (
     generate_json_from_image_prompt,
     generate_json_from_text_prompt,
 )
