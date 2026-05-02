@@ -1,4 +1,6 @@
+import litellm
 from litellm import embedding
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from app.config import (
     LLM_EMBEDDING_MODEL,
@@ -6,6 +8,18 @@ from app.config import (
 from app.schemas import AiResultEvent, VectorGenCommand
 
 
+
+RETRY_STRATEGY = retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_exception_type((
+        litellm.exceptions.RateLimitError,
+        litellm.exceptions.APIConnectionError,
+        litellm.exceptions.Timeout
+    ))
+)
+
+@RETRY_STRATEGY
 def generate_embedding(text: str) -> list[float]:
     cleaned_text = text.strip()
 

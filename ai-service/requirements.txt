@@ -29,3 +29,4 @@ structlog==24.4.0
 
 # LLM网关 / LLM Gateway
 litellm==1.61.11
+tenacity==8.4.1

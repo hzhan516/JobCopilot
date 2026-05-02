@@ -12,7 +12,6 @@ from app.mq.consumer import create_connection, setup_all_queues, start_all_consu
 from app.schemas import (
     JobMatchRequest,
     JobMatchResponse,
-    SuitabilityBreakdown,
     SuitabilityRequest,
     SuitabilityResponse,
 )
