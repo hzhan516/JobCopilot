@@ -65,7 +65,7 @@ class MatchingFacadeImplTest {
         // 给定
         // Given
         JobMatchResult result = JobMatchResult.createProcessing(MATCH_ID, USER_ID, "resume-v1", "query", "v1");
-        result.complete(List.of(new RankedJob("job-1", "Title", "Company", 0.9, "Desc")), 100L);
+        result.complete(List.of(new RankedJob("job-1", "Title", "Company", 0.9, "Desc", "Good fit")), 100L);
         when(matchingService.getMatchResult(any())).thenReturn(Optional.of(result));
 
 

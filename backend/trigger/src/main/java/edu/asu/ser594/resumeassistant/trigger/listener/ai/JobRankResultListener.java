@@ -62,7 +62,8 @@ public class JobRankResultListener {
                             (String) item.get("company"),
                             item.get("matchScore") != null ? ((Number) item.get("matchScore")).doubleValue() : 0.0,
                             factors,
-                            (String) item.get("description")
+                            (String) item.get("description"),
+                            (String) item.get("matchReason")
                     ));
                 }
             }

@@ -35,7 +35,7 @@ JOB_RANK_RESULT_ROUTING_KEY = "backend.res.job.rank"
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
-GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT", "Vertex-AI-for-Cherry-studio")
+GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT", "ser594-ai-service")
 VERTEX_AI_LOCATION = os.getenv("VERTEX_AI_LOCATION", "global")
 
 LLM_TEXT_MODEL = os.getenv("LLM_TEXT_MODEL", "gemini/gemini-2.5-flash")

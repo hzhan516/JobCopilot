@@ -37,6 +37,13 @@ COPY app/ ./app/
 # 创建上传目录（与后端共享）
 RUN mkdir -p /app/uploads
 
+# 创建非 root 用户并修改目录权限
+RUN adduser --disabled-password --gecos '' appuser && \
+    chown -R appuser:appuser /app
+
+# 切换到非 root 用户
+USER appuser
+
 # 暴露端口
 EXPOSE 8000
 

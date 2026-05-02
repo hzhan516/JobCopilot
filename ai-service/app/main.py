@@ -5,7 +5,7 @@ Resume Assistant - Python AI service entry point.
 import os
 import threading
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
 from app.mq.consumer import create_connection, setup_all_queues, start_all_consumers
 
@@ -27,6 +27,7 @@ app = FastAPI(
 )
 
 _mq_started = False
+_mq_is_connected = False
 _mq_lock = threading.Lock()
 
 
@@ -41,6 +42,8 @@ async def root():
 
 @app.get("/health")
 async def health_check():
+    if not _mq_is_connected:
+        raise HTTPException(status_code=503, detail="RabbitMQ consumer not connected")
     return {
         "status": "healthy",
         "vertex_ai_project_configured": bool(os.getenv("GOOGLE_CLOUD_PROJECT", "ser594-ai-service")),
@@ -63,14 +66,17 @@ async def status():
 
 
 def initialize_mq() -> None:
+    global _mq_is_connected
     try:
         print("Starting RabbitMQ consumers...")
         connection = create_connection()
         channel = connection.channel()
         setup_all_queues(channel)
         print("RabbitMQ consumers are ready.")
+        _mq_is_connected = True
         start_all_consumers(channel)
     except Exception as exc:
+        _mq_is_connected = False
         print(f"RabbitMQ consumer startup failed: {exc}", flush=True)
         raise
 

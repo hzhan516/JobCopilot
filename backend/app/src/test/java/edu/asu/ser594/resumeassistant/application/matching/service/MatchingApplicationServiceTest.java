@@ -212,7 +212,7 @@ class MatchingApplicationServiceTest {
         // Given
         SaveMatchResultCommand command = SaveMatchResultCommand.builder()
                 .matchId(MATCH_ID)
-                .rankedResults(List.of(new MatchItem("job-1", "Title", "Company", 0.9, null, "Desc")))
+                .rankedResults(List.of(new MatchItem("job-1", "Title", "Company", 0.9, null, "Desc", "Good fit")))
                 .rankTimeMs(100L)
                 .build();
 
