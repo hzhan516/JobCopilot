@@ -197,8 +197,11 @@ public class ResumeApplicationService {
 
         // 5. 添加到组（自动归档旧的 ACTIVE CONVERTED）并持久化
         // 5. Add to group (auto-archives old ACTIVE CONVERTED) and persist
+        // 注意：只通过 groupRepository.save 级联保存，避免独立 save(newVersion) 导致
+        // JPA flush 时序问题：INSERT 先于旧版本的 UPDATE，违反 partial unique index
+        // Note: only cascade-save via groupRepository.save to avoid JPA flush ordering issue
+        // where INSERT runs before the old version's UPDATE, violating the partial unique index
         group.addVersion(newVersion);
-        versionRepository.save(newVersion);
         groupRepository.save(group);
 
         log.info("Resume version created: groupId={}, newVersionId={}, sourceVersionId={}",

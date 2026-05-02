@@ -247,7 +247,6 @@ class ResumeApplicationServiceTest {
         when(groupRepository.findByIdAndUserId(GROUP_ID, USER_ID)).thenReturn(Optional.of(testGroup));
         when(versionRepository.findAllByGroupIdAndType(GROUP_ID, ResumeVersion.VersionType.CONVERTED))
                 .thenReturn(List.of(activeConverted));
-        doNothing().when(versionRepository).save(any(ResumeVersion.class));
         doNothing().when(groupRepository).save(any(ResumeGroup.class));
 
         CreateVersionCommand command = CreateVersionCommand.builder()
@@ -264,7 +263,8 @@ class ResumeApplicationServiceTest {
         assertThat(result.getVersionType()).isEqualTo(ResumeVersion.VersionType.CONVERTED);
         assertThat(result.getContent()).isEqualTo("Existing markdown content");
         assertThat(result.getStatus()).isEqualTo(ResumeVersion.Status.ACTIVE);
-        verify(versionRepository).save(any(ResumeVersion.class));
+        // 新版本通过 groupRepository.save 级联保存，不再直接调用 versionRepository.save
+        // New version is cascade-saved via groupRepository.save, no direct versionRepository.save call
         verify(groupRepository).save(any(ResumeGroup.class));
     }
 
@@ -285,7 +285,6 @@ class ResumeApplicationServiceTest {
         when(versionRepository.findById(sourceId)).thenReturn(Optional.of(sourceVersion));
         when(versionRepository.findAllByGroupIdAndType(GROUP_ID, ResumeVersion.VersionType.CONVERTED))
                 .thenReturn(List.of(sourceVersion));
-        doNothing().when(versionRepository).save(any(ResumeVersion.class));
         doNothing().when(groupRepository).save(any(ResumeGroup.class));
 
         CreateVersionCommand command = CreateVersionCommand.builder()
@@ -329,7 +328,6 @@ class ResumeApplicationServiceTest {
         when(groupRepository.findByIdAndUserId(GROUP_ID, USER_ID)).thenReturn(Optional.of(testGroup));
         when(versionRepository.findAllByGroupIdAndType(GROUP_ID, ResumeVersion.VersionType.CONVERTED))
                 .thenReturn(chain);
-        doNothing().when(versionRepository).save(any(ResumeVersion.class));
         doNothing().when(groupRepository).save(any(ResumeGroup.class));
 
         CreateVersionCommand command = CreateVersionCommand.builder()
