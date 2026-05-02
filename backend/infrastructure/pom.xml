@@ -136,12 +136,6 @@
             <artifactId>commons-io</artifactId>
         </dependency>
 
-        <!-- JODConverter for LibreOffice -->
-        <dependency>
-            <groupId>org.jodconverter</groupId>
-            <artifactId>jodconverter-local</artifactId>
-        </dependency>
-
         <!-- Apache Commons Exec for running Pandoc -->
         <dependency>
             <groupId>org.apache.commons</groupId>

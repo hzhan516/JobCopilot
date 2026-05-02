@@ -80,6 +80,31 @@ public class ResumeApplicationService {
         // 4. Save the aggregation
         groupRepository.save(group);
 
+        // 4.5 本地转换为 Markdown 并填充 CONVERTED 版本
+        // 4.5 Auto-convert to Markdown and populate the CONVERTED version
+        ResumeVersion converted = group.getActiveVersionByType(ResumeVersion.VersionType.CONVERTED);
+        if (converted != null) {
+            DocumentFormat sourceFormat = DocumentFormat.fromMimeType(command.contentType());
+            try (InputStream rawStream = fileStorageService.download(storagePath).orElse(null)) {
+                if (rawStream == null) {
+                    log.warn("Could not download uploaded file for auto-conversion, storagePath={}", storagePath);
+                } else {
+                    String markdown;
+                    if (!"md".equals(sourceFormat.getFormat())) {
+                        InputStream mdStream = documentFormatConverter.convert(rawStream, sourceFormat.getFormat(), "md");
+                        markdown = new String(mdStream.readAllBytes(), StandardCharsets.UTF_8);
+                    } else {
+                        markdown = new String(rawStream.readAllBytes(), StandardCharsets.UTF_8);
+                    }
+                    converted.editContent(markdown);
+                    versionRepository.save(converted);
+                    log.info("Auto-converted uploaded file to markdown for groupId={}", group.getId());
+                }
+            } catch (IOException e) {
+                log.warn("Failed to auto-convert uploaded file to markdown, leaving CONVERTED blank for groupId={}", group.getId(), e);
+            }
+        }
+
         // 5. 触发 AI 异步解析
         // 5. Trigger AI asynchronous parsing
         ResumeVersion originalVersion = group.getVersions().stream()
