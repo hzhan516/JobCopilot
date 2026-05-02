@@ -101,6 +101,19 @@ public interface ResumeFacade {
     ApiResponse<ResumeVersionResponse> rollbackToVersion(UUID versionId, UUID userId);
 
     /**
+     * 创建简历版本副本
+     * Create resume version copy
+     *
+     * @param groupId 简历组ID / Resume group ID
+     * @param request 创建请求 / Create request
+     * @param userId  用户ID / User ID
+     * @return 新版本详情 / New version details
+     */
+    ApiResponse<ResumeVersionResponse> createVersion(UUID groupId,
+                                                     edu.asu.ser594.resumeassistant.api.resume.dto.request.CreateVersionRequest request,
+                                                     UUID userId);
+
+    /**
      * 处理AI解析结果的回调
      * Handle parse result from AI service
      */

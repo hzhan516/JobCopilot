@@ -72,6 +72,7 @@ interface ResumeStore {
   uploadResume: (file: File, title?: string) => Promise<UploadResponse['data']>;
   pollParseStatus: (groupId: string) => Promise<'COMPLETED' | 'FAILED' | 'TIMEOUT'>;
   saveVersion: (versionId: string, content: string) => Promise<void>;
+  createVersion: (groupId: string, sourceVersionId?: string) => Promise<string>;
   deleteGroup: (groupId: string) => Promise<void>;
   deleteVersion: (versionId: string) => Promise<void>;
 }
@@ -164,6 +165,17 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
       if (currentGroup) {
         await get().fetchGroupDetail(currentGroup.groupId);
       }
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  createVersion: async (groupId: string, sourceVersionId?: string) => {
+    set({ loading: true });
+    try {
+      const newVersion = await resumeService.createVersion(groupId, sourceVersionId);
+      await get().fetchGroupDetail(groupId);
+      return newVersion.versionId;
     } finally {
       set({ loading: false });
     }

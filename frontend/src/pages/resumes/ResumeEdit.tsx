@@ -5,6 +5,7 @@ import { useResumeStore } from '../../store/resume.store';
 import { MarkdownEditor } from '../../components/resume/MarkdownEditor';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '../../components/ui/button';
+import { toast } from 'sonner';
 
 export default function ResumeEdit() {
   const { t } = useTranslation();
@@ -35,7 +36,7 @@ export default function ResumeEdit() {
     );
   }
 
-  const version = currentGroup.versions.find(v => v.versionId === versionId);
+  const version = currentGroup.versions.find((v) => v.versionId === versionId);
 
   if (!version) {
     return (
@@ -49,7 +50,14 @@ export default function ResumeEdit() {
   const handleSave = async (content: string) => {
     if (versionId) {
       await saveVersion(versionId, content);
+      toast.success(t('resume.markdownEditor.autoSaveSuccess'));
       navigate(`/resumes/${groupId}`);
+    }
+  };
+
+  const handleAutoSave = async (content: string) => {
+    if (versionId) {
+      await saveVersion(versionId, content);
     }
   };
 
@@ -77,6 +85,7 @@ export default function ResumeEdit() {
           versionId={version.versionId}
           onSave={handleSave}
           onCancel={handleCancel}
+          onAutoSave={handleAutoSave}
         />
       </div>
     </div>

@@ -1,6 +1,7 @@
 package edu.asu.ser594.resumeassistant.trigger.http.controller.resume;
 
 import edu.asu.ser594.resumeassistant.api.common.dto.ApiResponse;
+import edu.asu.ser594.resumeassistant.api.resume.dto.request.CreateVersionRequest;
 import edu.asu.ser594.resumeassistant.api.resume.dto.request.ResumeEditRequest;
 import edu.asu.ser594.resumeassistant.api.resume.dto.request.ResumeUploadRequest;
 import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeGroupResponse;
@@ -33,7 +34,7 @@ public class ResumeController {
      * 上传简历
      * Upload resume
      */
-    @PostMapping(consumes = "multipart/form-data")
+    @PostMapping(value = "", consumes = "multipart/form-data")
     public ResponseEntity<ApiResponse<ResumeUploadResponse>> uploadResume(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "title", required = false) String title,
@@ -172,5 +173,22 @@ public class ResumeController {
                 .versionId(versionId)
                 .build();
         return ResponseEntity.ok(resumeFacade.editVersion(updatedRequest, userId));
+    }
+
+    /**
+     * 创建简历版本副本
+     * Create resume version copy
+     *
+     * @param groupId 简历组ID
+     * @param request 创建请求（sourceVersionId 可选）
+     * @param userId  当前用户ID
+     * @return 新创建的版本详情
+     */
+    @PostMapping("/groups/{groupId}/versions")
+    public ResponseEntity<ApiResponse<ResumeVersionResponse>> createVersion(
+            @PathVariable("groupId") UUID groupId,
+            @Valid @RequestBody CreateVersionRequest request,
+            @CurrentUser UUID userId) {
+        return ResponseEntity.ok(resumeFacade.createVersion(groupId, request, userId));
     }
 }

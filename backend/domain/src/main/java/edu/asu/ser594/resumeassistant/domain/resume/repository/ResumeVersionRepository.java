@@ -53,4 +53,14 @@ public interface ResumeVersionRepository {
      * Delete all versions in group
      */
     void deleteAllByGroupId(UUID groupId);
+
+    /**
+     * 查找组内指定类型的所有版本（含 ARCHIVED）
+     * Find all versions of specified type in group (including ARCHIVED)
+     *
+     * @param groupId 组ID / Group ID
+     * @param type    版本类型 / Version type
+     * @return 版本列表，按 createdAt 升序 / Version list sorted by createdAt ascending
+     */
+    List<ResumeVersion> findAllByGroupIdAndType(UUID groupId, ResumeVersion.VersionType type);
 }

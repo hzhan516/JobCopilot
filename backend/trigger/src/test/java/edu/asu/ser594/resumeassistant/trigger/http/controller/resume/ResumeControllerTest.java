@@ -365,6 +365,50 @@ class ResumeControllerTest {
     }
 
     @Test
+    @DisplayName("Should create version and return new version")
+    void shouldCreateVersionAndReturnNewVersion() {
+        // 给定 / Given
+        edu.asu.ser594.resumeassistant.api.resume.dto.request.CreateVersionRequest request =
+                edu.asu.ser594.resumeassistant.api.resume.dto.request.CreateVersionRequest.builder()
+                        .sourceVersionId(VERSION_ID)
+                        .build();
+
+        ApiResponse<ResumeVersionResponse> apiResponse = ApiResponse.success(testVersionResponse);
+        when(resumeFacade.createVersion(eq(GROUP_ID), any(), eq(USER_ID))).thenReturn(apiResponse);
+
+        // 当 / When
+        ResponseEntity<ApiResponse<ResumeVersionResponse>> response =
+                resumeController.createVersion(GROUP_ID, request, USER_ID);
+
+        // 那么 / Then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getCode() == 200).isTrue();
+        verify(resumeFacade).createVersion(eq(GROUP_ID), any(), eq(USER_ID));
+    }
+
+    @Test
+    @DisplayName("Should create version without source version id")
+    void shouldCreateVersionWithoutSourceVersionId() {
+        // 给定 / Given
+        edu.asu.ser594.resumeassistant.api.resume.dto.request.CreateVersionRequest request =
+                edu.asu.ser594.resumeassistant.api.resume.dto.request.CreateVersionRequest.builder()
+                        .sourceVersionId(null)
+                        .build();
+
+        ApiResponse<ResumeVersionResponse> apiResponse = ApiResponse.success(testVersionResponse);
+        when(resumeFacade.createVersion(eq(GROUP_ID), any(), eq(USER_ID))).thenReturn(apiResponse);
+
+        // 当 / When
+        ResponseEntity<ApiResponse<ResumeVersionResponse>> response =
+                resumeController.createVersion(GROUP_ID, request, USER_ID);
+
+        // 那么 / Then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(resumeFacade).createVersion(eq(GROUP_ID), argThat(req -> req.sourceVersionId() == null), eq(USER_ID));
+    }
+
+    @Test
     @DisplayName("Should handle empty groups list")
     void shouldHandleEmptyGroupsList() {
         // 给定

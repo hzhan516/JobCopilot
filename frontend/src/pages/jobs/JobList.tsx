@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
-import type { Job } from '@/types';
+import { useEffect, useState, useCallback } from 'react';
+import type { Job, MatchItem, ResumeGroup } from '@/types';
 import { useTranslation } from 'react-i18next';
-import { formatDate } from '@/utils/i18n';
+import { useNavigate } from 'react-router-dom';
+import { jobService } from '@/services/jobService';
+import { resumeService } from '@/services/resumeService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,107 +17,71 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Briefcase,
-  MapPin,
-  DollarSign,
-  Calendar,
+  Building2,
   Search,
   Filter,
   ExternalLink,
   Star,
+  Sparkles,
+  Loader2,
+  TrendingUp,
+  Target,
+  MapPin,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-// 模拟职位数据
-const mockJobs: Job[] = [
-  {
-    jobId: '1',
-    title: 'Senior Frontend Engineer',
-    company: 'Google',
-    location: 'Mountain View, CA',
-    description: 'Responsible for front-end development of core products using React, TypeScript and other technologies.',
-    requirements: ['3+ years front-end experience', 'Proficient in React and TypeScript', 'Large project experience'],
-    salaryMin: 150000,
-    salaryMax: 220000,
-    postedAt: '2024-01-15T10:00:00',
-    matchScore: 92,
-  },
-  {
-    jobId: '2',
-    title: 'Java Backend Developer',
-    company: 'Amazon',
-    location: 'Seattle, WA',
-    description: 'Participate in back-end development of e-commerce platform using Spring Boot, MySQL, Redis, etc.',
-    requirements: ['2+ years Java experience', 'Familiar with Spring Boot', 'Understanding of microservices'],
-    salaryMin: 130000,
-    salaryMax: 180000,
-    postedAt: '2024-01-14T14:30:00',
-    matchScore: 85,
-  },
-  {
-    jobId: '3',
-    title: 'Product Manager',
-    company: 'Microsoft',
-    location: 'Redmond, WA',
-    description: 'Responsible for planning and design of social products, coordinating technical, design and operations teams.',
-    requirements: ['3+ years product experience', 'Social product experience preferred', 'Good communication skills'],
-    salaryMin: 140000,
-    salaryMax: 200000,
-    postedAt: '2024-01-13T09:00:00',
-    matchScore: 78,
-  },
-  {
-    jobId: '4',
-    title: 'Data Analyst',
-    company: 'Meta',
-    location: 'Menlo Park, CA',
-    description: 'Responsible for business data analysis and providing data support for product decisions.',
-    requirements: ['Proficient in SQL', 'Master Python or R', 'Data analysis experience'],
-    salaryMin: 120000,
-    salaryMax: 160000,
-    postedAt: '2024-01-12T16:00:00',
-    matchScore: 72,
-  },
-  {
-    jobId: '5',
-    title: 'DevOps Engineer',
-    company: 'Netflix',
-    location: 'Los Gatos, CA',
-    description: 'Responsible for CI/CD process construction, containerized deployment, and cloud platform operations.',
-    requirements: ['Familiar with Docker, Kubernetes', 'Cloud platform experience', 'Familiar with Linux'],
-    salaryMin: 140000,
-    salaryMax: 190000,
-    postedAt: '2024-01-11T11:00:00',
-    matchScore: 68,
-  },
-];
-
 export default function JobList() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [locationFilter, setLocationFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('match');
+  const [sortBy, setSortBy] = useState('date');
+
+  // 匹配相关状态
+  const [resumes, setResumes] = useState<ResumeGroup[]>([]);
+  const [matchDialogOpen, setMatchDialogOpen] = useState(false);
+  const [selectedResumeVersionId, setSelectedResumeVersionId] = useState('');
+  const [isMatching, setIsMatching] = useState(false);
+  const [matchResults, setMatchResults] = useState<MatchItem[]>([]);
+  const [matchStatus, setMatchStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle');
+  const [, setActiveMatchId] = useState<string | null>(null);
 
   // 加载职位数据
   useEffect(() => {
     loadJobs();
+    loadResumes();
   }, []);
 
   const loadJobs = async () => {
     try {
       setIsLoading(true);
-      // 使用模拟数据，后续替换为真实API
-      // const data = await jobService.getJobs();
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setJobs(mockJobs);
-      setFilteredJobs(mockJobs);
+      const data = await jobService.getJobs();
+      setJobs(data);
+      setFilteredJobs(data);
     } catch {
       toast.error(t('jobList.loadError'));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadResumes = async () => {
+    try {
+      const data = await resumeService.getResumeGroups();
+      setResumes(data);
+    } catch {
+      // 静默处理
     }
   };
 
@@ -126,46 +92,123 @@ export default function JobList() {
     // 搜索筛选
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (job) =>
-          job.title.toLowerCase().includes(query) ||
-          job.company.toLowerCase().includes(query) ||
-          job.description.toLowerCase().includes(query)
-      );
-    }
-
-    // 地点筛选
-    if (locationFilter !== 'all') {
-      result = result.filter((job) => job.location === locationFilter);
+      result = result.filter((job) => {
+        const title = job.parsedContent?.title?.toLowerCase() || '';
+        const company = job.parsedContent?.company?.toLowerCase() || '';
+        const desc = job.parsedContent?.description?.toLowerCase() || '';
+        return title.includes(query) || company.includes(query) || desc.includes(query);
+      });
     }
 
     // 排序
     switch (sortBy) {
-      case 'match':
-        result.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
-        break;
-      case 'salary':
-        result.sort((a, b) => (b.salaryMax || 0) - (a.salaryMax || 0));
-        break;
       case 'date':
-        result.sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
+        result.sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        });
+        break;
+      case 'status':
+        result.sort((a, b) => a.status.localeCompare(b.status));
         break;
     }
 
     setFilteredJobs(result);
-  }, [jobs, searchQuery, locationFilter, sortBy]);
+  }, [jobs, searchQuery, sortBy]);
 
-  // 获取所有地点
-  const locations = Array.from(new Set(jobs.map((job) => job.location)));
+  // 轮询匹配结果
+  const pollMatchResult = useCallback(async (matchId: string) => {
+    const maxAttempts = 30;
+    let attempts = 0;
 
-  // 格式化薪资
-  const formatSalary = (min?: number, max?: number) => {
-    if (!min && !max) return t('jobList.salaryNegotiable');
-    const format = (n: number) => (n / 1000).toFixed(0) + 'K';
-    if (min && max) return t('jobList.salaryRange', { min: format(min), max: format(max) });
-    if (min) return t('jobList.salaryMin', { min: format(min) });
-    if (max) return t('jobList.salaryMax', { max: format(max) });
-    return t('jobList.salaryNegotiable');
+    const poll = async () => {
+      attempts++;
+      try {
+        const result = await jobService.getMatchResult(matchId);
+        if (result.status === 'COMPLETED') {
+          setMatchResults(result.matches);
+          setMatchStatus('completed');
+          setIsMatching(false);
+          return;
+        } else if (result.status === 'FAILED') {
+          setMatchStatus('failed');
+          setIsMatching(false);
+          toast.error(t('jobMatch.failed'));
+          return;
+        }
+      } catch {
+        // 轮询出错继续尝试
+      }
+
+      if (attempts >= maxAttempts) {
+        setMatchStatus('failed');
+        setIsMatching(false);
+        toast.error(t('jobMatch.timeout'));
+        return;
+      }
+
+      setTimeout(poll, 2000);
+    };
+
+    poll();
+  }, [t]);
+
+  // 发起匹配
+  const handleStartMatch = async () => {
+    if (!selectedResumeVersionId) {
+      toast.error(t('jobMatch.selectResume'));
+      return;
+    }
+
+    try {
+      setIsMatching(true);
+      setMatchStatus('processing');
+      setMatchResults([]);
+
+      const result = await jobService.startMatch({
+        resumeVersionId: selectedResumeVersionId,
+        topK: 10,
+      });
+
+      setActiveMatchId(result.matchId);
+      pollMatchResult(result.matchId);
+    } catch {
+      setIsMatching(false);
+      setMatchStatus('failed');
+      toast.error(t('jobMatch.startError'));
+    }
+  };
+
+  // 渲染匹配因子徽章
+  const renderMatchFactors = (factors: MatchItem['matchFactors']) => {
+    if (!factors) return null;
+    const items = [
+      { key: 'skillMatch', label: t('jobMatch.skillMatch'), icon: Target, value: factors.skillMatch },
+      { key: 'experienceMatch', label: t('jobMatch.experienceMatch'), icon: TrendingUp, value: factors.experienceMatch },
+      { key: 'locationMatch', label: t('jobMatch.locationMatch'), icon: MapPin, value: factors.locationMatch },
+    ];
+
+    return (
+      <div className="flex flex-wrap gap-2 mt-2">
+        {items.map((item) => (
+          <Badge
+            key={item.key}
+            variant="secondary"
+            className={`text-xs ${
+              item.value >= 0.8
+                ? 'bg-green-100 text-green-700'
+                : item.value >= 0.5
+                ? 'bg-blue-100 text-blue-700'
+                : 'bg-gray-100 text-gray-700'
+            }`}
+          >
+            <item.icon className="w-3 h-3 mr-1" />
+            {item.label}: {Math.round(item.value * 100)}%
+          </Badge>
+        ))}
+      </div>
+    );
   };
 
   // 渲染骨架屏
@@ -179,7 +222,7 @@ export default function JobList() {
         <div className="flex space-x-4">
           <Skeleton className="h-10 flex-1" />
           <Skeleton className="h-10 w-32" />
-          <Skeleton className="h-10 w-32" />
+          <Skeleton className="h-10 w-40" />
         </div>
         <div className="grid gap-4">
           {[1, 2, 3, 4, 5].map((i) => (
@@ -193,9 +236,19 @@ export default function JobList() {
   return (
     <div className="space-y-6">
       {/* 页面标题 */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">{t('jobList.title')}</h1>
-        <p className="text-gray-500 mt-1">{t('jobList.subtitle')}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">{t('jobList.title')}</h1>
+          <p className="text-gray-500 mt-1">{t('jobList.subtitle')}</p>
+        </div>
+        <Button onClick={() => setMatchDialogOpen(true)} disabled={isMatching}>
+          {isMatching ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Sparkles className="w-4 h-4 mr-2" />
+          )}
+          {isMatching ? t('jobMatch.processing') : t('jobMatch.startMatch')}
+        </Button>
       </div>
 
       {/* 筛选栏 */}
@@ -210,33 +263,86 @@ export default function JobList() {
           />
         </div>
         <div className="flex gap-4">
-          <Select value={locationFilter} onValueChange={setLocationFilter}>
-            <SelectTrigger className="w-40">
-              <MapPin className="w-4 h-4 mr-2" />
-              <SelectValue placeholder={t('jobList.locationFilter')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('jobList.allLocations')}</SelectItem>
-              {locations.map((location) => (
-                <SelectItem key={location} value={location}>
-                  {location}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-40">
               <Filter className="w-4 h-4 mr-2" />
               <SelectValue placeholder={t('jobList.sortBy')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="match">{t('jobList.sortMatch')}</SelectItem>
-              <SelectItem value="salary">{t('jobList.sortSalary')}</SelectItem>
               <SelectItem value="date">{t('jobList.sortDate')}</SelectItem>
+              <SelectItem value="status">{t('jobList.sortStatus')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
+
+      {/* 匹配结果区域 */}
+      {matchStatus === 'completed' && matchResults.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+              <Sparkles className="w-5 h-5 mr-2 text-amber-500" />
+              {t('jobMatch.resultTitle')}
+            </h2>
+            <Button variant="outline" size="sm" onClick={() => { setMatchStatus('idle'); setMatchResults([]); }}>
+              {t('common.close')}
+            </Button>
+          </div>
+          <div className="grid gap-4">
+            {matchResults.map((match) => (
+              <Card key={match.jobId} className="hover:shadow-md transition-shadow border-amber-200">
+                <CardHeader className="pb-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h3 className="text-xl font-semibold text-gray-900">{match.title}</h3>
+                        <Badge
+                          className={`${
+                            match.matchScore >= 80
+                              ? 'bg-green-100 text-green-700'
+                              : match.matchScore >= 60
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          <Star className="w-3 h-3 mr-1" />
+                          {t('jobList.matchScore', { score: match.matchScore })}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                        <span className="flex items-center">
+                          <Building2 className="w-4 h-4 mr-1" />
+                          {match.company}
+                        </span>
+                      </div>
+                      {renderMatchFactors(match.matchFactors)}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/jobs/${match.jobId}`)}
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      {t('jobList.viewDetails')}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-600 line-clamp-2">{match.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {matchStatus === 'processing' && (
+        <div className="flex flex-col items-center justify-center py-12 border rounded-lg bg-blue-50/50">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900">{t('jobMatch.processing')}</h3>
+          <p className="text-gray-500">{t('jobMatch.processingDesc')}</p>
+        </div>
+      )}
 
       {/* 职位列表 */}
       <div className="grid gap-4">
@@ -250,66 +356,88 @@ export default function JobList() {
           </Card>
         ) : (
           filteredJobs.map((job) => (
-            <Card key={job.jobId} className="hover:shadow-md transition-shadow">
+            <Card key={job.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="text-xl font-semibold text-gray-900">{job.title}</h3>
-                      {job.matchScore && (
-                        <Badge
-                          className={`${
-                            job.matchScore >= 80
-                              ? 'bg-green-100 text-green-700'
-                              : job.matchScore >= 60
-                              ? 'bg-blue-100 text-blue-700'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}
-                        >
-                          <Star className="w-3 h-3 mr-1" />
-                          {t('jobList.matchScore', { score: job.matchScore })}
-                        </Badge>
-                      )}
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        {job.parsedContent?.title || t('jobDetail.unknownTitle')}
+                      </h3>
+                      <Badge variant={job.status === 'COMPLETED' ? 'default' : 'secondary'}>
+                        {t(`jobDetail.status.${job.status}`)}
+                      </Badge>
                     </div>
                     <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
                       <span className="flex items-center">
-                        <Briefcase className="w-4 h-4 mr-1" />
-                        {job.company}
-                      </span>
-                      <span className="flex items-center">
-                        <MapPin className="w-4 h-4 mr-1" />
-                        {job.location}
-                      </span>
-                      <span className="flex items-center">
-                        <DollarSign className="w-4 h-4 mr-1" />
-                        {formatSalary(job.salaryMin, job.salaryMax)}
-                      </span>
-                      <span className="flex items-center">
-                        <Calendar className="w-4 h-4 mr-1" />
-                        {formatDate(job.postedAt)}
+                        <Building2 className="w-4 h-4 mr-1" />
+                        {job.parsedContent?.company || t('jobDetail.unknownCompany')}
                       </span>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/jobs/${job.id}`)}
+                  >
                     <ExternalLink className="w-4 h-4 mr-2" />
                     {t('jobList.viewDetails')}
                   </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600 mb-4">{job.description}</p>
-                <div className="flex flex-wrap gap-2">
-                  {job.requirements.map((req, index) => (
-                    <Badge key={index} variant="secondary">
-                      {req}
-                    </Badge>
-                  ))}
-                </div>
+                <p className="text-gray-600 line-clamp-2">
+                  {job.parsedContent?.description || t('jobDetail.noDescription')}
+                </p>
               </CardContent>
             </Card>
           ))
         )}
       </div>
+
+      {/* 发起匹配对话框 */}
+      <Dialog open={matchDialogOpen} onOpenChange={setMatchDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('jobMatch.dialogTitle')}</DialogTitle>
+            <DialogDescription>{t('jobMatch.dialogDesc')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">{t('jobMatch.selectResume')}</label>
+              <Select value={selectedResumeVersionId} onValueChange={setSelectedResumeVersionId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('jobMatch.selectResumePlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {resumes.map((group) =>
+                    [group.originalVersion, group.convertedVersion, group.aiOptimizedVersion]
+                      .filter((v): v is NonNullable<typeof v> => !!v && v.exists)
+                      .map((version) => (
+                        <SelectItem key={version.versionId} value={version.versionId}>
+                          {group.title} - {version.versionId.slice(0, 8)} ({version.status})
+                        </SelectItem>
+                      ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMatchDialogOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={handleStartMatch} disabled={!selectedResumeVersionId || isMatching}>
+              {isMatching ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4 mr-2" />
+              )}
+              {t('jobMatch.startMatch')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

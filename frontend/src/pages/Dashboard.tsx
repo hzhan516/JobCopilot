@@ -1,7 +1,13 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { resumeService } from '@/services/resumeService';
+import { jobService } from '@/services/jobService';
+import { trackingService } from '@/services/trackingService';
+import { chatService } from '@/services/chatService';
 import {
   FileText,
   Briefcase,
@@ -10,12 +16,25 @@ import {
   ArrowRight,
   Sparkles,
   TrendingUp,
-  CheckCircle,
 } from 'lucide-react';
+
+interface StatItem {
+  labelKey: string;
+  value: number;
+  icon: React.ElementType;
+  isLoading: boolean;
+}
 
 export default function Dashboard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+
+  const [stats, setStats] = useState<StatItem[]>([
+    { labelKey: 'dashboard.stats.resumes', value: 0, icon: FileText, isLoading: true },
+    { labelKey: 'dashboard.stats.matches', value: 0, icon: Briefcase, isLoading: true },
+    { labelKey: 'dashboard.stats.applications', value: 0, icon: ClipboardList, isLoading: true },
+    { labelKey: 'dashboard.stats.chats', value: 0, icon: MessageSquare, isLoading: true },
+  ]);
 
   const quickActions = [
     {
@@ -48,12 +67,37 @@ export default function Dashboard() {
     },
   ];
 
-  const stats = [
-    { labelKey: 'dashboard.stats.resumes', value: '3', icon: FileText },
-    { labelKey: 'dashboard.stats.matches', value: '12', icon: Briefcase },
-    { labelKey: 'dashboard.stats.applications', value: '5', icon: ClipboardList },
-    { labelKey: 'dashboard.stats.chats', value: '8', icon: MessageSquare },
-  ];
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  const loadStats = async () => {
+    const updateStat = (index: number, value: number) => {
+      setStats((prev) =>
+        prev.map((s, i) => (i === index ? { ...s, value, isLoading: false } : s))
+      );
+    };
+
+    // 并行加载所有统计
+    await Promise.allSettled([
+      resumeService
+        .getResumeGroups()
+        .then((data) => updateStat(0, data.length))
+        .catch(() => updateStat(0, 0)),
+      jobService
+        .getMatchHistory()
+        .then((data) => updateStat(1, data.length))
+        .catch(() => updateStat(1, 0)),
+      trackingService
+        .getTrackings()
+        .then((data) => updateStat(2, data.length))
+        .catch(() => updateStat(2, 0)),
+      chatService
+        .getConversations()
+        .then((data) => updateStat(3, data.length))
+        .catch(() => updateStat(3, 0)),
+    ]);
+  };
 
   return (
     <div className="space-y-8">
@@ -67,7 +111,7 @@ export default function Dashboard() {
           <div className="flex space-x-4">
             <Button
               variant="secondary"
-              onClick={() => navigate('/resumes/upload')}
+              onClick={() => navigate('/resumes')}
               className="bg-white text-blue-600 hover:bg-blue-50"
             >
               <FileText className="w-4 h-4 mr-2" />
@@ -76,7 +120,7 @@ export default function Dashboard() {
             <Button
               variant="outline"
               onClick={() => navigate('/jobs')}
-              className="border-white text-white hover:bg-white/10"
+              className="border-white text-white bg-transparent hover:bg-white/10"
             >
               <Briefcase className="w-4 h-4 mr-2" />
               {t('dashboard.viewJobs')}
@@ -95,7 +139,11 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-500">{t(stat.labelKey)}</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-1">{stat.value}</p>
+                    {stat.isLoading ? (
+                      <Skeleton className="h-9 w-12 mt-1" />
+                    ) : (
+                      <p className="text-3xl font-bold text-gray-900 mt-1">{stat.value}</p>
+                    )}
                   </div>
                   <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
                     <Icon className="w-6 h-6 text-blue-600" />
@@ -152,28 +200,12 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {[
-                { title: 'Senior Frontend Engineer', company: 'Google', match: 92 },
-                { title: 'Java Backend Developer', company: 'Amazon', match: 85 },
-                { title: 'Product Manager', company: 'Microsoft', match: 78 },
-              ].map((job, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                  onClick={() => navigate('/jobs')}
-                >
-                  <div>
-                    <p className="font-medium text-gray-900">{job.title}</p>
-                    <p className="text-sm text-gray-500">{job.company}</p>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-sm text-green-600 font-medium">
-                      {job.match}% {t('dashboard.recommendedJobs.matchLabel')}
-                    </span>
-                  </div>
-                </div>
-              ))}
+            <div className="text-center py-8 text-gray-500">
+              <Briefcase className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <p>{t('jobList.emptyTitle')}</p>
+              <Button variant="link" onClick={() => navigate('/jobs')}>
+                {t('dashboard.viewJobs')}
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -192,26 +224,12 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {[
-                { title: 'Senior Frontend Engineer', company: 'Google', statusKey: 'dashboard.applicationProgress.status.interview' },
-                { title: 'Java Backend Developer', company: 'Amazon', statusKey: 'dashboard.applicationProgress.status.applied' },
-                { title: 'Product Manager', company: 'Microsoft', statusKey: 'dashboard.applicationProgress.status.offered' },
-              ].map((app, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
-                  <div>
-                    <p className="font-medium text-gray-900">{app.title}</p>
-                    <p className="text-sm text-gray-500">{app.company}</p>
-                  </div>
-                  <div className="flex items-center">
-                    <CheckCircle className="w-4 h-4 mr-1 text-green-500" />
-                    <span className="text-sm text-gray-600">{t(app.statusKey)}</span>
-                  </div>
-                </div>
-              ))}
+            <div className="text-center py-8 text-gray-500">
+              <ClipboardList className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <p>{t('tracking.emptyTitle')}</p>
+              <Button variant="link" onClick={() => navigate('/tracking')}>
+                {t('tracking.addRecord')}
+              </Button>
             </div>
           </CardContent>
         </Card>

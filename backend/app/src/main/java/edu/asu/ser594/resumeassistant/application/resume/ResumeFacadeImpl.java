@@ -7,6 +7,7 @@ import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeGroupRespons
 import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeUploadResponse;
 import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeVersionResponse;
 import edu.asu.ser594.resumeassistant.api.resume.facade.ResumeFacade;
+import edu.asu.ser594.resumeassistant.application.resume.command.CreateVersionCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeEditCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeUploadCommand;
 import edu.asu.ser594.resumeassistant.application.resume.dto.ResumeDownloadResult;
@@ -168,6 +169,20 @@ public class ResumeFacadeImpl implements ResumeFacade {
     @Override
     public ApiResponse<ResumeVersionResponse> rollbackToVersion(UUID versionId, UUID userId) {
         throw new UnsupportedOperationException("MVP not implemented");
+    }
+
+    @Override
+    public ApiResponse<ResumeVersionResponse> createVersion(UUID groupId,
+                                                            edu.asu.ser594.resumeassistant.api.resume.dto.request.CreateVersionRequest request,
+                                                            UUID userId) {
+        CreateVersionCommand command = CreateVersionCommand.builder()
+                .groupId(groupId)
+                .sourceVersionId(request.sourceVersionId())
+                .userId(userId)
+                .build();
+
+        ResumeVersion newVersion = applicationService.handleCreateVersion(command);
+        return ApiResponse.success(toVersionResponse(newVersion));
     }
 
     @Override

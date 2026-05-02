@@ -1,6 +1,7 @@
 package edu.asu.ser594.resumeassistant.application.resume.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.asu.ser594.resumeassistant.application.resume.command.CreateVersionCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeEditCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeUploadCommand;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
@@ -25,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -225,6 +227,125 @@ class ResumeApplicationServiceTest {
                 GROUP_ID, USER_ID, "Test Resume", false,
                 group.getCreatedAt(), group.getUpdatedAt(), Collections.emptyList()
         );
+    }
+
+    // ==================== 创建副本测试 ====================
+    // ==================== Create Version Tests ====================
+
+    @Test
+    @DisplayName("Should create version copy from active converted")
+    void shouldCreateVersionCopyFromActiveConverted() {
+        // 准备 / Given
+        testGroup = createTestGroup();
+        // 向组中上传原版，自动创建 CONVERTED 版本
+        // Upload original to group, which auto-creates CONVERTED version
+        testGroup.uploadOriginalVersion("resume.pdf", "application/pdf", 1024L, "path/to/file");
+        ResumeVersion activeConverted = testGroup.getActiveVersionByType(ResumeVersion.VersionType.CONVERTED);
+        assertThat(activeConverted).isNotNull();
+        activeConverted.editContent("Existing markdown content");
+
+        when(groupRepository.findByIdAndUserId(GROUP_ID, USER_ID)).thenReturn(Optional.of(testGroup));
+        when(versionRepository.findAllByGroupIdAndType(GROUP_ID, ResumeVersion.VersionType.CONVERTED))
+                .thenReturn(List.of(activeConverted));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
+
+        CreateVersionCommand command = CreateVersionCommand.builder()
+                .groupId(GROUP_ID)
+                .sourceVersionId(null)
+                .userId(USER_ID)
+                .build();
+
+        // 执行 / When
+        ResumeVersion result = resumeService.handleCreateVersion(command);
+
+        // 验证 / Then
+        assertThat(result).isNotNull();
+        assertThat(result.getVersionType()).isEqualTo(ResumeVersion.VersionType.CONVERTED);
+        assertThat(result.getContent()).isEqualTo("Existing markdown content");
+        assertThat(result.getStatus()).isEqualTo(ResumeVersion.Status.ACTIVE);
+        verify(versionRepository).save(any(ResumeVersion.class));
+        verify(groupRepository).save(any(ResumeGroup.class));
+    }
+
+    @Test
+    @DisplayName("Should create version copy from specific source version")
+    void shouldCreateVersionCopyFromSpecificSourceVersion() {
+        // 准备 / Given
+        testGroup = createTestGroup();
+        UUID sourceId = UUID.randomUUID();
+        ResumeVersion sourceVersion = ResumeVersion.reconstruct(
+                sourceId, GROUP_ID, ResumeVersion.VersionType.CONVERTED,
+                null, null, "text/markdown", 0L, null, null,
+                "Source content", null, ParseStatus.PENDING, null,
+                ResumeVersion.Status.ACTIVE, java.time.LocalDateTime.now(), java.time.LocalDateTime.now()
+        );
+
+        when(groupRepository.findByIdAndUserId(GROUP_ID, USER_ID)).thenReturn(Optional.of(testGroup));
+        when(versionRepository.findById(sourceId)).thenReturn(Optional.of(sourceVersion));
+        when(versionRepository.findAllByGroupIdAndType(GROUP_ID, ResumeVersion.VersionType.CONVERTED))
+                .thenReturn(List.of(sourceVersion));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
+
+        CreateVersionCommand command = CreateVersionCommand.builder()
+                .groupId(GROUP_ID)
+                .sourceVersionId(sourceId)
+                .userId(USER_ID)
+                .build();
+
+        // 执行 / When
+        ResumeVersion result = resumeService.handleCreateVersion(command);
+
+        // 验证 / Then
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).isEqualTo("Source content");
+        verify(versionRepository).findById(sourceId);
+    }
+
+    @Test
+    @DisplayName("Should delete oldest archived version when chain exceeds limit")
+    void shouldDeleteOldestArchivedVersionWhenChainExceedsLimit() {
+        // 准备 / Given
+        testGroup = createTestGroup();
+        // 构造 50 个 ARCHIVED 版本 + 1 个 ACTIVE 版本
+        // Construct 50 ARCHIVED versions + 1 ACTIVE version
+        java.util.List<ResumeVersion> chain = new java.util.ArrayList<>();
+        for (int i = 0; i < 50; i++) {
+            ResumeVersion archived = ResumeVersion.reconstruct(
+                    UUID.randomUUID(), GROUP_ID, ResumeVersion.VersionType.CONVERTED,
+                    null, null, "text/markdown", 0L, null, null,
+                    "Archived " + i, null, ParseStatus.PENDING, null,
+                    ResumeVersion.Status.ARCHIVED,
+                    java.time.LocalDateTime.now().minusDays(100 - i),
+                    java.time.LocalDateTime.now().minusDays(100 - i)
+            );
+            chain.add(archived);
+        }
+        ResumeVersion activeConverted = createTestVersion(ResumeVersion.VersionType.CONVERTED);
+        activeConverted.editContent("Active content");
+        chain.add(activeConverted);
+
+        when(groupRepository.findByIdAndUserId(GROUP_ID, USER_ID)).thenReturn(Optional.of(testGroup));
+        when(versionRepository.findAllByGroupIdAndType(GROUP_ID, ResumeVersion.VersionType.CONVERTED))
+                .thenReturn(chain);
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
+
+        CreateVersionCommand command = CreateVersionCommand.builder()
+                .groupId(GROUP_ID)
+                .sourceVersionId(null)
+                .userId(USER_ID)
+                .build();
+
+        // 执行 / When
+        ResumeVersion result = resumeService.handleCreateVersion(command);
+
+        // 验证 / Then
+        assertThat(result).isNotNull();
+        // 应删除最旧的 ARCHIVED 版本（createdAt 最早的那个）
+        // Should delete the oldest ARCHIVED version (earliest createdAt)
+        verify(versionRepository).delete(chain.get(0).getId());
     }
 
     // 创建测试简历版本 / Create test resume version
