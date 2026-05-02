@@ -6,6 +6,7 @@ import edu.asu.ser594.resumeassistant.api.resume.dto.request.ResumeUploadRequest
 import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeGroupResponse;
 import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeUploadResponse;
 import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeVersionResponse;
+import edu.asu.ser594.resumeassistant.application.resume.command.CreateVersionCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeEditCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeUploadCommand;
 import edu.asu.ser594.resumeassistant.application.resume.dto.ResumeDownloadResult;
@@ -360,6 +361,54 @@ class ResumeFacadeImplTest {
         assertThat(capturedCommand.versionId()).isEqualTo(VERSION_ID);
         assertThat(capturedCommand.userId()).isEqualTo(USER_ID);
         assertThat(capturedCommand.content()).isEqualTo("Updated content");
+    }
+
+    @Test
+    @DisplayName("Should create version and return response")
+    void shouldCreateVersionAndReturnResponse() {
+        // 给定 / Given
+        edu.asu.ser594.resumeassistant.api.resume.dto.request.CreateVersionRequest request =
+                edu.asu.ser594.resumeassistant.api.resume.dto.request.CreateVersionRequest.builder()
+                        .sourceVersionId(VERSION_ID)
+                        .build();
+
+        ResumeVersion newVersion = ResumeVersion.createConverted(GROUP_ID);
+        newVersion.editContent("Copied content");
+
+        when(resumeService.handleCreateVersion(any(CreateVersionCommand.class))).thenReturn(newVersion);
+
+        // 什么时候 / When
+        ApiResponse<ResumeVersionResponse> result = resumeFacade.createVersion(GROUP_ID, request, USER_ID);
+
+        // 然后 / Then
+        assertThat(result).isNotNull();
+        assertThat(result.getCode() == 200).isTrue();
+        assertThat(result.getData().getVersionId()).isEqualTo(newVersion.getId());
+        assertThat(result.getData().getContent()).isEqualTo("Copied content");
+    }
+
+    @Test
+    @DisplayName("Should convert create request to command correctly")
+    void shouldConvertCreateRequestToCommandCorrectly() {
+        // 给定 / Given
+        UUID sourceId = UUID.randomUUID();
+        edu.asu.ser594.resumeassistant.api.resume.dto.request.CreateVersionRequest request =
+                edu.asu.ser594.resumeassistant.api.resume.dto.request.CreateVersionRequest.builder()
+                        .sourceVersionId(sourceId)
+                        .build();
+
+        ResumeVersion newVersion = ResumeVersion.createConverted(GROUP_ID);
+        ArgumentCaptor<CreateVersionCommand> commandCaptor = ArgumentCaptor.forClass(CreateVersionCommand.class);
+        when(resumeService.handleCreateVersion(commandCaptor.capture())).thenReturn(newVersion);
+
+        // 什么时候 / When
+        resumeFacade.createVersion(GROUP_ID, request, USER_ID);
+
+        // 然后 / Then
+        CreateVersionCommand captured = commandCaptor.getValue();
+        assertThat(captured.groupId()).isEqualTo(GROUP_ID);
+        assertThat(captured.sourceVersionId()).isEqualTo(sourceId);
+        assertThat(captured.userId()).isEqualTo(USER_ID);
     }
 
     @Test

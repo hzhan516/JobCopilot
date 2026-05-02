@@ -1,10 +1,24 @@
 # =============================================================================
-# Resume Assistant - Docker Compose Configuration File
-# 智能求职助手 - Docker Compose 配置文件
-# 智慧求職助手 - Docker Compose 設定檔案
+# Resume Assistant - Docker Compose Configuration File (Example Template)
+# 智能求职助手 - Docker Compose 配置文件（示例模板）
+# 智慧求職助手 - Docker Compose 設定檔案（範本）
 # Compatible with Docker and Podman
 # 兼容 Docker 和 Podman
 # 相容 Docker 和 Podman
+# =============================================================================
+# IMPORTANT / 重要提示 / 重要說明：
+#   1. Copy this file to `docker-compose.yml` before use.
+#      使用前请将此文件复制为 `docker-compose.yml`。
+#      使用前請將此檔案複製為 `docker-compose.yml`。
+#   2. Create a `.env` file in the project root with real values for all
+#      `${...}` variables, especially VITE_GOOGLE_CLIENT_ID and JWT_SECRET.
+#      在项目根目录创建 `.env` 文件，填入所有 `${...}` 变量的实际值，
+#      特别是 VITE_GOOGLE_CLIENT_ID 和 JWT_SECRET。
+#      在專案根目錄建立 `.env` 檔案，填入所有 `${...}` 變數的實際值，
+#      特別是 VITE_GOOGLE_CLIENT_ID 和 JWT_SECRET。
+#   3. `docker-compose.yml` is gitignored — never commit secrets.
+#      `docker-compose.yml` 已被 Git 忽略，请勿提交敏感信息。
+#      `docker-compose.yml` 已被 Git 忽略，請勿提交敏感資訊。
 # =============================================================================
 # Usage Instructions / 使用说明 / 使用說明：
 #   Docker:  docker-compose up -d
@@ -27,8 +41,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
         - VITE_API_BASE_URL=${VITE_API_BASE_URL:-}
+        - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
     container_name: resume-assistant-frontend
     ports:
       - "80:80"
@@ -38,6 +52,12 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     # Resource limits (optional, recommended for production)
     # 资源限制（可选，生产环境建议开启）
     # 資源限制（可選，建議生產環境開啟）
@@ -99,7 +119,7 @@ services:
     restart: unless-stopped
     # Health Check / 健康检查 / 健康檢查
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080/api/actuator/health" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -149,6 +169,12 @@ services:
       rabbitmq:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     # AI service does not expose database, purely message-driven
     # AI服务不暴露数据库，纯消息驱动
     # AI 服務不暴露資料庫，純訊息驅動
@@ -159,7 +185,7 @@ services:
   # 4. PostgreSQL 15 + pgvector（業務與向量統一儲存）
   # ==========================================================================
   postgres:
-    image: ankane/pgvector:latest
+    image: docker.io/ankane/pgvector:latest
     container_name: resume-assistant-postgres
     ports:
       - "5432:5432"
@@ -179,7 +205,7 @@ services:
     restart: unless-stopped
     # Health Check / 健康检查 / 健康檢查
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U resume_user -d resume_assistant" ]
+      test: ["CMD-SHELL", "pg_isready -U resume_user -d resume_assistant"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -191,7 +217,7 @@ services:
   # 5. RabbitMQ 訊息佇列
   # ==========================================================================
   rabbitmq:
-    image: rabbitmq:3-management-alpine
+    image: docker.io/library/rabbitmq:3-management-alpine
     container_name: resume-assistant-rabbitmq
     ports:
       - "5672:5672"     # AMQP Port / AMQP端口 / AMQP 連接埠
@@ -210,7 +236,7 @@ services:
     restart: unless-stopped
     # Health Check / 健康检查 / 健康檢查
     healthcheck:
-      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 30s
       timeout: 10s
       retries: 5

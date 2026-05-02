@@ -301,7 +301,11 @@
       "createdOn": "创建于",
       "versionHistory": "版本历史",
       "selectVersion": "选择一个版本查看详情",
-      "versionDetail": "版本详情"
+      "versionDetail": "版本详情",
+      "manualEdit": "手动修改",
+      "manualEditDesc": "创建副本并手动编辑",
+      "createCopySuccess": "副本创建成功",
+      "createCopyError": "创建副本失败"
     },
     "edit": {
       "title": "编辑版本",
@@ -330,6 +334,7 @@
       "description": "描述",
       "rawContent": "原始内容",
       "editContent": "编辑内容",
+      "createCopy": "创建副本",
       "parsed": "已解析",
       "original": "原始",
       "converted": "已转换",
@@ -341,7 +346,10 @@
     "markdownEditor": {
       "title": "编辑简历",
       "save": "保存",
-      "cancel": "取消"
+      "cancel": "取消",
+      "autoSaving": "保存中...",
+      "autoSaveSuccess": "已自动保存",
+      "autoSaveError": "自动保存失败"
     },
     "download": {
       "button": "下载",
@@ -371,6 +379,21 @@
     "email": "邮箱",
     "accountType": "账户类型",
     "typeEmail": "邮箱账户",
+    "fullName": "姓名",
+    "fullNamePlaceholder": "请输入您的姓名",
+    "phone": "电话",
+    "phonePlaceholder": "请输入您的电话号码",
+    "targetPosition": "目标职位",
+    "targetPositionPlaceholder": "例如：软件工程师",
+    "preferredLocation": "期望地点",
+    "preferredLocationPlaceholder": "例如：北京市",
+    "avatar": "头像链接",
+    "avatarPlaceholder": "https://example.com/avatar.png",
+    "saveSuccess": "资料更新成功",
+    "saveError": "资料更新失败",
+    "validation": {
+      "maxLength": "内容过长"
+    },
     "security": "安全设置",
     "changePassword": "修改密码",
     "changePasswordDesc": "更新您的账户密码",

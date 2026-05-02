@@ -60,6 +60,12 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Flyway - 数据库迁移 / Database migrations -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

@@ -301,7 +301,11 @@
       "createdOn": "建立於",
       "versionHistory": "版本歷史",
       "selectVersion": "選擇一個版本查看詳情",
-      "versionDetail": "版本詳情"
+      "versionDetail": "版本詳情",
+      "manualEdit": "手動修改",
+      "manualEditDesc": "建立副本並手動編輯",
+      "createCopySuccess": "副本建立成功",
+      "createCopyError": "建立副本失敗"
     },
     "edit": {
       "title": "編輯版本",
@@ -330,6 +334,7 @@
       "description": "描述",
       "rawContent": "原始內容",
       "editContent": "編輯內容",
+      "createCopy": "建立副本",
       "parsed": "已解析",
       "original": "原始",
       "converted": "已轉換",
@@ -341,7 +346,10 @@
     "markdownEditor": {
       "title": "編輯履歷",
       "save": "儲存",
-      "cancel": "取消"
+      "cancel": "取消",
+      "autoSaving": "儲存中...",
+      "autoSaveSuccess": "已自動儲存",
+      "autoSaveError": "自動儲存失敗"
     },
     "download": {
       "button": "下載",

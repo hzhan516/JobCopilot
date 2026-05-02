@@ -18,7 +18,8 @@
 7. [Get Single Version Details](#7-get-single-version-details)
 8. [Delete Resume Version](#8-delete-resume-version)
 9. [Edit Version Content](#9-edit-version-content)
-10. [Facade Interface Methods](#10-facade-interface-methods)
+10. [Create Version Copy](#10-create-version-copy)
+11. [Facade Interface Methods](#11-facade-interface-methods)
 
 ---
 
@@ -911,7 +912,119 @@ Returns updated version details; structure is the same as Get Single Version Det
 
 ---
 
-## 10. Facade Interface Methods
+## 10. Create Version Copy
+
+### Basic Information
+
+| Item | Value |
+|------|-------|
+| **Endpoint Name** | Create Version Copy |
+| **Endpoint Path** | `POST /api/v1/resumes/groups/{groupId}/versions` |
+| **Authentication Required** | Yes |
+| **Content-Type** | `application/json` |
+
+### Request Structure
+
+#### Path Parameters
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `groupId` | String (UUID) | Yes | Resume group unique identifier |
+
+#### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `sourceVersionId` | String (UUID) | No | Source version ID; if empty, copies from current ACTIVE CONVERTED version |
+
+**Version Chain Limit**: Each resume group maintains a maximum of 50 CONVERTED versions (including ARCHIVED). When the limit is exceeded, the oldest ARCHIVED version is automatically deleted before the new copy is created.
+
+**Auto-archive**: When a new CONVERTED version is created, the existing ACTIVE CONVERTED version of the same group is automatically archived.
+
+#### Request Example (cURL)
+
+```bash
+curl -X POST http://localhost:8080/api/v1/resumes/groups/550e8400-e29b-41d4-a716-446655440000/versions \
+  -H "Authorization: Bearer <your_access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sourceVersionId": "550e8400-e29b-41d4-a716-446655440002"
+  }'
+```
+
+### Response Structure
+
+#### Success Response (200)
+
+Returns the newly created version details; structure is the same as Get Single Version Details.
+
+#### Response Example
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": {
+    "versionId": "550e8400-e29b-41d4-a716-446655440003",
+    "groupId": "550e8400-e29b-41d4-a716-446655440000",
+    "versionType": "CONVERTED",
+    "status": "ACTIVE",
+    "originalFileName": null,
+    "fileType": "text/markdown",
+    "fileSize": 0,
+    "content": "# Resume Content\n\nCopied from source version...",
+    "editable": true,
+    "createdAt": "2024-01-15T10:40:00",
+    "updatedAt": "2024-01-15T10:40:00"
+  }
+}
+```
+
+### Error Responses
+
+#### 400 - Group Does Not Exist
+
+```json
+{
+  "code": 400,
+  "message": "group.not.found",
+  "data": null
+}
+```
+
+#### 400 - Source Version Mismatch
+
+```json
+{
+  "code": 400,
+  "message": "version.group.mismatch",
+  "data": null
+}
+```
+
+#### 401 - Not Authenticated
+
+```json
+{
+  "code": 401,
+  "message": "Invalid or expired token",
+  "data": null
+}
+```
+
+#### 403 - No Permission to Access
+
+```json
+{
+  "code": 403,
+  "message": "access.denied",
+  "data": null
+}
+```
+
+---
+
+## 11. Facade Interface Methods
 
 ResumeFacade defines the complete resume management interface; below is the list of interface methods:
 
@@ -926,6 +1039,7 @@ ResumeFacade defines the complete resume management interface; below is the list
 | `getVersion` | Get single version details | Implemented |
 | `deleteVersion` | Delete resume version | Implemented |
 | `editVersion` | Edit version content | Implemented |
+| `createVersion` | Create version copy | Implemented |
 | `setDefaultGroup` | Set default resume group | Not implemented in MVP |
 | `createAiVersion` | Create AI-optimized version | Not implemented in MVP |
 | `rollbackToVersion` | Rollback to specified version | Not implemented in MVP |

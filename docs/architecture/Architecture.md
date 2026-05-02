@@ -1598,7 +1598,7 @@ class LLMClient:
 ### 9.1 Docker Compose Configuration
 
 ```yaml
-# docker-compose.yml (Simplified)
+# docker-compose.yml.example (Simplified)
 version: '3.8'
 
 services:

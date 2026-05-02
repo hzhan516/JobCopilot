@@ -7,7 +7,7 @@
 -- 创建简历组表（一份简历的整体概念）/ Create resume group table (overall concept of a resume)
 CREATE TABLE IF NOT EXISTS resume_groups
 (
-    id         UUID PRIMARY KEY                  DEFAULT uuid_generate_v4(),
+    id         UUID PRIMARY KEY                  DEFAULT gen_random_uuid(),
     user_id    UUID                     NOT NULL,
     title      VARCHAR(255)             NOT NULL,
     is_default BOOLEAN                  NOT NULL DEFAULT FALSE,
@@ -25,7 +25,7 @@ COMMENT ON TABLE resume_groups IS '简历组表 - 代表一份简历的整体概
 -- 创建简历版本表（原版/转换版/AI版）/ Create resume version table (original/converted/AI-optimized)
 CREATE TABLE IF NOT EXISTS resume_versions
 (
-    id                 UUID PRIMARY KEY                  DEFAULT uuid_generate_v4(),
+    id                 UUID PRIMARY KEY                  DEFAULT gen_random_uuid(),
     group_id           UUID                     NOT NULL,
 
     -- 版本类型：ORIGINAL(原版), CONVERTED(转换版), AI_OPTIMIZED(AI版)

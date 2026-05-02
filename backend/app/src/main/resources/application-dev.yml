@@ -28,7 +28,9 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:resume_pass}
     driver-class-name: ${SPRING_DATASOURCE_DRIVER:org.postgresql.Driver}
 
-  # 禁用 Flyway（开发环境）/ Disable Flyway (development environment)
+  # Flyway 数据库迁移 / Database migrations
+  # 开发环境禁用 Flyway，改用 docker-entrypoint-initdb.d 的 init.sql 初始化
+  # Flyway disabled in dev; use docker-entrypoint-initdb.d init.sql instead
   flyway:
     enabled: ${SPRING_FLYWAY_ENABLED:false}
 
