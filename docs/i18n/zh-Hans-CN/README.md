@@ -97,8 +97,9 @@
 ### 环境要求
 
 - Docker 20.10+ 和 Docker Compose 2.0+
-- 或使用 Podman 和 podman-compose
-- OpenAI API 密钥，或支持兼容的 LLM API 访问权限
+- 或带有 podman-compose 的 Podman
+- 一个用于本地 AI 功能的 LiteLLM 兼容模型服务密钥，例如 Gemini、OpenAI、Anthropic 或 Groq
+- Google Cloud / Vertex AI 是可选项，本地开发不需要强制配置
 
 ### 1. 克隆仓库
 
@@ -111,17 +112,28 @@ cd resume-assistant
 
 ```bash
 cp .env.example .env
-# 编辑 .env 文件，填入你的 OpenAI API 密钥
+# 编辑 .env 文件，填入必要的配置
 ```
 
 必需的环境变量：
 
-| 变量                       | 必需 | 说明                          |
-|--------------------------|----|-----------------------------|
-| `OPENAI_API_KEY`         | 是  | 你的OpenAI API密钥              |
-| `JWT_SECRET`             | 是  | JWT令牌生成的密钥（至少32个字符）         |
-| `SPRING_PROFILES_ACTIVE` | 否  | Spring配置文件：`dev`（默认）或`prod` |
-| `LOG_LEVEL`              | 否  | AI服务日志级别：`INFO`（默认）或`DEBUG` |
+| 变量                     | 必需 | 说明 |
+|--------------------------|------|------|
+| `JWT_SECRET`             | 是   | JWT token 生成密钥（至少 32 个字符） |
+| `GEMINI_API_KEY`         | 可选 | 当 `LLM_*_MODEL` 使用 `gemini/` 前缀时使用的 Gemini API 密钥 |
+| `OPENAI_API_KEY`         | 可选 | 当 `LLM_*_MODEL` 使用 `openai/` 前缀时使用的 OpenAI API 密钥 |
+| `ANTHROPIC_API_KEY`      | 可选 | 当 `LLM_*_MODEL` 使用 `anthropic/` 前缀时使用的 Anthropic API 密钥 |
+| `GROQ_API_KEY`           | 可选 | 当 `LLM_*_MODEL` 使用 `groq/` 前缀时使用的 Groq API 密钥 |
+| `LLM_TEXT_MODEL`         | 是   | LiteLLM 文本模型名称，例如 `gemini/gemini-2.5-flash` |
+| `LLM_VISION_MODEL`       | 是   | LiteLLM 视觉模型名称 |
+| `LLM_EMBEDDING_MODEL`    | 是   | LiteLLM 嵌入模型名称 |
+| `SPRING_PROFILES_ACTIVE` | 否   | Spring profile：`dev`（默认）或 `prod` |
+| `LOG_LEVEL`              | 否   | AI service 日志级别：`INFO`（默认）或 `DEBUG` |
+
+本地开发时，请将 `.env.example` 复制为 `.env`，并提供一个与所选 LiteLLM 模型前缀匹配的 API key。例如，默认 Gemini 模型使用 `GEMINI_API_KEY`。
+
+只有在您主动将项目配置为使用 Vertex AI 模型时，才需要 Google Cloud ADC。
+
 
 ### 3. 启动所有服务
 
@@ -233,20 +245,29 @@ mvn spring-boot:run -pl app -Dspring-boot.run.profiles=prod
 
 - Python 3.11+
 - pip 或 poetry
+- 已在项目根目录 `.env` 文件中配置兼容 LiteLLM 的模型服务密钥
 
 ```bash
 cd ai-service
 
 # 创建虚拟环境
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
 # 安装依赖
 pip install -r requirements.txt
 
+# 加载项目根目录环境变量
+set -a
+source ../.env
+set +a
+
 # 运行开发服务器
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+本地开发不需要 Google Cloud ADC，除非您主动将 LiteLLM 配置为使用 Vertex AI 模型。
+
 
 ## 部署上线
 
