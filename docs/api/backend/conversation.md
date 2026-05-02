@@ -16,8 +16,9 @@
 5. [Close Conversation](#5-close-conversation)
 6. [Delete Conversation](#6-delete-conversation)
 7. [Upload Attachment](#7-upload-attachment)
-8. [Async Message Flow Description](#8-async-message-flow-description)
-9. [Error Code Description](#9-error-code-description)
+8. [Stream AI Reply](#8-stream-ai-reply)
+9. [Async Message Flow Description](#9-async-message-flow-description)
+10. [Error Code Description](#10-error-code-description)
 
 ---
 
@@ -336,7 +337,83 @@ Returns the MinIO presigned URL after successful file upload.
 
 ---
 
-## 8. Async Message Flow Description
+## 8. Stream AI Reply
+
+### Basic Information
+
+| Item | Value |
+|------|-------|
+| **Interface Name** | Stream AI Reply |
+| **Interface Path** | `GET /api/v1/conversations/{conversationId}/stream` |
+| **Authentication Required** | Yes |
+| **Content-Type** | `text/plain` (streaming response) |
+
+### Request Structure
+
+#### Path Parameters
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `conversationId` | String (UUID) | Yes | Conversation unique identifier |
+
+#### Request Headers
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `Authorization` | Yes | `Bearer {JWT Token}` |
+
+### Response Structure
+
+#### Success Response (200)
+
+Returns a `text/plain` streaming response. The HTTP connection remains open until the AI reply is generated.
+
+> **Note: Current implementation is pseudo-streaming.**
+> The AI Service generates the complete reply synchronously and sends it back via MQ as a single event.
+> The backend holds the HTTP connection open, waits for the MQ reply, and then writes the complete content
+> into the response stream in one go. The frontend experiences a loading state followed by the full reply
+> arriving at once.
+>
+> To upgrade to true token-by-token streaming in the future:
+> 1. Update the AI Service layer to use Gemini's `generate_content_stream()` API.
+> 2. Expose a new REST streaming endpoint in the AI Service (e.g. `/api/v1/conversation/stream`).
+> 3. Have the backend call the AI Service's streaming endpoint directly via `WebClient` or `RestTemplate`,
+>    and proxy each chunk to the frontend through the existing `StreamingResponseBody` infrastructure.
+> 4. The MQ path can be kept for non-streaming scenarios or retired.
+
+#### Calling Sequence
+
+1. Call `POST /api/v1/conversations/{conversationId}/messages` to send the user message.
+2. Immediately call `GET /api/v1/conversations/{conversationId}/stream` to wait for the AI reply.
+3. The connection stays open (default timeout: 60 seconds).
+4. When the AI reply is ready, the complete text is written to the stream and the connection closes.
+
+#### Response Example (Streaming)
+
+```text
+Based on your resume, I suggest optimizing your work experience section from the following aspects...
+```
+
+#### Timeout Behavior
+
+If the AI reply is not generated within 60 seconds, the stream will close and return a timeout message:
+
+```text
+AI reply timed out. Please try again later.
+AI 回复超时，请稍后重试。
+```
+
+### Error Codes
+
+| Status Code | Meaning | Trigger Scenario |
+|-------------|---------|------------------|
+| `401` | Not authenticated | Missing or expired JWT Token |
+| `403` | Insufficient permissions | Attempting to access a conversation that does not belong to you |
+| `404` | Resource does not exist | Conversation ID does not exist |
+
+---
+
+## 9. Async Message Flow Description
 
 ### 8.1 Conversation AI Request Flow
 
@@ -405,7 +482,7 @@ After the user calls the [Send Message] interface, the backend executes the foll
 
 ---
 
-## 9. Error Code Description
+## 10. Error Code Description
 
 ### Common Error Codes
 
@@ -520,4 +597,5 @@ After the user calls the [Send Message] interface, the backend executes the foll
 
 ### Frontend Streaming Interface Call
 
-The frontend `chatService.ts` contains a call to `/v1/conversations/{conversationId}/stream`, but this endpoint is **not implemented** in the current backend `ConversationController`. If streaming AI replies are needed, please add the corresponding Controller method in a subsequent version.
+The frontend `chatService.ts` calls `GET /v1/conversations/{conversationId}/stream` via `fetch` + `ReadableStream`.
+See [8. Stream AI Reply](#8-stream-ai-reply) for the backend endpoint documentation.

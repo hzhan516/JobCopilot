@@ -3,6 +3,7 @@ package edu.asu.ser594.resumeassistant.trigger.listener.ai;
 import edu.asu.ser594.resumeassistant.api.conversation.facade.ConversationFacade;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
 import edu.asu.ser594.resumeassistant.api.resume.facade.ResumeFacade;
+import edu.asu.ser594.resumeassistant.infrastructure.messaging.stream.ConversationStreamService;
 import edu.asu.ser594.resumeassistant.domain.embedding.entity.JobVector;
 import edu.asu.ser594.resumeassistant.domain.embedding.entity.ResumeVector;
 import edu.asu.ser594.resumeassistant.domain.embedding.repository.JobVectorRepository;
@@ -31,6 +32,7 @@ public class AiResultMessageListener {
     private final ConversationFacade conversationFacade;
     private final ResumeVectorRepository resumeVectorRepository;
     private final JobVectorRepository jobVectorRepository;
+    private final ConversationStreamService streamService;
 
     /**
      * 监听职位解析结果 / Listen for job parse results
@@ -89,12 +91,15 @@ public class AiResultMessageListener {
         try {
             if (!"COMPLETED".equals(event.status())) {
                 log.warn("Conversation AI reply failed for conversation: {}, error: {}", event.referenceId(), event.errorMessage());
+                String errorContent = "AI response failed: " + (event.errorMessage() != null ? event.errorMessage() : "Unknown error");
                 conversationFacade.saveAiReply(
                         event.referenceId(),
-                        "AI response failed: " + (event.errorMessage() != null ? event.errorMessage() : "Unknown error"),
+                        errorContent,
                         null,
                         null
                 );
+                // 释放等待中的流连接 / Release pending stream connection
+                streamService.failReply(event.referenceId(), errorContent);
                 return;
             }
 
@@ -105,8 +110,12 @@ public class AiResultMessageListener {
 
             conversationFacade.saveAiReply(event.referenceId(), content, fileUrl, aiOptimizedMarkdown);
             log.info("Saved AI reply for conversation: {}", event.referenceId());
+
+            // 唤醒等待中的流请求 / Wake up pending stream request
+            streamService.completeReply(event.referenceId(), content);
         } catch (Exception e) {
             log.error("Error processing AiResultEvent for CONVERSATION_REPLY referenceId: {}", event.referenceId(), e);
+            streamService.failReply(event.referenceId(), e.getMessage());
         }
     }
 

@@ -516,8 +516,84 @@
 
 ---
 
+## 8. 流式获取 AI 回复
+
+### 基本信息
+
+| 项目 | 值 |
+|------|-------|
+| **接口名称** | 流式获取 AI 回复 |
+| **接口路径** | `GET /api/v1/conversations/{conversationId}/stream` |
+| **需要认证** | 是 |
+| **Content-Type** | `text/plain`（流式响应） |
+
+### 请求结构
+
+#### 路径参数
+
+| 字段 | 类型 | 必填 | 说明 |
+|-------|------|----------|-------------|
+| `conversationId` | String (UUID) | 是 | 对话唯一标识 |
+
+#### 请求头
+
+| 字段 | 必填 | 说明 |
+|-------|----------|-------------|
+| `Authorization` | 是 | `Bearer {JWT Token}` |
+
+### 响应结构
+
+#### 成功响应 (200)
+
+返回 `text/plain` 流式响应。HTTP 连接保持打开状态，直到 AI 回复生成完毕。
+
+> **注意：当前实现为伪流式传输。**
+> AI Service 同步生成完整回复后，通过 MQ 一次性将结果发回后端。
+> 后端保持 HTTP 连接等待 MQ 回复，然后将完整内容一次性写入响应流。
+> 前端会体验到 loading 状态，随后完整回复一次性到达。
+>
+> **后续升级为真正流式的路径：**
+> 1. 更新 AI Service 层，使用 Gemini 的 `generate_content_stream()` 流式 API。
+> 2. 在 AI Service 中新增 REST 流式端点（例如 `/api/v1/conversation/stream`）。
+> 3. 后端通过 `WebClient` 或 `RestTemplate` 直接调用 AI Service 的流式端点，
+>    将每个 chunk 实时透传给前端，现有的 `StreamingResponseBody` 架构可复用。
+> 4. MQ 路径可保留用于非流式场景，或废弃。
+
+#### 调用时序
+
+1. 调用 `POST /api/v1/conversations/{conversationId}/messages` 发送用户消息。
+2. 立即调用 `GET /api/v1/conversations/{conversationId}/stream` 等待 AI 回复。
+3. 连接保持打开（默认超时 60 秒）。
+4. AI 回复就绪后，完整文本写入流并关闭连接。
+
+#### 响应示例（流式）
+
+```text
+根据您的简历，我建议从以下几个方面优化工作经验...
+```
+
+#### 超时行为
+
+如果 AI 回复在 60 秒内未生成，流将关闭并返回超时提示：
+
+```text
+AI reply timed out. Please try again later.
+AI 回复超时，请稍后重试。
+```
+
+### 错误码
+
+| 状态码 | 含义 | 触发场景 |
+|-------------|---------|------------------|
+| `401` | 未认证 | 缺少或已过期 JWT Token |
+| `403` | 权限不足 | 尝试访问不属于您的对话 |
+| `404` | 资源不存在 | 对话 ID 不存在 |
+
+---
+
 ## 备注
 
 ### 前端流式接口调用
 
-前端 `chatService.ts` 中存在对 `/v1/conversations/{conversationId}/stream` 的调用，但当前后端 `ConversationController` 中**未实现**该端点。如需支持流式 AI 回复，请后续补充对应的 Controller 方法。
+前端 `chatService.ts` 通过 `fetch` + `ReadableStream` 调用 `GET /v1/conversations/{conversationId}/stream`。
+详见 [8. 流式获取 AI 回复](#8-流式获取-ai-回复) 的后端接口文档。

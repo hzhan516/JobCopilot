@@ -8,6 +8,7 @@ import edu.asu.ser594.resumeassistant.domain.embedding.entity.ResumeVector;
 import edu.asu.ser594.resumeassistant.domain.embedding.repository.JobVectorRepository;
 import edu.asu.ser594.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
+import edu.asu.ser594.resumeassistant.infrastructure.messaging.stream.ConversationStreamService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -40,6 +41,9 @@ class AiResultMessageListenerTest {
 
     @Mock
     private JobVectorRepository jobVectorRepository;
+
+    @Mock
+    private ConversationStreamService streamService;
 
     @InjectMocks
     private AiResultMessageListener listener;
@@ -123,6 +127,7 @@ class AiResultMessageListenerTest {
 
         // 验证 / Then
         verify(conversationFacade).saveAiReply("conv-1", "Hello from AI", "http://minio/file.pdf", null);
+        verify(streamService).completeReply("conv-1", "Hello from AI");
     }
 
     @Test
@@ -145,6 +150,7 @@ class AiResultMessageListenerTest {
 
         // 验证 / Then
         verify(conversationFacade).saveAiReply("conv-1", "Here is your optimized resume", null, "# Optimized Resume");
+        verify(streamService).completeReply("conv-1", "Here is your optimized resume");
     }
 
     @Test
@@ -167,6 +173,7 @@ class AiResultMessageListenerTest {
 
         // 验证 / Then
         verify(conversationFacade).saveAiReply("conv-1", "No changes needed", null, null);
+        verify(streamService).completeReply("conv-1", "No changes needed");
     }
 
     @Test
@@ -186,5 +193,6 @@ class AiResultMessageListenerTest {
 
         // 验证 / Then
         verify(conversationFacade).saveAiReply(eq("conv-1"), contains("AI response failed"), isNull(), isNull());
+        verify(streamService).failReply(eq("conv-1"), contains("AI response failed"));
     }
 }

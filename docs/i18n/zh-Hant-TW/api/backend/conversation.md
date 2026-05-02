@@ -516,8 +516,84 @@
 
 ---
 
+## 8. 串流取得 AI 回覆
+
+### 基本資訊
+
+| 項目 | 值 |
+|------|-------|
+| **介面名稱** | 串流取得 AI 回覆 |
+| **介面路徑** | `GET /api/v1/conversations/{conversationId}/stream` |
+| **需要認證** | 是 |
+| **Content-Type** | `text/plain`（串流回應） |
+
+### 請求結構
+
+#### 路徑參數
+
+| 欄位 | 類型 | 必填 | 說明 |
+|-------|------|----------|-------------|
+| `conversationId` | String (UUID) | 是 | 對話唯一識別碼 |
+
+#### 請求標頭
+
+| 欄位 | 必填 | 說明 |
+|-------|----------|-------------|
+| `Authorization` | 是 | `Bearer {JWT Token}` |
+
+### 回應結構
+
+#### 成功回應 (200)
+
+回傳 `text/plain` 串流回應。HTTP 連線保持開啟，直到 AI 回覆生成完畢。
+
+> **注意：當前實作為偽串流傳輸。**
+> AI Service 同步生成完整回覆後，透過 MQ 一次性將結果發回後端。
+> 後端保持 HTTP 連線等待 MQ 回覆，然後將完整內容一次性寫入回應流。
+> 前端會體驗到 loading 狀態，隨後完整回覆一次性到達。
+>
+> **後續升級為真正串流的路徑：**
+> 1. 更新 AI Service 層，使用 Gemini 的 `generate_content_stream()` 串流 API。
+> 2. 在 AI Service 中新增 REST 串流端點（例如 `/api/v1/conversation/stream`）。
+> 3. 後端透過 `WebClient` 或 `RestTemplate` 直接呼叫 AI Service 的串流端點，
+>    將每個 chunk 即時透傳給前端，現有的 `StreamingResponseBody` 架構可復用。
+> 4. MQ 路徑可保留用於非串流場景，或廢棄。
+
+#### 呼叫時序
+
+1. 呼叫 `POST /api/v1/conversations/{conversationId}/messages` 傳送使用者訊息。
+2. 立即呼叫 `GET /api/v1/conversations/{conversationId}/stream` 等待 AI 回覆。
+3. 連線保持開啟（預設逾時 60 秒）。
+4. AI 回覆就緒後，完整文字寫入流並關閉連線。
+
+#### 回應範例（串流）
+
+```text
+根據您的履歷，我建議從以下幾個方面優化工作經驗...
+```
+
+#### 逾時行為
+
+如果 AI 回覆在 60 秒內未生成，流將關閉並回傳逾時提示：
+
+```text
+AI reply timed out. Please try again later.
+AI 回复超时，请稍后重试。
+```
+
+### 錯誤碼
+
+| 狀態碼 | 含義 | 觸發場景 |
+|-------------|---------|------------------|
+| `401` | 未認證 | 缺少或已過期 JWT Token |
+| `403` | 權限不足 | 嘗試存取不屬於您的對話 |
+| `404` | 資源不存在 | 對話 ID 不存在 |
+
+---
+
 ## 備註
 
 ### 前端串流介面呼叫
 
-前端 `chatService.ts` 中存在對 `/v1/conversations/{conversationId}/stream` 的呼叫，但當前後端 `ConversationController` 中**未實現**該端點。如需支援串流 AI 回覆，請後續補充對應的 Controller 方法。
+前端 `chatService.ts` 透過 `fetch` + `ReadableStream` 呼叫 `GET /v1/conversations/{conversationId}/stream`。
+詳見 [8. 串流取得 AI 回覆](#8-串流取得-ai-回覆) 的後端介面文件。

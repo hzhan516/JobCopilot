@@ -5,6 +5,8 @@ import edu.asu.ser594.resumeassistant.api.conversation.dto.ConversationResponse;
 import edu.asu.ser594.resumeassistant.api.conversation.dto.CreateConversationRequest;
 import edu.asu.ser594.resumeassistant.api.conversation.dto.SendMessageRequest;
 import edu.asu.ser594.resumeassistant.api.conversation.facade.ConversationFacade;
+import edu.asu.ser594.resumeassistant.infrastructure.messaging.stream.ConversationStreamService;
+import edu.asu.ser594.resumeassistant.domain.conversation.exception.ConversationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,8 +14,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -33,6 +40,9 @@ class ConversationControllerTest {
 
     @Mock
     private ConversationFacade conversationFacade;
+
+    @Mock
+    private ConversationStreamService streamService;
 
     @InjectMocks
     private ConversationController conversationController;
@@ -170,5 +180,68 @@ class ConversationControllerTest {
 
         // 验证 / Then
         assertThat(response.getData()).isEqualTo("https://minio.example.com/file.pdf");
+    }
+
+    @Test
+    @DisplayName("Should stream AI reply successfully")
+    void shouldStreamAiReply() throws Exception {
+        // 准备 / Given
+        String expectedReply = "This is the AI generated reply.";
+        when(conversationFacade.getConversation(CONVERSATION_ID.toString(), USER_ID, null, null))
+                .thenReturn(testConversationResponse);
+        when(streamService.awaitReply(CONVERSATION_ID.toString())).thenReturn(expectedReply);
+
+        // 执行 / When
+        ResponseEntity<StreamingResponseBody> response = conversationController.streamAiReply(
+                CONVERSATION_ID.toString(), USER_ID);
+
+        // 验证 / Then
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.TEXT_PLAIN);
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        response.getBody().writeTo(baos);
+        String actualContent = baos.toString(StandardCharsets.UTF_8);
+        assertThat(actualContent).isEqualTo(expectedReply);
+
+        verify(conversationFacade).getConversation(CONVERSATION_ID.toString(), USER_ID, null, null);
+        verify(streamService).awaitReply(CONVERSATION_ID.toString());
+    }
+
+    @Test
+    @DisplayName("Should reject unauthorized stream request")
+    void shouldRejectUnauthorizedStream() {
+        // 准备 / Given
+        UUID otherUserId = UUID.randomUUID();
+        when(conversationFacade.getConversation(CONVERSATION_ID.toString(), otherUserId, null, null))
+                .thenThrow(new ConversationException("access.denied"));
+
+        // 执行 & 验证 / When & Then
+        try {
+            conversationController.streamAiReply(CONVERSATION_ID.toString(), otherUserId);
+        } catch (ConversationException e) {
+            assertThat(e.getMessage()).contains("access.denied");
+        }
+
+        verify(streamService, never()).awaitReply(any());
+    }
+
+    @Test
+    @DisplayName("Should write timeout message when stream times out")
+    void shouldWriteTimeoutMessage() throws Exception {
+        // 准备 / Given
+        when(conversationFacade.getConversation(CONVERSATION_ID.toString(), USER_ID, null, null))
+                .thenReturn(testConversationResponse);
+        when(streamService.awaitReply(CONVERSATION_ID.toString())).thenReturn(null);
+
+        // 执行 / When
+        ResponseEntity<StreamingResponseBody> response = conversationController.streamAiReply(
+                CONVERSATION_ID.toString(), USER_ID);
+
+        // 验证 / Then
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        response.getBody().writeTo(baos);
+        String actualContent = baos.toString(StandardCharsets.UTF_8);
+        assertThat(actualContent).contains("timed out").contains("超时");
     }
 }
