@@ -7,6 +7,8 @@ import edu.asu.ser594.resumeassistant.application.matching.query.ListMatchHistor
 import edu.asu.ser594.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
+import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
+import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.matching.entity.JobMatchResult;
 import edu.asu.ser594.resumeassistant.domain.matching.entity.MatchingModel;
 import edu.asu.ser594.resumeassistant.domain.matching.port.VectorSearchPort;
@@ -36,6 +38,7 @@ import java.util.stream.Collectors;
 public class MatchingApplicationService {
 
     private final ResumeVectorRepository resumeVectorRepository;
+    private final ResumeVersionRepository resumeVersionRepository;
     private final JobRepository jobRepository;
     private final JobMatchResultRepository jobMatchResultRepository;
     private final MatchingModelRepository matchingModelRepository;
@@ -86,11 +89,18 @@ public class MatchingApplicationService {
 
         final Map<String, Object> jobDetails = buildJobDetailsMap(recalledJobIds);
 
+        final ResumeVersion resumeVersion = resumeVersionRepository.findById(UUID.fromString(command.resumeVersionId()))
+                .orElseThrow(() -> new IllegalArgumentException("Resume version not found: " + command.resumeVersionId()));
+        
+        final String resumeText = resumeVersion.getParsedContent() != null && !resumeVersion.getParsedContent().isEmpty() ? 
+                resumeVersion.getParsedContent() : 
+                (resumeVersion.getContent() != null ? resumeVersion.getContent() : "");
+
         final JobRankCommand rankCommand = new JobRankCommand(
                 matchId,
                 command.userId().toString(),
                 command.resumeVersionId(),
-                "", // resumeText 可由 Python 端自行从简历版本获取，此处留空
+                resumeText,
                 command.query(),
                 recalledJobIds,
                 jobDetails
@@ -122,7 +132,8 @@ public class MatchingApplicationService {
                         item.title(),
                         item.company(),
                         item.matchScore(),
-                        item.description()
+                        item.description(),
+                        item.matchReason()
                 ))
                 .collect(Collectors.toList());
 
