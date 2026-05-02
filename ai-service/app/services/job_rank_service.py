@@ -1,7 +1,7 @@
 import time
 import litellm
 
-from app.config import LLM_MODEL
+from app.config import LLM_TEXT_MODEL
 from app.schemas import JobRankCommand, JobRankResultPayload, JobRankResultItem, MatchFactors
 from app.services.vector_service import generate_embedding
 
@@ -137,7 +137,7 @@ Job Description:
 
     try:
         response = litellm.completion(
-            model=LLM_MODEL,
+            model=LLM_TEXT_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
             max_tokens=150
