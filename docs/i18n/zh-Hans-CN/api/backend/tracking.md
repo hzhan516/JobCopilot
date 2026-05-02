@@ -166,19 +166,3 @@ Content-Type: application/json
 
 
 ---
-
-## 备注
-
-### 前端 API 调用路径不一致
-
-前端 `trackingService.ts` 中调用的路径与后端 `TrackingController` 定义不一致：
-
-| 功能 | 前端路径 | 后端路径 |
-|------|----------|----------|
-| 获取投递记录 | `GET /v1/tracking/applications` | `GET /v1/trackings` |
-| 获取投递详情 | `GET /v1/tracking/applications/{id}` | `GET /v1/trackings/{id}` |
-| 创建投递记录 | `POST /v1/tracking/applications` | `POST /v1/trackings` |
-| 更新投递状态 | `PATCH /v1/tracking/applications/{id}/status` | `PUT /v1/trackings/{id}` |
-| 删除投递记录 | `DELETE /v1/tracking/applications/{id}` | `DELETE /v1/trackings/{id}` |
-
-如需前后端对齐，请同步修改前端 `trackingService.ts` 或后端 `TrackingController` 的接口设计。

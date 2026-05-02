@@ -328,7 +328,7 @@ Authorization: Bearer <access_token>
 
 ### 3. 職位模組 (Job)
 
-詳見 [job.md](job_zh_TW.md) 和 [job-matching.md](job-matching_zh_TW.md)
+詳見 [job.md](job.md) 和 [job-matching.md](job-matching.md)
 
 本模組提供職位連結提交、非同步剖析、智慧配對和歷史查詢功能。
 
@@ -360,7 +360,7 @@ Authorization: Bearer <access_token>
 
 ### 4. 對話模組 (Conversation)
 
-詳見 [conversation.md](conversation_zh_TW.md)
+詳見 [conversation.md](conversation.md)
 
 #### 4.1 建立對話
 - **URL**: `POST /api/v1/conversations`
@@ -396,7 +396,7 @@ Authorization: Bearer <access_token>
 
 ### 5. 求職追蹤模組 (Tracking)
 
-詳見 [tracking.md](tracking_zh_TW.md)
+詳見 [tracking.md](tracking.md)
 
 本模組提供求職申請的狀態流轉、事件記錄和統計分析功能。
 
@@ -629,14 +629,14 @@ Accept-Language: en
 
 ## 相關文件
 
-- [認證模組詳細文件](authentication_zh_TW.md)
-- [履歷模組詳細文件](resume_zh_TW.md)
-- [職位模組詳細文件](job_zh_TW.md)
-- [職位配對模組詳細文件](job-matching_zh_TW.md)
-- [對話模組詳細文件](conversation_zh_TW.md)
-- [求職追蹤模組詳細文件](tracking_zh_TW.md)
-- [AI / MQ 互動介面文件](ai-mq-interfaces_zh_TW.md)
-- [回應格式與錯誤碼說明](response-format_zh_TW.md)
+- [認證模組詳細文件](authentication.md)
+- [履歷模組詳細文件](resume.md)
+- [職位模組詳細文件](job.md)
+- [職位配對模組詳細文件](job-matching.md)
+- [對話模組詳細文件](conversation.md)
+- [求職追蹤模組詳細文件](tracking.md)
+- [AI / MQ 互動介面文件](ai-mq-interfaces.md)
+- [回應格式與錯誤碼說明](response-format.md)
 
 ---
 

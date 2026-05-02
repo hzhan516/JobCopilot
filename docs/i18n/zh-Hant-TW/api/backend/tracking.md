@@ -165,19 +165,3 @@ Content-Type: application/json
 | 500 | 500 | 資料庫異常 |
 
 ---
-
-## 備註
-
-### 前端 API 呼叫路徑不一致
-
-前端 `trackingService.ts` 中呼叫的路徑與後端 `TrackingController` 定義不一致：
-
-| 功能 | 前端路徑 | 後端路徑 |
-|------|----------|----------|
-| 取得投遞記錄 | `GET /v1/tracking/applications` | `GET /v1/trackings` |
-| 取得投遞詳情 | `GET /v1/tracking/applications/{id}` | `GET /v1/trackings/{id}` |
-| 建立投遞記錄 | `POST /v1/tracking/applications` | `POST /v1/trackings` |
-| 更新投遞狀態 | `PATCH /v1/tracking/applications/{id}/status` | `PUT /v1/trackings/{id}` |
-| 刪除投遞記錄 | `DELETE /v1/tracking/applications/{id}` | `DELETE /v1/trackings/{id}` |
-
-如需前後端對齊，請同步修改前端 `trackingService.ts` 或後端 `TrackingController` 的介面設計。

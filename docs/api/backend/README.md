@@ -328,7 +328,7 @@ Returns a detailed list of all versions under this group.
 
 ### 3. Job Module (Job)
 
-See [job.md](job_EN.md) and [job-matching.md](job-matching_EN.md)
+See [job.md](job.md) and [job-matching.md](job-matching.md)
 
 This module provides job link submission, async parsing, intelligent matching, and history query functions.
 
@@ -360,7 +360,7 @@ This module provides job link submission, async parsing, intelligent matching, a
 
 ### 4. Conversation Module (Conversation)
 
-See [conversation.md](conversation_EN.md)
+See [conversation.md](conversation.md)
 
 #### 4.1 Create Conversation
 - **URL**: `POST /api/v1/conversations`
@@ -396,7 +396,7 @@ See [conversation.md](conversation_EN.md)
 
 ### 5. Job Tracking Module (Tracking)
 
-See [tracking.md](tracking_EN.md)
+See [tracking.md](tracking.md)
 
 This module provides application status flow, event recording, and statistical analysis functions.
 
@@ -629,14 +629,14 @@ Accept-Language: en
 
 ## Related Documents
 
-- [Authentication Module Detailed Documentation](authentication_EN.md)
-- [Resume Module Detailed Documentation](resume_EN.md)
-- [Job Module Detailed Documentation](job_EN.md)
-- [Job Matching Module Detailed Documentation](job-matching_EN.md)
-- [Conversation Module Detailed Documentation](conversation_EN.md)
-- [Job Tracking Module Detailed Documentation](tracking_EN.md)
-- [AI / MQ Interaction Interface Documentation](ai-mq-interfaces_EN.md)
-- [Response Format and Error Code Description](response-format_EN.md)
+- [Authentication Module Detailed Documentation](authentication.md)
+- [Resume Module Detailed Documentation](resume.md)
+- [Job Module Detailed Documentation](job.md)
+- [Job Matching Module Detailed Documentation](job-matching.md)
+- [Conversation Module Detailed Documentation](conversation.md)
+- [Job Tracking Module Detailed Documentation](tracking.md)
+- [AI / MQ Interaction Interface Documentation](ai-mq-interfaces.md)
+- [Response Format and Error Code Description](response-format.md)
 
 ---
 

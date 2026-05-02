@@ -165,19 +165,3 @@ Content-Type: application/json
 | 500 | 500 | Database exception |
 
 ---
-
-## Notes
-
-### Frontend API Call Path Inconsistency
-
-The paths called in frontend `trackingService.ts` are inconsistent with the backend `TrackingController` definitions:
-
-| Feature | Frontend Path | Backend Path |
-|------|----------|----------|
-| Get applications | `GET /v1/tracking/applications` | `GET /v1/trackings` |
-| Get application detail | `GET /v1/tracking/applications/{id}` | `GET /v1/trackings/{id}` |
-| Create application | `POST /v1/tracking/applications` | `POST /v1/trackings` |
-| Update application status | `PATCH /v1/tracking/applications/{id}/status` | `PUT /v1/trackings/{id}` |
-| Delete application | `DELETE /v1/tracking/applications/{id}` | `DELETE /v1/trackings/{id}` |
-
-To align frontend and backend, please synchronize modifications to either frontend `trackingService.ts` or backend `TrackingController` interface design.
