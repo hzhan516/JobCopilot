@@ -18,6 +18,11 @@ public class RabbitMqConfig {
 
     public static final String EXCHANGE_AI_DIRECT = "ai.direct.exchange";
 
+    // 死信交换机与队列 / Dead letter exchange and queue
+    public static final String EXCHANGE_DLX = "ai.dlx.exchange";
+    public static final String QUEUE_DLQ = "ai.dlq.queue";
+    public static final String ROUTING_KEY_DLQ = "dlq.routing.key";
+
     // 职位解析队列与路由键 / Job parse queue and routing keys
     public static final String ROUTING_KEY_REQ_JOB_PARSE = "ai.req.job.parse";
     public static final String QUEUE_REQ_JOB_PARSE = "ai.queue.job.parse";
@@ -76,11 +81,38 @@ public class RabbitMqConfig {
         return new DirectExchange(EXCHANGE_AI_DIRECT);
     }
 
+    /**
+     * 死信交换机 / Dead letter exchange
+     */
+    @Bean
+    public DirectExchange dlxExchange() {
+        return new DirectExchange(EXCHANGE_DLX);
+    }
+
+    /**
+     * 死信队列 / Dead letter queue
+     */
+    @Bean
+    public Queue dlqQueue() {
+        return QueueBuilder.durable(QUEUE_DLQ).build();
+    }
+
+    /**
+     * 死信队列绑定 / Dead letter queue binding
+     */
+    @Bean
+    public Binding dlqBinding(Queue dlqQueue, DirectExchange dlxExchange) {
+        return BindingBuilder.bind(dlqQueue).to(dlxExchange).with(ROUTING_KEY_DLQ);
+    }
+
     // ========== 职位解析队列绑定 / Job parse queue bindings ==========
 
     @Bean
     public Queue reqJobParseQueue() {
-        return QueueBuilder.durable(QUEUE_REQ_JOB_PARSE).build();
+        return QueueBuilder.durable(QUEUE_REQ_JOB_PARSE)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
     }
 
     @Bean
@@ -90,7 +122,10 @@ public class RabbitMqConfig {
 
     @Bean
     public Queue resJobParseQueue() {
-        return QueueBuilder.durable(QUEUE_RES_JOB_PARSE).build();
+        return QueueBuilder.durable(QUEUE_RES_JOB_PARSE)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
     }
 
     @Bean
@@ -102,7 +137,10 @@ public class RabbitMqConfig {
 
     @Bean
     public Queue reqResumeParseQueue() {
-        return QueueBuilder.durable(QUEUE_REQ_RESUME_PARSE).build();
+        return QueueBuilder.durable(QUEUE_REQ_RESUME_PARSE)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
     }
 
     @Bean
@@ -112,7 +150,10 @@ public class RabbitMqConfig {
 
     @Bean
     public Queue resResumeParseQueue() {
-        return QueueBuilder.durable(QUEUE_RES_RESUME_PARSE).build();
+        return QueueBuilder.durable(QUEUE_RES_RESUME_PARSE)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
     }
 
     @Bean
@@ -124,7 +165,10 @@ public class RabbitMqConfig {
 
     @Bean
     public Queue reqVectorGenQueue() {
-        return QueueBuilder.durable(QUEUE_REQ_VECTOR_GEN).build();
+        return QueueBuilder.durable(QUEUE_REQ_VECTOR_GEN)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
     }
 
     @Bean
@@ -134,7 +178,10 @@ public class RabbitMqConfig {
 
     @Bean
     public Queue resVectorGenQueue() {
-        return QueueBuilder.durable(QUEUE_RES_VECTOR_GEN).build();
+        return QueueBuilder.durable(QUEUE_RES_VECTOR_GEN)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
     }
 
     @Bean
@@ -146,7 +193,10 @@ public class RabbitMqConfig {
 
     @Bean
     public Queue reqConversationQueue() {
-        return QueueBuilder.durable(QUEUE_REQ_CONVERSATION).build();
+        return QueueBuilder.durable(QUEUE_REQ_CONVERSATION)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
     }
 
     @Bean
@@ -156,7 +206,10 @@ public class RabbitMqConfig {
 
     @Bean
     public Queue resConversationQueue() {
-        return QueueBuilder.durable(QUEUE_RES_CONVERSATION).build();
+        return QueueBuilder.durable(QUEUE_RES_CONVERSATION)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
     }
 
     @Bean
@@ -168,7 +221,10 @@ public class RabbitMqConfig {
 
     @Bean
     public Queue reqJobRankQueue() {
-        return QueueBuilder.durable(QUEUE_REQ_JOB_RANK).build();
+        return QueueBuilder.durable(QUEUE_REQ_JOB_RANK)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
     }
 
     @Bean
@@ -178,7 +234,10 @@ public class RabbitMqConfig {
 
     @Bean
     public Queue resJobRankQueue() {
-        return QueueBuilder.durable(QUEUE_RES_JOB_RANK).build();
+        return QueueBuilder.durable(QUEUE_RES_JOB_RANK)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
     }
 
     @Bean

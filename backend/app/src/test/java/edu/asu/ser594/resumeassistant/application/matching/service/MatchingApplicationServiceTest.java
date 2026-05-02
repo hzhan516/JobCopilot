@@ -17,6 +17,9 @@ import edu.asu.ser594.resumeassistant.domain.matching.repository.JobMatchResultR
 import edu.asu.ser594.resumeassistant.domain.matching.repository.MatchingModelRepository;
 import edu.asu.ser594.resumeassistant.domain.matching.valueobject.ModelType;
 import edu.asu.ser594.resumeassistant.domain.matching.valueobject.RecallResult;
+import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
+import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
+import edu.asu.ser594.resumeassistant.domain.resume.valueobject.ParseStatus;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobRankCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import org.junit.jupiter.api.DisplayName;
@@ -45,7 +48,7 @@ import static org.mockito.Mockito.*;
 class MatchingApplicationServiceTest {
 
     private static final UUID USER_ID = UUID.randomUUID();
-    private static final String RESUME_VERSION_ID = "resume-v1";
+    private static final String RESUME_VERSION_ID = UUID.randomUUID().toString();
     private static final String MATCH_ID = "match-001";
 
     @Mock
@@ -65,6 +68,9 @@ class MatchingApplicationServiceTest {
 
     @Mock
     private VectorSearchPort vectorSearchPort;
+
+    @Mock
+    private ResumeVersionRepository resumeVersionRepository;
 
     @InjectMocks
     private MatchingApplicationService matchingService;
@@ -86,10 +92,18 @@ class MatchingApplicationServiceTest {
         List<RecallResult> recallResults = List.of(new RecallResult("job-1", 0.5));
         Job job = new Job("job-1", USER_ID, "http://example.com", false, JobStatus.COMPLETED, null, null);
 
+        ResumeVersion resumeVersion = ResumeVersion.reconstruct(
+                UUID.fromString(RESUME_VERSION_ID), UUID.randomUUID(), ResumeVersion.VersionType.CONVERTED,
+                null, null, "text/markdown", 0L, null, null,
+                "resume content", null, ParseStatus.COMPLETED, null,
+                ResumeVersion.Status.ACTIVE, java.time.LocalDateTime.now(), java.time.LocalDateTime.now()
+        );
+
         when(matchingModelRepository.findActiveByType(ModelType.RECALL)).thenReturn(Optional.of(model));
         when(resumeVectorRepository.findByResumeVersionId(RESUME_VERSION_ID)).thenReturn(Optional.of(vector));
         when(vectorSearchPort.findSimilarJobs(any(), eq(5), eq("v1.0"))).thenReturn(recallResults);
         when(jobRepository.findById("job-1")).thenReturn(Optional.of(job));
+        when(resumeVersionRepository.findById(UUID.fromString(RESUME_VERSION_ID))).thenReturn(Optional.of(resumeVersion));
         when(jobMatchResultRepository.save(any(JobMatchResult.class))).thenAnswer(inv -> inv.getArgument(0));
 
         // 当
@@ -117,9 +131,17 @@ class MatchingApplicationServiceTest {
 
         ResumeVector vector = ResumeVector.createCompleted("vec-1", RESUME_VERSION_ID, new float[]{0.1f});
 
+        ResumeVersion resumeVersion = ResumeVersion.reconstruct(
+                UUID.fromString(RESUME_VERSION_ID), UUID.randomUUID(), ResumeVersion.VersionType.CONVERTED,
+                null, null, "text/markdown", 0L, null, null,
+                "resume content", null, ParseStatus.COMPLETED, null,
+                ResumeVersion.Status.ACTIVE, java.time.LocalDateTime.now(), java.time.LocalDateTime.now()
+        );
+
         when(matchingModelRepository.findActiveByType(ModelType.RECALL)).thenReturn(Optional.empty());
         when(resumeVectorRepository.findByResumeVersionId(RESUME_VERSION_ID)).thenReturn(Optional.of(vector));
         when(vectorSearchPort.findSimilarJobs(any(), anyInt(), eq("default"))).thenReturn(Collections.emptyList());
+        when(resumeVersionRepository.findById(UUID.fromString(RESUME_VERSION_ID))).thenReturn(Optional.of(resumeVersion));
         when(jobMatchResultRepository.save(any(JobMatchResult.class))).thenAnswer(inv -> inv.getArgument(0));
 
         // 当
@@ -191,9 +213,17 @@ class MatchingApplicationServiceTest {
 
         ResumeVector vector = ResumeVector.createCompleted("vec-1", RESUME_VERSION_ID, new float[]{0.1f});
 
+        ResumeVersion resumeVersion = ResumeVersion.reconstruct(
+                UUID.fromString(RESUME_VERSION_ID), UUID.randomUUID(), ResumeVersion.VersionType.CONVERTED,
+                null, null, "text/markdown", 0L, null, null,
+                "resume content", null, ParseStatus.COMPLETED, null,
+                ResumeVersion.Status.ACTIVE, java.time.LocalDateTime.now(), java.time.LocalDateTime.now()
+        );
+
         when(matchingModelRepository.findActiveByType(ModelType.RECALL)).thenReturn(Optional.empty());
         when(resumeVectorRepository.findByResumeVersionId(RESUME_VERSION_ID)).thenReturn(Optional.of(vector));
         when(vectorSearchPort.findSimilarJobs(any(), eq(10), any())).thenReturn(Collections.emptyList());
+        when(resumeVersionRepository.findById(UUID.fromString(RESUME_VERSION_ID))).thenReturn(Optional.of(resumeVersion));
         when(jobMatchResultRepository.save(any(JobMatchResult.class))).thenAnswer(inv -> inv.getArgument(0));
 
         // 当
@@ -212,7 +242,7 @@ class MatchingApplicationServiceTest {
         // Given
         SaveMatchResultCommand command = SaveMatchResultCommand.builder()
                 .matchId(MATCH_ID)
-                .rankedResults(List.of(new MatchItem("job-1", "Title", "Company", 0.9, null, "Desc", "Good fit")))
+                .rankedResults(List.of(new MatchItem("job-1", "Title", "Company", 0.9, null, "Desc", "Reason")))
                 .rankTimeMs(100L)
                 .build();
 

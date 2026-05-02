@@ -3,7 +3,6 @@ package edu.asu.ser594.resumeassistant.application.matching;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.JobMatchRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobMatchResponse;
 import edu.asu.ser594.resumeassistant.application.matching.service.MatchingApplicationService;
-import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
 import edu.asu.ser594.resumeassistant.domain.matching.entity.JobMatchResult;
 import edu.asu.ser594.resumeassistant.domain.matching.valueobject.RankedJob;
 import org.junit.jupiter.api.DisplayName;
@@ -35,9 +34,6 @@ class MatchingFacadeImplTest {
     @Mock
     private MatchingApplicationService matchingService;
 
-    @Mock
-    private JobRepository jobRepository;
-
     @InjectMocks
     private MatchingFacadeImpl matchingFacade;
 
@@ -65,7 +61,7 @@ class MatchingFacadeImplTest {
         // 给定
         // Given
         JobMatchResult result = JobMatchResult.createProcessing(MATCH_ID, USER_ID, "resume-v1", "query", "v1");
-        result.complete(List.of(new RankedJob("job-1", "Title", "Company", 0.9, "Desc", "Good fit")), 100L);
+        result.complete(List.of(new RankedJob("job-1", "Title", "Company", 0.9, "Desc", "Reason")), 100L);
         when(matchingService.getMatchResult(any())).thenReturn(Optional.of(result));
 
 
