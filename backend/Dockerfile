@@ -85,9 +85,9 @@ ENV HOME=/home/resume
 # 从构建阶段复制 JAR 文件
 COPY --from=builder /build/app/target/app-*.jar app.jar
 
-# 复制 entrypoint 脚本
+# 复制 entrypoint 脚本并消除可能存在的 Windows CRLF 回车符
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 
 # 暴露端口
 EXPOSE 8080

@@ -41,7 +41,7 @@
 **/__pycache__/
 *.pyc
 *.env
-.env
+.gitattributes
 
 # macOS
 .DS_Store
