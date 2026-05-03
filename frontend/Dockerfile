@@ -30,6 +30,9 @@ FROM docker.io/library/nginx:1.27-alpine
 LABEL maintainer="SER594 Team"
 LABEL description="Resume Assistant Frontend"
 
+# Install curl for Docker healthcheck (nginx:alpine does not include wget or curl by default)
+RUN apk add --no-cache curl
+
 # Replace default site config with SPA + API reverse proxy config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 

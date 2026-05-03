@@ -1,5 +1,5 @@
 <!-- Language Switcher / 语言切换 / 語言切換 -->
-> [English](../../../DOCKER_DEPLOY.md) | [简体中文](../zh-Hans-CN/DOCKER_DEPLOY.md) | [繁體中文](DOCKER_DEPLOY.md)
+> [English](../../deployment/DOCKER_DEPLOY.md) | [简体中文](../zh-Hans-CN/deployment/DOCKER_DEPLOY.md) | [繁體中文](DOCKER_DEPLOY.md)
 
 # Docker/Podman 部署指南
 
@@ -186,6 +186,56 @@ docker system prune -a --volumes
 docker-compose up -d --build --force-recreate
 ```
 
+### 406 PRECONDITION_FAILED（RabbitMQ）
+
+**現象**：後端日誌出現 `channel.close(reply-code=406, reply-text=PRECONDITION_FAILED - inequivalent arg 'x-dead-letter-exchange'...)`。
+
+**原因**：RabbitMQ 中已存在同名佇列，但參數不同。佇列參數不可變。
+
+**解決**：執行佇列重置腳本並重新啟動後端：
+```bash
+cd backend && ./scripts/reset-rabbitmq-queues.sh
+cd .. && docker-compose up -d --build backend
+```
+
+或徹底重建 RabbitMQ（刪除卷）：
+```bash
+docker-compose down -v
+docker-compose up -d
+```
+
+### "Relation does not exist"（PostgreSQL）
+
+**現象**：後端日誌出現 `ERROR: relation "outbox_message" does not exist`。
+
+**原因**：`outbox_message` 表在資料庫初始化完成後才新增。`docker-entrypoint-initdb.d` 僅在首次初始化時執行。
+
+**解決**：手動執行初始化 SQL：
+```bash
+docker exec -i resume-assistant-postgres \
+  psql -U resume_user -d resume_assistant \
+  < backend/app/src/main/resources/db/migration/init_outbox_message.sql
+```
+
+或重建資料庫卷：
+```bash
+docker-compose down -v
+docker-compose up -d
+```
+
+### `FATAL: database "resume_assistant" does not exist`（PostgreSQL）
+
+**現象**：後端或 PostgreSQL 健康檢查報錯 `database "resume_assistant" does not exist` 或 `role "resume_user" does not exist`。
+
+**原因**：`postgres-data` 資料卷已被初始化過（例如使用預設的 `postgres` 憑證或來自之前的專案）。PostgreSQL 的 `docker-entrypoint-initdb.d` 以及 `POSTGRES_USER`/`POSTGRES_DB` 環境變數僅在資料目錄為空時的**首次**初始化生效。
+
+**解決**：刪除資料卷並重新初始化：
+```bash
+docker-compose down
+docker volume rm <project_name>_postgres-data
+docker-compose up -d
+```
+
 ## 生產環境部署
 
 1. 修改 `.env` 檔案：
@@ -204,6 +254,62 @@ docker-compose up -d --build --force-recreate
 3. 設定反向代理（Nginx/Traefik）
 
 4. 啟用 HTTPS（Let's Encrypt）
+
+## 佇列參數變更與重置
+
+RabbitMQ 佇列一旦建立，其參數不可變。如果應用程式程式碼變更了佇列宣告（例如加入 `x-dead-letter-exchange` 以支援 DLX/DLQ），Spring AMQP 在嘗試重新宣告已有佇列時會回報 `406 PRECONDITION_FAILED` 錯誤。
+
+### 開發環境
+
+刪除舊佇列，讓 Spring AMQP 在下次啟動時自動重新宣告：
+
+```bash
+cd backend
+./scripts/reset-rabbitmq-queues.sh
+```
+
+然後重新啟動後端容器：
+
+```bash
+docker-compose up -d --build backend
+```
+
+### 生產環境
+
+建議安排在維護時段執行：
+1. 停止生產者（backend），防止新訊息進入。
+2. 排空或備份受影響佇列中的訊息。
+3. 透過 RabbitMQ Management UI 或 CLI 刪除舊佇列。
+4. 重新啟動後端服務，Spring AMQP 將使用新參數宣告佇列。
+
+如果訊息遺失可接受，也可以直接使用 `reset-rabbitmq-queues.sh` 腳本。
+
+## 資料庫初始化與遷移
+
+開發環境停用了 Flyway（`application-dev.yml` 中 `spring.flyway.enabled=false`）。資料庫初始化依賴於 `docker-entrypoint-initdb.d`，該機制**僅在資料庫首次初始化**（資料目錄為空）時執行一次。
+
+### 全新環境
+
+使用全新的 `postgres-data` 卷啟動時，`docker-entrypoint-initdb.d` 會按字母順序執行 `backend/app/src/main/resources/db/migration/` 目錄下的所有 `.sql` 檔案。新增的資料表（如 `outbox_message`）會自動建立。
+
+### 已有環境
+
+如果資料庫已經初始化過，新增 `.sql` 檔案**不會**自動執行。有兩種處理方式：
+
+1. **手動執行 SQL**（推薦用於有資料的開發環境）：
+   ```bash
+   docker exec -i resume-assistant-postgres \
+     psql -U resume_user -d resume_assistant \
+     < backend/app/src/main/resources/db/migration/init_outbox_message.sql
+   ```
+
+2. **重建資料卷**（會清空所有資料）：
+   ```bash
+   docker-compose down -v
+   docker-compose up -d
+   ```
+
+> **生產環境說明**：生產環境使用 `spring.flyway.enabled=true`（見 `application-prod.yml`）。Flyway 會在啟動時自動套用待執行的遷移腳本，因此新增表會自動處理。
 
 ## 注意事項
 

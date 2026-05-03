@@ -278,7 +278,7 @@ Google Cloud ADC is not required for local development unless you intentionally 
 
 ## Deployment
 
-See [DOCKER_DEPLOY.md](./DOCKER_DEPLOY.md) for detailed deployment instructions including:
+See [docs/deployment/DOCKER_DEPLOY.md](docs/deployment/DOCKER_DEPLOY.md) for detailed deployment instructions including:
 
 - Production deployment checklist
 - Environment configuration

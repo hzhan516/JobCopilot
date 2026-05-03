@@ -278,7 +278,7 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ## 部署上線
 
-詳細的部署說明請參考 [DOCKER_DEPLOY.md](./DOCKER_DEPLOY.md)，內容包括：
+詳細的部署說明請參考 [deployment/DOCKER_DEPLOY.md](deployment/DOCKER_DEPLOY.md)，內容包括：
 
 - 生產環境部署檢查清單
 - 環境變數設定
