@@ -9,8 +9,6 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
-
 /**
  * 职位 JPA 实体 / Job JPA entity
  */
@@ -24,8 +22,8 @@ public class JobJpaEntity {
     @Column(length = 64)
     private String id;
 
-    @Column(name = "user_id", nullable = false, columnDefinition = "UUID")
-    private UUID userId;
+    @Column(name = "user_id", nullable = false, length = 64)
+    private String userId;
 
     @Column(name = "original_url", nullable = false, columnDefinition = "TEXT")
     private String originalUrl;

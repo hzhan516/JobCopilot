@@ -229,12 +229,15 @@
       "total": "Total"
     },
     "status": {
+      "PENDING": "Pending",
       "APPLIED": "Applied",
       "SCREENING": "Screening",
-      "INTERVIEW": "Interviewing",
+      "INTERVIEWING": "Interviewing",
       "OFFER": "Offered",
+      "ACCEPTED": "Accepted",
       "REJECTED": "Rejected",
-      "WITHDRAWN": "Withdrawn"
+      "WITHDRAWN": "Withdrawn",
+      "UNKNOWN": "Unknown"
     },
     "recordList": "Application Records",
     "emptyTitle": "No application records",

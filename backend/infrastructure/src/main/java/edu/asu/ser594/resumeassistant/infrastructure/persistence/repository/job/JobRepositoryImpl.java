@@ -45,7 +45,7 @@ public class JobRepositoryImpl implements JobRepository {
      */
     @Override
     public List<Job> findAllByUserId(UUID userId) {
-        return jpaJobRepository.findAllByUserId(userId).stream()
+        return jpaJobRepository.findAllByUserId(userId.toString()).stream()
                 .map(jobMapper::toDomain)
                 .collect(Collectors.toList());
     }

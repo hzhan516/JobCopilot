@@ -229,12 +229,15 @@
       "total": "总计"
     },
     "status": {
+      "PENDING": "待投递",
       "APPLIED": "已投递",
       "SCREENING": "筛选中",
-      "INTERVIEW": "面试中",
+      "INTERVIEWING": "面试中",
       "OFFER": "已录用",
+      "ACCEPTED": "已接受",
       "REJECTED": "已拒绝",
-      "WITHDRAWN": "已撤回"
+      "WITHDRAWN": "已撤回",
+      "UNKNOWN": "未知"
     },
     "recordList": "投递记录",
     "emptyTitle": "暂无投递记录",

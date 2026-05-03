@@ -41,6 +41,7 @@ public class TrackingFacadeImpl implements TrackingFacade {
                 .jobId(request.jobId())
                 .companyName(request.companyName())
                 .jobTitle(request.jobTitle())
+                .status(request.status())
                 .appliedAt(request.appliedAt())
                 .notes(request.notes())
                 .build();

@@ -235,7 +235,7 @@ export interface Tracking {
   job: Job | null;
   companyName: string;
   jobTitle: string;
-  status: 'APPLIED' | 'SCREENING' | 'INTERVIEW' | 'OFFER' | 'REJECTED' | 'WITHDRAWN';
+  status: 'PENDING' | 'APPLIED' | 'SCREENING' | 'INTERVIEWING' | 'OFFER' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN';
   appliedAt: string;
   updatedAt: string;
   notes: string | null;
@@ -246,6 +246,7 @@ export interface CreateTrackingRequest {
   jobId?: string;
   companyName: string;
   jobTitle: string;
+  status?: Tracking['status'];
   appliedAt?: string;
   notes?: string;
 }

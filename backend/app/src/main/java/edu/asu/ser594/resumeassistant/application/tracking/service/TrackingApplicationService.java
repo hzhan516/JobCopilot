@@ -29,11 +29,15 @@ public class TrackingApplicationService {
     @Transactional
     public ApplicationTracking createTracking(final CreateTrackingCommand command) {
         log.info("Creating tracking for user: {}, company: {}", command.userId(), command.companyName());
+        final ApplicationStatus initialStatus = command.status() != null
+                ? ApplicationStatus.valueOf(command.status())
+                : null;
         final ApplicationTracking tracking = ApplicationTracking.create(
                 command.userId(),
                 command.jobId(),
                 command.companyName(),
                 command.jobTitle(),
+                initialStatus,
                 command.appliedAt(),
                 command.notes()
         );

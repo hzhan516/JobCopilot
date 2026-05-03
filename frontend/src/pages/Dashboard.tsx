@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { resumeService } from '@/services/resumeService';
 import { jobService } from '@/services/jobService';
 import { trackingService } from '@/services/trackingService';
 import { chatService } from '@/services/chatService';
+import { formatDate } from '@/utils/i18n';
+import type { Tracking } from '@/types';
 import {
   FileText,
   Briefcase,
@@ -16,6 +19,8 @@ import {
   ArrowRight,
   Sparkles,
   TrendingUp,
+  Building2,
+  Calendar,
 } from 'lucide-react';
 
 interface StatItem {
@@ -35,6 +40,23 @@ export default function Dashboard() {
     { labelKey: 'dashboard.stats.applications', value: 0, icon: ClipboardList, isLoading: true },
     { labelKey: 'dashboard.stats.chats', value: 0, icon: MessageSquare, isLoading: true },
   ]);
+
+  const [trackings, setTrackings] = useState<Tracking[]>([]);
+  const [trackingsLoading, setTrackingsLoading] = useState(true);
+
+  const statusConfig: Record<string, { labelKey: string; color: string }> = useMemo(
+    () => ({
+      PENDING: { labelKey: 'tracking.status.PENDING', color: 'bg-gray-100 text-gray-500' },
+      APPLIED: { labelKey: 'tracking.status.APPLIED', color: 'bg-blue-100 text-blue-700' },
+      SCREENING: { labelKey: 'tracking.status.SCREENING', color: 'bg-yellow-100 text-yellow-700' },
+      INTERVIEWING: { labelKey: 'tracking.status.INTERVIEWING', color: 'bg-purple-100 text-purple-700' },
+      OFFER: { labelKey: 'tracking.status.OFFER', color: 'bg-green-100 text-green-700' },
+      ACCEPTED: { labelKey: 'tracking.status.ACCEPTED', color: 'bg-emerald-100 text-emerald-700' },
+      REJECTED: { labelKey: 'tracking.status.REJECTED', color: 'bg-red-100 text-red-700' },
+      WITHDRAWN: { labelKey: 'tracking.status.WITHDRAWN', color: 'bg-gray-100 text-gray-700' },
+    }),
+    []
+  );
 
   const quickActions = [
     {
@@ -90,8 +112,12 @@ export default function Dashboard() {
         .catch(() => updateStat(1, 0)),
       trackingService
         .getTrackings()
-        .then((data) => updateStat(2, data.length))
-        .catch(() => updateStat(2, 0)),
+        .then((data) => {
+          updateStat(2, data.length);
+          setTrackings(data);
+        })
+        .catch(() => updateStat(2, 0))
+        .finally(() => setTrackingsLoading(false)),
       chatService
         .getConversations()
         .then((data) => updateStat(3, data.length))
@@ -224,13 +250,61 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-gray-500">
-              <ClipboardList className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p>{t('tracking.emptyTitle')}</p>
-              <Button variant="link" onClick={() => navigate('/tracking')}>
-                {t('tracking.addRecord')}
-              </Button>
-            </div>
+            {trackingsLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-16" />
+                <Skeleton className="h-16" />
+                <Skeleton className="h-16" />
+              </div>
+            ) : trackings.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <ClipboardList className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p>{t('tracking.emptyTitle')}</p>
+                <Button variant="link" onClick={() => navigate('/tracking')}>
+                  {t('tracking.addRecord')}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {trackings
+                  .slice()
+                  .sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime())
+                  .slice(0, 3)
+                  .map((tracking) => {
+                    const config = statusConfig[tracking.status] || {
+                      labelKey: 'tracking.status.UNKNOWN',
+                      color: 'bg-gray-100 text-gray-500',
+                    };
+                    return (
+                      <div
+                        key={tracking.trackingId}
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                        onClick={() => navigate('/tracking')}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h4 className="font-semibold text-gray-900 truncate">
+                              {tracking.jobTitle}
+                            </h4>
+                            <Badge className={config.color}>{t(config.labelKey)}</Badge>
+                          </div>
+                          <div className="flex items-center space-x-3 text-sm text-gray-500">
+                            <span className="flex items-center">
+                              <Building2 className="w-3.5 h-3.5 mr-1" />
+                              {tracking.companyName}
+                            </span>
+                            <span className="flex items-center">
+                              <Calendar className="w-3.5 h-3.5 mr-1" />
+                              {tracking.appliedAt ? formatDate(tracking.appliedAt) : '-'}
+                            </span>
+                          </div>
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-gray-400 ml-2 flex-shrink-0" />
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

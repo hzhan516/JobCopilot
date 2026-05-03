@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS application_trackings
     status       VARCHAR(32) NOT NULL,
     applied_at   DATE,
     updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    notes        TEXT
+    notes        TEXT,
+    events       JSONB
 );
 
 CREATE INDEX IF NOT EXISTS idx_application_trackings_user_id ON application_trackings (user_id);

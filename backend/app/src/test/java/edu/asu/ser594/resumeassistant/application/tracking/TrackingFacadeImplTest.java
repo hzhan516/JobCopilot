@@ -47,7 +47,7 @@ class TrackingFacadeImplTest {
     void shouldCreateTrackingAndReturnResponse() {
         // 给定
         // Given
-        CreateTrackingRequest request = new CreateTrackingRequest("job-001", "Tech Corp", "Developer", null, null);
+        CreateTrackingRequest request = new CreateTrackingRequest("job-001", "Tech Corp", "Developer", null, null, null);
         ApplicationTracking tracking = ApplicationTracking.create(
                 USER_ID, "job-001", "Tech Corp", "Developer", null, null
         );

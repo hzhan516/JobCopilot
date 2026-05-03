@@ -55,10 +55,12 @@ export default function TrackingPage() {
 
   const statusConfig: Record<string, { labelKey: string; color: string }> = useMemo(
     () => ({
+      PENDING: { labelKey: 'tracking.status.PENDING', color: 'bg-gray-100 text-gray-500' },
       APPLIED: { labelKey: 'tracking.status.APPLIED', color: 'bg-blue-100 text-blue-700' },
       SCREENING: { labelKey: 'tracking.status.SCREENING', color: 'bg-yellow-100 text-yellow-700' },
-      INTERVIEW: { labelKey: 'tracking.status.INTERVIEW', color: 'bg-purple-100 text-purple-700' },
+      INTERVIEWING: { labelKey: 'tracking.status.INTERVIEWING', color: 'bg-purple-100 text-purple-700' },
       OFFER: { labelKey: 'tracking.status.OFFER', color: 'bg-green-100 text-green-700' },
+      ACCEPTED: { labelKey: 'tracking.status.ACCEPTED', color: 'bg-emerald-100 text-emerald-700' },
       REJECTED: { labelKey: 'tracking.status.REJECTED', color: 'bg-red-100 text-red-700' },
       WITHDRAWN: { labelKey: 'tracking.status.WITHDRAWN', color: 'bg-gray-100 text-gray-700' },
     }),
@@ -92,6 +94,7 @@ export default function TrackingPage() {
       await trackingService.createTracking({
         jobTitle: newTracking.jobTitle,
         companyName: newTracking.companyName,
+        status: newTracking.status,
         notes: newTracking.notes || undefined,
       });
       await loadTrackings();
@@ -189,7 +192,7 @@ export default function TrackingPage() {
               <div>
                 <p className="text-sm text-gray-500">{t('tracking.stats.interview')}</p>
                 <p className="text-2xl font-bold text-purple-600">
-                  {statusCounts.INTERVIEW || 0}
+                  {statusCounts.INTERVIEWING || 0}
                 </p>
               </div>
               <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
@@ -254,9 +257,14 @@ export default function TrackingPage() {
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
                       <h4 className="font-semibold text-gray-900">{tracking.jobTitle}</h4>
-                      <Badge className={statusConfig[tracking.status].color}>
-                        {t(statusConfig[tracking.status].labelKey)}
-                      </Badge>
+                      {(() => {
+                        const config = statusConfig[tracking.status] || { labelKey: 'tracking.status.UNKNOWN', color: 'bg-gray-100 text-gray-500' };
+                        return (
+                          <Badge className={config.color}>
+                            {t(config.labelKey)}
+                          </Badge>
+                        );
+                      })()}
                     </div>
                     <div className="flex items-center space-x-4 text-sm text-gray-500 mb-2">
                       <span className="flex items-center">
