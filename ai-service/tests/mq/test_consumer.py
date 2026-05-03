@@ -62,7 +62,7 @@ def test_parse_commands():
     assert isinstance(job_cmd, JobParseCommand)
     assert job_cmd.job_id == "job-1"
     
-    resume_body = json.dumps({"resumeId": "res-1", "fileUrl": "http://test.com/res.pdf", "fileType": "pdf"}).encode("utf-8")
+    resume_body = json.dumps({"resumeId": "res-1", "fileUrl": "http://test.com/res.pdf", "format": "pdf"}).encode("utf-8")
     res_cmd = parse_resume_command(resume_body)
     assert isinstance(res_cmd, ResumeParseCommand)
     assert res_cmd.resume_id == "res-1"
@@ -125,7 +125,7 @@ def test_handle_job_message_failure(mock_publish, mock_process):
 @patch("app.mq.consumer.publish_ai_result")
 def test_handle_resume_message_success(mock_publish, mock_process):
     mock_channel = MagicMock()
-    body = json.dumps({"resumeId": "res-1", "fileUrl": "http://test.com/res.pdf", "fileType": "pdf"}).encode("utf-8")
+    body = json.dumps({"resumeId": "res-1", "fileUrl": "http://test.com/res.pdf", "format": "pdf"}).encode("utf-8")
     
     mock_result = AiResultEvent(referenceId="res-1", type="RESUME_PARSE", status="COMPLETED", data={})
     mock_process.return_value = mock_result
@@ -139,7 +139,7 @@ def test_handle_resume_message_success(mock_publish, mock_process):
 @patch("app.mq.consumer.publish_ai_result")
 def test_handle_resume_message_failure(mock_publish, mock_process):
     mock_channel = MagicMock()
-    body = json.dumps({"resumeId": "res-1", "fileUrl": "http://test.com/res.pdf", "fileType": "pdf"}).encode("utf-8")
+    body = json.dumps({"resumeId": "res-1", "fileUrl": "http://test.com/res.pdf", "format": "pdf"}).encode("utf-8")
     
     mock_process.side_effect = Exception("Processing failed")
     

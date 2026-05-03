@@ -6,6 +6,7 @@ import os
 import threading
 
 from fastapi import FastAPI, HTTPException
+from contextlib import asynccontextmanager
 
 from app.mq.consumer import create_connection, setup_all_queues, start_all_consumers
 
@@ -20,10 +21,16 @@ from app.services.job_matching_service import find_job_matches
 from app.services.suitability_service import evaluate_suitability_with_vertex
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _start_mq_consumer_once()
+    yield
+
 app = FastAPI(
     title="Resume Assistant AI Service",
     description="AI service for scraping, parsing, and job processing.",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 _mq_started = False
@@ -110,9 +117,7 @@ def _start_mq_consumer_once() -> None:
         print("RabbitMQ consumer thread started.")
 
 
-@app.on_event("startup")
-async def startup_event() -> None:
-    _start_mq_consumer_once()
+
 
 
 @app.post("/api/v1/suitability", response_model=SuitabilityResponse)

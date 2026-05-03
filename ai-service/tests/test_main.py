@@ -129,6 +129,11 @@ def test_match_jobs(mock_match):
 @patch("app.main._start_mq_consumer_once")
 def test_startup_event(mock_start):
     import asyncio
-    from app.main import startup_event
-    asyncio.run(startup_event())
+    from app.main import lifespan, app
+    
+    async def run_lifespan():
+        async with lifespan(app):
+            pass
+            
+    asyncio.run(run_lifespan())
     mock_start.assert_called_once()

@@ -3,7 +3,7 @@ from zipfile import ZipFile
 import xml.etree.ElementTree as ET
 
 import httpx
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 
 
 def download_file_bytes(file_url: str) -> bytes:
