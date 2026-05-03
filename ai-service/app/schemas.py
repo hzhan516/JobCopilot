@@ -16,7 +16,7 @@ class JobParseCommand(AppBaseModel):
 class ResumeParseCommand(AppBaseModel):
     resume_id: str = Field(alias="resumeId")
     file_url: str = Field(alias="fileUrl")
-    file_type: str = Field(alias="fileType")
+    file_type: str = Field(alias="format")
 
 
 class VectorGenCommand(AppBaseModel):
@@ -38,6 +38,11 @@ class ConversationRequestCommand(AppBaseModel):
     current_message: str = Field(alias="currentMessage")
     file_urls: list[str] = Field(default_factory=list, alias="fileUrls")
     resume_version_id: str | None = Field(default=None, alias="resumeVersionId")
+    resume_text: str | None = Field(default=None, alias="resumeText")
+    primary_job_text: str | None = Field(default=None, alias="primaryJobText")
+    related_job_texts: list[str] = Field(default_factory=list, alias="relatedJobTexts")
+    init: bool | None = None
+    locale: str | None = None
 
 
 class JobRankCommand(AppBaseModel):

@@ -83,7 +83,7 @@ public class JobRankResultListener {
             return new MatchFactors(
                     extractDouble(factorsMap.get("skillMatch")),
                     extractDouble(factorsMap.get("experienceMatch")),
-                    extractDouble(factorsMap.get("educationMatch"))
+                    extractDouble(factorsMap.get("locationMatch"))
             );
         }
         return new MatchFactors(0.0, 0.0, 0.0);

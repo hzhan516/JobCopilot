@@ -157,6 +157,7 @@ export interface MatchItem {
   matchScore: number;
   matchFactors: MatchFactors;
   description: string;
+  matchReason?: string;
 }
 
 // 发起匹配请求

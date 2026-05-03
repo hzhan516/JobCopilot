@@ -28,17 +28,17 @@ export const resumeApi = {
   },
 
   getGroups: async (): Promise<{ data: ResumeGroup[] }> => {
-    const response = await api.get<{ data: ResumeGroup[] }>('/resumes');
+    const response = await api.get<{ data: ResumeGroup[] }>('/resumes/groups');
     return response.data;
   },
 
   getGroupDetail: async (groupId: string): Promise<{ data: ResumeGroup }> => {
-    const response = await api.get<{ data: ResumeGroup }>(`/resumes/${groupId}`);
+    const response = await api.get<{ data: ResumeGroup }>(`/resumes/groups/${groupId}`);
     return response.data;
   },
 
   getVersions: async (groupId: string): Promise<{ data: ResumeVersion[] }> => {
-    const response = await api.get<{ data: ResumeVersion[] }>(`/resumes/${groupId}/versions`);
+    const response = await api.get<{ data: ResumeVersion[] }>(`/resumes/groups/${groupId}/versions`);
     return response.data;
   },
 
@@ -60,7 +60,7 @@ export const resumeApi = {
   },
 
   deleteGroup: async (groupId: string): Promise<void> => {
-    await api.delete(`/resumes/${groupId}`);
+    await api.delete(`/resumes/groups/${groupId}`);
   },
 
   deleteVersion: async (versionId: string): Promise<void> => {

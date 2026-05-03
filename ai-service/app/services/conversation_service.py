@@ -73,12 +73,18 @@ Do not include explanations outside JSON.
 Return exactly one JSON object with this shape:
 {{
   "content": "string",
-  "fileUrl": null
+  "fileUrl": null,
+  "resumeModification": {{
+    "modified": false,
+    "markdown": "string"
+  }}
 }}
 
 Rules:
 - content: your reply to the user
 - fileUrl: null unless a generated file URL is explicitly available
+- resumeModification.modified: true ONLY if the user asked you to rewrite/optimize their resume AND you did so
+- resumeModification.markdown: the full rewritten markdown of their resume, if modified=true. Otherwise empty string.
 - be practical and specific
 - use attached file content when readable text is provided below
 - do not invent missing attachment contents
@@ -97,6 +103,15 @@ User ID:
 
 Resume Version ID:
 {command.resume_version_id}
+
+Main Resume Text:
+{command.resume_text or "None provided"}
+
+Primary Job Context:
+{command.primary_job_text or "None provided"}
+
+Additional Job Contexts:
+{json.dumps(command.related_job_texts, ensure_ascii=False, indent=2)}
 
 Attached File URLs:
 {json.dumps(command.file_urls, ensure_ascii=False, indent=2)}
@@ -134,6 +149,8 @@ def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
 
     if file_url is not None:
         file_url = str(file_url).strip() or None
+        
+    resume_modification = result.get("resumeModification")
 
     return AiResultEvent(
         referenceId=command.conversation_id,
@@ -142,6 +159,7 @@ def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
         data={
             "content": content,
             "fileUrl": file_url,
+            "resumeModification": resume_modification
         },
         errorMessage=None,
         eventType=None,

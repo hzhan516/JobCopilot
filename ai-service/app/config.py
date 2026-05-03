@@ -35,8 +35,12 @@ JOB_RANK_RESULT_ROUTING_KEY = "backend.res.job.rank"
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
-GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT", "ser594-ai-service")
-VERTEX_AI_LOCATION = os.getenv("VERTEX_AI_LOCATION", "global")
+VERTEX_PROJECT = os.getenv("VERTEX_PROJECT", "ser594-ai-service")
+VERTEX_LOCATION = os.getenv("VERTEX_LOCATION", "global")
+
+# Export standard variables required by LiteLLM for Vertex AI routing
+os.environ["VERTEX_PROJECT"] = VERTEX_PROJECT
+os.environ["VERTEX_LOCATION"] = VERTEX_LOCATION
 
 LLM_TEXT_MODEL = os.getenv("LLM_TEXT_MODEL", "gemini/gemini-2.5-flash")
 LLM_VISION_MODEL = os.getenv("LLM_VISION_MODEL", "gemini/gemini-2.5-flash")

@@ -106,6 +106,7 @@ services:
       # 激活开发/生产配置
       # 啟用開發/生產設定檔
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - SPRING_FLYWAY_ENABLED=true
     volumes:
       # Shared storage volume (resume files)
       # 共享存储卷（简历文件）
@@ -125,7 +126,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 120s
 
   # ==========================================================================
   # 3. AI Service (Python FastAPI)
@@ -154,8 +155,8 @@ services:
       # Vertex AI Configuration (ADC credentials still required when running in container)
       # Vertex AI配置（容器化运行时仍需额外提供ADC凭证）
       # Vertex AI 設定（容器化執行時仍需額外提供 ADC 憑證）
-      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-ser594-ai-service}
-      - VERTEX_AI_LOCATION=${VERTEX_AI_LOCATION:-us-central1}
+      - VERTEX_PROJECT=${VERTEX_PROJECT:-ser594-ai-service}
+      - VERTEX_LOCATION=${VERTEX_LOCATION:-global}
       - LLM_TEXT_MODEL=${LLM_TEXT_MODEL:-gemini/gemini-2.5-flash}
       - LLM_VISION_MODEL=${LLM_VISION_MODEL:-gemini/gemini-2.5-flash}
       - LLM_EMBEDDING_MODEL=${LLM_EMBEDDING_MODEL:-gemini/gemini-embedding-001}
@@ -178,7 +179,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 60s
     # AI service does not expose database, purely message-driven
     # AI服务不暴露数据库，纯消息驱动
     # AI 服務不暴露資料庫，純訊息驅動
@@ -202,10 +203,6 @@ services:
     volumes:
       # Data Persistence / 数据持久化 / 資料持久化
       - postgres-data:/var/lib/postgresql/data
-      # Initialization Scripts (Flyway Migration Scripts)
-      # 初始化脚本（Flyway迁移脚本）
-      # 初始化腳本（Flyway 遷移腳本）
-      - ./backend/app/src/main/resources/db/migration:/docker-entrypoint-initdb.d:ro
     networks:
       - resume-network
     restart: unless-stopped
@@ -215,7 +212,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 60s
 
   # ==========================================================================
   # 5. RabbitMQ Message Queue
@@ -248,7 +245,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 60s
 
 # =============================================================================
 # Network Configuration / 网络配置 / 網路設定

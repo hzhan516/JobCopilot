@@ -46,8 +46,8 @@ async def health_check():
         raise HTTPException(status_code=503, detail="RabbitMQ consumer not connected")
     return {
         "status": "healthy",
-        "vertex_ai_project_configured": bool(os.getenv("GOOGLE_CLOUD_PROJECT", "ser594-ai-service")),
-        "vertex_ai_location": os.getenv("VERTEX_AI_LOCATION", "us-central1"),
+        "vertex_project_configured": bool(os.getenv("VERTEX_PROJECT", "ser594-ai-service")),
+        "vertex_location": os.getenv("VERTEX_LOCATION", "global"),
     }
 
 
@@ -67,18 +67,30 @@ async def status():
 
 def initialize_mq() -> None:
     global _mq_is_connected
-    try:
-        print("Starting RabbitMQ consumers...")
-        connection = create_connection()
-        channel = connection.channel()
-        setup_all_queues(channel)
-        print("RabbitMQ consumers are ready.")
-        _mq_is_connected = True
-        start_all_consumers(channel)
-    except Exception as exc:
-        _mq_is_connected = False
-        print(f"RabbitMQ consumer startup failed: {exc}", flush=True)
-        raise
+    import time
+    
+    max_retries = 10
+    retry_delay = 5
+    
+    for attempt in range(max_retries):
+        try:
+            print(f"Starting RabbitMQ consumers (Attempt {attempt + 1}/{max_retries})...")
+            connection = create_connection()
+            channel = connection.channel()
+            setup_all_queues(channel)
+            print("RabbitMQ consumers are ready.")
+            _mq_is_connected = True
+            start_all_consumers(channel)
+            break # Successfully connected and consuming
+        except Exception as exc:
+            _mq_is_connected = False
+            print(f"RabbitMQ consumer startup failed: {exc}", flush=True)
+            if attempt < max_retries - 1:
+                print(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                print("Max retries reached. Giving up on RabbitMQ connection.")
+                raise
 
 
 def _start_mq_consumer_once() -> None:
