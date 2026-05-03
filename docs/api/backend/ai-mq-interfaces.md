@@ -13,6 +13,36 @@
 - **One-way asynchronous**: The Java backend sends task requests via MQ; the Python AI service returns results via MQ after processing.
 - **No direct HTTP coupling**: Except for health checks, the Java backend does not directly call the AI service via HTTP; all time-consuming operations go through the message queue.
 - **Unified Exchange**: All MQ messages share `ai.direct.exchange` (DirectExchange).
+- **Transactional Outbox**: The backend does **not** send MQ messages directly. Instead, it persists them into the `outbox_message` table within the same local database transaction as the business data. An `OutboxRelayScheduler` polls pending records every 2 seconds and delivers them to RabbitMQ asynchronously.
+- **Dead Letter Queue (DLQ)**: All 10 business queues are configured with `x-dead-letter-exchange: ai.dlx.exchange`. When the Python consumer rejects a message with `nack(requeue=false)`, the message is automatically routed to `ai.dlq.queue` instead of being silently dropped.
+
+---
+
+## 1.5 Outbox Pattern Details
+
+The backend uses the **Transactional Outbox** pattern to guarantee atomicity between database writes and MQ message publishing.
+
+### Flow
+
+1. **Business Transaction**: Within a `@Transactional` method, the backend:
+   - Saves business data to PostgreSQL (e.g., `JobMatchResult` with `PROCESSING` status).
+   - Serializes the MQ command to JSON and inserts a record into `outbox_message` with `status = PENDING`.
+
+2. **Outbox Relay**: `OutboxRelayScheduler` runs every 2 seconds (`@Scheduled(fixedDelay = 2000)`):
+   - Queries all `PENDING` records from `outbox_message`.
+   - For each record, calls `rabbitTemplate.convertAndSend(exchange, routingKey, payload)`.
+   - On success: updates the record to `status = SENT` and sets `sentAt`.
+   - On failure: updates the record to `status = FAILED` and logs the error.
+
+3. **Cleanup**: `OutboxCleanupScheduler` runs daily at 3:00 AM (`@Scheduled(cron = "0 0 3 * * ?")`):
+   - Physically deletes records where `status = SENT` and `sentAt < now() - 7 days`.
+   - Prevents the `outbox_message` table from growing indefinitely.
+
+### Benefits
+
+- **Atomicity**: If the business transaction rolls back, the Outbox record is also rolled back. No "message sent but DB not committed" inconsistency.
+- **Durability**: Even if RabbitMQ is temporarily unavailable, the message remains in the Outbox table and will be retried by the relay scheduler.
+- **Observability**: The `outbox_message` table serves as an audit log of all async messages sent to the AI service.
 
 ---
 
@@ -30,6 +60,11 @@
 | Response ← AI | Conversation Reply | `backend.res.conversation` | `backend.queue.conversation` | Python AI | Java Backend |
 | Request → AI | Job Rank | `ai.req.job.rank` | `ai.queue.job.rank` | Java Backend | Python AI |
 | Response ← AI | Job Rank Result | `backend.res.job.rank` | `backend.queue.job.rank` | Python AI | Java Backend |
+| DLX → DLQ | Dead Letter | `dlq.routing.key` | `ai.dlq.queue` | Business queues (auto-forward) | Ops / monitoring |
+
+> **Note on Outbox**: The "Java Backend" producer listed above is technically the `OutboxRelayScheduler`, which reads from the `outbox_message` table and forwards to RabbitMQ. The original business methods (e.g., `JobApplicationService.submitJob`) only write to the Outbox table.
+
+> **Note on DLQ**: The `ai.dlx.exchange` (Dead Letter Exchange) and `ai.dlq.queue` are declared automatically by Spring AMQP at startup. No manual RabbitMQ configuration is required.
 
 ---
 
@@ -37,7 +72,7 @@
 
 ### 3.1 JobParseCommand — Job Parse Request
 
-**Trigger**: After the user submits a job link, `JobApplicationService.submitJob()`
+**Trigger**: After the user submits a job link, `JobApplicationService.submitJob()` writes the command to the Outbox table.
 
 ```json
 {
@@ -57,7 +92,7 @@
 
 ### 3.2 ResumeParseCommand — Resume Parse Request
 
-**Trigger**: After the user uploads a resume, `ResumeApplicationService.handleUpload()`
+**Trigger**: After the user uploads a resume, `ResumeApplicationService.handleUpload()` writes the command to the Outbox table.
 
 ```json
 {
@@ -77,7 +112,7 @@
 
 ### 3.3 VectorGenCommand — Vector Generation Request
 
-**Trigger**: Triggered asynchronously after job/resume parsing is completed
+**Trigger**: Triggered asynchronously after job/resume parsing is completed; written to the Outbox table.
 
 ```json
 {
@@ -97,7 +132,7 @@
 
 ### 3.4 ConversationRequestCommand — Conversation AI Request
 
-**Trigger**: When the user sends a conversation message, `ConversationApplicationService.sendMessage()`
+**Trigger**: When the user sends a conversation message, `ConversationApplicationService.sendMessage()` writes the command to the Outbox table.
 
 ```json
 {

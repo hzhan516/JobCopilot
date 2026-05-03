@@ -13,6 +13,36 @@
 - **單向非同步**：Java 後端透過 MQ 發送任務請求，Python AI 服務處理完成後透過 MQ 返回結果。
 - **無直接 HTTP 耦合**：除健康檢查外，Java 後端不直接 HTTP 呼叫 AI 服務；所有耗時操作均走訊息佇列。
 - **統一 Exchange**：所有 MQ 訊息共用 `ai.direct.exchange`（DirectExchange）。
+- **事務發件箱（Outbox）**：後端**不直接**發送 MQ 訊息，而是將訊息與業務資料在同一個本地資料庫交易中持久化到 `outbox_message` 表。`OutboxRelayScheduler` 每 2 秒輪詢 PENDING 記錄並非同步投遞到 RabbitMQ。
+- **死信佇列（DLQ）**：全部 10 個業務佇列均配置了 `x-dead-letter-exchange: ai.dlx.exchange`。當 Python 消費者以 `nack(requeue=false)` 拒絕訊息時，訊息會自動路由到 `ai.dlq.queue`，避免靜默丟失。
+
+---
+
+## 1.5 Outbox 模式詳解
+
+後端採用**事務發件箱（Transactional Outbox）**模式，保證資料庫寫入與 MQ 訊息發布的原子性。
+
+### 流程
+
+1. **業務交易**：在 `@Transactional` 方法中，後端：
+   - 將業務資料儲存到 PostgreSQL（例如狀態為 `PROCESSING` 的 `JobMatchResult`）。
+   - 將 MQ 命令序列化為 JSON，並以 `status = PENDING` 插入 `outbox_message` 表。
+
+2. **Outbox 轉發**：`OutboxRelayScheduler` 每 2 秒執行一次（`@Scheduled(fixedDelay = 2000)`）：
+   - 從 `outbox_message` 查詢所有 `PENDING` 記錄。
+   - 對每條記錄呼叫 `rabbitTemplate.convertAndSend(exchange, routingKey, payload)`。
+   - 成功：更新記錄為 `status = SENT` 並設定 `sentAt`。
+   - 失敗：更新記錄為 `status = FAILED` 並記錄錯誤日誌。
+
+3. **清理**：`OutboxCleanupScheduler` 每天凌晨 3:00 執行（`@Scheduled(cron = "0 0 3 * * ?")`）：
+   - 物理刪除 `status = SENT` 且 `sentAt < 目前時間 - 7 天` 的記錄。
+   - 防止 `outbox_message` 表無限膨脹。
+
+### 收益
+
+- **原子性**：如果業務交易回滾，Outbox 記錄也會回滾。不會出現「訊息已發出但資料庫未提交」的不一致。
+- **持久性**：即使 RabbitMQ 暫時不可用，訊息仍保留在 Outbox 表中，由轉發排程器重試。
+- **可觀測性**：`outbox_message` 表作為所有非同步發送到 AI 服務的訊息的審計日誌。
 
 ---
 
@@ -30,6 +60,11 @@
 | Response ← AI | 對話回覆結果 | `backend.res.conversation` | `backend.queue.conversation` | Python AI | Java Backend |
 | Request → AI | 職位精排 | `ai.req.job.rank` | `ai.queue.job.rank` | Java Backend | Python AI |
 | Response ← AI | 職位精排結果 | `backend.res.job.rank` | `backend.queue.job.rank` | Python AI | Java Backend |
+| DLX → DLQ | 死信 | `dlq.routing.key` | `ai.dlq.queue` | 業務佇列（自動轉發） | 維運/監控（可手動消費） |
+
+> **Outbox 說明**：上表中的 "Java Backend" 生產者實際上是 `OutboxRelayScheduler`，它從 `outbox_message` 表讀取記錄後轉發到 RabbitMQ。原始業務方法（如 `JobApplicationService.submitJob`）僅寫入 Outbox 表。
+
+> **DLQ 說明**：`ai.dlx.exchange`（死信交換機）和 `ai.dlq.queue` 由 Spring AMQP 在啟動時自動宣告，無需手動配置 RabbitMQ。
 
 ---
 
@@ -37,7 +72,7 @@
 
 ### 3.1 JobParseCommand — 職位剖析請求
 
-**發送時機**：使用者提交職位連結後，`JobApplicationService.submitJob()`
+**發送時機**：使用者提交職位連結後，`JobApplicationService.submitJob()` 將命令寫入 Outbox 表。
 
 ```json
 {
@@ -57,7 +92,7 @@
 
 ### 3.2 ResumeParseCommand — 履歷剖析請求
 
-**發送時機**：使用者上傳履歷後，`ResumeApplicationService.handleUpload()`
+**發送時機**：使用者上傳履歷後，`ResumeApplicationService.handleUpload()` 將命令寫入 Outbox 表。
 
 ```json
 {
@@ -77,7 +112,7 @@
 
 ### 3.3 VectorGenCommand — 向量生成請求
 
-**發送時機**：職位/履歷剖析完成後，觸發非同步向量生成
+**發送時機**：職位/履歷剖析完成後，觸發非同步向量生成；寫入 Outbox 表。
 
 ```json
 {
@@ -97,7 +132,7 @@
 
 ### 3.4 ConversationRequestCommand — 對話 AI 請求
 
-**發送時機**：使用者發送對話訊息後，`ConversationApplicationService.sendMessage()`
+**發送時機**：使用者發送對話訊息後，`ConversationApplicationService.sendMessage()` 將命令寫入 Outbox 表。
 
 ```json
 {
