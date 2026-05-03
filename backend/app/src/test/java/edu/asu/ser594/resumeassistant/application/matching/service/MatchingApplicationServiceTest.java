@@ -7,6 +7,7 @@ import edu.asu.ser594.resumeassistant.application.matching.query.GetMatchResultQ
 import edu.asu.ser594.resumeassistant.application.matching.query.ListMatchHistoryQuery;
 import edu.asu.ser594.resumeassistant.domain.embedding.entity.ResumeVector;
 import edu.asu.ser594.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
+import edu.asu.ser594.resumeassistant.domain.matching.exception.ResumeVectorNotReadyException;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
 import edu.asu.ser594.resumeassistant.domain.job.valueobject.JobStatus;
@@ -21,6 +22,7 @@ import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
 import edu.asu.ser594.resumeassistant.domain.resume.valueobject.ParseStatus;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobRankCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -154,8 +156,8 @@ class MatchingApplicationServiceTest {
     }
 
     @Test
-    @DisplayName("Should throw when resume vector not found")
-    void shouldThrowWhenResumeVectorNotFound() {
+    @DisplayName("Should throw ResumeVectorNotReadyException when resume vector not found and trigger re-gen")
+    void shouldThrowResumeVectorNotReadyExceptionWhenVectorNotFound() {
         // 给定
         // Given
         StartJobMatchCommand command = StartJobMatchCommand.builder()
@@ -164,20 +166,35 @@ class MatchingApplicationServiceTest {
                 .query("Java")
                 .build();
 
+        ResumeVersion resumeVersion = ResumeVersion.reconstruct(
+                UUID.fromString(RESUME_VERSION_ID), UUID.randomUUID(), ResumeVersion.VersionType.CONVERTED,
+                null, null, "text/markdown", 0L, null, null,
+                "resume content", null, ParseStatus.COMPLETED, null,
+                ResumeVersion.Status.ACTIVE, java.time.LocalDateTime.now(), java.time.LocalDateTime.now()
+        );
+
         when(matchingModelRepository.findActiveByType(ModelType.RECALL)).thenReturn(Optional.empty());
         when(resumeVectorRepository.findByResumeVersionId(RESUME_VERSION_ID)).thenReturn(Optional.empty());
         when(jobMatchResultRepository.save(any(JobMatchResult.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(resumeVersionRepository.findById(UUID.fromString(RESUME_VERSION_ID))).thenReturn(Optional.of(resumeVersion));
+        doNothing().when(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
 
         // 当&那么
         // When&Then
         assertThatThrownBy(() -> matchingService.startJobMatch(command))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Resume vector not found");
+                .isInstanceOf(ResumeVectorNotReadyException.class)
+                .hasMessageContaining("matching.resume.vector.not.ready");
+
+        verify(aiMessagePublisherPort).sendTextForVectorGeneration(argThat(cmd ->
+                cmd.referenceId().equals(RESUME_VERSION_ID)
+                        && cmd.entityType().equals("RESUME")
+                        && cmd.text().equals("resume content")
+        ));
     }
 
     @Test
-    @DisplayName("Should throw when embedding is null")
-    void shouldThrowWhenEmbeddingIsNull() {
+    @DisplayName("Should throw ResumeVectorNotReadyException when embedding is null and trigger re-gen")
+    void shouldThrowResumeVectorNotReadyExceptionWhenEmbeddingIsNull() {
         // 给定
         // Given
         StartJobMatchCommand command = StartJobMatchCommand.builder()
@@ -188,15 +205,29 @@ class MatchingApplicationServiceTest {
 
         ResumeVector vector = ResumeVector.createFailed("vec-1", RESUME_VERSION_ID, "parse error");
 
+        ResumeVersion resumeVersion = ResumeVersion.reconstruct(
+                UUID.fromString(RESUME_VERSION_ID), UUID.randomUUID(), ResumeVersion.VersionType.CONVERTED,
+                null, null, "text/markdown", 0L, null, null,
+                "resume content", null, ParseStatus.COMPLETED, null,
+                ResumeVersion.Status.ACTIVE, java.time.LocalDateTime.now(), java.time.LocalDateTime.now()
+        );
+
         when(matchingModelRepository.findActiveByType(ModelType.RECALL)).thenReturn(Optional.empty());
         when(resumeVectorRepository.findByResumeVersionId(RESUME_VERSION_ID)).thenReturn(Optional.of(vector));
         when(jobMatchResultRepository.save(any(JobMatchResult.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(resumeVersionRepository.findById(UUID.fromString(RESUME_VERSION_ID))).thenReturn(Optional.of(resumeVersion));
+        doNothing().when(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
 
         // 当&那么
         // When&Then
         assertThatThrownBy(() -> matchingService.startJobMatch(command))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("embedding is null");
+                .isInstanceOf(ResumeVectorNotReadyException.class)
+                .hasMessageContaining("matching.resume.vector.not.ready");
+
+        verify(aiMessagePublisherPort).sendTextForVectorGeneration(argThat(cmd ->
+                cmd.referenceId().equals(RESUME_VERSION_ID)
+                        && cmd.entityType().equals("RESUME")
+        ));
     }
 
     @Test

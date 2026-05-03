@@ -99,6 +99,20 @@ public class ResumeApplicationService {
                     converted.editContent(markdown);
                     versionRepository.save(converted);
                     log.info("Auto-converted uploaded file to markdown for groupId={}", group.getId());
+
+                    // 触发 CONVERTED 版本向量生成
+                    // Trigger CONVERTED version vector generation
+                    try {
+                        VectorGenCommand vectorCmd = new VectorGenCommand(
+                                converted.getId().toString(),
+                                "RESUME",
+                                markdown
+                        );
+                        aiMessagePublisherPort.sendTextForVectorGeneration(vectorCmd);
+                        log.info("Triggered async vector generation for converted versionId={}", converted.getId());
+                    } catch (Exception e) {
+                        log.error("Failed to publish vector generation request for converted versionId={}", converted.getId(), e);
+                    }
                 }
             } catch (IOException e) {
                 log.warn("Failed to auto-convert uploaded file to markdown, leaving CONVERTED blank for groupId={}", group.getId(), e);
@@ -219,6 +233,22 @@ public class ResumeApplicationService {
         // 4. Create new CONVERTED version and write source content
         ResumeVersion newVersion = ResumeVersion.createConverted(command.groupId());
         newVersion.editContent(sourceContent);
+
+        // 4.5 触发向量生成（内容非空时）
+        // 4.5 Trigger vector generation if content is not empty
+        if (sourceContent != null && !sourceContent.isEmpty()) {
+            try {
+                VectorGenCommand vectorCmd = new VectorGenCommand(
+                        newVersion.getId().toString(),
+                        "RESUME",
+                        sourceContent
+                );
+                aiMessagePublisherPort.sendTextForVectorGeneration(vectorCmd);
+                log.info("Triggered async vector generation for new converted versionId={}", newVersion.getId());
+            } catch (Exception e) {
+                log.error("Failed to publish vector generation request for new converted versionId={}", newVersion.getId(), e);
+            }
+        }
 
         // 5. 添加到组（自动归档旧的 ACTIVE CONVERTED）并持久化
         // 5. Add to group (auto-archives old ACTIVE CONVERTED) and persist

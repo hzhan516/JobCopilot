@@ -11,12 +11,14 @@ import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepo
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.matching.entity.JobMatchResult;
 import edu.asu.ser594.resumeassistant.domain.matching.entity.MatchingModel;
+import edu.asu.ser594.resumeassistant.domain.matching.exception.ResumeVectorNotReadyException;
 import edu.asu.ser594.resumeassistant.domain.matching.port.VectorSearchPort;
 import edu.asu.ser594.resumeassistant.domain.matching.repository.JobMatchResultRepository;
 import edu.asu.ser594.resumeassistant.domain.matching.repository.MatchingModelRepository;
 import edu.asu.ser594.resumeassistant.domain.matching.valueobject.RankedJob;
 import edu.asu.ser594.resumeassistant.domain.matching.valueobject.RecallResult;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobRankCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -66,13 +68,36 @@ public class MatchingApplicationService {
                 matchId, command.userId(), command.resumeVersionId(), command.query(), modelVersion);
         jobMatchResultRepository.save(result);
 
-        final var resumeVector = resumeVectorRepository.findByResumeVersionId(command.resumeVersionId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Resume vector not found for version: " + command.resumeVersionId()));
+        final var resumeVectorOpt = resumeVectorRepository.findByResumeVersionId(command.resumeVersionId());
 
-        if (resumeVector.getEmbedding() == null) {
-            throw new IllegalStateException("Resume vector embedding is null for version: " + command.resumeVersionId());
+        if (resumeVectorOpt.isEmpty() || resumeVectorOpt.get().getEmbedding() == null) {
+            // 向量缺失或生成失败，尝试触发重新生成并提示用户稍后重试
+            // Vector missing or generation failed, trigger re-generation and ask user to retry later
+            final ResumeVersion resumeVersion = resumeVersionRepository.findById(UUID.fromString(command.resumeVersionId()))
+                    .orElseThrow(() -> new IllegalArgumentException("Resume version not found: " + command.resumeVersionId()));
+
+            final String vectorText = resumeVersion.getParsedContent() != null && !resumeVersion.getParsedContent().isEmpty()
+                    ? resumeVersion.getParsedContent()
+                    : (resumeVersion.getContent() != null ? resumeVersion.getContent() : "");
+
+            if (!vectorText.isEmpty()) {
+                try {
+                    VectorGenCommand vectorCmd = new VectorGenCommand(
+                            command.resumeVersionId(),
+                            "RESUME",
+                            vectorText
+                    );
+                    aiMessagePublisherPort.sendTextForVectorGeneration(vectorCmd);
+                    log.info("Triggered async vector re-generation for missing resume vector, versionId={}", command.resumeVersionId());
+                } catch (Exception e) {
+                    log.error("Failed to trigger vector re-generation for versionId={}", command.resumeVersionId(), e);
+                }
+            }
+
+            throw new ResumeVectorNotReadyException(command.resumeVersionId());
         }
+
+        final var resumeVector = resumeVectorOpt.get();
 
         final int topK = command.topK() != null && command.topK() > 0 ? command.topK() : 10;
         final long recallStart = System.currentTimeMillis();

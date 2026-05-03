@@ -173,10 +173,18 @@ export default function JobList() {
 
       setActiveMatchId(result.matchId);
       pollMatchResult(result.matchId);
-    } catch {
+    } catch (error: unknown) {
       setIsMatching(false);
       setMatchStatus('failed');
-      toast.error(t('jobMatch.startError'));
+
+      // 区分向量未就绪(422)与其他错误
+      // Distinguish vector not ready (422) from other errors
+      const axiosError = error as { response?: { status: number; data?: { message?: string } } };
+      if (axiosError.response?.status === 422) {
+        toast.error(axiosError.response.data?.message || t('jobMatch.vectorNotReady'));
+      } else {
+        toast.error(t('jobMatch.startError'));
+      }
     }
   };
 
@@ -413,11 +421,23 @@ export default function JobList() {
                   {resumes.map((group) =>
                     [group.originalVersion, group.convertedVersion, group.aiOptimizedVersion]
                       .filter((v): v is NonNullable<typeof v> => !!v && v.exists)
-                      .map((version) => (
-                        <SelectItem key={version.versionId} value={version.versionId}>
-                          {group.title} - {version.versionId.slice(0, 8)} ({version.status})
-                        </SelectItem>
-                      ))
+                      .map((version) => {
+                        // original 版本需要解析完成(COMPLETED)才允许匹配
+                        // original version must be COMPLETED to be selectable for matching
+                        const isOriginalNotReady =
+                          version === group.originalVersion && version.status !== 'COMPLETED';
+                        const label = `${group.title} - ${version.versionId.slice(0, 8)} (${version.status})`;
+                        return (
+                          <SelectItem
+                            key={version.versionId}
+                            value={version.versionId}
+                            disabled={isOriginalNotReady}
+                          >
+                            {label}
+                            {isOriginalNotReady ? ' - ' + t('jobMatch.notReady') : ''}
+                          </SelectItem>
+                        );
+                      })
                   )}
                 </SelectContent>
               </Select>

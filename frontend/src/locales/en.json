@@ -190,6 +190,8 @@
     "failed": "Match failed, please try again",
     "timeout": "Match timed out, please try again",
     "startError": "Failed to start matching",
+    "vectorNotReady": "Resume vector is being generated, please try again later",
+    "notReady": "Not ready",
     "skillMatch": "Skills",
     "experienceMatch": "Experience",
     "locationMatch": "Location"

@@ -25,6 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -79,7 +80,7 @@ class ResumeApplicationServiceTest {
 
     @Test
     @DisplayName("Should handle resume upload successfully")
-    void shouldHandleResumeUploadSuccessfully() {
+    void shouldHandleResumeUploadSuccessfully() throws Exception {
         // 准备 / Given
         ResumeUploadCommand command = new ResumeUploadCommand(
                 "resume.pdf",
@@ -89,7 +90,12 @@ class ResumeApplicationServiceTest {
                 "My Resume"
         );
 
+        InputStream downloadedStream = new ByteArrayInputStream("markdown content".getBytes(StandardCharsets.UTF_8));
+        when(fileStorageService.download(anyString())).thenReturn(Optional.of(downloadedStream));
+        doReturn(new ByteArrayInputStream("markdown content".getBytes(StandardCharsets.UTF_8)))
+                .when(documentFormatConverter).convert(any(), eq("pdf"), eq("md"));
         doNothing().when(groupRepository).save(any(ResumeGroup.class));
+        doNothing().when(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
 
         // 执行 / When
         ResumeGroup result = resumeService.handleUpload(command, USER_ID);
@@ -101,6 +107,10 @@ class ResumeApplicationServiceTest {
         verify(fileStorageService).upload(anyString(), eq(testInputStream), eq(1024L), eq("application/pdf"));
         verify(groupRepository).save(any(ResumeGroup.class));
         verify(aiMessagePublisherPort).sendResumeForParsing(any(ResumeParseCommand.class));
+        // 验证 CONVERTED 版本触发了向量生成
+        verify(aiMessagePublisherPort).sendTextForVectorGeneration(argThat(cmd ->
+                cmd.entityType().equals("RESUME") && cmd.text().equals("markdown content")
+        ));
     }
 
     @Test
@@ -248,6 +258,7 @@ class ResumeApplicationServiceTest {
         when(versionRepository.findAllByGroupIdAndType(GROUP_ID, ResumeVersion.VersionType.CONVERTED))
                 .thenReturn(List.of(activeConverted));
         doNothing().when(groupRepository).save(any(ResumeGroup.class));
+        doNothing().when(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
 
         CreateVersionCommand command = CreateVersionCommand.builder()
                 .groupId(GROUP_ID)
@@ -266,6 +277,10 @@ class ResumeApplicationServiceTest {
         // 新版本通过 groupRepository.save 级联保存，不再直接调用 versionRepository.save
         // New version is cascade-saved via groupRepository.save, no direct versionRepository.save call
         verify(groupRepository).save(any(ResumeGroup.class));
+        // 验证新 CONVERTED 版本触发了向量生成
+        verify(aiMessagePublisherPort).sendTextForVectorGeneration(argThat(cmd ->
+                cmd.entityType().equals("RESUME") && cmd.text().equals("Existing markdown content")
+        ));
     }
 
     @Test

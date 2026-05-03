@@ -190,6 +190,8 @@
     "failed": "配對失敗，請重試",
     "timeout": "配對超時，請重試",
     "startError": "開始配對失敗",
+    "vectorNotReady": "簡歷向量正在生成中，請稍後再試",
+    "notReady": "未就緒",
     "skillMatch": "技能配對",
     "experienceMatch": "經驗配對",
     "locationMatch": "地點配對"

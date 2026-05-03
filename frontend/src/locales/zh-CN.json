@@ -190,6 +190,8 @@
     "failed": "匹配失败，请重试",
     "timeout": "匹配超时，请重试",
     "startError": "开始匹配失败",
+    "vectorNotReady": "简历向量正在生成中，请稍后再试",
+    "notReady": "未就绪",
     "skillMatch": "技能匹配",
     "experienceMatch": "经验匹配",
     "locationMatch": "地点匹配"
