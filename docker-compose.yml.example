@@ -79,16 +79,18 @@ services:
     container_name: resume-assistant-backend
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     environment:
       # Database Configuration / 数据库配置 / 資料庫設定
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/resume_assistant
-      - SPRING_DATASOURCE_USERNAME=resume_user
-      - SPRING_DATASOURCE_PASSWORD=resume_pass
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-resume_assistant}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-resume_user}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
       # RabbitMQ Configuration / RabbitMQ配置 / RabbitMQ 設定
-      - SPRING_RABBITMQ_HOST=rabbitmq
-      - SPRING_RABBITMQ_PORT=5672
-      - SPRING_RABBITMQ_USERNAME=guest
-      - SPRING_RABBITMQ_PASSWORD=guest
+      - SPRING_RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
+      - SPRING_RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_USERNAME:-guest}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
       # File Storage Path / 文件存储路径 / 檔案儲存路徑
       - FILE_STORAGE_PATH=/app/uploads
       # Use local file storage for local deployment to avoid dependency on undeployed MinIO
@@ -137,12 +139,14 @@ services:
     container_name: resume-assistant-ai
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       # RabbitMQ Configuration / RabbitMQ配置 / RabbitMQ 設定
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_PORT=5672
-      - RABBITMQ_USERNAME=guest
-      - RABBITMQ_PASSWORD=guest
+      - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME:-guest}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
       # File Storage Path (shared with backend)
       # 文件存储路径（与后端共享）
       # 檔案儲存路徑（與後端共享）
@@ -152,9 +156,9 @@ services:
       # Vertex AI 設定（容器化執行時仍需額外提供 ADC 憑證）
       - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-ser594-ai-service}
       - VERTEX_AI_LOCATION=${VERTEX_AI_LOCATION:-us-central1}
-      - GEMINI_TEXT_MODEL=${GEMINI_TEXT_MODEL:-gemini-2.5-flash}
-      - GEMINI_VISION_MODEL=${GEMINI_VISION_MODEL:-gemini-2.5-flash}
-      - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
+      - LLM_TEXT_MODEL=${LLM_TEXT_MODEL:-gemini/gemini-2.5-flash}
+      - LLM_VISION_MODEL=${LLM_VISION_MODEL:-gemini/gemini-2.5-flash}
+      - LLM_EMBEDDING_MODEL=${LLM_EMBEDDING_MODEL:-gemini/gemini-embedding-001}
       - EMBEDDING_OUTPUT_DIMENSION=${EMBEDDING_OUTPUT_DIMENSION:-1536}
       # Log Level / 日志级别 / 日誌層級
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
@@ -189,10 +193,12 @@ services:
     container_name: resume-assistant-postgres
     ports:
       - "5432:5432"
+    env_file:
+      - .env
     environment:
-      - POSTGRES_DB=resume_assistant
-      - POSTGRES_USER=resume_user
-      - POSTGRES_PASSWORD=resume_pass
+      - POSTGRES_DB=${POSTGRES_DB:-resume_assistant}
+      - POSTGRES_USER=${POSTGRES_USER:-resume_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
     volumes:
       # Data Persistence / 数据持久化 / 資料持久化
       - postgres-data:/var/lib/postgresql/data
@@ -222,9 +228,11 @@ services:
     ports:
       - "5672:5672"     # AMQP Port / AMQP端口 / AMQP 連接埠
       - "15672:15672"   # Management UI / 管理界面 / 管理介面
+    env_file:
+      - .env
     environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
       # Increase message size limit (10MB, for passing vectors and resume summaries)
       # 增加消息大小限制（10MB，用于传递向量和简历简介）
       # 增加訊息大小限制（10MB，用於傳遞向量和履歷摘要）

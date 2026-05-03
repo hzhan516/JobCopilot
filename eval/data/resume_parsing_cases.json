@@ -1,0 +1,20 @@
+[
+  {
+    "id": "backend_engineer_resume",
+    "resumeText": "Alex Chen\nalex.chen@example.com\nBackend Software Engineer\n\nSkills: Python, FastAPI, Docker, PostgreSQL, REST APIs, RabbitMQ\n\nExperience:\nBackend Engineer, TechSoft, 2022-2025\nBuilt Python microservices with FastAPI, PostgreSQL, RabbitMQ, and Docker. Designed REST APIs and improved service reliability.",
+    "expected": {
+      "name": "Alex Chen",
+      "email": "alex.chen@example.com",
+      "skills": ["Python", "FastAPI", "Docker", "PostgreSQL", "REST APIs", "RabbitMQ"]
+    }
+  },
+  {
+    "id": "frontend_engineer_resume",
+    "resumeText": "Maya Rivera\nmaya.rivera@example.com\nFrontend Developer\n\nSkills: React, TypeScript, Vite, Tailwind CSS, HTML, CSS\n\nExperience:\nFrontend Developer, BrightApps, 2021-2024\nImplemented responsive React dashboards using TypeScript, Vite, and Tailwind CSS. Collaborated with backend teams to integrate REST APIs.",
+    "expected": {
+      "name": "Maya Rivera",
+      "email": "maya.rivera@example.com",
+      "skills": ["React", "TypeScript", "Vite", "Tailwind CSS", "HTML", "CSS"]
+    }
+  }
+]
