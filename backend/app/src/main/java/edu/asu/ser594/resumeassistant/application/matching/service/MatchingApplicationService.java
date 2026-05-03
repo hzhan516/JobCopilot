@@ -87,7 +87,7 @@ public class MatchingApplicationService {
                 .map(RecallResult::jobId)
                 .collect(Collectors.toList());
 
-        final Map<String, Object> jobDetails = buildJobDetailsMap(recalledJobIds);
+        final Map<String, Object> jobDetails = buildJobDetailsMap(recallResults);
 
         final ResumeVersion resumeVersion = resumeVersionRepository.findById(UUID.fromString(command.resumeVersionId()))
                 .orElseThrow(() -> new IllegalArgumentException("Resume version not found: " + command.resumeVersionId()));
@@ -166,21 +166,34 @@ public class MatchingApplicationService {
         return jobMatchResultRepository.findAllByUserIdOrderByCreatedAtDesc(query.userId());
     }
 
-    private Map<String, Object> buildJobDetailsMap(final List<String> jobIds) {
-        if (jobIds.isEmpty()) {
+    private Map<String, Object> buildJobDetailsMap(final List<RecallResult> recallResults) {
+        if (recallResults.isEmpty()) {
             return Collections.emptyMap();
         }
-        return jobIds.stream()
-                .map(jobRepository::findById)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toMap(
-                        Job::getId,
-                        job -> Map.of(
-                                "title", Optional.ofNullable(job.getParsedContent()).map(pc -> pc.title()).orElse(""),
-                                "company", Optional.ofNullable(job.getParsedContent()).map(pc -> pc.company()).orElse(""),
-                                "description", Optional.ofNullable(job.getParsedContent()).map(pc -> pc.description()).orElse("")
-                        )
-                ));
+        return recallResults.stream()
+                .map(recall -> {
+                    Optional<Job> jobOpt = jobRepository.findById(recall.jobId());
+                    if (jobOpt.isEmpty()) {
+                        return null;
+                    }
+                    Job job = jobOpt.get();
+                    // PGVector distance is Cosine Distance (1 - Cosine Similarity)
+                    // We map distance to a semantic match score [0, 1]
+                    // Cosine Similarity = 1 - distance
+                    // Normalized Semantic Match = (Cosine Similarity + 1) / 2 = 1 - distance / 2
+                    double semanticMatch = Math.max(0.0, Math.min(1.0, 1.0 - (recall.distance() / 2.0)));
+                    
+                    return Map.entry(
+                            job.getId(),
+                            Map.of(
+                                    "title", Optional.ofNullable(job.getParsedContent()).map(pc -> pc.title()).orElse(""),
+                                    "company", Optional.ofNullable(job.getParsedContent()).map(pc -> pc.company()).orElse(""),
+                                    "description", Optional.ofNullable(job.getParsedContent()).map(pc -> pc.description()).orElse(""),
+                                    "semanticMatch", semanticMatch
+                            )
+                    );
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 }
