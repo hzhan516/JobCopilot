@@ -194,7 +194,8 @@
     "notReady": "未就緒",
     "skillMatch": "技能配對",
     "experienceMatch": "經驗配對",
-    "locationMatch": "地點配對"
+    "locationMatch": "地點配對",
+    "matchReason": "AI 配對理由"
   },
   "chat": {
     "newChat": "新對話",

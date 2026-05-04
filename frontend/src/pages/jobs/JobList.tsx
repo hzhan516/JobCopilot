@@ -335,7 +335,16 @@ export default function JobList() {
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-3">
+                  {match.matchReason && (
+                    <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+                      <div className="mb-1 flex items-center text-sm font-medium text-amber-900">
+                        <Sparkles className="mr-2 h-4 w-4 text-amber-600" />
+                        {t('jobMatch.matchReason')}
+                      </div>
+                      <p className="text-sm leading-6 text-amber-950">{match.matchReason}</p>
+                    </div>
+                  )}
                   <p className="text-gray-600 line-clamp-2">{match.description}</p>
                 </CardContent>
               </Card>

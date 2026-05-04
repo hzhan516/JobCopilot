@@ -194,7 +194,8 @@
     "notReady": "未就绪",
     "skillMatch": "技能匹配",
     "experienceMatch": "经验匹配",
-    "locationMatch": "地点匹配"
+    "locationMatch": "地点匹配",
+    "matchReason": "AI 匹配理由"
   },
   "chat": {
     "newChat": "新对话",

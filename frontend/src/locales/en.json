@@ -194,7 +194,8 @@
     "notReady": "Not ready",
     "skillMatch": "Skills",
     "experienceMatch": "Experience",
-    "locationMatch": "Location"
+    "locationMatch": "Location",
+    "matchReason": "AI match reason"
   },
   "chat": {
     "newChat": "New Chat",
