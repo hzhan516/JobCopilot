@@ -39,10 +39,10 @@ public class PgVectorSearchService implements VectorSearchPort {
 
         final String vectorLiteral = buildPgVectorLiteral(resumeVector);
         final String sql = """
-                SELECT job_id, embedding <=> :queryVector::vector AS distance
+                SELECT job_id, embedding <=> CAST(:queryVector AS vector) AS distance
                 FROM job_vectors
                 WHERE status = 'COMPLETED'
-                ORDER BY embedding <=> :queryVector::vector
+                ORDER BY embedding <=> CAST(:queryVector AS vector)
                 LIMIT :topK
                 """;
 
