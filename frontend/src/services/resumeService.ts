@@ -102,7 +102,7 @@ export const resumeService = {
   editVersion: async (versionId: string, content: string): Promise<ResumeVersion> => {
     const response = await apiClient.put<ApiResponse<ResumeVersion>>(
       `/v1/resumes/versions/${versionId}`,
-      { content } as ResumeEditRequest
+      { versionId, content } as ResumeEditRequest
     );
     if (response.data.code === 200) {
       return response.data.data;

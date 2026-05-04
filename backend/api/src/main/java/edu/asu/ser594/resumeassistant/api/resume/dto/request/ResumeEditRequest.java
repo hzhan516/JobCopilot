@@ -19,7 +19,6 @@ import java.util.UUID;
 @AllArgsConstructor
 public class ResumeEditRequest {
 
-    @NotNull(message = "{validation.versionId.required}")
     private UUID versionId;
 
     @NotBlank(message = "{validation.content.required}")

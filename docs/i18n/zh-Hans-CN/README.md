@@ -127,6 +127,7 @@ cp .env.example .env
 | `LLM_TEXT_MODEL`         | 是   | LiteLLM 文本模型名称，例如 `gemini/gemini-2.5-flash` |
 | `LLM_VISION_MODEL`       | 是   | LiteLLM 视觉模型名称 |
 | `LLM_EMBEDDING_MODEL`    | 是   | LiteLLM 嵌入模型名称 |
+| `LLM_EMBEDDING_MODEL_DIMENSION` | 是   | 嵌入模型输出维度（必须与所选模型一致） |
 | `SPRING_PROFILES_ACTIVE` | 否   | Spring profile：`dev`（默认）或 `prod` |
 | `LOG_LEVEL`              | 否   | AI service 日志级别：`INFO`（默认）或 `DEBUG` |
 

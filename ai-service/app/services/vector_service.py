@@ -3,8 +3,8 @@ from litellm import embedding
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from app.config import (
-    EMBEDDING_OUTPUT_DIMENSION,
     LLM_EMBEDDING_MODEL,
+    LLM_EMBEDDING_MODEL_DIMENSION,
 )
 from app.schemas import AiResultEvent, VectorGenCommand
 
@@ -30,7 +30,7 @@ def generate_embedding(text: str) -> list[float]:
     response = embedding(
         model=LLM_EMBEDDING_MODEL,
         input=[cleaned_text],
-        dimensions=EMBEDDING_OUTPUT_DIMENSION,
+        dimensions=LLM_EMBEDDING_MODEL_DIMENSION,
     )
 
     if not response.data:
@@ -42,10 +42,10 @@ def generate_embedding(text: str) -> list[float]:
     if not emb:
         raise ValueError("LiteLLM returned no embeddings.")
 
-    if len(emb) != EMBEDDING_OUTPUT_DIMENSION:
+    if len(emb) != LLM_EMBEDDING_MODEL_DIMENSION:
         raise ValueError(
             "Embedding dimension mismatch: "
-            f"expected {EMBEDDING_OUTPUT_DIMENSION}, got {len(emb)}"
+            f"expected {LLM_EMBEDDING_MODEL_DIMENSION}, got {len(emb)}"
         )
 
     return emb

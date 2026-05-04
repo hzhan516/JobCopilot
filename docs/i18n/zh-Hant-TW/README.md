@@ -127,6 +127,7 @@ cp .env.example .env
 | `GROQ_API_KEY`           | 選用 | 當 `LLM_*_MODEL` 使用 `groq/` 前綴時使用的 Groq API 金鑰 |
 | `LLM_TEXT_MODEL`         | 是   | LiteLLM 文字模型名稱，例如 `gemini/gemini-2.5-flash` |
 | `LLM_VISION_MODEL`       | 是   | LiteLLM 視覺模型名稱 |
+| `LLM_EMBEDDING_MODEL_DIMENSION` | 是   | 嵌入模型輸出維度（必須與所選模型一致） |
 | `LLM_EMBEDDING_MODEL`    | 是   | LiteLLM 嵌入模型名稱 |
 | `SPRING_PROFILES_ACTIVE` | 否   | Spring profile：`dev`（預設）或 `prod` |
 | `LOG_LEVEL`              | 否   | AI service 日誌等級：`INFO`（預設）或 `DEBUG` |

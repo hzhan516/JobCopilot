@@ -159,10 +159,14 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
   },
 
   saveVersion: async (versionId: string, content: string) => {
+    const { currentGroup } = get();
+    const currentVersion = currentGroup?.versions.find((v) => v.versionId === versionId);
+    if (currentVersion && currentVersion.content === content) {
+      return;
+    }
     set({ loading: true });
     try {
       await resumeService.editVersion(versionId, content);
-      const { currentGroup } = get();
       if (currentGroup) {
         await get().fetchGroupDetail(currentGroup.groupId);
       }

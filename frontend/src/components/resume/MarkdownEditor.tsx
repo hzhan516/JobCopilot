@@ -51,6 +51,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setAutoSaveStatus('idle');
     autoSaveTimerRef.current = setTimeout(async () => {
+      if (!content.trim()) return;
       setAutoSaveStatus('saving');
       try {
         await onAutoSave(content);
@@ -68,6 +69,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   }, [content, onAutoSave, storageKey]);
 
   const handleSave = useCallback(() => {
+    if (!content.trim()) return;
     onSave(content);
     localStorage.removeItem(storageKey);
   }, [content, onSave, storageKey]);

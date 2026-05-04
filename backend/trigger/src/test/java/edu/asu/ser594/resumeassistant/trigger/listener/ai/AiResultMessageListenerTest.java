@@ -8,6 +8,7 @@ import edu.asu.ser594.resumeassistant.domain.embedding.entity.ResumeVector;
 import edu.asu.ser594.resumeassistant.domain.embedding.repository.JobVectorRepository;
 import edu.asu.ser594.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
+import edu.asu.ser594.resumeassistant.infrastructure.config.EmbeddingProperties;
 import edu.asu.ser594.resumeassistant.infrastructure.messaging.stream.ConversationStreamService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,6 +46,9 @@ class AiResultMessageListenerTest {
     @Mock
     private ConversationStreamService streamService;
 
+    @Mock
+    private EmbeddingProperties embeddingProperties;
+
     @InjectMocks
     private AiResultMessageListener listener;
 
@@ -75,6 +79,7 @@ class AiResultMessageListenerTest {
     @Test
     void onVectorGenResult_ShouldCallEmbeddingRepositoryForJob() {
         // 准备 / Given
+        org.mockito.Mockito.when(embeddingProperties.getDimension()).thenReturn(2);
         AiResultEvent event = new AiResultEvent(
                 "job-123",
                 "VECTOR_GEN",
@@ -94,6 +99,7 @@ class AiResultMessageListenerTest {
     @Test
     void onVectorGenResult_ShouldCallEmbeddingRepositoryForResume() {
         // 准备 / Given
+        org.mockito.Mockito.when(embeddingProperties.getDimension()).thenReturn(2);
         AiResultEvent event = new AiResultEvent(
                 "resume-456",
                 "VECTOR_GEN",

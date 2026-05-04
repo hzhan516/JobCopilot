@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useResumeStore } from '../../store/resume.store';
@@ -55,11 +55,11 @@ export default function ResumeEdit() {
     }
   };
 
-  const handleAutoSave = async (content: string) => {
+  const handleAutoSave = useCallback(async (content: string) => {
     if (versionId) {
       await saveVersion(versionId, content);
     }
-  };
+  }, [versionId, saveVersion]);
 
   const handleCancel = () => {
     navigate(`/resumes/${groupId}`);

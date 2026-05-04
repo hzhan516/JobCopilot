@@ -30,7 +30,7 @@ public class ExternalCommandUtils {
             log.info("Executing pandoc: {}", commandStr);
 
             CommandLine cmdLine = CommandLine.parse(commandStr);
-            DefaultExecutor executor = new DefaultExecutor();
+            DefaultExecutor executor = DefaultExecutor.builder().get();
 
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
@@ -79,7 +79,7 @@ public class ExternalCommandUtils {
             log.info("Executing LibreOffice: {}", commandStr);
 
             CommandLine cmdLine = CommandLine.parse(commandStr);
-            DefaultExecutor executor = new DefaultExecutor();
+            DefaultExecutor executor = DefaultExecutor.builder().get();
 
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             ByteArrayOutputStream errorStream = new ByteArrayOutputStream();

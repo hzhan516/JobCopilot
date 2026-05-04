@@ -19,6 +19,7 @@ def configure_test_environment(monkeypatch: pytest.MonkeyPatch) -> Iterator[None
     monkeypatch.setenv("LLM_TEXT_MODEL", "mock/text-model")
     monkeypatch.setenv("LLM_VISION_MODEL", "mock/vision-model")
     monkeypatch.setenv("LLM_EMBEDDING_MODEL", "mock/embedding-model")
+    monkeypatch.setenv("LLM_EMBEDDING_MODEL_DIMENSION", "1536")
     monkeypatch.setenv("LLM_TEMPERATURE", "0")
 
     monkeypatch.setattr(main_module, "_mq_started", False)

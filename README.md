@@ -126,8 +126,9 @@ Required environment variables:
 | `GROQ_API_KEY`           | Optional | Groq API key used when `LLM_*_MODEL` uses the `groq/` prefix |
 | `LLM_TEXT_MODEL`         | Yes      | LiteLLM text model name, e.g. `gemini/gemini-2.5-flash` |
 | `LLM_VISION_MODEL`       | Yes      | LiteLLM vision model name |
-| `LLM_EMBEDDING_MODEL`    | Yes      | LiteLLM embedding model name |
-| `SPRING_PROFILES_ACTIVE` | No       | Spring profile: `dev` (default) or `prod` |
+| `LLM_EMBEDDING_MODEL`           | Yes      | LiteLLM embedding model name |
+| `LLM_EMBEDDING_MODEL_DIMENSION` | Yes      | Embedding output dimension (must match the model) |
+| `SPRING_PROFILES_ACTIVE`        | No       | Spring profile: `dev` (default) or `prod` |
 | `LOG_LEVEL`              | No       | AI service log level: `INFO` (default) or `DEBUG` |
 
 For local development, copy `.env.example` to `.env` and provide one API key that matches the LiteLLM model prefix you choose. For example, the default Gemini models use `GEMINI_API_KEY`.

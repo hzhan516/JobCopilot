@@ -18,6 +18,11 @@ spring:
     console:
       enabled: false
 
+# 嵌入向量维度 / Embedding vector dimension
+app:
+  embedding:
+    dimension: ${LLM_EMBEDDING_MODEL_DIMENSION:1536}
+
 # JWT Configuration
 jwt:
   secret: testSecretKeyThatIsAtLeast32CharactersLongForTesting

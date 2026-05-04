@@ -27,6 +27,7 @@ vim .env
 - `JWT_SECRET`: JWT 签名密钥（生产环境必须修改）
 - 一个兼容 LiteLLM 的模型服务密钥，例如 `GEMINI_API_KEY`、`OPENAI_API_KEY`、`ANTHROPIC_API_KEY` 或 `GROQ_API_KEY`
 - `LLM_TEXT_MODEL`、`LLM_VISION_MODEL` 和 `LLM_EMBEDDING_MODEL`: 与所选模型服务前缀匹配的模型名称
+- `LLM_EMBEDDING_MODEL_DIMENSION`: 嵌入模型输出维度（必须与所选模型一致，默认 1536）
 
 默认情况下，项目可以通过 LiteLLM 使用 Gemini 模型，因此本地开发只需要配置 `GEMINI_API_KEY`，除非您选择其他模型服务。
 

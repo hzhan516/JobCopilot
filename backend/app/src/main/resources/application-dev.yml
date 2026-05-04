@@ -34,6 +34,11 @@ spring:
   flyway:
     enabled: ${SPRING_FLYWAY_ENABLED:false}
 
+# 嵌入向量维度 / Embedding vector dimension
+app:
+  embedding:
+    dimension: ${LLM_EMBEDDING_MODEL_DIMENSION:1536}
+
 # JWT 配置 / JWT configuration
 jwt:
   secret: ${JWT_SECRET:dev-secret-key-at-least-32-characters-long}

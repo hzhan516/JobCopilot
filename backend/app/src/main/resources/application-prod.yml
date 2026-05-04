@@ -51,6 +51,11 @@ storage:
     date-subdirectory: ${LOCAL_STORAGE_DATE_SUBDIR:true}
     url-prefix: ${LOCAL_STORAGE_URL_PREFIX:}
 
+# 嵌入向量维度 / Embedding vector dimension
+app:
+  embedding:
+    dimension: ${LLM_EMBEDDING_MODEL_DIMENSION:1536}
+
 # JWT（从环境变量读取，必须设置）/ JWT (read from environment variables, must be set)
 jwt:
   secret: ${JWT_SECRET}

@@ -50,6 +50,15 @@ os.environ["VERTEX_LOCATION"] = VERTEX_LOCATION
 
 if VERTEX_CREDENTIALS:
     creds_path = Path(VERTEX_CREDENTIALS)
+
+    # If the path is relative and doesn't exist from CWD, resolve against the
+    # project root (the directory containing the ai-service/ folder).
+    if not creds_path.is_file() and not creds_path.is_absolute():
+        project_root = Path(__file__).resolve().parent.parent.parent
+        alt_path = project_root / creds_path
+        if alt_path.is_file():
+            creds_path = alt_path
+
     if creds_path.is_file():
         # Read the service account JSON key from the file path
         creds_content = creds_path.read_text()
@@ -62,6 +71,10 @@ if VERTEX_CREDENTIALS:
 LLM_TEXT_MODEL = os.getenv("LLM_TEXT_MODEL", "gemini/gemini-2.5-flash")
 LLM_VISION_MODEL = os.getenv("LLM_VISION_MODEL", "gemini/gemini-2.5-flash")
 LLM_EMBEDDING_MODEL = os.getenv("LLM_EMBEDDING_MODEL", "gemini/gemini-embedding-001")
-EMBEDDING_OUTPUT_DIMENSION = int(os.getenv("EMBEDDING_OUTPUT_DIMENSION", "1536"))
+LLM_EMBEDDING_MODEL_DIMENSION = int(
+    os.getenv("LLM_EMBEDDING_MODEL_DIMENSION")
+    or os.getenv("EMBEDDING_OUTPUT_DIMENSION")
+    or "1536"
+)
 
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))

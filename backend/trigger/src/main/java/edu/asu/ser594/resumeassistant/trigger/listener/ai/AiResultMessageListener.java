@@ -9,6 +9,7 @@ import edu.asu.ser594.resumeassistant.domain.embedding.entity.ResumeVector;
 import edu.asu.ser594.resumeassistant.domain.embedding.repository.JobVectorRepository;
 import edu.asu.ser594.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
+import edu.asu.ser594.resumeassistant.infrastructure.config.EmbeddingProperties;
 import edu.asu.ser594.resumeassistant.infrastructure.messaging.config.RabbitMqConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,7 @@ public class AiResultMessageListener {
     private final ResumeVectorRepository resumeVectorRepository;
     private final JobVectorRepository jobVectorRepository;
     private final ConversationStreamService streamService;
+    private final EmbeddingProperties embeddingProperties;
 
     /**
      * 监听职位解析结果 / Listen for job parse results
@@ -72,6 +74,15 @@ public class AiResultMessageListener {
             float[] embeddingArray = extractEmbedding(event);
 
             if ("COMPLETED".equals(event.status()) && embeddingArray != null) {
+                if (embeddingArray.length != embeddingProperties.getDimension()) {
+                    log.error("向量维度不匹配: 期望 {}, 实际 {}。referenceId: {}, entityType: {}",
+                            embeddingProperties.getDimension(), embeddingArray.length,
+                            event.referenceId(), entityType);
+                    saveFailedVector(event.referenceId(), entityType,
+                            "Embedding dimension mismatch: expected " + embeddingProperties.getDimension()
+                                    + ", got " + embeddingArray.length);
+                    return;
+                }
                 saveCompletedVector(event.referenceId(), entityType, embeddingArray);
             } else {
                 saveFailedVector(event.referenceId(), entityType, event.errorMessage());

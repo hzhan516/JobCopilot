@@ -48,7 +48,7 @@ export const resumeApi = {
   },
 
   updateVersion: async (versionId: string, content: string): Promise<void> => {
-    await api.put(`/resumes/versions/${versionId}`, { content });
+    await api.put(`/resumes/versions/${versionId}`, { versionId, content });
   },
 
   downloadVersion: async (versionId: string, format: DownloadFormat): Promise<Blob> => {

@@ -100,6 +100,10 @@ services:
       # JWT密钥（生产环境请使用强密钥）
       # JWT 金鑰（生產環境請使用強金鑰）
       - JWT_SECRET=${JWT_SECRET:-your-256-bit-secret-key-change-in-production}
+      # Embedding dimension (must match the selected model)
+      # 嵌入向量维度（必须与所选模型一致）
+      # 嵌入向量維度（必須與所選模型一致）
+      - LLM_EMBEDDING_MODEL_DIMENSION=${LLM_EMBEDDING_MODEL_DIMENSION:-1536}
       # Activate dev/prod profile
       # 激活开发/生产配置
       # 啟用開發/生產設定檔
@@ -162,7 +166,7 @@ services:
       - LLM_TEXT_MODEL=${LLM_TEXT_MODEL:-gemini/gemini-2.5-flash}
       - LLM_VISION_MODEL=${LLM_VISION_MODEL:-gemini/gemini-2.5-flash}
       - LLM_EMBEDDING_MODEL=${LLM_EMBEDDING_MODEL:-gemini/gemini-embedding-001}
-      - EMBEDDING_OUTPUT_DIMENSION=${EMBEDDING_OUTPUT_DIMENSION:-1536}
+      - LLM_EMBEDDING_MODEL_DIMENSION=${LLM_EMBEDDING_MODEL_DIMENSION:-1536}
       # Log Level / 日志级别 / 日誌層級
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
@@ -179,7 +183,7 @@ services:
       # Relative paths or plain filenames will be treated as named volumes by Podman.
       # 相对路径或纯文件名会被 Podman 识别为命名卷而导致报错。
       # 相對路徑或純檔案名會被 Podman 識別為命名卷而導致報錯。
-      # - ${VERTEX_CREDENTIALS}:/app/credentials/gcp-service-account.json:ro
+      - ${VERTEX_CREDENTIALS}:/app/credentials/gcp-service-account.json:ro
     networks:
       - resume-network
     depends_on:
@@ -218,7 +222,8 @@ services:
       # Database initialization script (executed on first container start)
       # 数据库初始化脚本（仅在容器首次启动时执行）
       # 資料庫初始化腳本（僅在容器首次啟動時執行）
-      - ./backend/app/src/main/resources/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./backend/app/src/main/resources/db/init.sql:/docker-entrypoint-initdb.d/templates/init.sql:ro
+      - ./backend/app/src/main/resources/db/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
     networks:
       - resume-network
     restart: unless-stopped
