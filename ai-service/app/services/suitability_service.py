@@ -1,7 +1,6 @@
-import json
-import re
 from pathlib import Path
 
+# Suitability scoring utilities for resume and job matching.
 
 from app.schemas import SuitabilityBreakdown, SuitabilityRequest, SuitabilityResponse
 from app.services.llm_client import generate_json_from_text_prompt
@@ -9,6 +8,7 @@ from app.services.llm_client import generate_json_from_text_prompt
 
 BASELINE_MODEL_FILE = Path(__file__).resolve().parents[2] / "data_pipeline" / "output" / "baseline_model.json"
 
+# Normalize a list of strings into a lowercase unique set.
 def _normalize_items(items: list[str]) -> set[str]:
     normalized: set[str] = set()
 
@@ -20,6 +20,7 @@ def _normalize_items(items: list[str]) -> set[str]:
     return normalized
 
 
+# Convert experience item count into a coarse score.
 def _calculate_experience_score(experience_items: list[dict]) -> float:
     experience_count = len(experience_items)
 
@@ -35,6 +36,7 @@ def _calculate_experience_score(experience_items: list[dict]) -> float:
     return 1.0
 
 
+# Load the dataset model artifact if present.
 def _load_dataset_model_artifact() -> dict | None:
     if not BASELINE_MODEL_FILE.exists():
         return None
@@ -45,11 +47,13 @@ def _load_dataset_model_artifact() -> dict | None:
     return payload.get("model_artifact")
 
 
+# Tokenize text into lowercase alphabetic tokens of length >= 3.
 def _tokenize_text(text: str) -> set[str]:
     tokens = re.findall(r"[a-zA-Z]+", text.lower())
     return {token for token in tokens if len(token) >= 3}
 
 
+# Build a combined text summary from experience items.
 def _build_experience_text(experience_items: list[dict]) -> str:
     parts: list[str] = []
 
@@ -65,6 +69,7 @@ def _build_experience_text(experience_items: list[dict]) -> str:
     return " ".join(parts)
 
 
+# Calculate a dataset-based suitability score if an artifact exists.
 def _calculate_dataset_score(request: SuitabilityRequest) -> float | None:
     artifact = _load_dataset_model_artifact()
     if not artifact:
@@ -112,6 +117,7 @@ def _calculate_dataset_score(request: SuitabilityRequest) -> float | None:
     return round(_clamp_score(score), 2)
 
 
+# Compute a baseline suitability score using heuristics only.
 def evaluate_suitability_baseline(request: SuitabilityRequest) -> SuitabilityResponse:
     resume_skills = _normalize_items(request.resume.skills)
     job_requirements = _normalize_items(request.job.requirements)
@@ -152,10 +158,12 @@ def evaluate_suitability_baseline(request: SuitabilityRequest) -> SuitabilityRes
         finalScore=overall_score,
     )
 
+# Clamp a score to the [0, 1] range.
 def _clamp_score(value: float) -> float:
     return max(0.0, min(1.0, value))
 
 
+# Build the LLM prompt used for Vertex suitability scoring.
 def _build_vertex_suitability_prompt(request: SuitabilityRequest) -> str:
     return f"""
 You are evaluating how suitable a candidate resume is for a job posting.
@@ -191,6 +199,7 @@ Job:
 """.strip()
 
 
+# Evaluate suitability using Vertex AI and combine with baseline/dataset scores.
 def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> SuitabilityResponse:
     baseline_response = evaluate_suitability_baseline(request)
     prompt = _build_vertex_suitability_prompt(request)
@@ -233,5 +242,4 @@ def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> Suitability
     except Exception as exc:
         print(f"Vertex suitability evaluation failed: {exc}")
         return evaluate_suitability_baseline(request)
-
 

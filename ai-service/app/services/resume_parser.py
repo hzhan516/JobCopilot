@@ -3,7 +3,10 @@ from typing import Any
 from app.schemas import ParsedResumeContent
 from app.services.llm_client import generate_json_from_text_prompt
 
+# Resume parsing helpers that normalize and structure resume text.
 
+
+# Normalize skills into a list of cleaned strings.
 def _normalize_skills(value: Any) -> list[str]:
     if isinstance(value, list):
         return [str(item).strip() for item in value if str(item).strip()]
@@ -14,6 +17,7 @@ def _normalize_skills(value: Any) -> list[str]:
     return []
 
 
+# Normalize experience into a list of dicts with summary text.
 def _normalize_experience(value: Any) -> list[dict[str, Any]]:
     if isinstance(value, list):
         normalized: list[dict[str, Any]] = []
@@ -33,6 +37,7 @@ def _normalize_experience(value: Any) -> list[dict[str, Any]]:
     return []
 
 
+# Parse resume text using the LLM and normalize the result.
 def parse_resume_text(resume_text: str) -> ParsedResumeContent:
     cleaned_text = resume_text.strip()
     if not cleaned_text:

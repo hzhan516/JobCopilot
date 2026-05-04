@@ -2,11 +2,14 @@ import json
 from pathlib import Path
 from urllib.parse import urlparse
 
+# Conversation workflow helpers: load attachments, build prompts, and produce AI responses.
+
 from app.schemas import AiResultEvent, ConversationRequestCommand
 from app.services.file_parser import download_file_bytes, extract_resume_text
 from app.services.llm_client import generate_json_from_text_prompt
 
 
+# Infer supported attachment type from a URL suffix.
 def _infer_file_format(file_url: str) -> str | None:
     suffix = Path(urlparse(file_url).path).suffix.lower()
     if suffix == ".pdf":
@@ -20,6 +23,7 @@ def _infer_file_format(file_url: str) -> str | None:
     return None
 
 
+# Download and extract attachment snippets plus warnings for the prompt.
 def _load_attachment_context(command: ConversationRequestCommand) -> tuple[list[dict[str, str]], list[str]]:
     attachments: list[dict[str, str]] = []
     warnings: list[str] = []
@@ -53,6 +57,7 @@ def _load_attachment_context(command: ConversationRequestCommand) -> tuple[list[
     return attachments, warnings
 
 
+# Build the LLM prompt for the conversation reply.
 def _build_conversation_prompt(command: ConversationRequestCommand) -> str:
     history = [
         message.model_dump(by_alias=True)
@@ -130,6 +135,7 @@ Current Message:
 """.strip()
 
 
+# Run the conversation workflow and package the response as an AI result event.
 def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
     prompt = _build_conversation_prompt(command)
     print(

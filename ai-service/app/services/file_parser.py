@@ -6,12 +6,15 @@ from urllib.parse import urlparse, parse_qs
 from zipfile import ZipFile
 import xml.etree.ElementTree as ET
 
+# File retrieval and text extraction utilities for resumes and attachments.
+
 import httpx
 from pypdf import PdfReader
 
 logger = logging.getLogger(__name__)
 
 
+# Resolve a stored object key to a local path in the shared storage.
 def _resolve_local_path(object_key: str) -> Path | None:
     """Search the shared filesystem for a file matching the object key."""
     base = Path(os.environ.get("FILE_STORAGE_PATH", "/app/uploads"))
@@ -27,6 +30,7 @@ def _resolve_local_path(object_key: str) -> Path | None:
     return None
 
 
+# Download file content from HTTP URLs or shared storage paths.
 def download_file_bytes(file_url: str) -> bytes:
     stripped = file_url.strip()
 
@@ -62,6 +66,7 @@ def download_file_bytes(file_url: str) -> bytes:
     )
 
 
+# Extract text from a PDF payload.
 def _extract_text_from_pdf(file_bytes: bytes) -> str:
     reader = PdfReader(BytesIO(file_bytes))
     parts: list[str] = []
@@ -74,6 +79,7 @@ def _extract_text_from_pdf(file_bytes: bytes) -> str:
     return "\n".join(parts).strip()
 
 
+# Extract text from a DOCX payload.
 def _extract_text_from_docx(file_bytes: bytes) -> str:
     with ZipFile(BytesIO(file_bytes)) as docx_zip:
         xml_bytes = docx_zip.read("word/document.xml")
@@ -89,10 +95,12 @@ def _extract_text_from_docx(file_bytes: bytes) -> str:
     return " ".join(parts).strip()
 
 
+# Extract text from a plain text payload.
 def _extract_text_from_plain(file_bytes: bytes) -> str:
     return file_bytes.decode("utf-8", errors="ignore").strip()
 
 
+# Route to the appropriate extractor based on content type.
 def extract_resume_text(file_bytes: bytes, content_format: str) -> str:
     normalized = content_format.strip().lower()
 

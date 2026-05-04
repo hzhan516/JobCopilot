@@ -2,10 +2,13 @@ import time
 import litellm
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
+# Job ranking utilities combining lexical features with optional LLM explanations.
+
 from app.config import LLM_TEXT_MODEL
 from app.schemas import JobRankCommand, JobRankResultPayload, JobRankResultItem, MatchFactors
 
 
+# Tokenize text into lowercase alphanumeric tokens of length >= 2.
 def _tokenize(text: str) -> set[str]:
     token = []
     tokens: set[str] = set()
@@ -24,10 +27,12 @@ def _tokenize(text: str) -> set[str]:
     return tokens
 
 
+# Clamp a score to the [0, 1] range.
 def _clip_score(value: float) -> float:
     return max(0.0, min(1.0, value))
 
 
+# Rank a single job using lexical overlap and stored semantic scores.
 def _rank_single_job(
     job_id: str,
     command: JobRankCommand,
@@ -72,6 +77,7 @@ def _rank_single_job(
     )
 
 
+# Retry wrapper for LLM calls used to generate match reasons.
 @retry(
     stop=stop_after_attempt(2),
     wait=wait_exponential(multiplier=1, min=2, max=5),
@@ -92,6 +98,7 @@ def _safe_llm_call(prompt: str) -> str:
     return response.choices[0].message.content.strip()
 
 
+# Generate a short natural-language match reason for a ranked job.
 def _generate_match_reason(command: JobRankCommand, job: JobRankResultItem) -> str | None:
     if not command.resume_text:
         return None
@@ -128,6 +135,7 @@ Details: {job_desc}
         print(f"Failed to generate match reason for job {job.job_id} after retries: {e}", flush=True)
         return None
 
+# Rank recalled jobs and optionally attach LLM match reasons.
 def rank_jobs(command: JobRankCommand) -> JobRankResultPayload:
     rank_start = time.perf_counter()
 

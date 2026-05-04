@@ -8,9 +8,12 @@ from app.services.job_parser import (
 from app.services.web_scraper import scrape_job_page
 
 
+# Job parsing orchestrator that combines scraping and vision/text extraction.
+
 MIN_SCRAPED_TEXT_LENGTH = 200
 
 
+# Orchestrate job parsing from URL content and optional screenshots.
 def process_job(command: JobParseCommand) -> AiResultEvent:
     scrape_result = None
     scrape_error: Exception | None = None

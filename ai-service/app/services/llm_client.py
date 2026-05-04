@@ -8,6 +8,8 @@ import litellm
 from litellm import completion
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
+# LLM client helpers for text and image prompt execution with retries.
+
 from app.config import (
     LLM_TEXT_MODEL,
     LLM_VISION_MODEL,
@@ -17,7 +19,7 @@ from app.config import (
 logger = logging.getLogger(__name__)
 
 
-
+# Shared retry policy for transient LLM failures.
 RETRY_STRATEGY = retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -28,6 +30,7 @@ RETRY_STRATEGY = retry(
     ))
 )
 
+# Extract the JSON object portion from raw LLM output.
 def _extract_json_text(raw_text: str) -> str:
     cleaned = raw_text.strip()
 
@@ -42,6 +45,7 @@ def _extract_json_text(raw_text: str) -> str:
     return match.group(0)
 
 
+# Execute a text-only LLM completion with retries.
 @RETRY_STRATEGY
 def _generate_text(model: str, messages: list[dict[str, Any]]) -> str:
     logger.debug("LLM request: model=%s, messages_count=%d", model, len(messages))
@@ -63,6 +67,7 @@ def _generate_text(model: str, messages: list[dict[str, Any]]) -> str:
     return content.strip()
 
 
+# Generate a JSON dict from a text prompt.
 def generate_json_from_text_prompt(prompt: str) -> dict[str, Any]:
     messages = [{"role": "user", "content": prompt}]
     raw_text = _generate_text(
@@ -73,6 +78,7 @@ def generate_json_from_text_prompt(prompt: str) -> dict[str, Any]:
     return json.loads(json_text)
 
 
+# Generate a JSON dict from a text+image prompt.
 @RETRY_STRATEGY
 def generate_json_from_image_prompt(
     prompt: str,

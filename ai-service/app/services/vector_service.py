@@ -1,6 +1,7 @@
 import litellm
-from litellm import embedding
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
+# Embedding generation utilities for vector workflows.
 
 from app.config import (
     LLM_EMBEDDING_MODEL,
@@ -9,7 +10,7 @@ from app.config import (
 from app.schemas import AiResultEvent, VectorGenCommand
 
 
-
+# Shared retry policy for embedding calls.
 RETRY_STRATEGY = retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -20,6 +21,7 @@ RETRY_STRATEGY = retry(
     ))
 )
 
+# Generate an embedding vector for the provided text.
 @RETRY_STRATEGY
 def generate_embedding(text: str) -> list[float]:
     cleaned_text = text.strip()
@@ -27,7 +29,7 @@ def generate_embedding(text: str) -> list[float]:
     if not cleaned_text:
         raise ValueError("Input text for vector generation is empty.")
 
-    response = embedding(
+    response = litellm.embedding(
         model=LLM_EMBEDDING_MODEL,
         input=[cleaned_text],
         dimensions=LLM_EMBEDDING_MODEL_DIMENSION,
@@ -51,6 +53,7 @@ def generate_embedding(text: str) -> list[float]:
     return emb
 
 
+# Generate embeddings and wrap them in an AI result event.
 def process_vector(command: VectorGenCommand) -> AiResultEvent:
     emb = generate_embedding(command.text)
 

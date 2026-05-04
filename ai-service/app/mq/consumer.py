@@ -2,6 +2,9 @@ import json
 import logging
 import traceback
 
+# RabbitMQ consumers for AI workflow requests: declare queues, parse commands, handle messages,
+# and dispatch results or failures back to the appropriate result queues.
+
 import pika
 
 from app.config import (
@@ -58,6 +61,7 @@ QUEUE_ARGUMENTS = {
 }
 
 
+# Declare a durable queue with shared DLQ configuration.
 def declare_queue(
     channel: pika.adapters.blocking_connection.BlockingChannel,
     queue: str,
@@ -65,6 +69,7 @@ def declare_queue(
     channel.queue_declare(queue=queue, durable=True, arguments=QUEUE_ARGUMENTS)
 
 
+# Create a blocking RabbitMQ connection using configured credentials.
 def create_connection() -> pika.BlockingConnection:
     credentials = pika.PlainCredentials(RABBITMQ_USERNAME, RABBITMQ_PASSWORD)
     parameters = pika.ConnectionParameters(
@@ -77,6 +82,7 @@ def create_connection() -> pika.BlockingConnection:
     return pika.BlockingConnection(parameters)
 
 
+# Declare exchanges, queues, and bindings for all AI workflow routes.
 def setup_all_queues(channel: pika.adapters.blocking_connection.BlockingChannel) -> None:
     channel.exchange_declare(
         exchange=AI_DIRECT_EXCHANGE,
@@ -161,31 +167,37 @@ def setup_all_queues(channel: pika.adapters.blocking_connection.BlockingChannel)
     )
 
 
+# Parse a job-parse command payload from the message body.
 def parse_job_command(body: bytes) -> JobParseCommand:
     payload = json.loads(body.decode("utf-8"))
     return JobParseCommand.model_validate(payload)
 
 
+# Parse a resume-parse command payload from the message body.
 def parse_resume_command(body: bytes) -> ResumeParseCommand:
     payload = json.loads(body.decode("utf-8"))
     return ResumeParseCommand.model_validate(payload)
 
 
+# Parse a vector-generation command payload from the message body.
 def parse_vector_command(body: bytes) -> VectorGenCommand:
     payload = json.loads(body.decode("utf-8"))
     return VectorGenCommand.model_validate(payload)
 
 
+# Parse a conversation request command payload from the message body.
 def parse_conversation_command(body: bytes) -> ConversationRequestCommand:
     payload = json.loads(body.decode("utf-8"))
     return ConversationRequestCommand.model_validate(payload)
 
 
+# Parse a job-ranking command payload from the message body.
 def parse_job_rank_command(body: bytes) -> JobRankCommand:
     payload = json.loads(body.decode("utf-8"))
     return JobRankCommand.model_validate(payload)
 
 
+# Build a standardized failure event for AI results.
 def build_failed_event(
     reference_id: str,
     event_type: str,
@@ -202,6 +214,7 @@ def build_failed_event(
     )
 
 
+# Handle a job-parse request and publish the result or failure.
 def handle_job_message(
     channel: pika.adapters.blocking_connection.BlockingChannel,
     body: bytes,
@@ -222,6 +235,7 @@ def handle_job_message(
     publish_ai_result(channel, result)
 
 
+# Handle a resume-parse request and publish the result or failure.
 def handle_resume_message(
     channel: pika.adapters.blocking_connection.BlockingChannel,
     body: bytes,
@@ -241,6 +255,7 @@ def handle_resume_message(
     publish_ai_result(channel, result)
 
 
+# Handle a vector-generation request and publish the result or failure.
 def handle_vector_message(
     channel: pika.adapters.blocking_connection.BlockingChannel,
     body: bytes,
@@ -260,6 +275,7 @@ def handle_vector_message(
     publish_ai_result(channel, result)
 
 
+# Handle a conversation request and publish the result or failure.
 def handle_conversation_message(
     channel: pika.adapters.blocking_connection.BlockingChannel,
     body: bytes,
@@ -279,6 +295,7 @@ def handle_conversation_message(
     publish_ai_result(channel, result)
 
 
+# Handle a job-ranking request and publish the result or failure.
 def handle_job_rank_message(
     channel: pika.adapters.blocking_connection.BlockingChannel,
     body: bytes,
@@ -302,6 +319,7 @@ def handle_job_rank_message(
         )
 
 
+# MQ callback for job parsing requests.
 def job_message_callback(ch, method, properties, body) -> None:
     try:
         handle_job_message(ch, body)
@@ -311,6 +329,7 @@ def job_message_callback(ch, method, properties, body) -> None:
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 
+# MQ callback for resume parsing requests.
 def resume_message_callback(ch, method, properties, body) -> None:
     try:
         handle_resume_message(ch, body)
@@ -320,6 +339,7 @@ def resume_message_callback(ch, method, properties, body) -> None:
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 
+# MQ callback for vector generation requests.
 def vector_message_callback(ch, method, properties, body) -> None:
     try:
         handle_vector_message(ch, body)
@@ -329,6 +349,7 @@ def vector_message_callback(ch, method, properties, body) -> None:
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 
+# MQ callback for conversation requests with raw payload logging.
 def conversation_message_callback(ch, method, properties, body) -> None:
     logger.info(
         "Received raw conversation MQ message: delivery_tag=%s, body=%s",
@@ -343,6 +364,7 @@ def conversation_message_callback(ch, method, properties, body) -> None:
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 
+# MQ callback for job ranking requests.
 def job_rank_message_callback(ch, method, properties, body) -> None:
     try:
         handle_job_rank_message(ch, body)
@@ -352,6 +374,7 @@ def job_rank_message_callback(ch, method, properties, body) -> None:
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 
+# Start all consumer subscriptions and begin consuming.
 def start_all_consumers(channel: pika.adapters.blocking_connection.BlockingChannel) -> None:
     channel.basic_qos(prefetch_count=1)
 

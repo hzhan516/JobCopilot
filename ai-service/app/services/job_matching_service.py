@@ -4,6 +4,8 @@ import math
 import time
 from pathlib import Path
 
+# Local job matching utilities using cached dataset rows and embeddings.
+
 from app.schemas import JobMatchRequest, JobMatchResponse, MatchFactors, MatchItem
 from app.services.vector_service import generate_embedding
 
@@ -15,6 +17,7 @@ _JOB_ROWS_CACHE: list[dict] | None = None
 _JOB_EMBEDDING_CACHE: dict[str, list[float]] = {}
 
 
+# Load and cache normalized job rows from the dataset file.
 def _load_jobs() -> list[dict]:
     global _JOB_ROWS_CACHE
 
@@ -40,6 +43,7 @@ def _load_jobs() -> list[dict]:
     return rows
 
 
+# Tokenize text into lowercase alphanumeric tokens of length >= 2.
 def _tokenize(text: str) -> set[str]:
     token = []
     tokens: set[str] = set()
@@ -58,10 +62,12 @@ def _tokenize(text: str) -> set[str]:
     return tokens
 
 
+# Clamp a score to the [0, 1] range.
 def _clip_score(value: float) -> float:
     return max(0.0, min(1.0, value))
 
 
+# Compute cosine similarity for two embedding vectors.
 def _cosine_similarity(left: list[float], right: list[float]) -> float:
     if not left or not right or len(left) != len(right):
         return 0.0
@@ -76,6 +82,7 @@ def _cosine_similarity(left: list[float], right: list[float]) -> float:
     return dot / (left_norm * right_norm)
 
 
+# Assemble a searchable text representation of a job.
 def _job_text(job: dict) -> str:
     requirements = " ".join(job.get("requirements", []))
     return " ".join(
@@ -88,6 +95,7 @@ def _job_text(job: dict) -> str:
     ).strip()
 
 
+# Fetch or compute a cached embedding for a job.
 def _get_job_embedding(job: dict) -> list[float] | None:
     job_id = str(job.get("job_id", "")).strip()
     if not job_id:
@@ -107,6 +115,7 @@ def _get_job_embedding(job: dict) -> list[float] | None:
     return embedding
 
 
+# Score a single job against the query and filters.
 def _score_job(query: str, query_embedding: list[float] | None, job: dict, filters: dict[str, str]) -> MatchItem:
     query_tokens = _tokenize(query)
     title_tokens = _tokenize(str(job.get("title", "")))
@@ -159,6 +168,7 @@ def _score_job(query: str, query_embedding: list[float] | None, job: dict, filte
     )
 
 
+# Find top job matches for a request using lexical and embedding features.
 def find_job_matches(request: JobMatchRequest) -> JobMatchResponse:
     query = request.query.strip()
     if not query:
