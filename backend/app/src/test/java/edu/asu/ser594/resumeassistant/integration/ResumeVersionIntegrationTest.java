@@ -66,7 +66,8 @@ class ResumeVersionIntegrationTest extends AbstractIntegrationTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(request),
-                new ParameterizedTypeReference<>() {}
+                new ParameterizedTypeReference<>() {
+                }
         );
 
         // 那么 - 验证响应
@@ -93,7 +94,8 @@ class ResumeVersionIntegrationTest extends AbstractIntegrationTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(request),
-                new ParameterizedTypeReference<>() {}
+                new ParameterizedTypeReference<>() {
+                }
         );
         assertThat(firstCopy.getBody()).isNotNull();
         UUID firstVersionId = firstCopy.getBody().getData().getVersionId();
@@ -105,7 +107,8 @@ class ResumeVersionIntegrationTest extends AbstractIntegrationTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(request),
-                new ParameterizedTypeReference<>() {}
+                new ParameterizedTypeReference<>() {
+                }
         );
 
         // 那么 - 第二个副本应为 ACTIVE，第一个应被归档
@@ -119,7 +122,8 @@ class ResumeVersionIntegrationTest extends AbstractIntegrationTest {
                 RequestEntity.get(URI.create(RESUME_BASE_URL + "/groups/" + groupId + "/versions"))
                         .header("Authorization", "Bearer " + token)
                         .build(),
-                new ParameterizedTypeReference<>() {}
+                new ParameterizedTypeReference<>() {
+                }
         );
 
         assertThat(versionsResponse.getBody()).isNotNull();
@@ -139,7 +143,8 @@ class ResumeVersionIntegrationTest extends AbstractIntegrationTest {
         ResponseEntity<ApiResponse<AuthResponse>> response = restTemplate.exchange(
                 RequestEntity.post(URI.create(AUTH_BASE_URL + "/register/email"))
                         .body(registerRequest),
-                new ParameterizedTypeReference<>() {}
+                new ParameterizedTypeReference<>() {
+                }
         );
 
         assertThat(response.getBody()).isNotNull();
@@ -168,7 +173,8 @@ class ResumeVersionIntegrationTest extends AbstractIntegrationTest {
                 RESUME_BASE_URL,
                 HttpMethod.POST,
                 requestEntity,
-                new ParameterizedTypeReference<>() {}
+                new ParameterizedTypeReference<>() {
+                }
         );
 
         assertThat(response.getBody()).isNotNull();

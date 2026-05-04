@@ -3,14 +3,29 @@
 -- Used for the Transactional Outbox pattern to ensure atomicity between DB writes and MQ publishing
 CREATE TABLE IF NOT EXISTS outbox_message
 (
-    id          VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
-    exchange    VARCHAR(255) NOT NULL,
-    routing_key VARCHAR(255) NOT NULL,
-    payload     TEXT         NOT NULL,
-    status      VARCHAR(20)  NOT NULL DEFAULT 'PENDING',
-    created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    sent_at     TIMESTAMP
-);
+    id
+    VARCHAR
+(
+    36
+) PRIMARY KEY DEFAULT gen_random_uuid
+(
+),
+    exchange VARCHAR
+(
+    255
+) NOT NULL,
+    routing_key VARCHAR
+(
+    255
+) NOT NULL,
+    payload TEXT NOT NULL,
+    status VARCHAR
+(
+    20
+) NOT NULL DEFAULT 'PENDING',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    sent_at TIMESTAMP
+    );
 
 -- 索引：按状态查询 PENDING 记录（OutboxRelayScheduler 轮询用）
 -- Index for querying PENDING records (used by OutboxRelayScheduler polling)

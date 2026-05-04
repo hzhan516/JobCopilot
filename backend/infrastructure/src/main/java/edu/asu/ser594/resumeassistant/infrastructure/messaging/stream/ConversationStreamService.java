@@ -23,17 +23,15 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class ConversationStreamService {
 
+    private static final long DEFAULT_TIMEOUT_SECONDS = 60L;
     /**
      * 等待中的回复 future / Pending reply futures
      */
     private final ConcurrentHashMap<String, CompletableFuture<String>> pendingReplies = new ConcurrentHashMap<>();
-
     /**
      * 已到达但尚未被 stream 请求消费的早期回复 / Early replies arrived before stream request
      */
     private final ConcurrentHashMap<String, String> earlyReplies = new ConcurrentHashMap<>();
-
-    private static final long DEFAULT_TIMEOUT_SECONDS = 60L;
 
     /**
      * 等待指定对话的 AI 回复

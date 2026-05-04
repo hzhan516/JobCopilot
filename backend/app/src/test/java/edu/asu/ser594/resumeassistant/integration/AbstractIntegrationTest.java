@@ -28,15 +28,15 @@ import java.nio.file.Paths;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public abstract class AbstractIntegrationTest {
 
-    static {
-        configureContainerRuntime();
-    }
-
     @Container
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("pgvector/pgvector:pg15")
             .withDatabaseName("resume_assistant")
             .withUsername("resume_user")
             .withPassword("resume_pass");
+
+    static {
+        configureContainerRuntime();
+    }
 
     @DynamicPropertySource
     static void configureDatasource(DynamicPropertyRegistry registry) {

@@ -7,8 +7,6 @@ import edu.asu.ser594.resumeassistant.application.matching.query.ListMatchHistor
 import edu.asu.ser594.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
-import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
-import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.matching.entity.JobMatchResult;
 import edu.asu.ser594.resumeassistant.domain.matching.entity.MatchingModel;
 import edu.asu.ser594.resumeassistant.domain.matching.exception.ResumeVectorNotReadyException;
@@ -17,6 +15,8 @@ import edu.asu.ser594.resumeassistant.domain.matching.repository.JobMatchResultR
 import edu.asu.ser594.resumeassistant.domain.matching.repository.MatchingModelRepository;
 import edu.asu.ser594.resumeassistant.domain.matching.valueobject.RankedJob;
 import edu.asu.ser594.resumeassistant.domain.matching.valueobject.RecallResult;
+import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
+import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobRankCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
@@ -116,7 +116,7 @@ public class MatchingApplicationService {
 
         final ResumeVersion resumeVersion = resumeVersionRepository.findById(UUID.fromString(command.resumeVersionId()))
                 .orElseThrow(() -> new IllegalArgumentException("Resume version not found: " + command.resumeVersionId()));
-        
+
         final String resumeText = resumeVersion.getParsedContent() != null && !resumeVersion.getParsedContent().isEmpty() ?
                 resumeVersion.getParsedContent() :
                 (resumeVersion.getContent() != null ? resumeVersion.getContent() : "");
@@ -209,7 +209,7 @@ public class MatchingApplicationService {
                     // Cosine Similarity = 1 - distance
                     // Normalized Semantic Match = (Cosine Similarity + 1) / 2 = 1 - distance / 2
                     double semanticMatch = Math.max(0.0, Math.min(1.0, 1.0 - (recall.distance() / 2.0)));
-                    
+
                     return Map.entry(
                             job.getId(),
                             Map.of(

@@ -3,7 +3,6 @@ package edu.asu.ser594.resumeassistant.trigger.listener.ai;
 import edu.asu.ser594.resumeassistant.api.conversation.facade.ConversationFacade;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
 import edu.asu.ser594.resumeassistant.api.resume.facade.ResumeFacade;
-import edu.asu.ser594.resumeassistant.infrastructure.messaging.stream.ConversationStreamService;
 import edu.asu.ser594.resumeassistant.domain.embedding.entity.JobVector;
 import edu.asu.ser594.resumeassistant.domain.embedding.entity.ResumeVector;
 import edu.asu.ser594.resumeassistant.domain.embedding.repository.JobVectorRepository;
@@ -11,6 +10,7 @@ import edu.asu.ser594.resumeassistant.domain.embedding.repository.ResumeVectorRe
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.infrastructure.config.EmbeddingProperties;
 import edu.asu.ser594.resumeassistant.infrastructure.messaging.config.RabbitMqConfig;
+import edu.asu.ser594.resumeassistant.infrastructure.messaging.stream.ConversationStreamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;

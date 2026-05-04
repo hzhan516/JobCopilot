@@ -1,7 +1,6 @@
 package edu.asu.ser594.resumeassistant.domain.tracking.entity;
 
 import edu.asu.ser594.resumeassistant.domain.shared.entity.AggregateRoot;
-import edu.asu.ser594.resumeassistant.domain.tracking.exception.TrackingException;
 import edu.asu.ser594.resumeassistant.domain.tracking.valueobject.ApplicationStatus;
 import lombok.Builder;
 import lombok.Getter;

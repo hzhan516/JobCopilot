@@ -7,6 +7,7 @@ import edu.asu.ser594.resumeassistant.types.enums.OutboxStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -15,12 +16,9 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import java.util.Collections;
 import java.util.List;
 
-import org.mockito.ArgumentMatchers;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.argThat;
 
 /**
  * Outbox 转发调度器测试

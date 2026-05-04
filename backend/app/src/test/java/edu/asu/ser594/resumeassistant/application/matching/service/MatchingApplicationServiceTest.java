@@ -7,12 +7,12 @@ import edu.asu.ser594.resumeassistant.application.matching.query.GetMatchResultQ
 import edu.asu.ser594.resumeassistant.application.matching.query.ListMatchHistoryQuery;
 import edu.asu.ser594.resumeassistant.domain.embedding.entity.ResumeVector;
 import edu.asu.ser594.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
-import edu.asu.ser594.resumeassistant.domain.matching.exception.ResumeVectorNotReadyException;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
 import edu.asu.ser594.resumeassistant.domain.job.valueobject.JobStatus;
 import edu.asu.ser594.resumeassistant.domain.matching.entity.JobMatchResult;
 import edu.asu.ser594.resumeassistant.domain.matching.entity.MatchingModel;
+import edu.asu.ser594.resumeassistant.domain.matching.exception.ResumeVectorNotReadyException;
 import edu.asu.ser594.resumeassistant.domain.matching.port.VectorSearchPort;
 import edu.asu.ser594.resumeassistant.domain.matching.repository.JobMatchResultRepository;
 import edu.asu.ser594.resumeassistant.domain.matching.repository.MatchingModelRepository;

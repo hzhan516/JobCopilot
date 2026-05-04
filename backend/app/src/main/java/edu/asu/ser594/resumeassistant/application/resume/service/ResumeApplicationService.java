@@ -46,20 +46,19 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class ResumeApplicationService {
 
-    private final ResumeGroupRepository groupRepository;
-    private final ResumeVersionRepository versionRepository;
-    private final FileStorageService fileStorageService;
-    private final DocumentFormatConverter documentFormatConverter;
-    private final AiMessagePublisherPort aiMessagePublisherPort;
-    private final ObjectMapper objectMapper;
-
-    // ==================== 命令处理 Command Handlers ====================
-
     /**
      * 版本链最大长度限制
      * Maximum version chain length limit
      */
     private static final int MAX_VERSION_CHAIN_LENGTH = 50;
+    private final ResumeGroupRepository groupRepository;
+    private final ResumeVersionRepository versionRepository;
+    private final FileStorageService fileStorageService;
+    private final DocumentFormatConverter documentFormatConverter;
+    private final AiMessagePublisherPort aiMessagePublisherPort;
+
+    // ==================== 命令处理 Command Handlers ====================
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public ResumeGroup handleUpload(ResumeUploadCommand command, UUID userId) {
