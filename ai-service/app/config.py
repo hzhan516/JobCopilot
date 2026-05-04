@@ -37,10 +37,15 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 VERTEX_PROJECT = os.getenv("VERTEX_PROJECT", "ser594-ai-service")
 VERTEX_LOCATION = os.getenv("VERTEX_LOCATION", "global")
+VERTEX_CREDENTIALS = os.getenv("VERTEX_CREDENTIALS")
 
 # Export standard variables required by LiteLLM for Vertex AI routing
+os.environ["VERTEXAI_PROJECT"] = VERTEX_PROJECT
 os.environ["VERTEX_PROJECT"] = VERTEX_PROJECT
 os.environ["VERTEX_LOCATION"] = VERTEX_LOCATION
+if VERTEX_CREDENTIALS:
+    # LiteLLM accepts the raw JSON string via VERTEX_CREDENTIALS
+    os.environ["VERTEX_CREDENTIALS"] = VERTEX_CREDENTIALS
 
 LLM_TEXT_MODEL = os.getenv("LLM_TEXT_MODEL", "gemini/gemini-2.5-flash")
 LLM_VISION_MODEL = os.getenv("LLM_VISION_MODEL", "gemini/gemini-2.5-flash")

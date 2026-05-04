@@ -155,7 +155,8 @@ services:
       # Vertex AI 設定（容器化執行時仍需額外提供 ADC 憑證）
       - VERTEX_PROJECT=${VERTEX_PROJECT:-ser594-ai-service}
       - VERTEX_LOCATION=${VERTEX_LOCATION:-global}
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/adc.json
+      - VERTEX_CREDENTIALS=${VERTEX_CREDENTIALS:-}
+
       - LLM_TEXT_MODEL=${LLM_TEXT_MODEL:-gemini/gemini-2.5-flash}
       - LLM_VISION_MODEL=${LLM_VISION_MODEL:-gemini/gemini-2.5-flash}
       - LLM_EMBEDDING_MODEL=${LLM_EMBEDDING_MODEL:-gemini/gemini-embedding-001}
@@ -167,7 +168,6 @@ services:
       # 共享存储卷（只读访问简历文件）
       # 共享儲存卷（唯讀存取履歷檔案）
       - shared-storage:/app/uploads:ro
-      - ${APPDATA}/gcloud/application_default_credentials.json:/app/adc.json:ro
     networks:
       - resume-network
     depends_on:

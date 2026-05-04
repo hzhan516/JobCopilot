@@ -53,7 +53,7 @@ async def health_check():
         raise HTTPException(status_code=503, detail="RabbitMQ consumer not connected")
     return {
         "status": "healthy",
-        "vertex_project_configured": bool(os.getenv("VERTEX_PROJECT", "ser594-ai-service")),
+        "vertex_project_configured": os.getenv("VERTEX_PROJECT") is not None and os.getenv("VERTEX_PROJECT") != "ser594-ai-service",
         "vertex_location": os.getenv("VERTEX_LOCATION", "global"),
     }
 
