@@ -104,7 +104,6 @@ services:
       # 激活开发/生产配置
       # 啟用開發/生產設定檔
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
-      - SPRING_FLYWAY_ENABLED=true
     volumes:
       # Shared storage volume (resume files)
       # 共享存储卷（简历文件）
@@ -150,12 +149,15 @@ services:
       # 文件存储路径（与后端共享）
       # 檔案儲存路徑（與後端共享）
       - FILE_STORAGE_PATH=/app/uploads
-      # Vertex AI Configuration (ADC credentials still required when running in container)
-      # Vertex AI配置（容器化运行时仍需额外提供ADC凭证）
-      # Vertex AI 設定（容器化執行時仍需額外提供 ADC 憑證）
-      - VERTEX_PROJECT=${VERTEX_PROJECT:-ser594-ai-service}
+      # Vertex AI Configuration (credentials file path; see volumes below)
+      # Vertex AI 配置（凭证文件路径；见下方 volumes）
+      # Vertex AI 設定（憑證檔案路徑；見下方 volumes）
+      - VERTEX_PROJECT_ID=${VERTEX_PROJECT_ID:-ser594-ai-service}
       - VERTEX_LOCATION=${VERTEX_LOCATION:-global}
-      - VERTEX_CREDENTIALS=${VERTEX_CREDENTIALS:-}
+      # Inside the container, the credentials file is mounted at a fixed path.
+      # 容器内部凭证文件固定挂载于此路径。
+      # 容器內部憑證檔案固定掛載於此路徑。
+      - VERTEX_CREDENTIALS=/app/credentials/gcp-service-account.json
 
       - LLM_TEXT_MODEL=${LLM_TEXT_MODEL:-gemini/gemini-2.5-flash}
       - LLM_VISION_MODEL=${LLM_VISION_MODEL:-gemini/gemini-2.5-flash}
@@ -168,6 +170,16 @@ services:
       # 共享存储卷（只读访问简历文件）
       # 共享儲存卷（唯讀存取履歷檔案）
       - shared-storage:/app/uploads:ro
+      # Optional: mount Google Cloud Service Account key (read-only)
+      # 可选：挂载 Google Cloud 服务账号密钥（只读）
+      # 可選：掛載 Google Cloud 服務帳號金鑰（唯讀）
+      # IMPORTANT: VERTEX_CREDENTIALS in .env MUST be an ABSOLUTE host path.
+      # 重要提示：.env 中的 VERTEX_CREDENTIALS 必须是主机的绝对路径（如 /home/user/vertex.json）。
+      # 重要提示：.env 中的 VERTEX_CREDENTIALS 必須是主機的絕對路徑（如 /home/user/vertex.json）。
+      # Relative paths or plain filenames will be treated as named volumes by Podman.
+      # 相对路径或纯文件名会被 Podman 识别为命名卷而导致报错。
+      # 相對路徑或純檔案名會被 Podman 識別為命名卷而導致報錯。
+      # - ${VERTEX_CREDENTIALS}:/app/credentials/gcp-service-account.json:ro
     networks:
       - resume-network
     depends_on:
@@ -203,6 +215,10 @@ services:
     volumes:
       # Data Persistence / 数据持久化 / 資料持久化
       - postgres-data:/var/lib/postgresql/data
+      # Database initialization script (executed on first container start)
+      # 数据库初始化脚本（仅在容器首次启动时执行）
+      # 資料庫初始化腳本（僅在容器首次啟動時執行）
+      - ./backend/app/src/main/resources/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - resume-network
     restart: unless-stopped
@@ -253,6 +269,8 @@ services:
 networks:
   resume-network:
     driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1500
     ipam:
       config:
         - subnet: 172.20.0.0/16

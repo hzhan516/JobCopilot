@@ -23,7 +23,7 @@ except ImportError as e:
 print("\n--------------------------------------------------")
 print("准备测试连通性...")
 print(f"目标模型: {LLM_TEXT_MODEL}")
-print(f"识别到的项目: {os.getenv('VERTEX_PROJECT')}")
+print(f"识别到的项目: {os.getenv('VERTEX_PROJECT_ID')}")
 print("--------------------------------------------------\n")
 
 try:

@@ -14,7 +14,7 @@ def configure_test_environment(monkeypatch: pytest.MonkeyPatch) -> Iterator[None
     monkeypatch.setenv("RABBITMQ_PORT", "5672")
     monkeypatch.setenv("RABBITMQ_USERNAME", "guest")
     monkeypatch.setenv("RABBITMQ_PASSWORD", "guest")
-    monkeypatch.setenv("VERTEX_PROJECT", "test-project")
+    monkeypatch.setenv("VERTEX_PROJECT_ID", "test-project")
     monkeypatch.setenv("VERTEX_LOCATION", "us-central1")
     monkeypatch.setenv("LLM_TEXT_MODEL", "mock/text-model")
     monkeypatch.setenv("LLM_VISION_MODEL", "mock/vision-model")

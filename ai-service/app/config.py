@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
@@ -38,17 +39,25 @@ JOB_RANK_RESULT_ROUTING_KEY = "backend.res.job.rank"
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
-VERTEX_PROJECT = os.getenv("VERTEX_PROJECT", "ser594-ai-service")
+VERTEX_PROJECT_ID = os.getenv("VERTEX_PROJECT_ID", "ser594-ai-service")
 VERTEX_LOCATION = os.getenv("VERTEX_LOCATION", "global")
 VERTEX_CREDENTIALS = os.getenv("VERTEX_CREDENTIALS")
 
 # Export standard variables required by LiteLLM for Vertex AI routing
-os.environ["VERTEXAI_PROJECT"] = VERTEX_PROJECT
-os.environ["VERTEX_PROJECT"] = VERTEX_PROJECT
+os.environ["VERTEXAI_PROJECT"] = VERTEX_PROJECT_ID
+os.environ["VERTEX_PROJECT"] = VERTEX_PROJECT_ID
 os.environ["VERTEX_LOCATION"] = VERTEX_LOCATION
+
 if VERTEX_CREDENTIALS:
-    # LiteLLM accepts the raw JSON string via VERTEX_CREDENTIALS
-    os.environ["VERTEX_CREDENTIALS"] = VERTEX_CREDENTIALS
+    creds_path = Path(VERTEX_CREDENTIALS)
+    if creds_path.is_file():
+        # Read the service account JSON key from the file path
+        creds_content = creds_path.read_text()
+        os.environ["VERTEX_CREDENTIALS"] = creds_content
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(creds_path)
+    else:
+        # Backward compatibility: value may be a raw JSON string
+        os.environ["VERTEX_CREDENTIALS"] = VERTEX_CREDENTIALS
 
 LLM_TEXT_MODEL = os.getenv("LLM_TEXT_MODEL", "gemini/gemini-2.5-flash")
 LLM_VISION_MODEL = os.getenv("LLM_VISION_MODEL", "gemini/gemini-2.5-flash")
