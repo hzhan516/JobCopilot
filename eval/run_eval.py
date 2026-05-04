@@ -4,7 +4,8 @@
 The script evaluates real AI-service pipeline functions:
 - resume parsing extraction quality
 - job posting parsing quality
-- job ranking quality against a keyword baseline
+- single job suitability scoring quality
+- optional legacy job ranking quality against a keyword baseline
 
 It writes machine-readable results to eval/results/metrics.json.
 """
@@ -159,6 +160,50 @@ def evaluate_job_parsing() -> dict[str, Any]:
     }
 
 
+def evaluate_suitability_scoring() -> dict[str, Any]:
+    from app.schemas import ParsedJobContent, ParsedResumeContent, SuitabilityRequest
+    from app.services.suitability_service import evaluate_suitability_with_vertex
+
+    cases = load_json(DATA_DIR / "suitability_cases.json")
+    case_results = []
+
+    for case in cases:
+        request = SuitabilityRequest(
+            resume=ParsedResumeContent(**case["resume"]),
+            job=ParsedJobContent(**case["job"]),
+        )
+        result = evaluate_suitability_with_vertex(request)
+        expected = case["expected"]
+        min_score = float(expected.get("minFinalScore", 0.0))
+        max_score = float(expected.get("maxFinalScore", 1.0))
+        final_score = float(result.final_score)
+
+        case_results.append(
+            {
+                "id": case["id"],
+                "expectedSuitable": expected["suitable"],
+                "predictedSuitable": result.suitable,
+                "decisionExact": int(result.suitable == expected["suitable"]),
+                "finalScore": round(final_score, 4),
+                "scoreInExpectedRange": int(min_score <= final_score <= max_score),
+                "expectedScoreRange": [min_score, max_score],
+                "skillScore": result.breakdown.skill_score,
+                "experienceScore": result.breakdown.experience_score,
+                "overallScore": result.breakdown.overall_score,
+                "summary": result.summary,
+            }
+        )
+
+    return {
+        "metric": "single_job_suitability_scoring",
+        "caseCount": len(case_results),
+        "decisionAccuracy": mean([item["decisionExact"] for item in case_results]),
+        "scoreRangeAccuracy": mean([item["scoreInExpectedRange"] for item in case_results]),
+        "averageFinalScore": mean([item["finalScore"] for item in case_results]),
+        "cases": case_results,
+    }
+
+
 def evaluate_job_ranking() -> dict[str, Any]:
     from app.schemas import JobRankCommand
     from app.services.job_rank_service import rank_jobs
@@ -251,6 +296,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip API key preflight check. Useful when credentials are supplied by the provider SDK.",
     )
+    parser.add_argument(
+        "--include-legacy-ranking",
+        action="store_true",
+        help="Also run the legacy job ranking NDCG@5 evaluation.",
+    )
     return parser.parse_args()
 
 
@@ -261,14 +311,19 @@ def main() -> None:
     if not args.skip_env_check:
         check_live_environment()
 
+    metrics = {
+        "resumeParsing": evaluate_resume_parsing(),
+        "jobParsing": evaluate_job_parsing(),
+        "suitabilityScoring": evaluate_suitability_scoring(),
+    }
+
+    if args.include_legacy_ranking:
+        metrics["legacyJobRanking"] = evaluate_job_ranking()
+
     results = {
         "mode": "live",
-        "description": "Live evaluation using ai-service parsing and ranking pipeline functions.",
-        "metrics": {
-            "resumeParsing": evaluate_resume_parsing(),
-            "jobParsing": evaluate_job_parsing(),
-            "jobRanking": evaluate_job_ranking(),
-        },
+        "description": "Live evaluation using current ai-service parsing and single-job suitability scoring pipeline functions.",
+        "metrics": metrics,
     }
 
     output_path = Path(args.output)
