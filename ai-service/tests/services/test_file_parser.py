@@ -1,7 +1,9 @@
+import os
 import pytest
 from unittest.mock import MagicMock, patch
 import xml.etree.ElementTree as ET
 from io import BytesIO
+from pathlib import Path
 from zipfile import ZipFile
 
 from app.services.file_parser import (
@@ -31,6 +33,29 @@ def test_download_file_bytes_failure(mock_get):
     
     with pytest.raises(Exception, match="HTTP Error"):
         download_file_bytes("http://test.com/file")
+
+def test_download_file_bytes_from_storage_url(tmp_path, monkeypatch):
+    monkeypatch.setenv("FILE_STORAGE_PATH", str(tmp_path))
+    target = tmp_path / "resumes" / "myfile.pdf"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"local pdf content")
+
+    result = download_file_bytes("/api/storage/download?key=myfile.pdf&expiry=123456")
+    assert result == b"local pdf content"
+
+def test_download_file_bytes_from_object_key(tmp_path, monkeypatch):
+    monkeypatch.setenv("FILE_STORAGE_PATH", str(tmp_path))
+    target = tmp_path / "resumes" / "2026" / "05" / "03" / "uuid_file.pdf"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"nested file content")
+
+    result = download_file_bytes("uuid_file.pdf")
+    assert result == b"nested file content"
+
+def test_download_file_bytes_local_not_found(tmp_path, monkeypatch):
+    monkeypatch.setenv("FILE_STORAGE_PATH", str(tmp_path))
+    with pytest.raises(ValueError, match="Unsupported file_url"):
+        download_file_bytes("nonexistent.pdf")
 
 @patch("app.services.file_parser.PdfReader")
 def test_extract_text_from_pdf(mock_reader_class):

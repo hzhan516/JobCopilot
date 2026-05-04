@@ -23,6 +23,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -130,9 +132,12 @@ public class ResumeApplicationService {
         versionRepository.save(originalVersion);
 
         try {
+            String presignedUrl = fileStorageService.generatePresignedUrl(
+                    originalVersion.getStoragePath(), Duration.ofHours(1)
+            );
             ResumeParseCommand parseCommand = new ResumeParseCommand(
                     originalVersion.getId().toString(),
-                    originalVersion.getStoragePath(),
+                    presignedUrl,
                     command.contentType()
             );
             aiMessagePublisherPort.sendResumeForParsing(parseCommand);
