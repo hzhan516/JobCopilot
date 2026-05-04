@@ -72,6 +72,8 @@ def test_parse_commands():
     job_cmd = parse_job_command(job_body)
     assert isinstance(job_cmd, JobParseCommand)
     assert job_cmd.job_id == "job-1"
+    assert job_cmd.screenshot_url is None
+    assert job_cmd.description_text is None
     
     resume_body = json.dumps({"resumeId": "res-1", "fileUrl": "http://test.com/res.pdf", "format": "pdf"}).encode("utf-8")
     res_cmd = parse_resume_command(resume_body)
