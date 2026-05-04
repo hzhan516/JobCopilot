@@ -31,10 +31,16 @@ def generate_embedding(text: str) -> list[float]:
         input=[cleaned_text],
     )
 
-    if not response.data or not response.data[0].embedding:
+    if not response.data:
         raise ValueError("LiteLLM returned no embeddings.")
 
-    return response.data[0].embedding
+    emb_item = response.data[0]
+    emb = emb_item["embedding"] if isinstance(emb_item, dict) else emb_item.embedding
+
+    if not emb:
+        raise ValueError("LiteLLM returned no embeddings.")
+
+    return emb
 
 
 def process_vector(command: VectorGenCommand) -> AiResultEvent:
