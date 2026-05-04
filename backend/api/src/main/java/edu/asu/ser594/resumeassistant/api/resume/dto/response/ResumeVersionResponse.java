@@ -22,6 +22,7 @@ public class ResumeVersionResponse {
     private final String fileType;
     private final long fileSize;
     private final String content;
+    private final String parseStatus;
     private final boolean editable;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;

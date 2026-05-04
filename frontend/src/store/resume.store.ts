@@ -23,7 +23,7 @@ function mapSummaryToVersion(
     storagePath: '',
     content: undefined,
     parsedContent: undefined,
-    parseStatus: summary.status as ResumeVersion['parseStatus'],
+    parseStatus: summary.parseStatus as ResumeVersion['parseStatus'],
     parseErrorMessage: undefined,
     createdAt: summary.createdAt,
   };
@@ -38,7 +38,7 @@ function adaptVersion(version: ApiResumeVersion): ResumeVersion {
     storagePath: '',
     content: version.content ?? undefined,
     parsedContent: undefined,
-    parseStatus: version.status as ResumeVersion['parseStatus'],
+    parseStatus: version.parseStatus as ResumeVersion['parseStatus'],
     parseErrorMessage: undefined,
     createdAt: version.createdAt,
   };

@@ -222,6 +222,7 @@ public class ResumeFacadeImpl implements ResumeFacade {
         return ResumeGroupResponse.VersionSummary.builder()
                 .versionId(v.getId())
                 .status(v.getStatus().name())
+                .parseStatus(v.getParseStatus().name())
                 .createdAt(v.getCreatedAt())
                 .exists(true)
                 .build();
@@ -237,6 +238,7 @@ public class ResumeFacadeImpl implements ResumeFacade {
                 .fileType(v.getFileType())
                 .fileSize(v.getFileSize())
                 .content(v.getContent())
+                .parseStatus(v.getParseStatus().name())
                 .editable(v.isEditable())
                 .createdAt(v.getCreatedAt())
                 .updatedAt(v.getUpdatedAt())

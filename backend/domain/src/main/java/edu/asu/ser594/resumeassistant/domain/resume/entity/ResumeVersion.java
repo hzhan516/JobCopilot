@@ -95,7 +95,7 @@ public final class ResumeVersion implements Entity<UUID> {
                 null,
                 "",  // 空内容待填充 / Empty content to be filled
                 null,
-                ParseStatus.PENDING,
+                ParseStatus.NOT_APPLICABLE,
                 null,
                 Status.ACTIVE,
                 LocalDateTime.now(),
@@ -134,7 +134,7 @@ public final class ResumeVersion implements Entity<UUID> {
                 null,
                 content,
                 null,
-                ParseStatus.PENDING,
+                ParseStatus.NOT_APPLICABLE,
                 null,
                 Status.ACTIVE,
                 LocalDateTime.now(),

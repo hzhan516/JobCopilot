@@ -27,10 +27,12 @@ export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit, o
     switch (parseStatus) {
       case 'COMPLETED':
         return <Badge variant="default" className="bg-green-500">{t('resume.versionDetail.parsed')}</Badge>;
-      case 'PROCESSING':
-        return <Badge variant="secondary" className="bg-blue-500 text-white">{t('resume.parseStatus.processing')}</Badge>;
+      case 'PARSING':
+        return <Badge variant="secondary" className="bg-blue-500 text-white">{t('resume.parseStatus.parsing')}</Badge>;
       case 'FAILED':
         return <Badge variant="destructive">{t('resume.parseStatus.failed')}</Badge>;
+      case 'NOT_APPLICABLE':
+        return null;
       default:
         return <Badge variant="outline">{t('resume.parseStatus.pending')}</Badge>;
     }

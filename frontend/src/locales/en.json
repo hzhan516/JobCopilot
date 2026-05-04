@@ -338,9 +338,10 @@
     },
     "parseStatus": {
       "pending": "Pending",
-      "processing": "Processing",
+      "parsing": "Parsing",
       "completed": "Completed",
-      "failed": "Failed"
+      "failed": "Failed",
+      "notApplicable": "N/A"
     },
     "versionDetail": {
       "title": "Version Details",

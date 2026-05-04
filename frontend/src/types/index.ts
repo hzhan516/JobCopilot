@@ -75,7 +75,8 @@ export interface LoginByGoogleRequest {
 // 版本摘要
 export interface VersionSummary {
   versionId: string;
-  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  status: 'ACTIVE' | 'ARCHIVED';
+  parseStatus: 'PENDING' | 'PARSING' | 'COMPLETED' | 'FAILED' | 'NOT_APPLICABLE';
   createdAt: string;
   exists: boolean;
 }
@@ -97,7 +98,8 @@ export interface ResumeVersion {
   versionId: string;
   groupId: string;
   versionType: 'ORIGINAL' | 'CONVERTED' | 'AI_OPTIMIZED';
-  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  status: 'ACTIVE' | 'ARCHIVED';
+  parseStatus: 'PENDING' | 'PARSING' | 'COMPLETED' | 'FAILED' | 'NOT_APPLICABLE';
   originalFileName: string;
   fileType: string;
   fileSize: number;

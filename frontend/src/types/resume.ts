@@ -20,7 +20,7 @@ export interface ResumeVersion {
     description: string;
     requirements: string[];
   };
-  parseStatus: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  parseStatus: 'PENDING' | 'PARSING' | 'COMPLETED' | 'FAILED' | 'NOT_APPLICABLE';
   parseErrorMessage?: string;
   createdAt: string;
 }

@@ -32,6 +32,7 @@ public class ResumeGroupResponse {
     public static class VersionSummary {
         private final UUID versionId;
         private final String status;
+        private final String parseStatus;
         private final LocalDateTime createdAt;
         private final boolean exists;
     }

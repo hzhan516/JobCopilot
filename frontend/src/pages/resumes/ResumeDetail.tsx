@@ -72,7 +72,7 @@ export default function ResumeDetail() {
   const aiOptimizedVersion = currentGroup.versions.find(
     (v) => v.versionType === 'AI_OPTIMIZED'
   ) || null;
-  const hasAIOptimized = aiOptimizedVersion && aiOptimizedVersion.parseStatus === 'COMPLETED';
+  const hasAIOptimized = aiOptimizedVersion && aiOptimizedVersion.parseStatus !== 'NOT_APPLICABLE';
 
   return (
     <div className="container mx-auto py-6 space-y-6">

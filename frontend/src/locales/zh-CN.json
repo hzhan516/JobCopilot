@@ -338,9 +338,10 @@
     },
     "parseStatus": {
       "pending": "待处理",
-      "processing": "处理中",
+      "parsing": "解析中",
       "completed": "已完成",
-      "failed": "失败"
+      "failed": "失败",
+      "notApplicable": "不适用"
     },
     "versionDetail": {
       "title": "版本详情",

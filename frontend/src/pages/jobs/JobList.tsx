@@ -434,7 +434,7 @@ export default function JobList() {
                         // original 版本需要解析完成(COMPLETED)才允许匹配
                         // original version must be COMPLETED to be selectable for matching
                         const isOriginalNotReady =
-                          version === group.originalVersion && version.status !== 'COMPLETED';
+                          version === group.originalVersion && version.parseStatus !== 'COMPLETED';
                         const label = `${group.title} - ${version.versionId.slice(0, 8)} (${version.status})`;
                         return (
                           <SelectItem

@@ -413,7 +413,7 @@ export default function Chat() {
                           .map((version) => {
                             const isOriginalNotReady =
                               version === group.originalVersion &&
-                              version.status !== 'COMPLETED';
+                              version.parseStatus !== 'COMPLETED';
                             const label = `${group.title} - ${version.versionId.slice(0, 8)} (${version.status})`;
                             return (
                               <SelectItem

@@ -63,4 +63,14 @@ class ResumeVersionTest {
         version.activate();
         assertThat(version.getStatus()).isEqualTo(ResumeVersion.Status.ACTIVE);
     }
+
+    @Test
+    @DisplayName("Should set NOT_APPLICABLE for converted and AI optimized versions")
+    void shouldSetNotApplicableForNonOriginalVersions() {
+        ResumeVersion converted = ResumeVersion.createConverted(TEST_GROUP_ID);
+        assertThat(converted.getParseStatus()).isEqualTo(ParseStatus.NOT_APPLICABLE);
+
+        ResumeVersion aiOptimized = ResumeVersion.createAiOptimized(TEST_GROUP_ID, "AI content");
+        assertThat(aiOptimized.getParseStatus()).isEqualTo(ParseStatus.NOT_APPLICABLE);
+    }
 }

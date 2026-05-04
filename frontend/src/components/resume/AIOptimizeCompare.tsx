@@ -66,10 +66,12 @@ export const AIOptimizeCompare: React.FC<AIOptimizeCompareProps> = ({
             >
               {version.parseStatus === 'COMPLETED'
                 ? t('resume.parseStatus.completed')
-                : version.parseStatus === 'PROCESSING'
-                ? t('resume.parseStatus.processing')
+                : version.parseStatus === 'PARSING'
+                ? t('resume.parseStatus.parsing')
                 : version.parseStatus === 'FAILED'
                 ? t('resume.parseStatus.failed')
+                : version.parseStatus === 'NOT_APPLICABLE'
+                ? t('resume.parseStatus.notApplicable')
                 : t('resume.parseStatus.pending')}
             </Badge>
           </div>
