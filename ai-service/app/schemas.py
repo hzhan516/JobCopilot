@@ -10,7 +10,8 @@ class AppBaseModel(BaseModel):
 class JobParseCommand(AppBaseModel):
     job_id: str = Field(alias="jobId")
     url: str
-    image_check_enabled: bool = Field(alias="imageCheckEnabled")
+    image_check_enabled: bool = Field(default=False, alias="imageCheckEnabled")
+    screenshot_url: str | None = Field(default=None, alias="screenshotUrl")
 
 
 class ResumeParseCommand(AppBaseModel):

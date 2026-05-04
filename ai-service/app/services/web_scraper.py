@@ -58,7 +58,7 @@ def scrape_job_page(url: str, capture_screenshot: bool) -> ScrapeResult:
 
     screenshot_url = None
     if capture_screenshot:
-        _ = _capture_screenshot(url)
+        screenshot_url = _capture_screenshot(url)
 
 
     return ScrapeResult(
