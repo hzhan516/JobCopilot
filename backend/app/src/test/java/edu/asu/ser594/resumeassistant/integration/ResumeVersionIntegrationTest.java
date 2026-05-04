@@ -9,12 +9,10 @@ import edu.asu.ser594.resumeassistant.api.user.dto.response.AuthResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -37,11 +35,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * - 版本链归档行为
  * - Version chain archiving behavior
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@ActiveProfiles("test")
 @Transactional
 @DisplayName("Resume Version Integration Tests")
-class ResumeVersionIntegrationTest {
+class ResumeVersionIntegrationTest extends AbstractIntegrationTest {
 
     private static final String TEST_EMAIL = "resume-version-test@example.com";
     private static final String TEST_PASSWORD = "password123";

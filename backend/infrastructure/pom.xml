@@ -65,10 +65,10 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- pgvector - 向量数据库支持 -->
+        <!-- hibernate-vector - Hibernate 官方 pgvector 类型支持 -->
         <dependency>
-            <groupId>com.pgvector</groupId>
-            <artifactId>pgvector</artifactId>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-vector</artifactId>
         </dependency>
 
         <!-- Spring Web - 用于HTTP客户端 -->

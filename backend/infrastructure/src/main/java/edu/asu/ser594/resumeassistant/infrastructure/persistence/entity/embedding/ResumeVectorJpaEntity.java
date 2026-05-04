@@ -3,6 +3,9 @@ package edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.embeddi
 import edu.asu.ser594.resumeassistant.domain.embedding.valueobject.VectorStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Array;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -30,7 +33,9 @@ public class ResumeVectorJpaEntity {
      * 向量数据，使用 float[] 映射 pgvector
      * Vector data, using float[] to map to pgvector
      */
-    @Column(name = "embedding", columnDefinition = "vector(1536)")
+    @JdbcTypeCode(SqlTypes.VECTOR)
+    @Array(length = 1536)
+    @Column(name = "embedding")
     private float[] embedding;
 
     @Enumerated(EnumType.STRING)

@@ -61,7 +61,7 @@ public class EmbeddingDimensionValidator implements ApplicationRunner {
                                     + "Database table {}.{} vector dimension is {}, but configured dimension is {}.\n"
                                     + "如需调整维度，请：\n"
                                     + "1) 开发环境：删除 postgres-data 卷后重新启动容器；\n"
-                                    + "2) 生产环境：手动更新 ResumeVectorJpaEntity / JobVectorJpaEntity 中的 columnDefinition，\n"
+                                    + "2) 生产环境：手动更新 ResumeVectorJpaEntity / JobVectorJpaEntity 中的 @Array(length = ...)，\n"
                                     + "   并重建向量表（所有现有向量将失效需重新生成）。\n"
                                     + "========================================",
                             table, column, actualDim, expectedDim,

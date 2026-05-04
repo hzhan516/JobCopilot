@@ -7,13 +7,11 @@ import edu.asu.ser594.resumeassistant.api.user.dto.response.AuthResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URI;
@@ -35,11 +33,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * - 错误处理
  * - Error handling
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@ActiveProfiles("test")
 @Transactional
 @DisplayName("Authentication Integration Tests")
-class AuthIntegrationTest {
+class AuthIntegrationTest extends AbstractIntegrationTest {
 
     private static final String TEST_EMAIL = "integration@test.com";
     private static final String TEST_PASSWORD = "password123";

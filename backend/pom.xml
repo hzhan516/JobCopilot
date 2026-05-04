@@ -29,6 +29,7 @@
         <!-- 框架版本 -->
         <spring-boot.version>3.5.7</spring-boot.version>
         <postgresql.version>42.7.4</postgresql.version>
+        <hibernate.version>6.6.33.Final</hibernate.version>
         <pgvector.version>0.1.6</pgvector.version>
         <lombok.version>1.18.36</lombok.version>
         <mapstruct.version>1.6.3</mapstruct.version>
@@ -113,6 +114,11 @@
                 <groupId>com.pgvector</groupId>
                 <artifactId>pgvector</artifactId>
                 <version>${pgvector.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.hibernate.orm</groupId>
+                <artifactId>hibernate-vector</artifactId>
+                <version>${hibernate.version}</version>
             </dependency>
             <!-- MinIO Java Client -->
             <dependency>
