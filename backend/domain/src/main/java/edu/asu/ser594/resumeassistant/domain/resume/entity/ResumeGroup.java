@@ -145,6 +145,38 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
     }
 
     /**
+     * 激活指定版本（同类型旧 ACTIVE 自动归档）
+     * Activate specified version (old ACTIVE of same type is auto-archived)
+     *
+     * @throws IllegalArgumentException if version not found in group
+     * @throws IllegalStateException    if version is ORIGINAL or already ACTIVE
+     */
+    public void activateVersion(UUID versionId) {
+        ResumeVersion target = versions.stream()
+                .filter(v -> v.getId().equals(versionId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Version not found in group"));
+
+        if (target.getVersionType() == ResumeVersion.VersionType.ORIGINAL) {
+            throw new IllegalStateException("Original version cannot be activated");
+        }
+        if (target.getStatus() == ResumeVersion.Status.ACTIVE) {
+            throw new IllegalStateException("Version is already active");
+        }
+
+        // 归档同类型当前 ACTIVE 版本
+        // Archive current ACTIVE version of the same type
+        versions.stream()
+                .filter(v -> v.getVersionType() == target.getVersionType())
+                .filter(v -> v.getStatus() == ResumeVersion.Status.ACTIVE)
+                .findFirst()
+                .ifPresent(ResumeVersion::archive);
+
+        target.activate();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
      * 检查用户所有权
      * Check user ownership
      */

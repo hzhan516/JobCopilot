@@ -18,7 +18,7 @@ export default function ResumeDetail() {
   const { groupId } = useParams<{ groupId: string }>();
   const safeGroupId = groupId!;
   const navigate = useNavigate();
-  const { currentGroup, loading, fetchGroupDetail, createVersion } = useResumeStore();
+  const { currentGroup, loading, fetchGroupDetail, createVersion, activateVersion } = useResumeStore();
   const [activeTab, setActiveTab] = useState<TabType>('detail');
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(() => {
     if (currentGroup && currentGroup.versions.length > 0) {
@@ -41,9 +41,10 @@ export default function ResumeDetail() {
       const sortedVersions = [...currentGroup.versions].sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedVersionId(sortedVersions[0].versionId);
     }
-  }, [currentGroup]);
+  }, [currentGroup, selectedVersionId]);
 
   if (loading && !currentGroup) {
     return (
@@ -118,6 +119,14 @@ export default function ResumeDetail() {
                 setSelectedVersionId(id);
                 setActiveTab('detail');
               }}
+              onActivateVersion={async (versionId) => {
+                try {
+                  await activateVersion(versionId);
+                  toast.success(t('resume.detail.activateSuccess'));
+                } catch {
+                  toast.error(t('resume.detail.activateError'));
+                }
+              }}
             />
           </div>
         </div>
@@ -167,6 +176,14 @@ export default function ResumeDetail() {
                   toast.error(t('resume.detail.createCopyError'));
                 }
               }}
+              onActivate={selectedVersion.status === 'ARCHIVED' && selectedVersion.versionType !== 'ORIGINAL' ? async () => {
+                try {
+                  await activateVersion(selectedVersion.versionId);
+                  toast.success(t('resume.detail.activateSuccess'));
+                } catch {
+                  toast.error(t('resume.detail.activateError'));
+                }
+              } : undefined}
             />
           ) : activeTab === 'detail' ? (
             <div className="flex items-center justify-center h-64 border rounded-lg bg-muted/20">

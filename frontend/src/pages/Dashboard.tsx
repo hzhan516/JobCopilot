@@ -89,10 +89,6 @@ export default function Dashboard() {
     },
   ];
 
-  useEffect(() => {
-    loadStats();
-  }, []);
-
   const loadStats = async () => {
     const updateStat = (index: number, value: number) => {
       setStats((prev) =>
@@ -124,6 +120,10 @@ export default function Dashboard() {
         .catch(() => updateStat(3, 0)),
     ]);
   };
+
+  useEffect(() => {
+    loadStats();
+  }, []);
 
   return (
     <div className="space-y-8">

@@ -324,6 +324,29 @@ public class ResumeApplicationService {
     }
 
     @Transactional
+    public ResumeVersion handleActivateVersion(UUID versionId, UUID userId) {
+        ResumeVersion version = versionRepository.findById(versionId)
+                .orElseThrow(() -> new StorageException("version.not.found"));
+
+        ResumeGroup group = groupRepository.findById(version.getGroupId())
+                .orElseThrow(() -> new StorageException("group.not.found"));
+
+        if (!group.isOwnedBy(userId)) {
+            throw new StorageException("access.denied");
+        }
+
+        // 调用领域方法
+        // Call domain method
+        group.activateVersion(versionId);
+        groupRepository.save(group);
+
+        log.info("Resume version activated: versionId={}, groupId={}", versionId, group.getId());
+
+        return versionRepository.findById(versionId)
+                .orElseThrow(() -> new StorageException("version.not.found"));
+    }
+
+    @Transactional
     public void handleParseResult(AiResultEvent event) {
         ResumeVersion originalVersion = versionRepository.findById(UUID.fromString(event.referenceId()))
                 .orElseThrow(() -> new StorageException("version.not.found"));

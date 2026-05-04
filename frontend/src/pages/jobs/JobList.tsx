@@ -57,13 +57,7 @@ export default function JobList() {
   const [matchStatus, setMatchStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle');
   const [, setActiveMatchId] = useState<string | null>(null);
 
-  // 加载职位数据
-  useEffect(() => {
-    loadJobs();
-    loadResumes();
-  }, []);
-
-  const loadJobs = async () => {
+  const loadJobs = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await jobService.getJobs();
@@ -74,16 +68,22 @@ export default function JobList() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t]);
 
-  const loadResumes = async () => {
+  const loadResumes = useCallback(async () => {
     try {
       const data = await resumeService.getResumeGroups();
       setResumes(data);
     } catch {
       // 静默处理
     }
-  };
+  }, []);
+
+  // 加载职位数据
+  useEffect(() => {
+    loadJobs();
+    loadResumes();
+  }, [loadJobs, loadResumes]);
 
   // 筛选和排序
   useEffect(() => {

@@ -5,9 +5,11 @@ import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeGroupRepository;
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.mapper.resume.ResumeGroupPersistenceMapper;
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.mapper.resume.ResumeVersionPersistenceMapper;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,14 +27,42 @@ public class ResumeGroupRepositoryImpl implements ResumeGroupRepository {
     private final JpaResumeVersionRepository jpaVersionRepo;
     private final ResumeGroupPersistenceMapper groupMapper;
     private final ResumeVersionPersistenceMapper versionMapper;
+    private final EntityManager entityManager;
 
     @Override
     public void save(ResumeGroup group) {
         jpaGroupRepo.save(groupMapper.toJpaEntity(group));
 
-        // 级联保存版本
-        // Cascade save versions
+        // 分离已存在版本与新增版本，确保 UPDATE 先于 INSERT 执行，
+        // 避免违反 partial unique index (group_id, version_type) WHERE status = 'ACTIVE'。
+        // Separate existing and new versions to ensure UPDATEs run before INSERTs,
+        // preventing violation of the partial unique index.
+        List<ResumeVersion> existing = new ArrayList<>();
+        List<ResumeVersion> newVersions = new ArrayList<>();
+
         for (ResumeVersion version : group.getVersions()) {
+            if (jpaVersionRepo.existsById(version.getId())) {
+                existing.add(version);
+            } else {
+                newVersions.add(version);
+            }
+        }
+
+        // 先保存已存在版本（产生 UPDATE）
+        // Save existing versions first (produces UPDATE)
+        for (ResumeVersion version : existing) {
+            jpaVersionRepo.save(versionMapper.toJpaEntity(version));
+        }
+
+        // 强制刷盘，确保 UPDATE 先于 INSERT 落库
+        // Force flush so UPDATEs are persisted before INSERTs
+        if (!existing.isEmpty()) {
+            entityManager.flush();
+        }
+
+        // 再保存新增版本（产生 INSERT）
+        // Then save new versions (produces INSERT)
+        for (ResumeVersion version : newVersions) {
             jpaVersionRepo.save(versionMapper.toJpaEntity(version));
         }
     }

@@ -45,4 +45,22 @@ class ResumeVersionTest {
         assertThat(version.getParseStatus()).isEqualTo(ParseStatus.COMPLETED);
         assertThat(version.getParsedContent()).isEqualTo("{\"key\":\"value\"}");
     }
+
+    @Test
+    @DisplayName("Should archive and activate version")
+    void shouldArchiveAndActivateVersion() {
+        // 准备 / Given
+        ResumeVersion version = ResumeVersion.createConverted(TEST_GROUP_ID);
+
+        // 验证初始状态 / Verify initial state
+        assertThat(version.getStatus()).isEqualTo(ResumeVersion.Status.ACTIVE);
+
+        // 归档 / When: archive
+        version.archive();
+        assertThat(version.getStatus()).isEqualTo(ResumeVersion.Status.ARCHIVED);
+
+        // 激活 / When: activate
+        version.activate();
+        assertThat(version.getStatus()).isEqualTo(ResumeVersion.Status.ACTIVE);
+    }
 }

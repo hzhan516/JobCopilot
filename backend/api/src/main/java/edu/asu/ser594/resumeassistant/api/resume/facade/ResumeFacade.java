@@ -114,6 +114,16 @@ public interface ResumeFacade {
                                                      UUID userId);
 
     /**
+     * 激活简历版本
+     * Activate resume version
+     *
+     * @param versionId 版本ID / Version ID
+     * @param userId    用户ID / User ID
+     * @return 激活后的版本详情 / Activated version details
+     */
+    ApiResponse<ResumeVersionResponse> activateVersion(UUID versionId, UUID userId);
+
+    /**
      * 处理AI解析结果的回调
      * Handle parse result from AI service
      */

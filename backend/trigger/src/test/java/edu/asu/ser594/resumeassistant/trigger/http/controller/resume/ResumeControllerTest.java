@@ -409,6 +409,24 @@ class ResumeControllerTest {
     }
 
     @Test
+    @DisplayName("Should activate version and return activated version")
+    void shouldActivateVersionAndReturnActivatedVersion() {
+        // 给定 / Given
+        ApiResponse<ResumeVersionResponse> apiResponse = ApiResponse.success(testVersionResponse);
+        when(resumeFacade.activateVersion(VERSION_ID, USER_ID)).thenReturn(apiResponse);
+
+        // 当 / When
+        ResponseEntity<ApiResponse<ResumeVersionResponse>> response =
+                resumeController.activateVersion(VERSION_ID, USER_ID);
+
+        // 那么 / Then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getCode() == 200).isTrue();
+        verify(resumeFacade).activateVersion(VERSION_ID, USER_ID);
+    }
+
+    @Test
     @DisplayName("Should handle empty groups list")
     void shouldHandleEmptyGroupsList() {
         // 给定

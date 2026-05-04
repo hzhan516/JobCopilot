@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfileStore } from '@/store/profile.store';
@@ -103,7 +103,7 @@ export default function Profile() {
     }
   };
 
-  const avatarUrl = form.watch('avatarUrl');
+  const avatarUrl = useWatch({ control: form.control, name: 'avatarUrl' });
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">

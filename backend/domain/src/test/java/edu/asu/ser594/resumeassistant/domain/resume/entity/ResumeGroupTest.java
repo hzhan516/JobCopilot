@@ -287,4 +287,81 @@ class ResumeGroupTest {
         // Then
         assertThat(group.getCreatedAt()).isEqualTo(createdAt);
     }
+
+    @Test
+    @DisplayName("Should activate archived version and auto-archive current active")
+    void shouldActivateArchivedVersionAndAutoArchiveCurrentActive() {
+        // 给定
+        // Given
+        ResumeGroup group = ResumeGroup.create(TEST_USER_ID, TEST_TITLE);
+        group.uploadOriginalVersion("resume.pdf", "application/pdf", 1024L, "storage/path");
+
+        ResumeVersion firstConverted = group.getActiveVersionByType(ResumeVersion.VersionType.CONVERTED);
+        ResumeVersion secondConverted = ResumeVersion.createConverted(group.getId());
+        group.addVersion(secondConverted);
+
+        // firstConverted 应已被归档
+        // firstConverted should be archived
+        assertThat(firstConverted.getStatus()).isEqualTo(ResumeVersion.Status.ARCHIVED);
+        assertThat(secondConverted.getStatus()).isEqualTo(ResumeVersion.Status.ACTIVE);
+
+        // 当 - 激活第一个版本
+        // When - activate the first version
+        group.activateVersion(firstConverted.getId());
+
+        // 那么
+        // Then
+        assertThat(firstConverted.getStatus()).isEqualTo(ResumeVersion.Status.ACTIVE);
+        assertThat(secondConverted.getStatus()).isEqualTo(ResumeVersion.Status.ARCHIVED);
+        assertThat(group.getActiveVersionByType(ResumeVersion.VersionType.CONVERTED))
+                .isEqualTo(firstConverted);
+    }
+
+    @Test
+    @DisplayName("Should throw when activating non-existent version")
+    void shouldThrowWhenActivatingNonExistentVersion() {
+        // 给定
+        // Given
+        ResumeGroup group = ResumeGroup.create(TEST_USER_ID, TEST_TITLE);
+        group.uploadOriginalVersion("resume.pdf", "application/pdf", 1024L, "storage/path");
+        UUID nonExistent = UUID.randomUUID();
+
+        // 那么
+        // Then
+        assertThatThrownBy(() -> group.activateVersion(nonExistent))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Version not found in group");
+    }
+
+    @Test
+    @DisplayName("Should throw when activating already active version")
+    void shouldThrowWhenActivatingAlreadyActiveVersion() {
+        // 给定
+        // Given
+        ResumeGroup group = ResumeGroup.create(TEST_USER_ID, TEST_TITLE);
+        group.uploadOriginalVersion("resume.pdf", "application/pdf", 1024L, "storage/path");
+        ResumeVersion activeConverted = group.getActiveVersionByType(ResumeVersion.VersionType.CONVERTED);
+
+        // 那么
+        // Then
+        assertThatThrownBy(() -> group.activateVersion(activeConverted.getId()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("already active");
+    }
+
+    @Test
+    @DisplayName("Should throw when activating original version")
+    void shouldThrowWhenActivatingOriginalVersion() {
+        // 给定
+        // Given
+        ResumeGroup group = ResumeGroup.create(TEST_USER_ID, TEST_TITLE);
+        group.uploadOriginalVersion("resume.pdf", "application/pdf", 1024L, "storage/path");
+        ResumeVersion original = group.getActiveVersionByType(ResumeVersion.VersionType.ORIGINAL);
+
+        // 那么
+        // Then
+        assertThatThrownBy(() -> group.activateVersion(original.getId()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Original version cannot be activated");
+    }
 }

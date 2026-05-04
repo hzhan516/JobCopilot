@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { jobService } from '@/services/jobService';
@@ -29,14 +29,7 @@ export default function JobDetail() {
   const [selectedResumeVersionId, setSelectedResumeVersionId] = useState<string>('');
   const [isMatching, setIsMatching] = useState(false);
 
-  useEffect(() => {
-    if (jobId) {
-      loadJob();
-      loadResumes();
-    }
-  }, [jobId]);
-
-  const loadJob = async () => {
+  const loadJob = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await jobService.getJob(jobId!);
@@ -46,9 +39,9 @@ export default function JobDetail() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [jobId, t]);
 
-  const loadResumes = async () => {
+  const loadResumes = useCallback(async () => {
     try {
       const data = await resumeService.getResumeGroups();
       setResumes(data);
@@ -59,7 +52,14 @@ export default function JobDetail() {
     } catch {
       // 静默处理，简历加载失败不影响职位详情展示
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (jobId) {
+      loadJob();
+      loadResumes();
+    }
+  }, [jobId, loadJob, loadResumes]);
 
   const handleMatch = async () => {
     if (!selectedResumeVersionId) {

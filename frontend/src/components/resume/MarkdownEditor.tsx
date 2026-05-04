@@ -47,6 +47,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current);
     }
+    // 重置自动保存状态 / Reset auto-save status
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAutoSaveStatus('idle');
     autoSaveTimerRef.current = setTimeout(async () => {
       setAutoSaveStatus('saving');

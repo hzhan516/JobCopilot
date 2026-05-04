@@ -4,7 +4,7 @@ import type { ResumeVersion } from '../../types/resume';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { Edit3, FileText, Briefcase, List, Copy } from 'lucide-react';
+import { Edit3, FileText, Briefcase, List, Copy, Play } from 'lucide-react';
 
 interface VersionDetailProps {
   version: ResumeVersion;
@@ -13,9 +13,13 @@ interface VersionDetailProps {
    * 基于此版本创建副本 / Create a copy based on this version
    */
   onCreateCopy?: () => void;
+  /**
+   * 激活此版本 / Activate this version
+   */
+  onActivate?: () => void;
 }
 
-export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit, onCreateCopy }) => {
+export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit, onCreateCopy, onActivate }) => {
   const { t } = useTranslation();
   const { parsedContent, content, versionType, status, parseStatus } = version;
 
@@ -60,6 +64,12 @@ export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit, o
             <Button onClick={onCreateCopy} variant="ghost" size="sm">
               <Copy className="w-4 h-4 mr-2" />
               {t('resume.versionDetail.createCopy')}
+            </Button>
+          )}
+          {onActivate && versionType !== 'ORIGINAL' && status === 'ARCHIVED' && (
+            <Button onClick={onActivate} variant="ghost" size="sm" className="text-green-600 hover:text-green-700 hover:bg-green-50">
+              <Play className="w-4 h-4 mr-2" />
+              {t('resume.versionDetail.setActive')}
             </Button>
           )}
           {versionType !== 'ORIGINAL' && status === 'ACTIVE' && (

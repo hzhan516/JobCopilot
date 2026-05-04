@@ -212,6 +212,14 @@
     "aiPending": "Message sent. AI reply is still processing.",
     "footerHint": "AI can help you optimize resumes, recommend jobs, and answer job search questions",
     "loadError": "Failed to load conversations",
+    "selectResume": "Select Resume",
+    "selectResumePlaceholder": "Choose a ready resume...",
+    "jobUrl": "Job Posting URL",
+    "jobUrlPlaceholder": "Paste job posting URL...",
+    "jobUrlInvalid": "Please enter a valid URL",
+    "resumeRequired": "Please select a resume",
+    "jobUrlRequired": "Please enter a job posting URL",
+    "jobSubmitError": "Failed to submit job URL",
     "createError": "Please enter a chat title",
     "createFailed": "Failed to create conversation",
     "sendFailed": "Failed to send message",
@@ -311,7 +319,9 @@
       "manualEdit": "Manual Edit",
       "manualEditDesc": "Create a copy and edit manually",
       "createCopySuccess": "Copy created successfully",
-      "createCopyError": "Failed to create copy"
+      "createCopyError": "Failed to create copy",
+      "activateSuccess": "Version activated successfully",
+      "activateError": "Failed to activate version"
     },
     "edit": {
       "title": "Edit Version",
@@ -323,7 +333,8 @@
       "converted": "Parsed Version",
       "aiOptimized": "AI Optimized",
       "active": "Active",
-      "archived": "Archived"
+      "archived": "Archived",
+      "setActive": "Set Active"
     },
     "parseStatus": {
       "pending": "Pending",
@@ -347,7 +358,8 @@
       "aiOptimized": "AI Optimized",
       "noRequirements": "No requirements extracted.",
       "noDescription": "No description available.",
-      "contentNotAvailable": "Content is not available for this version."
+      "contentNotAvailable": "Content is not available for this version.",
+      "setActive": "Set Active"
     },
     "markdownEditor": {
       "title": "Edit Resume",

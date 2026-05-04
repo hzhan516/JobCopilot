@@ -198,6 +198,15 @@ public final class ResumeVersion implements Entity<UUID> {
     }
 
     /**
+     * 激活此版本
+     * Activate this version
+     */
+    public void activate() {
+        this.status = Status.ACTIVE;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
      * 检查是否可编辑
      * Check if editable
      */

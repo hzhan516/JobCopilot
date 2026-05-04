@@ -191,4 +191,19 @@ public class ResumeController {
             @CurrentUser UUID userId) {
         return ResponseEntity.ok(resumeFacade.createVersion(groupId, request, userId));
     }
+
+    /**
+     * 激活简历版本
+     * Activate resume version
+     *
+     * @param versionId 版本ID
+     * @param userId    当前用户ID
+     * @return 激活后的版本详情
+     */
+    @PostMapping("/versions/{versionId}/activate")
+    public ResponseEntity<ApiResponse<ResumeVersionResponse>> activateVersion(
+            @PathVariable("versionId") UUID versionId,
+            @CurrentUser UUID userId) {
+        return ResponseEntity.ok(resumeFacade.activateVersion(versionId, userId));
+    }
 }

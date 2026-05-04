@@ -55,6 +55,15 @@ public class ConversationApplicationService {
     public Conversation createConversation(CreateConversationCommand command) {
         log.info("Creating new conversation for user: {}", command.userId());
 
+        // 新对话必须同时提供简历版本和职位（新业务规则）
+        // New conversations must provide both resume version and job
+        if (command.resumeVersionId() != null && command.jobId() == null) {
+            throw new ConversationException("conversation.jobId.required");
+        }
+        if (command.jobId() != null && command.resumeVersionId() == null) {
+            throw new ConversationException("conversation.resumeVersionId.required");
+        }
+
         // 校验简历版本 / Validate resume version
         if (command.resumeVersionId() != null) {
             resumeVersionRepository.findById(command.resumeVersionId())

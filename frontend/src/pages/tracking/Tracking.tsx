@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import type { Tracking } from '@/types';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '@/utils/i18n';
@@ -67,12 +67,7 @@ export default function TrackingPage() {
     []
   );
 
-  // 加载投递记录
-  useEffect(() => {
-    loadTrackings();
-  }, []);
-
-  const loadTrackings = async () => {
+  const loadTrackings = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await trackingService.getTrackings();
@@ -82,7 +77,12 @@ export default function TrackingPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t]);
+
+  // 加载投递记录
+  useEffect(() => {
+    loadTrackings();
+  }, [loadTrackings]);
 
   // 添加投递记录
   const handleAddTracking = async () => {

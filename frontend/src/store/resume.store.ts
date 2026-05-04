@@ -74,6 +74,7 @@ interface ResumeStore {
   saveVersion: (versionId: string, content: string) => Promise<void>;
   createVersion: (groupId: string, sourceVersionId?: string) => Promise<string>;
   deleteGroup: (groupId: string) => Promise<void>;
+  activateVersion: (versionId: string) => Promise<void>;
   deleteVersion: (versionId: string) => Promise<void>;
 }
 
@@ -190,6 +191,19 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
         groups: groups.filter(g => g.groupId !== groupId),
         currentGroup: currentGroup?.groupId === groupId ? null : currentGroup
       });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  activateVersion: async (versionId: string) => {
+    set({ loading: true });
+    try {
+      await resumeService.activateVersion(versionId);
+      const { currentGroup } = get();
+      if (currentGroup) {
+        await get().fetchGroupDetail(currentGroup.groupId);
+      }
     } finally {
       set({ loading: false });
     }

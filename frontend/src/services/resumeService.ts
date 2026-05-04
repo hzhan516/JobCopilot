@@ -122,6 +122,18 @@ export const resumeService = {
     }
     throw new Error(response.data.message);
   },
+
+  // 激活简历版本
+  // Activate resume version
+  activateVersion: async (versionId: string): Promise<ResumeVersion> => {
+    const response = await apiClient.post<ApiResponse<ResumeVersion>>(
+      `/v1/resumes/versions/${versionId}/activate`
+    );
+    if (response.data.code === 200) {
+      return response.data.data;
+    }
+    throw new Error(response.data.message);
+  },
 };
 
 export default resumeService;

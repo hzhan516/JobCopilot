@@ -12,6 +12,7 @@ import edu.asu.ser594.resumeassistant.domain.resume.valueobject.ParseStatus;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ResumeParseCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.exception.StorageException;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import edu.asu.ser594.resumeassistant.domain.shared.service.DocumentFormatConverter;
 import edu.asu.ser594.resumeassistant.domain.shared.service.FileStorageService;
@@ -26,13 +27,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -359,6 +357,48 @@ class ResumeApplicationServiceTest {
         // 应删除最旧的 ARCHIVED 版本（createdAt 最早的那个）
         // Should delete the oldest ARCHIVED version (earliest createdAt)
         verify(versionRepository).delete(chain.get(0).getId());
+    }
+
+    @Test
+    @DisplayName("Should activate archived version")
+    void shouldActivateArchivedVersion() {
+        // 准备 / Given
+        UUID archivedId = UUID.randomUUID();
+        ResumeVersion archivedVersion = ResumeVersion.reconstruct(
+                archivedId, GROUP_ID, ResumeVersion.VersionType.CONVERTED,
+                null, null, "text/markdown", 0L, null, null,
+                "Archived content", null, ParseStatus.PENDING, null,
+                ResumeVersion.Status.ARCHIVED, java.time.LocalDateTime.now(), java.time.LocalDateTime.now()
+        );
+        testGroup = createTestGroup();
+        testGroup.addVersion(archivedVersion);
+
+        when(versionRepository.findById(archivedId)).thenReturn(Optional.of(archivedVersion));
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(testGroup));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
+
+        // 执行 / When
+        ResumeVersion result = resumeService.handleActivateVersion(archivedId, USER_ID);
+
+        // 验证 / Then
+        assertThat(result.getStatus()).isEqualTo(ResumeVersion.Status.ACTIVE);
+        verify(groupRepository).save(any(ResumeGroup.class));
+    }
+
+    @Test
+    @DisplayName("Should throw when activating version not owned by user")
+    void shouldThrowWhenActivatingVersionNotOwnedByUser() {
+        // 准备 / Given
+        UUID otherUserId = UUID.randomUUID();
+        testGroup = createTestGroup();
+        ResumeVersion version = createTestVersion(ResumeVersion.VersionType.CONVERTED);
+        when(versionRepository.findById(VERSION_ID)).thenReturn(Optional.of(version));
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(testGroup));
+
+        // 执行 & 验证 / When & Then
+        assertThatThrownBy(() -> resumeService.handleActivateVersion(VERSION_ID, otherUserId))
+                .isInstanceOf(StorageException.class)
+                .hasMessageContaining("access.denied");
     }
 
     // 创建测试简历版本 / Create test resume version

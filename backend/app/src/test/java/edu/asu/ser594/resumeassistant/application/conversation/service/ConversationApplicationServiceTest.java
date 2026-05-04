@@ -169,6 +169,46 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    void createConversation_WithResumeVersionOnly_ThrowsException() {
+        // 准备 / Given
+        UUID userId = UUID.randomUUID();
+        UUID resumeVersionId = UUID.randomUUID();
+        CreateConversationCommand command = CreateConversationCommand.builder()
+                .userId(userId)
+                .title("Test")
+                .resumeVersionId(resumeVersionId)
+                .jobId(null)
+                .build();
+
+        // 执行与验证 / When & Then
+        ConversationException exception = assertThrows(
+                ConversationException.class,
+                () -> applicationService.createConversation(command)
+        );
+        assertEquals("conversation.jobId.required", exception.getMessageKey());
+    }
+
+    @Test
+    void createConversation_WithJobOnly_ThrowsException() {
+        // 准备 / Given
+        UUID userId = UUID.randomUUID();
+        UUID jobId = UUID.randomUUID();
+        CreateConversationCommand command = CreateConversationCommand.builder()
+                .userId(userId)
+                .title("Test")
+                .resumeVersionId(null)
+                .jobId(jobId)
+                .build();
+
+        // 执行与验证 / When & Then
+        ConversationException exception = assertThrows(
+                ConversationException.class,
+                () -> applicationService.createConversation(command)
+        );
+        assertEquals("conversation.resumeVersionId.required", exception.getMessageKey());
+    }
+
+    @Test
     void sendMessage_Success_PublishesMqEvent() {
         // 准备 / Given
         UUID userId = UUID.randomUUID();

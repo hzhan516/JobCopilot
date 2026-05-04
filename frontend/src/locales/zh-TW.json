@@ -212,6 +212,14 @@
     "aiPending": "訊息已發送，AI 回覆處理中。",
     "footerHint": "AI 可以幫助您優化履歷、推薦職位、解答求職問題",
     "loadError": "載入對話失敗",
+    "selectResume": "選擇簡歷",
+    "selectResumePlaceholder": "選擇一個就緒的簡歷...",
+    "jobUrl": "職位連結",
+    "jobUrlPlaceholder": "貼上職位發布頁面連結...",
+    "jobUrlInvalid": "請輸入有效的連結地址",
+    "resumeRequired": "請選擇簡歷",
+    "jobUrlRequired": "請輸入職位連結",
+    "jobSubmitError": "職位連結提交失敗",
     "createError": "請輸入對話標題",
     "createFailed": "建立對話失敗",
     "sendFailed": "發送訊息失敗",
@@ -311,7 +319,9 @@
       "manualEdit": "手動修改",
       "manualEditDesc": "建立副本並手動編輯",
       "createCopySuccess": "副本建立成功",
-      "createCopyError": "建立副本失敗"
+      "createCopyError": "建立副本失敗",
+      "activateSuccess": "版本已設為活躍",
+      "activateError": "設為活躍失敗"
     },
     "edit": {
       "title": "編輯版本",
@@ -323,7 +333,8 @@
       "converted": "解析版本",
       "aiOptimized": "AI 優化",
       "active": "活躍",
-      "archived": "已歸檔"
+      "archived": "已歸檔",
+      "setActive": "設為活躍"
     },
     "parseStatus": {
       "pending": "待處理",
@@ -347,7 +358,8 @@
       "aiOptimized": "AI 優化",
       "noRequirements": "未提取到要求。",
       "noDescription": "暫無描述。",
-      "contentNotAvailable": "此版本暫無內容。"
+      "contentNotAvailable": "此版本暫無內容。",
+      "setActive": "設為活躍"
     },
     "markdownEditor": {
       "title": "編輯履歷",

@@ -186,6 +186,12 @@ public class ResumeFacadeImpl implements ResumeFacade {
     }
 
     @Override
+    public ApiResponse<ResumeVersionResponse> activateVersion(UUID versionId, UUID userId) {
+        ResumeVersion activated = applicationService.handleActivateVersion(versionId, userId);
+        return ApiResponse.success(toVersionResponse(activated));
+    }
+
+    @Override
     public void handleParseResult(AiResultEvent event) {
         log.info("Handling parse result for ResumeVersion: {}", event.referenceId());
         applicationService.handleParseResult(event);

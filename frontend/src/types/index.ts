@@ -201,7 +201,6 @@ export interface Conversation {
   userId?: string;
   title: string;
   status?: string;
-  resumeId?: string;
   resumeVersionId?: string | null;
   jobId?: string | null;
   messages?: Message[];
