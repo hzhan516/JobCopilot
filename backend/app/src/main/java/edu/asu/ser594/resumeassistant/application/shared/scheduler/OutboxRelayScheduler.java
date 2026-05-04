@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.application.shared.scheduler;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.asu.ser594.resumeassistant.domain.shared.entity.OutboxMessage;
 import edu.asu.ser594.resumeassistant.domain.shared.repository.OutboxMessageRepository;
 import edu.asu.ser594.resumeassistant.types.enums.OutboxStatus;
@@ -27,6 +28,7 @@ public class OutboxRelayScheduler {
     //    private static final int BATCH_SIZE = 100;
     private final OutboxMessageRepository outboxMessageRepository;
     private final RabbitTemplate rabbitTemplate;
+    private final ObjectMapper objectMapper;
 
     /**
      * 每 2 秒执行一次转发
@@ -48,10 +50,11 @@ public class OutboxRelayScheduler {
 
         for (OutboxMessage message : pendingMessages) {
             try {
+                Object payloadObject = objectMapper.readValue(message.getPayload(), Object.class);
                 rabbitTemplate.convertAndSend(
                         message.getExchange(),
                         message.getRoutingKey(),
-                        message.getPayload()
+                        payloadObject
                 );
                 message.markSent();
                 outboxMessageRepository.save(message);
