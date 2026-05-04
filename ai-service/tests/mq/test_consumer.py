@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from app.mq.consumer import (
     create_connection,
     setup_all_queues,
+    QUEUE_ARGUMENTS,
     parse_job_command,
     parse_resume_command,
     parse_vector_command,
@@ -23,6 +24,7 @@ from app.mq.consumer import (
     job_rank_message_callback,
     start_all_consumers,
 )
+from app.config import AI_DLQ_QUEUE
 from app.schemas import (
     JobParseCommand,
     ResumeParseCommand,
@@ -52,9 +54,18 @@ def test_setup_all_queues():
     mock_channel = MagicMock()
     setup_all_queues(mock_channel)
     
-    mock_channel.exchange_declare.assert_called_once()
-    assert mock_channel.queue_declare.call_count == 10
-    assert mock_channel.queue_bind.call_count == 10
+    assert mock_channel.exchange_declare.call_count == 2
+    assert mock_channel.queue_declare.call_count == 11
+    assert mock_channel.queue_bind.call_count == 11
+
+    dlq_call = mock_channel.queue_declare.call_args_list[0]
+    assert dlq_call.kwargs["queue"] == AI_DLQ_QUEUE
+    assert dlq_call.kwargs["durable"] is True
+    assert "arguments" not in dlq_call.kwargs
+
+    for call in mock_channel.queue_declare.call_args_list[1:]:
+        assert call.kwargs["durable"] is True
+        assert call.kwargs["arguments"] == QUEUE_ARGUMENTS
 
 def test_parse_commands():
     job_body = json.dumps({"jobId": "job-1", "url": "http://test.com/job.pdf", "imageCheckEnabled": False}).encode("utf-8")

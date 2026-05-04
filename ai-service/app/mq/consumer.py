@@ -6,6 +6,9 @@ import pika
 
 from app.config import (
     AI_DIRECT_EXCHANGE,
+    AI_DLX_EXCHANGE,
+    AI_DLQ_QUEUE,
+    AI_DLQ_ROUTING_KEY,
     CONVERSATION_REQUEST_QUEUE,
     CONVERSATION_REQUEST_ROUTING_KEY,
     CONVERSATION_RESULT_QUEUE,
@@ -49,6 +52,18 @@ from app.services.vector_service import process_vector
 
 logger = logging.getLogger(__name__)
 
+QUEUE_ARGUMENTS = {
+    "x-dead-letter-exchange": AI_DLX_EXCHANGE,
+    "x-dead-letter-routing-key": AI_DLQ_ROUTING_KEY,
+}
+
+
+def declare_queue(
+    channel: pika.adapters.blocking_connection.BlockingChannel,
+    queue: str,
+) -> None:
+    channel.queue_declare(queue=queue, durable=True, arguments=QUEUE_ARGUMENTS)
+
 
 def create_connection() -> pika.BlockingConnection:
     credentials = pika.PlainCredentials(RABBITMQ_USERNAME, RABBITMQ_PASSWORD)
@@ -68,66 +83,77 @@ def setup_all_queues(channel: pika.adapters.blocking_connection.BlockingChannel)
         exchange_type="direct",
         durable=True,
     )
+    channel.exchange_declare(
+        exchange=AI_DLX_EXCHANGE,
+        exchange_type="direct",
+        durable=True,
+    )
+    channel.queue_declare(queue=AI_DLQ_QUEUE, durable=True)
+    channel.queue_bind(
+        exchange=AI_DLX_EXCHANGE,
+        queue=AI_DLQ_QUEUE,
+        routing_key=AI_DLQ_ROUTING_KEY,
+    )
 
-    channel.queue_declare(queue=JOB_PARSE_REQUEST_QUEUE, durable=True)
+    declare_queue(channel, JOB_PARSE_REQUEST_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=JOB_PARSE_REQUEST_QUEUE,
         routing_key=JOB_PARSE_REQUEST_ROUTING_KEY,
     )
-    channel.queue_declare(queue=JOB_PARSE_RESULT_QUEUE, durable=True)
+    declare_queue(channel, JOB_PARSE_RESULT_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=JOB_PARSE_RESULT_QUEUE,
         routing_key=JOB_PARSE_RESULT_ROUTING_KEY,
     )
 
-    channel.queue_declare(queue=RESUME_PARSE_REQUEST_QUEUE, durable=True)
+    declare_queue(channel, RESUME_PARSE_REQUEST_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=RESUME_PARSE_REQUEST_QUEUE,
         routing_key=RESUME_PARSE_REQUEST_ROUTING_KEY,
     )
-    channel.queue_declare(queue=RESUME_PARSE_RESULT_QUEUE, durable=True)
+    declare_queue(channel, RESUME_PARSE_RESULT_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=RESUME_PARSE_RESULT_QUEUE,
         routing_key=RESUME_PARSE_RESULT_ROUTING_KEY,
     )
 
-    channel.queue_declare(queue=VECTOR_GEN_REQUEST_QUEUE, durable=True)
+    declare_queue(channel, VECTOR_GEN_REQUEST_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=VECTOR_GEN_REQUEST_QUEUE,
         routing_key=VECTOR_GEN_REQUEST_ROUTING_KEY,
     )
-    channel.queue_declare(queue=VECTOR_GEN_RESULT_QUEUE, durable=True)
+    declare_queue(channel, VECTOR_GEN_RESULT_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=VECTOR_GEN_RESULT_QUEUE,
         routing_key=VECTOR_GEN_RESULT_ROUTING_KEY,
     )
 
-    channel.queue_declare(queue=CONVERSATION_REQUEST_QUEUE, durable=True)
+    declare_queue(channel, CONVERSATION_REQUEST_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=CONVERSATION_REQUEST_QUEUE,
         routing_key=CONVERSATION_REQUEST_ROUTING_KEY,
     )
-    channel.queue_declare(queue=CONVERSATION_RESULT_QUEUE, durable=True)
+    declare_queue(channel, CONVERSATION_RESULT_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=CONVERSATION_RESULT_QUEUE,
         routing_key=CONVERSATION_RESULT_ROUTING_KEY,
     )
 
-    channel.queue_declare(queue=JOB_RANK_REQUEST_QUEUE, durable=True)
+    declare_queue(channel, JOB_RANK_REQUEST_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=JOB_RANK_REQUEST_QUEUE,
         routing_key=JOB_RANK_REQUEST_ROUTING_KEY,
     )
-    channel.queue_declare(queue=JOB_RANK_RESULT_QUEUE, durable=True)
+    declare_queue(channel, JOB_RANK_RESULT_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=JOB_RANK_RESULT_QUEUE,

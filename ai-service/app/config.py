@@ -7,6 +7,9 @@ RABBITMQ_USERNAME = os.getenv("RABBITMQ_USERNAME", "guest")
 RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD", "guest")
 
 AI_DIRECT_EXCHANGE = "ai.direct.exchange"
+AI_DLX_EXCHANGE = "ai.dlx.exchange"
+AI_DLQ_QUEUE = "ai.dlq.queue"
+AI_DLQ_ROUTING_KEY = "dlq.routing.key"
 
 JOB_PARSE_REQUEST_QUEUE = "ai.queue.job.parse"
 JOB_PARSE_RESULT_QUEUE = "backend.queue.job.parse"
