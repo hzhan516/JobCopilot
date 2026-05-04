@@ -43,7 +43,7 @@ services:
         - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
     container_name: resume-assistant-frontend
     ports:
-      - "80:80"
+      - "8081:80"
     networks:
       - resume-network
     depends_on:
@@ -104,6 +104,10 @@ services:
       # 嵌入向量维度（必须与所选模型一致）
       # 嵌入向量維度（必須與所選模型一致）
       - LLM_EMBEDDING_MODEL_DIMENSION=${LLM_EMBEDDING_MODEL_DIMENSION:-1536}
+      # AI Service URL (inside Docker network, use service name instead of localhost)
+      # AI 服务地址（Docker 网络内使用服务名而非 localhost）
+      # AI 服務位址（Docker 網路內使用服務名稱而非 localhost）
+      - AI_SERVICE_BASE_URL=http://ai-service:8000
       # Activate dev/prod profile
       # 激活开发/生产配置
       # 啟用開發/生產設定檔
