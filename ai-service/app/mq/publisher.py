@@ -1,4 +1,5 @@
 import json
+import logging
 
 import pika
 
@@ -12,6 +13,8 @@ from app.config import (
 )
 
 from app.schemas import AiResultEvent
+
+logger = logging.getLogger(__name__)
 
 
 def get_result_routing_key(event_type: str) -> str:
@@ -45,10 +48,21 @@ def publish_ai_result(
             delivery_mode=2,
         ),
     )
-    print(
-        f"Published AI result: type={event.type}, status={event.status}, routing_key={routing_key}",
-        flush=True,
-    )
+    if event.status == "FAILED":
+        logger.error(
+            "Published AI result: type=%s, status=%s, routing_key=%s, error=%s",
+            event.type,
+            event.status,
+            routing_key,
+            event.error_message,
+        )
+    else:
+        logger.info(
+            "Published AI result: type=%s, status=%s, routing_key=%s",
+            event.type,
+            event.status,
+            routing_key,
+        )
 
 
 def publish_json_payload(

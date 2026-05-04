@@ -2,12 +2,14 @@
 Resume Assistant - Python AI service entry point.
 """
 
+import logging
 import os
 import threading
 
 from fastapi import FastAPI, HTTPException
 from contextlib import asynccontextmanager
 
+from app.config import LOG_LEVEL
 from app.mq.consumer import create_connection, setup_all_queues, start_all_consumers
 
 from app.schemas import (
@@ -20,6 +22,11 @@ from app.schemas import (
 from app.services.job_matching_service import find_job_matches
 from app.services.suitability_service import evaluate_suitability_with_vertex
 
+
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -79,24 +86,25 @@ def initialize_mq() -> None:
     max_retries = 10
     retry_delay = 5
     
+    logger = logging.getLogger(__name__)
     for attempt in range(max_retries):
         try:
-            print(f"Starting RabbitMQ consumers (Attempt {attempt + 1}/{max_retries})...")
+            logger.info("Starting RabbitMQ consumers (Attempt %d/%d)...", attempt + 1, max_retries)
             connection = create_connection()
             channel = connection.channel()
             setup_all_queues(channel)
-            print("RabbitMQ consumers are ready.")
+            logger.info("RabbitMQ consumers are ready.")
             _mq_is_connected = True
             start_all_consumers(channel)
             break # Successfully connected and consuming
-        except Exception as exc:
+        except Exception:
             _mq_is_connected = False
-            print(f"RabbitMQ consumer startup failed: {exc}", flush=True)
+            logger.exception("RabbitMQ consumer startup failed")
             if attempt < max_retries - 1:
-                print(f"Retrying in {retry_delay} seconds...")
+                logger.info("Retrying in %d seconds...", retry_delay)
                 time.sleep(retry_delay)
             else:
-                print("Max retries reached. Giving up on RabbitMQ connection.")
+                logger.error("Max retries reached. Giving up on RabbitMQ connection.")
                 raise
 
 
@@ -114,7 +122,8 @@ def _start_mq_consumer_once() -> None:
         )
         consumer_thread.start()
         _mq_started = True
-        print("RabbitMQ consumer thread started.")
+        logger = logging.getLogger(__name__)
+        logger.info("RabbitMQ consumer thread started.")
 
 
 

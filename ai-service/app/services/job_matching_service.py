@@ -1,10 +1,13 @@
 import json
+import logging
 import math
 import time
 from pathlib import Path
 
 from app.schemas import JobMatchRequest, JobMatchResponse, MatchFactors, MatchItem
 from app.services.vector_service import generate_embedding
+
+logger = logging.getLogger(__name__)
 
 
 JOBS_DATASET_FILE = Path(__file__).resolve().parents[2] / "data_pipeline" / "output" / "normalized_jobs_sample.jsonl"
@@ -97,6 +100,7 @@ def _get_job_embedding(job: dict) -> list[float] | None:
     try:
         embedding = generate_embedding(_job_text(job)[:8000])
     except Exception:
+        logger.exception("Failed to generate embedding for job_id=%s", job.get("job_id"))
         return None
 
     _JOB_EMBEDDING_CACHE[job_id] = embedding
@@ -184,6 +188,7 @@ def find_job_matches(request: JobMatchRequest) -> JobMatchResponse:
     try:
         query_embedding = generate_embedding(query)
     except Exception:
+        logger.exception("Failed to generate embedding for query")
         query_embedding = None
 
     ranked_matches = [

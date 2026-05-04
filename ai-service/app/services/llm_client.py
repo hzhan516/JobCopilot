@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 import base64
 from typing import Any
@@ -12,6 +13,8 @@ from app.config import (
     LLM_VISION_MODEL,
     LLM_TEMPERATURE,
 )
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -41,16 +44,22 @@ def _extract_json_text(raw_text: str) -> str:
 
 @RETRY_STRATEGY
 def _generate_text(model: str, messages: list[dict[str, Any]]) -> str:
-    response = completion(
-        model=model,
-        messages=messages,
-        temperature=LLM_TEMPERATURE,
-    )
+    logger.debug("LLM request: model=%s, messages_count=%d", model, len(messages))
+    try:
+        response = completion(
+            model=model,
+            messages=messages,
+            temperature=LLM_TEMPERATURE,
+        )
+    except Exception:
+        logger.exception("LLM completion failed: model=%s", model)
+        raise
 
     content = response.choices[0].message.content
     if not content:
         raise ValueError("LiteLLM returned an empty response.")
 
+    logger.debug("LLM response: model=%s, content_length=%d", model, len(content))
     return content.strip()
 
 
@@ -72,7 +81,7 @@ def generate_json_from_image_prompt(
 ) -> dict[str, Any]:
     base64_image = base64.b64encode(image_bytes).decode("utf-8")
     image_url = f"data:{mime_type};base64,{base64_image}"
-    
+
     messages = [
         {
             "role": "user",
@@ -85,7 +94,7 @@ def generate_json_from_image_prompt(
             ]
         }
     ]
-    
+
     raw_text = _generate_text(
         model=LLM_VISION_MODEL,
         messages=messages,

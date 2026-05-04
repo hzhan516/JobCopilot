@@ -1,4 +1,6 @@
 import json
+import logging
+import traceback
 
 import pika
 
@@ -44,6 +46,8 @@ from app.services.job_rank_service import rank_jobs
 from app.services.job_orchestrator import process_job
 from app.services.resume_orchestrator import process_resume
 from app.services.vector_service import process_vector
+
+logger = logging.getLogger(__name__)
 
 
 def create_connection() -> pika.BlockingConnection:
@@ -181,10 +185,11 @@ def handle_job_message(
     try:
         result = process_job(command)
     except Exception as exc:
+        logger.exception("Job processing failed: job_id=%s", command.job_id)
         result = build_failed_event(
             reference_id=command.job_id,
             event_type="JOB_PARSE",
-            error_message=str(exc),
+            error_message=str(exc) + "\n\n" + traceback.format_exc(),
             event_entity_type="JOB",
         )
 
@@ -199,10 +204,11 @@ def handle_resume_message(
     try:
         result = process_resume(command)
     except Exception as exc:
+        logger.exception("Resume processing failed: resume_id=%s", command.resume_id)
         result = build_failed_event(
             reference_id=command.resume_id,
             event_type="RESUME_PARSE",
-            error_message=str(exc),
+            error_message=str(exc) + "\n\n" + traceback.format_exc(),
             event_entity_type=None,
         )
 
@@ -217,10 +223,11 @@ def handle_vector_message(
     try:
         result = process_vector(command)
     except Exception as exc:
+        logger.exception("Vector processing failed: reference_id=%s", command.reference_id)
         result = build_failed_event(
             reference_id=command.reference_id,
             event_type="VECTOR_GEN",
-            error_message=str(exc),
+            error_message=str(exc) + "\n\n" + traceback.format_exc(),
             event_entity_type=command.entity_type,
         )
 
@@ -235,16 +242,11 @@ def handle_conversation_message(
     try:
         result = process_conversation(command)
     except Exception as exc:
-        print(
-            "Conversation processing failed:"
-            f" conversation_id={command.conversation_id},"
-            f" error={exc}",
-            flush=True,
-        )
+        logger.exception("Conversation processing failed: conversation_id=%s", command.conversation_id)
         result = build_failed_event(
             reference_id=command.conversation_id,
             event_type="CONVERSATION_REPLY",
-            error_message=str(exc),
+            error_message=str(exc) + "\n\n" + traceback.format_exc(),
             event_entity_type=None,
         )
 
@@ -261,6 +263,7 @@ def handle_job_rank_message(
         result = rank_jobs(command)
         publish_job_rank_result(channel, result.model_dump(by_alias=True))
     except Exception as exc:
+        logger.exception("Job rank processing failed: match_id=%s", command.match_id)
         publish_job_rank_result(
             channel,
             {
@@ -268,7 +271,7 @@ def handle_job_rank_message(
                 "status": "FAILED",
                 "rankTimeMs": 0,
                 "rankedResults": [],
-                "errorMessage": str(exc),
+                "errorMessage": str(exc) + "\n\n" + traceback.format_exc(),
             },
         )
 
@@ -277,8 +280,8 @@ def job_message_callback(ch, method, properties, body) -> None:
     try:
         handle_job_message(ch, body)
         ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception as exc:
-        print(f"Failed to process job message: {exc}")
+    except Exception:
+        logger.exception("Failed to process job message")
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 
@@ -286,8 +289,8 @@ def resume_message_callback(ch, method, properties, body) -> None:
     try:
         handle_resume_message(ch, body)
         ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception as exc:
-        print(f"Failed to process resume message: {exc}")
+    except Exception:
+        logger.exception("Failed to process resume message")
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 
@@ -295,23 +298,22 @@ def vector_message_callback(ch, method, properties, body) -> None:
     try:
         handle_vector_message(ch, body)
         ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception as exc:
-        print(f"Failed to process vector message: {exc}")
+    except Exception:
+        logger.exception("Failed to process vector message")
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 
 def conversation_message_callback(ch, method, properties, body) -> None:
-    print(
-        "Received raw conversation MQ message:"
-        f" delivery_tag={method.delivery_tag},"
-        f" body={body.decode('utf-8', errors='replace')[:1000]}",
-        flush=True,
+    logger.info(
+        "Received raw conversation MQ message: delivery_tag=%s, body=%s",
+        method.delivery_tag,
+        body.decode("utf-8", errors="replace")[:1000],
     )
     try:
         handle_conversation_message(ch, body)
         ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception as exc:
-        print(f"Failed to process conversation message: {exc}", flush=True)
+    except Exception:
+        logger.exception("Failed to process conversation message")
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 
@@ -319,8 +321,8 @@ def job_rank_message_callback(ch, method, properties, body) -> None:
     try:
         handle_job_rank_message(ch, body)
         ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception as exc:
-        print(f"Failed to process job rank message: {exc}")
+    except Exception:
+        logger.exception("Failed to process job rank message")
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 
