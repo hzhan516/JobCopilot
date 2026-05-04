@@ -11,10 +11,6 @@ from app.services.web_scraper import scrape_job_page
 MIN_SCRAPED_TEXT_LENGTH = 200
 
 
-def _merge_context(*parts: str | None) -> str:
-    return "\n\n".join(part.strip() for part in parts if part and part.strip())
-
-
 def process_job(command: JobParseCommand) -> AiResultEvent:
     scrape_result = None
     scrape_error: Exception | None = None
@@ -32,11 +28,10 @@ def process_job(command: JobParseCommand) -> AiResultEvent:
 
     parsed_content = None
     scraped_text = scrape_result.markdown_text if scrape_result else ""
-    context_text = _merge_context(scraped_text, command.description_text)
 
     if scraped_text.strip() and len(scraped_text.strip()) >= MIN_SCRAPED_TEXT_LENGTH:
         try:
-            parsed_content = parse_job_text(context_text)
+            parsed_content = parse_job_text(scraped_text)
         except Exception as exc:
             scrape_error = exc
 
@@ -44,20 +39,18 @@ def process_job(command: JobParseCommand) -> AiResultEvent:
         if screenshot_url:
             parsed_content = validate_job_with_vision(
                 parsed_content=parsed_content,
-                page_text=context_text,
+                page_text=scraped_text,
                 screenshot_url=screenshot_url,
             )
     elif screenshot_url:
         parsed_content = parse_job_from_image(
             screenshot_url=screenshot_url,
-            context_text=context_text,
+            context_text=scraped_text,
         )
-    elif command.description_text and command.description_text.strip():
-        parsed_content = parse_job_text(command.description_text)
     else:
         if scrape_error:
             raise scrape_error
-        raise ValueError("Unable to parse job posting from URL and no screenshot or descriptionText was provided.")
+        raise ValueError("Unable to parse job posting from URL and no screenshotUrl was provided.")
 
     return AiResultEvent(
         referenceId=command.job_id,

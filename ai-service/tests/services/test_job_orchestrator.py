@@ -33,7 +33,6 @@ def test_process_job_uses_url_first_and_screenshot_to_validate(
             jobId="job-1",
             url="https://example.com/job",
             screenshotUrl="/api/storage/download?key=job.png",
-            descriptionText="Optional pasted description.",
         )
     )
 
@@ -58,14 +57,11 @@ def test_process_job_falls_back_to_screenshot_when_url_scrape_fails(
             jobId="job-1",
             url="https://blocked.example/job",
             screenshotUrl="/api/storage/download?key=job.png",
-            descriptionText="Optional pasted description.",
         )
     )
 
     mock_parse_image.assert_called_once()
     _, kwargs = mock_parse_image.call_args
     assert kwargs["screenshot_url"] == "/api/storage/download?key=job.png"
-    assert "Optional pasted description." in kwargs["context_text"]
     assert result.status == "COMPLETED"
     assert result.data["company"] == "Acme"
-
