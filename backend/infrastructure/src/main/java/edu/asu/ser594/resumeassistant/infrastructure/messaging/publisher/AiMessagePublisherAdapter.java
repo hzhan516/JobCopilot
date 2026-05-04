@@ -44,7 +44,7 @@ public class AiMessagePublisherAdapter implements AiMessagePublisherPort {
      */
     @Override
     public void sendJobForParsing(JobParseCommand command) {
-        log.info("Saving JobParseCommand to outbox for job: {}", command.jobId());
+        log.info("Saving JobParseCommand to outbox for job: {}", command.getJobId());
         saveToOutbox(RabbitMqConfig.ROUTING_KEY_REQ_JOB_PARSE, command);
     }
 

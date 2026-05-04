@@ -5,6 +5,9 @@ import type {
   JobMatchRequest,
   JobMatchResponse,
   JobMatchHistoryResponse,
+  JobScoreRequest,
+  JobScoreResponse,
+  UpdateJobRequest,
 } from '@/types';
 
 // 职位服务
@@ -27,11 +30,18 @@ export const jobService = {
     throw new Error(response.data.message);
   },
 
-  // 提交职位 URL 进行解析
-  submitJob: async (url: string, imageCheckEnabled = false): Promise<Job> => {
-    const response = await apiClient.post<ApiResponse<Job>>('/v1/jobs', {
-      url,
-      imageCheckEnabled,
+  // 提交职位 URL + 截图进行解析（Multipart）
+  submitJob: async (url: string, screenshot?: File): Promise<Job> => {
+    const formData = new FormData();
+    formData.append('url', url);
+    if (screenshot) {
+      formData.append('screenshot', screenshot);
+    }
+
+    const response = await apiClient.post<ApiResponse<Job>>('/v1/jobs', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
     });
     if (response.data.code === 200) {
       return response.data.data;
@@ -39,7 +49,28 @@ export const jobService = {
     throw new Error(response.data.message);
   },
 
-  // 发起异步职位匹配
+  // 更新职位解析内容
+  updateJob: async (jobId: string, data: UpdateJobRequest): Promise<Job> => {
+    const response = await apiClient.put<ApiResponse<Job>>(`/v1/jobs/${jobId}`, data);
+    if (response.data.code === 200) {
+      return response.data.data;
+    }
+    throw new Error(response.data.message);
+  },
+
+  // 对单个职位进行简历评分
+  scoreJob: async (jobId: string, request: JobScoreRequest): Promise<JobScoreResponse> => {
+    const response = await apiClient.post<ApiResponse<JobScoreResponse>>(
+      `/v1/jobs/${jobId}/score`,
+      request
+    );
+    if (response.data.code === 200) {
+      return response.data.data;
+    }
+    throw new Error(response.data.message);
+  },
+
+  // 发起异步职位匹配（保留，供历史功能使用）
   startMatch: async (request: JobMatchRequest): Promise<JobMatchResponse> => {
     const response = await apiClient.post<ApiResponse<JobMatchResponse>>(
       '/v1/jobs/match',

@@ -46,6 +46,8 @@ public record JobResponse(
     public record ParsedJobContentResponse(
             String title,
             String company,
+            String salary,
+            String location,
             String description,
             List<String> requirements
     ) {

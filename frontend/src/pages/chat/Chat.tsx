@@ -401,25 +401,17 @@ export default function Chat() {
                     </SelectTrigger>
                     <SelectContent>
                       {resumes.map((group) =>
-                        [
-                          group.originalVersion,
-                          group.convertedVersion,
-                          group.aiOptimizedVersion,
-                        ]
+                        [group.convertedVersion, group.aiOptimizedVersion]
                           .filter(
                             (v): v is NonNullable<typeof v> =>
                               !!v && v.exists
                           )
                           .map((version) => {
-                            const isOriginalNotReady =
-                              version === group.originalVersion &&
-                              version.parseStatus !== 'COMPLETED';
                             const label = `${group.title} - ${version.versionId.slice(0, 8)} (${version.status})`;
                             return (
                               <SelectItem
                                 key={version.versionId}
                                 value={version.versionId}
-                                disabled={isOriginalNotReady}
                               >
                                 {label}
                               </SelectItem>

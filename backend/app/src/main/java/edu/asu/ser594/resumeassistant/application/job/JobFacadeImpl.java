@@ -1,7 +1,10 @@
 package edu.asu.ser594.resumeassistant.application.job;
 
+import edu.asu.ser594.resumeassistant.api.job.dto.request.JobScoreRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
+import edu.asu.ser594.resumeassistant.api.job.dto.request.UpdateJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
+import edu.asu.ser594.resumeassistant.api.job.dto.response.JobScoreResponse;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
 import edu.asu.ser594.resumeassistant.application.job.service.JobApplicationService;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
@@ -34,6 +37,16 @@ public class JobFacadeImpl implements JobFacade {
     @Override
     public List<JobResponse> listJobs(final UUID userId) {
         return applicationService.listJobs(userId);
+    }
+
+    @Override
+    public JobResponse updateJob(final String jobId, final UUID userId, final UpdateJobRequest request) {
+        return applicationService.updateJob(jobId, userId, request);
+    }
+
+    @Override
+    public JobScoreResponse scoreJob(final String jobId, final UUID userId, final JobScoreRequest request) {
+        return applicationService.scoreJob(jobId, userId, request);
     }
 
     @Override

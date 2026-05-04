@@ -1,7 +1,10 @@
 package edu.asu.ser594.resumeassistant.api.job.facade;
 
+import edu.asu.ser594.resumeassistant.api.job.dto.request.JobScoreRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
+import edu.asu.ser594.resumeassistant.api.job.dto.request.UpdateJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
+import edu.asu.ser594.resumeassistant.api.job.dto.response.JobScoreResponse;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 
 import java.util.List;
@@ -41,6 +44,28 @@ public interface JobFacade {
      * @return 职位列表响应 / List of job responses
      */
     List<JobResponse> listJobs(UUID userId);
+
+    /**
+     * 更新职位的解析内容
+     * Updates the parsed content of a job.
+     *
+     * @param jobId   职位 ID / The job ID.
+     * @param userId  用户 ID / The user ID.
+     * @param request 更新请求 / The update request.
+     * @return 更新后的职位 / The updated job.
+     */
+    JobResponse updateJob(String jobId, UUID userId, UpdateJobRequest request);
+
+    /**
+     * 对单个职位进行简历评分
+     * Scores a single job against a resume.
+     *
+     * @param jobId   职位 ID / The job ID.
+     * @param userId  用户 ID / The user ID.
+     * @param request 评分请求 / The score request.
+     * @return 评分结果 / The score result.
+     */
+    JobScoreResponse scoreJob(String jobId, UUID userId, JobScoreRequest request);
 
     /**
      * 处理异步的职位 AI 解析结果

@@ -14,7 +14,10 @@ MIN_SCRAPED_TEXT_LENGTH = 200
 def process_job(command: JobParseCommand) -> AiResultEvent:
     scrape_result = None
     scrape_error: Exception | None = None
+    # 优先使用用户上传的 Base64 截图
     screenshot_url = command.screenshot_url
+    if command.screenshot_base64:
+        screenshot_url = command.screenshot_base64
 
     try:
         scrape_result = scrape_job_page(

@@ -10,12 +10,16 @@ import java.util.List;
  *
  * @param title        The job title.
  * @param company      The hiring company.
+ * @param salary       The salary range or compensation.
+ * @param location     The job location.
  * @param description  The full job description.
  * @param requirements A list of requirements or qualifications.
  */
 public record ParsedJobContent(
         String title,
         String company,
+        String salary,
+        String location,
         String description,
         List<String> requirements
 ) {

@@ -105,7 +105,7 @@ class ConversationApplicationServiceTest {
         Job job = Job.create(userId, "https://example.com/job", false);
         job.markScraping();
         job.markParsing();
-        job.markCompleted(new ParsedJobContent("Engineer", "Company", "Description", List.of("Req1")));
+        job.markCompleted(new ParsedJobContent("Engineer", "Company", "100K", "Remote", "Description", List.of("Req1")));
 
         CreateConversationCommand command = CreateConversationCommand.builder()
                 .userId(userId)

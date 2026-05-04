@@ -1,5 +1,7 @@
 package edu.asu.ser594.resumeassistant.infrastructure.config;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -12,8 +14,14 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 @ComponentScan(basePackages = "edu.asu.ser594.resumeassistant.infrastructure")
 public class InfrastructureConfig {
+
     @Bean
     public RestTemplate restTemplate() {
         return new RestTemplate();
+    }
+
+    @Bean
+    public Jackson2ObjectMapperBuilderCustomizer jsonCustomizer() {
+        return builder -> builder.serializationInclusion(JsonInclude.Include.NON_NULL);
     }
 }

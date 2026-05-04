@@ -1,10 +1,14 @@
 package edu.asu.ser594.resumeassistant.application.job.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import edu.asu.ser594.resumeassistant.domain.job.exception.JobException;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
+import edu.asu.ser594.resumeassistant.domain.job.repository.JobScoreRepository;
+import edu.asu.ser594.resumeassistant.domain.job.valueobject.ParsedJobContent;
+import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
@@ -14,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -22,6 +27,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -33,7 +39,19 @@ class JobApplicationServiceTest {
     private JobRepository jobRepository;
 
     @Mock
+    private JobScoreRepository jobScoreRepository;
+
+    @Mock
+    private ResumeVersionRepository resumeVersionRepository;
+
+    @Mock
     private AiMessagePublisherPort aiMessagePublisherPort;
+
+    @Mock
+    private RestTemplate restTemplate;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private JobApplicationService jobApplicationService;
@@ -49,7 +67,7 @@ class JobApplicationServiceTest {
         // 准备 / Given
         UUID userId = UUID.randomUUID();
         String url = "http://example.com/job";
-        SubmitJobRequest request = new SubmitJobRequest(url, false);
+        SubmitJobRequest request = new SubmitJobRequest(url, false, null);
 
         Job job = Job.create(userId, url, false);
         when(jobRepository.save(any(Job.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -78,11 +96,15 @@ class JobApplicationServiceTest {
         Map<String, Object> mockParsedData = Map.of(
                 "title", "Software Engineer",
                 "company", "Tech Corp",
+                "salary", "100K-150K",
+                "location", "Remote",
                 "description", "A great job",
                 "requirements", List.of("Java", "Spring")
         );
 
         AiResultEvent event = new AiResultEvent(jobId, "JOB_PARSE", "COMPLETED", mockParsedData, null, "JOB");
+        when(objectMapper.convertValue(eq(mockParsedData), eq(ParsedJobContent.class)))
+                .thenReturn(new ParsedJobContent("Software Engineer", "Tech Corp", "100K-150K", "Remote", "A great job", List.of("Java", "Spring")));
 
         // 执行 / When
         jobApplicationService.handleJobProcessResult(event);

@@ -1,3 +1,5 @@
+import base64
+import re
 from pathlib import Path
 from typing import Any
 
@@ -76,17 +78,36 @@ Job posting text:
     return _build_job_content(parsed)
 
 
+def _decode_base64_image(data: str) -> tuple[bytes, str]:
+    match = re.match(r"data:([\w/]+);base64,(.+)", data)
+    if match:
+        mime_type = match.group(1)
+        image_bytes = base64.b64decode(match.group(2))
+        return image_bytes, mime_type
+    # 处理纯 Base64 字符串（无 data URI 前缀）
+    image_bytes = base64.b64decode(data)
+    return image_bytes, "image/png"
+
+
 def _load_image_bytes(image_url: str) -> tuple[bytes, str]:
+    if image_url.startswith("data:"):
+        return _decode_base64_image(image_url)
+
     if image_url.startswith("http://") or image_url.startswith("https://"):
         image_response = httpx.get(image_url, timeout=30.0, follow_redirects=True)
         image_response.raise_for_status()
         return image_response.content, image_response.headers.get("Content-Type", "image/png")
 
-    image_path = Path(image_url)
-    if image_path.is_file():
-        return image_path.read_bytes(), "image/png"
+    # 尝试作为本地文件路径，但捕获 OSError（例如超长 Base64 字符串导致的文件名过长）
+    try:
+        image_path = Path(image_url)
+        if image_path.is_file():
+            return image_path.read_bytes(), "image/png"
+    except OSError:
+        pass
 
-    return download_file_bytes(image_url), "image/png"
+    # 兜底：尝试作为纯 Base64 字符串解码（无 data: 前缀）
+    return _decode_base64_image(image_url)
 
 
 def parse_job_from_image(

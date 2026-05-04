@@ -71,7 +71,7 @@ export function VersionTimeline({ versions, selectedVersionId, onSelectVersion, 
                     {getVersionIcon(version.versionType)}
                   </div>
                   <span className="font-medium text-sm">
-                    {getVersionLabel(version.versionType)}
+                    {getVersionLabel(version.versionType)} - {version.versionId.slice(0, 8)}
                   </span>
                 </div>
                 {version.status === 'ACTIVE' ? (

@@ -110,4 +110,14 @@ public class Job extends AggregateRoot<String> {
         this.errorMessage = error;
     }
 
+    /**
+     * 直接更新解析后的职位内容（用户手动编辑）
+     * Updates the parsed content directly (user manual edit).
+     *
+     * @param newContent The new parsed content.
+     */
+    public void updateParsedContent(ParsedJobContent newContent) {
+        this.parsedContent = newContent;
+    }
+
 }

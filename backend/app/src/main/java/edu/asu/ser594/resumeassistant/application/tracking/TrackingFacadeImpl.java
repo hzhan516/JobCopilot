@@ -129,6 +129,8 @@ public class TrackingFacadeImpl implements TrackingFacade {
             parsed = new JobResponse.ParsedJobContentResponse(
                     job.getParsedContent().title(),
                     job.getParsedContent().company(),
+                    job.getParsedContent().salary(),
+                    job.getParsedContent().location(),
                     job.getParsedContent().description(),
                     job.getParsedContent().requirements()
             );

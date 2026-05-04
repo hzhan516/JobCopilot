@@ -2,7 +2,9 @@ package edu.asu.ser594.resumeassistant.trigger.http.advice;
 
 import edu.asu.ser594.resumeassistant.api.common.dto.ApiResponse;
 import edu.asu.ser594.resumeassistant.api.shared.service.ExceptionMessageResolver;
+import edu.asu.ser594.resumeassistant.domain.job.exception.JobContentNotReadyException;
 import edu.asu.ser594.resumeassistant.domain.matching.exception.ResumeVectorNotReadyException;
+import edu.asu.ser594.resumeassistant.domain.shared.exception.AiServiceUnavailableException;
 import edu.asu.ser594.resumeassistant.domain.shared.exception.LocalizedException;
 import edu.asu.ser594.resumeassistant.domain.shared.service.MessageProvider;
 import edu.asu.ser594.resumeassistant.domain.user.exception.AuthException;
@@ -128,6 +130,44 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error(400, message));
+    }
+
+    /**
+     * AI 服务不可用异常
+     * Handle AI service unavailable exception
+     */
+    @ExceptionHandler(AiServiceUnavailableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAiServiceUnavailable(AiServiceUnavailableException ex) {
+        log.warn("AI service unavailable: {}", ex.getMessageKey());
+
+        String message;
+        try {
+            message = messageProvider.getMessage(ex.getMessageKey(), ex.getArgs());
+        } catch (Exception e) {
+            message = ex.getMessageKey();
+        }
+
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiResponse.error(503, message));
+    }
+
+    /**
+     * 职位解析内容未就绪异常
+     * Handle job content not ready exception
+     */
+    @ExceptionHandler(JobContentNotReadyException.class)
+    public ResponseEntity<ApiResponse<Void>> handleJobContentNotReady(JobContentNotReadyException ex) {
+        log.warn("Job content not ready: {}", ex.getMessageKey());
+
+        String message;
+        try {
+            message = messageProvider.getMessage(ex.getMessageKey(), ex.getArgs());
+        } catch (Exception e) {
+            message = ex.getMessageKey();
+        }
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(ApiResponse.error(422, message));
     }
 
     /**

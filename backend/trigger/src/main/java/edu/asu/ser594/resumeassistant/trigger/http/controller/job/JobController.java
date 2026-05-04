@@ -2,18 +2,24 @@ package edu.asu.ser594.resumeassistant.trigger.http.controller.job;
 
 import edu.asu.ser594.resumeassistant.api.common.dto.ApiResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.JobMatchRequest;
+import edu.asu.ser594.resumeassistant.api.job.dto.request.JobScoreRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
+import edu.asu.ser594.resumeassistant.api.job.dto.request.UpdateJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobMatchResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
+import edu.asu.ser594.resumeassistant.api.job.dto.response.JobScoreResponse;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
 import edu.asu.ser594.resumeassistant.api.matching.dto.response.JobMatchHistoryResponse;
 import edu.asu.ser594.resumeassistant.api.matching.facade.MatchingFacade;
 import edu.asu.ser594.resumeassistant.trigger.http.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,11 +32,28 @@ public class JobController {
     private final JobFacade jobFacade;
     private final MatchingFacade matchingFacade;
 
-    @PostMapping
+    /**
+     * 提交新职位（Multipart 上传链接+截图）
+     * Submit a new job with URL and screenshot.
+     */
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<JobResponse> submitJob(
             @CurrentUser UUID userId,
-            @Validated @RequestBody SubmitJobRequest request) {
-        log.info("User {} submitting job link: {}", userId, request.url());
+            @RequestParam("url") String url,
+            @RequestPart(value = "screenshot", required = false) MultipartFile screenshot) {
+        log.info("User {} submitting job link: {}", userId, url);
+
+        String screenshotBase64 = null;
+        if (screenshot != null && !screenshot.isEmpty()) {
+            try {
+                screenshotBase64 = Base64.getEncoder().encodeToString(screenshot.getBytes());
+            } catch (Exception e) {
+                log.error("Failed to read screenshot file", e);
+                throw new IllegalArgumentException("Failed to read screenshot file: " + e.getMessage());
+            }
+        }
+
+        SubmitJobRequest request = new SubmitJobRequest(url, false, screenshotBase64);
         JobResponse response = jobFacade.submitJob(userId, request);
         return ApiResponse.success(response);
     }
@@ -53,6 +76,34 @@ public class JobController {
             @CurrentUser UUID userId) {
         log.info("User {} listing all jobs", userId);
         List<JobResponse> response = jobFacade.listJobs(userId);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 更新职位解析内容
+     * Update job parsed content.
+     */
+    @PutMapping("/{jobId}")
+    public ApiResponse<JobResponse> updateJob(
+            @CurrentUser UUID userId,
+            @PathVariable("jobId") String jobId,
+            @Validated @RequestBody UpdateJobRequest request) {
+        log.info("User {} updating job: {}", userId, jobId);
+        JobResponse response = jobFacade.updateJob(jobId, userId, request);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 对单个职位进行简历评分
+     * Score a single job against a resume.
+     */
+    @PostMapping("/{jobId}/score")
+    public ApiResponse<JobScoreResponse> scoreJob(
+            @CurrentUser UUID userId,
+            @PathVariable("jobId") String jobId,
+            @Validated @RequestBody JobScoreRequest request) {
+        log.info("User {} scoring job {} with resume {}", userId, jobId, request.resumeVersionId());
+        JobScoreResponse response = jobFacade.scoreJob(jobId, userId, request);
         return ApiResponse.success(response);
     }
 

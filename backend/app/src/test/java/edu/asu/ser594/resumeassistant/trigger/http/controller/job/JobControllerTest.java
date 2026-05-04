@@ -15,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -24,8 +25,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -67,11 +67,15 @@ class JobControllerTest {
         when(jobFacade.submitJob(eq(USER_ID), any(SubmitJobRequest.class)))
                 .thenReturn(new JobResponse("job-1", USER_ID.toString(), "http://example.com", "COMPLETED", null, false, null));
 
+        MockMultipartFile screenshot = new MockMultipartFile(
+                "screenshot", "job.png", MediaType.IMAGE_PNG_VALUE, "fake-image-data".getBytes()
+        );
+
         // 当&那么
         // When&Then
-        mockMvc.perform(post("/v1/jobs")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"url\":\"http://example.com/job\"}"))
+        mockMvc.perform(multipart("/v1/jobs")
+                        .file(screenshot)
+                        .param("url", "http://example.com/job"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value("job-1"));
     }

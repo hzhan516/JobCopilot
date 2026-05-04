@@ -10,6 +10,7 @@ import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeGroupRepository;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
+import edu.asu.ser594.resumeassistant.domain.resume.valueobject.ParseStatus;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ResumeParseCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
@@ -23,13 +24,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -99,7 +100,6 @@ public class ResumeApplicationService {
                         markdown = new String(rawStream.readAllBytes(), StandardCharsets.UTF_8);
                     }
                     converted.editContent(markdown);
-                    converted.markParseCompleted(null);
                     versionRepository.save(converted);
                     log.info("Auto-converted uploaded file to markdown for groupId={}", group.getId());
 
@@ -172,7 +172,6 @@ public class ResumeApplicationService {
         // 调用领域方法
         // Calling domain methods
         version.editContent(command.content());
-        version.markParseCompleted(null);
         versionRepository.save(version);
 
         log.info("Resume edited: versionId={}", version.getId());
@@ -244,7 +243,11 @@ public class ResumeApplicationService {
         // 4. Create new CONVERTED version and write source content
         ResumeVersion newVersion = ResumeVersion.createConverted(command.groupId());
         newVersion.editContent(sourceContent);
-        newVersion.markParseCompleted(null);
+        // 如果同组 original 已解析完成，直接复制其 parsedContent
+        ResumeVersion original = group.getActiveVersionByType(ResumeVersion.VersionType.ORIGINAL);
+        if (original != null && original.getParsedContent() != null && !original.getParsedContent().isEmpty()) {
+            newVersion.markParseCompleted(original.getParsedContent());
+        }
 
         // 4.5 触发向量生成（内容非空时）
         // 4.5 Trigger vector generation if content is not empty
@@ -371,10 +374,28 @@ public class ResumeApplicationService {
         }
 
         try {
-            String parsedJsonStr = objectMapper.writeValueAsString(event.data());
+            // 提取 parsedContent，避免保存包装对象 {"parsedContent": {...}, "summary": ""}
+            // Extract parsedContent to avoid saving the wrapper object
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = event.data();
+            Object parsedContentObj = data != null ? data.get("parsedContent") : null;
+            String parsedJsonStr = objectMapper.writeValueAsString(parsedContentObj);
             originalVersion.markParseCompleted(parsedJsonStr);
             versionRepository.save(originalVersion);
             log.info("Resume parsing completed for versionId={}", originalVersion.getId());
+
+            // 同步解析结果到同组所有衍生版本（CONVERTED / AI_OPTIMIZED）
+            ResumeGroup group = groupRepository.findById(originalVersion.getGroupId()).orElse(null);
+            if (group != null) {
+                for (ResumeVersion v : group.getVersions()) {
+                    if (v.getVersionType() != ResumeVersion.VersionType.ORIGINAL
+                            && v.getParseStatus() != ParseStatus.COMPLETED) {
+                        v.markParseCompleted(parsedJsonStr);
+                        versionRepository.save(v);
+                        log.info("Copied parsed content to derived version: versionId={}", v.getId());
+                    }
+                }
+            }
 
             // 触发向量生成
             // Trigger vector generation

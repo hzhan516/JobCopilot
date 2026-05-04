@@ -38,6 +38,8 @@ spring:
 app:
   embedding:
     dimension: ${LLM_EMBEDDING_MODEL_DIMENSION:1536}
+  ai-service:
+    base-url: ${AI_SERVICE_BASE_URL:http://localhost:8000}
 
 # JWT 配置 / JWT configuration
 jwt:

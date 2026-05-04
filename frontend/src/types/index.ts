@@ -128,6 +128,8 @@ export interface ResumeEditRequest {
 export interface ParsedJobContent {
   title: string;
   company: string;
+  salary: string;
+  location: string;
   description: string;
   requirements: string[];
 }
@@ -137,7 +139,7 @@ export interface Job {
   id: string;
   userId: string;
   originalUrl: string;
-  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  status: 'PENDING' | 'SCRAPING' | 'PARSING' | 'COMPLETED' | 'FAILED';
   parsedContent: ParsedJobContent | null;
   imageCheckEnabled: boolean;
   errorMessage: string | null;
@@ -266,6 +268,33 @@ export interface TrackingStatsResponse {
   offer: number;
   rejected: number;
   withdrawn: number;
+}
+
+// 职位评分请求
+export interface JobScoreRequest {
+  resumeVersionId: string;
+}
+
+// 职位评分响应
+export interface JobScoreResponse {
+  suitable: boolean;
+  summary: string;
+  finalScore: number;
+  breakdown: {
+    skillScore: number;
+    experienceScore: number;
+    overallScore: number;
+  };
+}
+
+// 更新职位请求
+export interface UpdateJobRequest {
+  title: string;
+  company: string;
+  salary: string;
+  location: string;
+  description: string;
+  requirements: string[];
 }
 
 // 保留旧名称以兼容现有代码（将被逐步替换）
