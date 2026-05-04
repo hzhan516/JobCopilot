@@ -236,7 +236,7 @@ public class ConversationApplicationService {
     private void sendConversationRequestWithContext(Conversation conversation, String currentMessage, boolean init) {
         String resumeText = null;
         String primaryJobText = null;
-        List<String> relatedJobTexts = null;
+        List<String> relatedJobTexts = new ArrayList<>();
 
         if (init) {
             // 加载简历文本 / Load resume text

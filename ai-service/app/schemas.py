@@ -40,7 +40,7 @@ class ConversationRequestCommand(AppBaseModel):
     resume_version_id: str | None = Field(default=None, alias="resumeVersionId")
     resume_text: str | None = Field(default=None, alias="resumeText")
     primary_job_text: str | None = Field(default=None, alias="primaryJobText")
-    related_job_texts: list[str] = Field(default_factory=list, alias="relatedJobTexts")
+    related_job_texts: list[str] | None = Field(default=None, alias="relatedJobTexts")
     init: bool | None = None
     locale: str | None = None
 

@@ -111,7 +111,7 @@ Primary Job Context:
 {command.primary_job_text or "None provided"}
 
 Additional Job Contexts:
-{json.dumps(command.related_job_texts, ensure_ascii=False, indent=2)}
+{json.dumps(command.related_job_texts or [], ensure_ascii=False, indent=2)}
 
 Attached File URLs:
 {json.dumps(command.file_urls, ensure_ascii=False, indent=2)}

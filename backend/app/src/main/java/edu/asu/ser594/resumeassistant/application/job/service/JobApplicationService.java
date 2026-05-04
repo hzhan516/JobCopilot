@@ -45,6 +45,10 @@ public class JobApplicationService {
         job = jobRepository.save(job);
 
         try {
+            // 标记为解析中并保存 / Mark as parsing and save
+            job.markParsing();
+            job = jobRepository.save(job);
+
             // 构建解析命令并发送到消息队列 / Build parse command and send to message queue
             JobParseCommand command = new JobParseCommand(
                     job.getId(),

@@ -60,9 +60,9 @@ class JobApplicationServiceTest {
         // 验证 / Then
         assertNotNull(response);
         assertEquals(userId.toString(), response.userId());
-        assertEquals("SCRAPING", response.status());
+        assertEquals("PARSING", response.status());
 
-        verify(jobRepository, times(1)).save(any(Job.class));
+        verify(jobRepository, times(2)).save(any(Job.class));
         verify(aiMessagePublisherPort, times(1)).sendJobForParsing(any(JobParseCommand.class));
     }
 
