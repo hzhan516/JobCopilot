@@ -340,6 +340,7 @@ public class ConversationApplicationService {
                 .orElseThrow(() -> new ConversationException("group.not.found"));
 
         ResumeVersion aiVersion = ResumeVersion.createAiOptimized(group.getId(), markdown);
+        aiVersion.markParseCompleted(null);
         resumeVersionRepository.save(aiVersion);
 
         // 触发向量生成 / Trigger vector generation

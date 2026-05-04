@@ -99,6 +99,7 @@ public class ResumeApplicationService {
                         markdown = new String(rawStream.readAllBytes(), StandardCharsets.UTF_8);
                     }
                     converted.editContent(markdown);
+                    converted.markParseCompleted(null);
                     versionRepository.save(converted);
                     log.info("Auto-converted uploaded file to markdown for groupId={}", group.getId());
 
@@ -117,6 +118,10 @@ public class ResumeApplicationService {
                     }
                 }
             } catch (IOException e) {
+                if (converted != null) {
+                    converted.markParseFailed("Auto-conversion failed: " + e.getMessage());
+                    versionRepository.save(converted);
+                }
                 log.warn("Failed to auto-convert uploaded file to markdown, leaving CONVERTED blank for groupId={}", group.getId(), e);
             }
         }
@@ -167,6 +172,7 @@ public class ResumeApplicationService {
         // 调用领域方法
         // Calling domain methods
         version.editContent(command.content());
+        version.markParseCompleted(null);
         versionRepository.save(version);
 
         log.info("Resume edited: versionId={}", version.getId());
@@ -238,6 +244,7 @@ public class ResumeApplicationService {
         // 4. Create new CONVERTED version and write source content
         ResumeVersion newVersion = ResumeVersion.createConverted(command.groupId());
         newVersion.editContent(sourceContent);
+        newVersion.markParseCompleted(null);
 
         // 4.5 触发向量生成（内容非空时）
         // 4.5 Trigger vector generation if content is not empty

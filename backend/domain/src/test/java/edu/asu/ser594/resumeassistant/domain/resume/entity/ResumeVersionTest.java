@@ -65,12 +65,16 @@ class ResumeVersionTest {
     }
 
     @Test
-    @DisplayName("Should set NOT_APPLICABLE for converted and AI optimized versions")
-    void shouldSetNotApplicableForNonOriginalVersions() {
+    @DisplayName("Should set PENDING for converted and AI optimized versions, then COMPLETED after processing")
+    void shouldSetPendingForNonOriginalVersionsAndCompleteAfterProcessing() {
         ResumeVersion converted = ResumeVersion.createConverted(TEST_GROUP_ID);
-        assertThat(converted.getParseStatus()).isEqualTo(ParseStatus.NOT_APPLICABLE);
+        assertThat(converted.getParseStatus()).isEqualTo(ParseStatus.PENDING);
+        converted.markParseCompleted(null);
+        assertThat(converted.getParseStatus()).isEqualTo(ParseStatus.COMPLETED);
 
         ResumeVersion aiOptimized = ResumeVersion.createAiOptimized(TEST_GROUP_ID, "AI content");
-        assertThat(aiOptimized.getParseStatus()).isEqualTo(ParseStatus.NOT_APPLICABLE);
+        assertThat(aiOptimized.getParseStatus()).isEqualTo(ParseStatus.PENDING);
+        aiOptimized.markParseCompleted(null);
+        assertThat(aiOptimized.getParseStatus()).isEqualTo(ParseStatus.COMPLETED);
     }
 }
