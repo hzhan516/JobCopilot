@@ -30,3 +30,6 @@ structlog==24.4.0
 # LLM网关 / LLM Gateway
 litellm==1.61.11
 tenacity==8.4.1
+
+# Google Auth (Required by LiteLLM for Vertex AI)
+google-auth==2.35.0
