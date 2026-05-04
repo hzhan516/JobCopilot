@@ -1,0 +1,59 @@
+[
+  {
+    "id": "backend_resume_backend_job_good_fit",
+    "resume": {
+      "name": "Alex Chen",
+      "email": "alex.chen@example.com",
+      "skills": ["Python", "FastAPI", "Docker", "PostgreSQL", "REST APIs", "RabbitMQ"],
+      "experience": [
+        {
+          "title": "Backend Engineer",
+          "company": "TechSoft",
+          "summary": "Built Python FastAPI microservices, PostgreSQL schemas, Docker deployments, REST APIs, and RabbitMQ event workflows."
+        },
+        {
+          "title": "Software Engineer Intern",
+          "company": "DataApps",
+          "summary": "Implemented backend API integrations and database-backed services."
+        }
+      ]
+    },
+    "job": {
+      "title": "Senior Backend Engineer",
+      "company": "CloudWorks",
+      "description": "Build API services for a cloud data platform, maintain PostgreSQL schemas, deploy Docker containers, and create event-driven workflows.",
+      "requirements": ["Python", "FastAPI", "PostgreSQL", "Docker", "REST APIs", "RabbitMQ"]
+    },
+    "expected": {
+      "suitable": true,
+      "minFinalScore": 0.65,
+      "maxFinalScore": 1.0
+    }
+  },
+  {
+    "id": "frontend_resume_backend_job_weak_fit",
+    "resume": {
+      "name": "Maya Rivera",
+      "email": "maya.rivera@example.com",
+      "skills": ["React", "TypeScript", "Vite", "Tailwind CSS", "HTML", "CSS"],
+      "experience": [
+        {
+          "title": "Frontend Developer",
+          "company": "BrightApps",
+          "summary": "Implemented responsive React dashboards using TypeScript, Vite, Tailwind CSS, HTML, and CSS."
+        }
+      ]
+    },
+    "job": {
+      "title": "Senior Backend Engineer",
+      "company": "CloudWorks",
+      "description": "Build Python backend services, maintain PostgreSQL schemas, deploy Docker containers, and create RabbitMQ workflows.",
+      "requirements": ["Python", "FastAPI", "PostgreSQL", "Docker", "REST APIs", "RabbitMQ"]
+    },
+    "expected": {
+      "suitable": false,
+      "minFinalScore": 0.0,
+      "maxFinalScore": 0.55
+    }
+  }
+]

@@ -204,14 +204,18 @@ pytest
 
 ## AI Evaluation Suite
 
-To evaluate the AI components (Extraction F1 Score and Recommendation NDCG@5) against baselines:
+To evaluate the AI components against fixed benchmark cases:
 
 ```bash
 cd eval
 # Install evaluation dependencies
 pip install -r requirements.txt
-# Run the evaluation pipeline
+# Run the current evaluation pipeline:
+# resume parsing, job parsing, and single-job suitability scoring
 python run_eval.py
+
+# Optional: also run the legacy job-ranking NDCG@5 evaluation
+python run_eval.py --include-legacy-ranking
 ```
 
 *Evaluation results will be exported to `eval/results/`.*
