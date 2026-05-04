@@ -4,6 +4,7 @@ import edu.asu.ser594.resumeassistant.api.job.dto.request.JobScoreRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.UpdateJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
+import edu.asu.ser594.resumeassistant.api.job.dto.response.JobScoreHistoryResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobScoreResponse;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 
@@ -66,6 +67,15 @@ public interface JobFacade {
      * @return 评分结果 / The score result.
      */
     JobScoreResponse scoreJob(String jobId, UUID userId, JobScoreRequest request);
+
+    /**
+     * 获取用户的评分历史记录
+     * Gets the score history for a user.
+     *
+     * @param userId 用户 ID / The user ID.
+     * @return 评分历史列表 / List of score history records.
+     */
+    List<JobScoreHistoryResponse> getScoreHistory(UUID userId);
 
     /**
      * 处理异步的职位 AI 解析结果

@@ -114,7 +114,7 @@
       "title": "Quick Actions",
       "resumes": "My Resumes",
       "resumesDesc": "Manage your resumes with multiple versions",
-      "jobs": "Job Recommendations",
+      "jobs": "Job Matching",
       "jobsDesc": "Smart job matching based on your resume",
       "chat": "AI Chat",
       "chatDesc": "Get resume optimization help from AI",
@@ -135,7 +135,7 @@
     }
   },
   "jobList": {
-    "title": "Job Recommendations",
+    "title": "Job Matching",
     "subtitle": "Smart matching based on your resume",
     "searchPlaceholder": "Search jobs, companies...",
     "locationFilter": "Location",
@@ -145,7 +145,7 @@
     "sortSalary": "Salary",
     "sortDate": "Post Date",
     "sortStatus": "Status",
-    "emptyTitle": "No matching jobs",
+    "emptyTitle": "No jobs available",
     "emptyDesc": "Try adjusting filters or updating your resume",
     "salaryNegotiable": "Negotiable",
     "salaryMin": "From {{min}}K",
@@ -178,7 +178,8 @@
     "notSuitable": "Not Suitable",
     "skillScore": "Skills",
     "experienceScore": "Experience",
-    "overallScore": "Overall"
+    "overallScore": "Overall",
+    "scoredWithResume": "Scored with resume"
   },
   "jobDetail": {
     "loadError": "Failed to load job details",
@@ -221,7 +222,8 @@
     "locationPlaceholder": "Location",
     "descriptionPlaceholder": "Job description...",
     "requirementPlaceholder": "Requirement",
-    "addRequirement": "Add Requirement"
+    "addRequirement": "Add Requirement",
+    "scoredWithResume": "Scored with resume"
   },
   "jobMatch": {
     "startMatch": "Start Matching",
@@ -264,7 +266,7 @@
     "selectJobPlaceholder": "Choose an imported job...",
     "resumeRequired": "Please select a resume",
     "jobRequired": "Please select a job",
-    "noAvailableJobs": "No available jobs. Please import a job from the Job Recommendations page first.",
+    "noAvailableJobs": "No available jobs. Please import a job from the Job Matching page first.",
     "createError": "Please enter a chat title",
     "createFailed": "Failed to create conversation",
     "sendFailed": "Failed to send message",

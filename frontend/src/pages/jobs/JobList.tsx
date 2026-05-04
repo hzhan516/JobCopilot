@@ -88,10 +88,43 @@ export default function JobList() {
     }
   }, []);
 
+  // 加载历史评分记录，刷新后仍能显示之前的评分结果
+  const loadScoreHistory = useCallback(async () => {
+    try {
+      const history = await jobService.getScoreHistory();
+      const newScoreResults: Record<string, JobScoreResponse> = {};
+      const newSelectedResumes: Record<string, string> = {};
+
+      for (const record of history) {
+        const key = `${record.jobId}_${record.resumeVersionId}`;
+        newScoreResults[key] = {
+          suitable: record.suitable,
+          summary: record.summary,
+          finalScore: record.finalScore,
+          breakdown: {
+            skillScore: record.skillScore,
+            experienceScore: record.experienceScore,
+            overallScore: record.overallScore,
+          },
+        };
+        // 只设置一次：取该职位最新的评分简历（history 已按 createdAt 降序）
+        if (!newSelectedResumes[record.jobId]) {
+          newSelectedResumes[record.jobId] = record.resumeVersionId;
+        }
+      }
+
+      setScoreResults(newScoreResults);
+      setSelectedResumes((prev) => ({ ...prev, ...newSelectedResumes }));
+    } catch {
+      // 评分历史非关键数据，静默处理
+    }
+  }, []);
+
   useEffect(() => {
     loadJobs();
     loadResumes();
-  }, [loadJobs, loadResumes]);
+    loadScoreHistory();
+  }, [loadJobs, loadResumes, loadScoreHistory]);
 
   // 智能轮询：有简历正在解析时，每3秒刷新一次简历列表
   useEffect(() => {
@@ -374,6 +407,20 @@ export default function JobList() {
                       {/* 评分结果 */}
                       {scoreResult && (
                         <div className="rounded-md border bg-white p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-400">
+                              {t('jobList.scoredWithResume')}: {
+                                (() => {
+                                  for (const group of resumes) {
+                                    for (const v of [group.convertedVersion, group.aiOptimizedVersion, group.originalVersion]) {
+                                      if (v?.versionId === currentResumeId) return group.title;
+                                    }
+                                  }
+                                  return t('common.notSpecified');
+                                })()
+                              }
+                            </span>
+                          </div>
                           <div className="flex items-center gap-3">
                             <Badge
                               className={

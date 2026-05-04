@@ -7,6 +7,7 @@ import type {
   JobMatchHistoryResponse,
   JobScoreRequest,
   JobScoreResponse,
+  JobScoreHistoryResponse,
   UpdateJobRequest,
 } from '@/types';
 
@@ -97,6 +98,17 @@ export const jobService = {
   getMatchHistory: async (): Promise<JobMatchHistoryResponse[]> => {
     const response = await apiClient.get<ApiResponse<JobMatchHistoryResponse[]>>(
       '/v1/jobs/match/history'
+    );
+    if (response.data.code === 200) {
+      return response.data.data;
+    }
+    throw new Error(response.data.message);
+  },
+
+  // 获取评分历史
+  getScoreHistory: async (): Promise<JobScoreHistoryResponse[]> => {
+    const response = await apiClient.get<ApiResponse<JobScoreHistoryResponse[]>>(
+      '/v1/jobs/scores/history'
     );
     if (response.data.code === 200) {
       return response.data.data;

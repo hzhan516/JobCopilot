@@ -28,7 +28,7 @@
   "layout": {
     "nav": {
       "resumes": "我的履歷",
-      "jobs": "職位推薦",
+      "jobs": "職位匹配",
       "chat": "AI 聊天",
       "tracking": "投遞追蹤"
     },
@@ -114,7 +114,7 @@
       "title": "快捷操作",
       "resumes": "我的履歷",
       "resumesDesc": "管理多版本履歷",
-      "jobs": "職位推薦",
+      "jobs": "職位匹配",
       "jobsDesc": "基於履歷的智慧職位配對",
       "chat": "AI 聊天",
       "chatDesc": "獲取 AI 履歷優化建議",
@@ -135,7 +135,7 @@
     }
   },
   "jobList": {
-    "title": "職位推薦",
+    "title": "職位匹配",
     "subtitle": "基於履歷的智慧配對",
     "searchPlaceholder": "搜尋職位、公司...",
     "locationFilter": "地點",
@@ -145,7 +145,7 @@
     "sortSalary": "薪資",
     "sortDate": "發布日期",
     "sortStatus": "狀態",
-    "emptyTitle": "暫無匹配的職位",
+    "emptyTitle": "暫無職位",
     "emptyDesc": "嘗試調整篩選條件或更新履歷",
     "salaryNegotiable": "面議",
     "salaryMin": "{{min}}K 起",
@@ -178,7 +178,8 @@
     "notSuitable": "不適合",
     "skillScore": "技能配對",
     "experienceScore": "經驗配對",
-    "overallScore": "綜合得分"
+    "overallScore": "綜合得分",
+    "scoredWithResume": "評分簡歷"
   },
   "jobDetail": {
     "loadError": "載入職位詳情失敗",
@@ -221,7 +222,8 @@
     "locationPlaceholder": "工作地點",
     "descriptionPlaceholder": "職位描述...",
     "requirementPlaceholder": "職位要求",
-    "addRequirement": "新增要求"
+    "addRequirement": "新增要求",
+    "scoredWithResume": "評分簡歷"
   },
   "jobMatch": {
     "startMatch": "開始配對",
@@ -264,7 +266,7 @@
     "selectJobPlaceholder": "選擇一個已導入的職位...",
     "resumeRequired": "請選擇簡歷",
     "jobRequired": "請選擇職位",
-    "noAvailableJobs": "暫無可用職位，請先到職位推薦頁面導入職位",
+    "noAvailableJobs": "暫無可用職位，請先到職位匹配頁面導入職位",
     "createError": "請輸入對話標題",
     "createFailed": "建立對話失敗",
     "sendFailed": "發送訊息失敗",

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -31,6 +32,13 @@ public class JobScoreRepositoryImpl implements JobScoreRepository {
     @Override
     public List<JobScoreRecord> findAllByJobIdOrderByCreatedAtDesc(String jobId) {
         return jpaJobScoreRepository.findAllByJobIdOrderByCreatedAtDesc(jobId).stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<JobScoreRecord> findAllByUserIdOrderByCreatedAtDesc(UUID userId) {
+        return jpaJobScoreRepository.findAllByUserIdOrderByCreatedAtDesc(userId.toString()).stream()
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());
     }

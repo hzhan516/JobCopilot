@@ -4,6 +4,7 @@ import edu.asu.ser594.resumeassistant.domain.job.entity.JobScoreRecord;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 职位评分记录仓储接口
@@ -28,6 +29,15 @@ public interface JobScoreRepository {
      * @return 评分记录列表 / List of score records.
      */
     List<JobScoreRecord> findAllByJobIdOrderByCreatedAtDesc(String jobId);
+
+    /**
+     * 根据用户 ID 查询所有评分记录（按时间倒序）
+     * Finds all score records for a user (ordered by createdAt desc).
+     *
+     * @param userId 用户 ID / The user ID.
+     * @return 评分记录列表 / List of score records.
+     */
+    List<JobScoreRecord> findAllByUserIdOrderByCreatedAtDesc(UUID userId);
 
     /**
      * 根据职位 ID 和简历版本 ID 查询最新评分记录

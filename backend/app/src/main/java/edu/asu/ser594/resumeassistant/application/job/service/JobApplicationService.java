@@ -5,6 +5,7 @@ import edu.asu.ser594.resumeassistant.api.job.dto.request.JobScoreRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.UpdateJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
+import edu.asu.ser594.resumeassistant.api.job.dto.response.JobScoreHistoryResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobScoreResponse;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import edu.asu.ser594.resumeassistant.domain.job.entity.JobScoreRecord;
@@ -358,6 +359,33 @@ public class JobApplicationService {
             log.error("Failed to score job {} against resume {}", jobId, request.resumeVersionId(), e);
             throw new RuntimeException("Failed to score job: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 获取用户的评分历史记录
+     * Gets the score history for a user.
+     */
+    @Transactional(readOnly = true)
+    public List<JobScoreHistoryResponse> getScoreHistory(UUID userId) {
+        List<JobScoreRecord> records = jobScoreRepository.findAllByUserIdOrderByCreatedAtDesc(userId);
+        return records.stream()
+                .map(this::mapToScoreHistoryResponse)
+                .collect(Collectors.toList());
+    }
+
+    private JobScoreHistoryResponse mapToScoreHistoryResponse(JobScoreRecord record) {
+        return new JobScoreHistoryResponse(
+                record.getId(),
+                record.getJobId(),
+                record.getResumeVersionId(),
+                Boolean.TRUE.equals(record.getSuitable()),
+                record.getFinalScore() != null ? record.getFinalScore() : 0.0f,
+                record.getSkillScore() != null ? record.getSkillScore() : 0.0f,
+                record.getExperienceScore() != null ? record.getExperienceScore() : 0.0f,
+                record.getOverallScore() != null ? record.getOverallScore() : 0.0f,
+                record.getSummary(),
+                record.getCreatedAt()
+        );
     }
 
     // 将领域实体映射为响应 DTO / Map domain entity to response DTO

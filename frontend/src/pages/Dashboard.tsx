@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,18 @@ export default function Dashboard() {
 
   const [trackings, setTrackings] = useState<Tracking[]>([]);
   const [trackingsLoading, setTrackingsLoading] = useState(true);
+
+  const [recommendedJobs, setRecommendedJobs] = useState<{
+    id: string;
+    jobId: string;
+    title: string;
+    company: string;
+    resumeName: string;
+    skillScore: number;
+    experienceScore: number;
+    overallScore: number;
+  }[]>([]);
+  const [recommendedJobsLoading, setRecommendedJobsLoading] = useState(true);
 
   const statusConfig: Record<string, { labelKey: string; color: string }> = useMemo(
     () => ({
@@ -89,41 +101,103 @@ export default function Dashboard() {
     },
   ];
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     const updateStat = (index: number, value: number) => {
       setStats((prev) =>
         prev.map((s, i) => (i === index ? { ...s, value, isLoading: false } : s))
       );
     };
 
-    // 并行加载所有统计
-    await Promise.allSettled([
-      resumeService
-        .getResumeGroups()
-        .then((data) => updateStat(0, data.length))
-        .catch(() => updateStat(0, 0)),
-      jobService
-        .getMatchHistory()
-        .then((data) => updateStat(1, data.length))
-        .catch(() => updateStat(1, 0)),
-      trackingService
-        .getTrackings()
-        .then((data) => {
-          updateStat(2, data.length);
-          setTrackings(data);
-        })
-        .catch(() => updateStat(2, 0))
-        .finally(() => setTrackingsLoading(false)),
-      chatService
-        .getConversations()
-        .then((data) => updateStat(3, data.length))
-        .catch(() => updateStat(3, 0)),
+    // 并行加载所有数据
+    const [resumesResult, jobsResult, scoreHistoryResult, trackingsResult, chatsResult] = await Promise.allSettled([
+      resumeService.getResumeGroups(),
+      jobService.getJobs(),
+      jobService.getScoreHistory(),
+      trackingService.getTrackings(),
+      chatService.getConversations(),
     ]);
-  };
+
+    // 处理简历统计
+    if (resumesResult.status === 'fulfilled') {
+      updateStat(0, resumesResult.value.length);
+    } else {
+      updateStat(0, 0);
+    }
+
+    // 处理职位统计
+    if (jobsResult.status === 'fulfilled') {
+      updateStat(1, jobsResult.value.length);
+    } else {
+      updateStat(1, 0);
+    }
+
+    // 处理跟踪统计
+    if (trackingsResult.status === 'fulfilled') {
+      updateStat(2, trackingsResult.value.length);
+      setTrackings(trackingsResult.value);
+    } else {
+      updateStat(2, 0);
+    }
+    setTrackingsLoading(false);
+
+    // 处理对话统计
+    if (chatsResult.status === 'fulfilled') {
+      updateStat(3, chatsResult.value.length);
+    } else {
+      updateStat(3, 0);
+    }
+
+    // 组装推荐职位列表（从评分历史）
+    if (scoreHistoryResult.status === 'fulfilled' && jobsResult.status === 'fulfilled' && resumesResult.status === 'fulfilled') {
+      const jobs = jobsResult.value;
+      const resumes = resumesResult.value;
+      const history = scoreHistoryResult.value;
+
+      const jobMap = new Map(jobs.map((j) => [j.id, j]));
+      const resumeNameMap = new Map<string, string>();
+      for (const group of resumes) {
+        for (const version of [group.convertedVersion, group.aiOptimizedVersion, group.originalVersion]) {
+          if (version?.versionId) {
+            resumeNameMap.set(version.versionId, group.title);
+          }
+        }
+      }
+
+      // 按 jobId 去重，只保留每个职位最新的评分记录
+      const seenJobIds = new Set<string>();
+      const deduped = history.filter((record) => {
+        if (seenJobIds.has(record.jobId)) return false;
+        seenJobIds.add(record.jobId);
+        return true;
+      });
+
+      const items = deduped.map((record) => {
+          const job = jobMap.get(record.jobId);
+          return {
+            id: record.id,
+            jobId: record.jobId,
+            title: job?.parsedContent?.title || t('jobDetail.unknownTitle'),
+            company: job?.parsedContent?.company || t('jobDetail.unknownCompany'),
+            resumeName: resumeNameMap.get(record.resumeVersionId) || t('common.notSpecified'),
+            skillScore: record.skillScore,
+            experienceScore: record.experienceScore,
+            overallScore: record.overallScore,
+          };
+        });
+
+      setRecommendedJobs(items);
+    } else {
+      setRecommendedJobs([]);
+    }
+    setRecommendedJobsLoading(false);
+  }, [t]);
 
   useEffect(() => {
-    loadStats();
-  }, []);
+    const timer = setTimeout(() => {
+      loadStats();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadStats]);
 
   return (
     <div className="space-y-8">
@@ -226,13 +300,49 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-gray-500">
-              <Briefcase className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p>{t('jobList.emptyTitle')}</p>
-              <Button variant="link" onClick={() => navigate('/jobs')}>
-                {t('dashboard.viewJobs')}
-              </Button>
-            </div>
+            {recommendedJobsLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-16" />
+                <Skeleton className="h-16" />
+                <Skeleton className="h-16" />
+              </div>
+            ) : recommendedJobs.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Briefcase className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p>{t('dashboard.noScoreRecords')}</p>
+                <Button variant="link" onClick={() => navigate('/jobs')}>
+                  {t('dashboard.viewJobs')}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                {recommendedJobs.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => navigate('/jobs')}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-gray-900 truncate">
+                        {item.title}-{item.company}-{item.resumeName}
+                      </h4>
+                      <div className="flex items-center space-x-3 text-xs text-gray-500 mt-1">
+                        <span>
+                          {t('jobList.skillScore')}: {Math.round(item.skillScore * 100)}%
+                        </span>
+                        <span>
+                          {t('jobList.experienceScore')}: {Math.round(item.experienceScore * 100)}%
+                        </span>
+                        <span>
+                          {t('jobList.overallScore')}: {Math.round(item.overallScore * 100)}%
+                        </span>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-gray-400 ml-2 flex-shrink-0" />
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

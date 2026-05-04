@@ -28,7 +28,7 @@
   "layout": {
     "nav": {
       "resumes": "我的简历",
-      "jobs": "职位推荐",
+      "jobs": "职位匹配",
       "chat": "AI 聊天",
       "tracking": "投递跟踪"
     },
@@ -114,7 +114,7 @@
       "title": "快捷操作",
       "resumes": "我的简历",
       "resumesDesc": "管理多版本简历",
-      "jobs": "职位推荐",
+      "jobs": "职位匹配",
       "jobsDesc": "基于简历的智能职位匹配",
       "chat": "AI 聊天",
       "chatDesc": "获取 AI 简历优化建议",
@@ -122,9 +122,10 @@
       "trackingDesc": "跟踪投递和面试进度"
     },
     "recommendedJobs": {
-      "title": "为您推荐",
+      "title": "最新职位评分",
       "matchLabel": "匹配度"
     },
+    "noScoreRecords": "暂无职位评分记录，前往职位匹配页面进行评分",
     "applicationProgress": {
       "title": "求职进展",
       "status": {
@@ -135,7 +136,7 @@
     }
   },
   "jobList": {
-    "title": "职位推荐",
+    "title": "职位匹配",
     "subtitle": "基于简历的智能匹配",
     "searchPlaceholder": "搜索职位、公司...",
     "locationFilter": "地点",
@@ -145,7 +146,7 @@
     "sortSalary": "薪资",
     "sortDate": "发布日期",
     "sortStatus": "状态",
-    "emptyTitle": "暂无匹配的职位",
+    "emptyTitle": "暂无职位",
     "emptyDesc": "尝试调整筛选条件或更新简历",
     "salaryNegotiable": "面议",
     "salaryMin": "{{min}}K 起",
@@ -178,7 +179,8 @@
     "notSuitable": "不适合",
     "skillScore": "技能匹配",
     "experienceScore": "经验匹配",
-    "overallScore": "综合得分"
+    "overallScore": "综合得分",
+    "scoredWithResume": "评分简历"
   },
   "jobDetail": {
     "loadError": "加载职位详情失败",
@@ -221,7 +223,8 @@
     "locationPlaceholder": "工作地点",
     "descriptionPlaceholder": "职位描述...",
     "requirementPlaceholder": "职位要求",
-    "addRequirement": "添加要求"
+    "addRequirement": "添加要求",
+    "scoredWithResume": "评分简历"
   },
   "jobMatch": {
     "startMatch": "开始匹配",
@@ -264,7 +267,7 @@
     "selectJobPlaceholder": "选择一个已导入的职位...",
     "resumeRequired": "请选择简历",
     "jobRequired": "请选择职位",
-    "noAvailableJobs": "暂无可用职位，请先到职位推荐页面导入职位",
+    "noAvailableJobs": "暂无可用职位，请先到职位匹配页面导入职位",
     "createError": "请输入对话标题",
     "createFailed": "创建对话失败",
     "sendFailed": "发送消息失败",

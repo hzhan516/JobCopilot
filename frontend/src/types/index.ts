@@ -287,6 +287,20 @@ export interface JobScoreResponse {
   };
 }
 
+// 职位评分历史记录
+export interface JobScoreHistoryResponse {
+  id: string;
+  jobId: string;
+  resumeVersionId: string;
+  suitable: boolean;
+  finalScore: number;
+  skillScore: number;
+  experienceScore: number;
+  overallScore: number;
+  summary: string;
+  createdAt: string;
+}
+
 // 更新职位请求
 export interface UpdateJobRequest {
   title: string;

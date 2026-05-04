@@ -7,6 +7,7 @@ import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.UpdateJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobMatchResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
+import edu.asu.ser594.resumeassistant.api.job.dto.response.JobScoreHistoryResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobScoreResponse;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
 import edu.asu.ser594.resumeassistant.api.matching.dto.response.JobMatchHistoryResponse;
@@ -142,6 +143,18 @@ public class JobController {
             @CurrentUser UUID userId) {
         log.info("User {} fetching match history", userId);
         List<JobMatchHistoryResponse> response = matchingFacade.getMatchHistory(userId);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 获取评分历史列表
+     * Get score history list
+     */
+    @GetMapping("/scores/history")
+    public ApiResponse<List<JobScoreHistoryResponse>> getScoreHistory(
+            @CurrentUser UUID userId) {
+        log.info("User {} fetching score history", userId);
+        List<JobScoreHistoryResponse> response = jobFacade.getScoreHistory(userId);
         return ApiResponse.success(response);
     }
 }

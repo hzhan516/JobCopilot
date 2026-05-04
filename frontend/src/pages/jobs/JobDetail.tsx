@@ -92,12 +92,39 @@ export default function JobDetail() {
     }
   }, []);
 
+  // 加载当前职位的历史评分记录
+  const loadScoreHistory = useCallback(async () => {
+    if (!jobId) return;
+    try {
+      const history = await jobService.getScoreHistory();
+      // 过滤当前职位的评分记录，取最新的一条（history 已按 createdAt 降序）
+      const jobScores = history.filter((r) => r.jobId === jobId);
+      if (jobScores.length > 0) {
+        const latest = jobScores[0];
+        setScoreResult({
+          suitable: latest.suitable,
+          summary: latest.summary,
+          finalScore: latest.finalScore,
+          breakdown: {
+            skillScore: latest.skillScore,
+            experienceScore: latest.experienceScore,
+            overallScore: latest.overallScore,
+          },
+        });
+        setSelectedResumeVersionId(latest.resumeVersionId);
+      }
+    } catch {
+      // 静默处理
+    }
+  }, [jobId]);
+
   useEffect(() => {
     if (jobId) {
       loadJob();
       loadResumes();
+      loadScoreHistory();
     }
-  }, [jobId, loadJob, loadResumes]);
+  }, [jobId, loadJob, loadResumes, loadScoreHistory]);
 
   // 智能轮询：有简历正在解析时，每3秒刷新一次简历列表
   useEffect(() => {
@@ -352,6 +379,20 @@ export default function JobDetail() {
       {scoreResult && !isEditing && (
         <Card className="border-amber-200 bg-amber-50/50">
           <CardContent className="py-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-400">
+                {t('jobDetail.scoredWithResume')}: {
+                  (() => {
+                    for (const group of resumes) {
+                      for (const v of [group.convertedVersion, group.aiOptimizedVersion, group.originalVersion]) {
+                        if (v?.versionId === selectedResumeVersionId) return group.title;
+                      }
+                    }
+                    return t('common.notSpecified');
+                  })()
+                }
+              </span>
+            </div>
             <div className="flex items-center gap-3">
               <Badge
                 className={
