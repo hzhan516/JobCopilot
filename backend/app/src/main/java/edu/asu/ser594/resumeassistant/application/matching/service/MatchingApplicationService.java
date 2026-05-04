@@ -117,16 +117,18 @@ public class MatchingApplicationService {
         final ResumeVersion resumeVersion = resumeVersionRepository.findById(UUID.fromString(command.resumeVersionId()))
                 .orElseThrow(() -> new IllegalArgumentException("Resume version not found: " + command.resumeVersionId()));
         
-        final String resumeText = resumeVersion.getParsedContent() != null && !resumeVersion.getParsedContent().isEmpty() ? 
-                resumeVersion.getParsedContent() : 
+        final String resumeText = resumeVersion.getParsedContent() != null && !resumeVersion.getParsedContent().isEmpty() ?
+                resumeVersion.getParsedContent() :
                 (resumeVersion.getContent() != null ? resumeVersion.getContent() : "");
+
+        final String query = command.query() != null ? command.query() : "";
 
         final JobRankCommand rankCommand = new JobRankCommand(
                 matchId,
                 command.userId().toString(),
                 command.resumeVersionId(),
                 resumeText,
-                command.query(),
+                query,
                 recalledJobIds,
                 jobDetails
         );

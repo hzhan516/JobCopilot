@@ -50,7 +50,7 @@ class JobRankCommand(AppBaseModel):
     user_id: str = Field(alias="userId")
     resume_version_id: str = Field(alias="resumeVersionId")
     resume_text: str = Field(default="", alias="resumeText")
-    query: str
+    query: str | None = Field(default=None)
     recalled_job_ids: list[str] = Field(default_factory=list, alias="recalledJobIds")
     job_details: dict[str, Any] = Field(default_factory=dict, alias="jobDetails")
 

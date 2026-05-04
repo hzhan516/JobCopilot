@@ -168,6 +168,7 @@ export default function JobList() {
 
       const result = await jobService.startMatch({
         resumeVersionId: selectedResumeVersionId,
+        query: searchQuery.trim() || undefined,
         topK: 10,
       });
 
