@@ -194,7 +194,8 @@
 /frontend/.tmp/
 /AGENTS.md
 /frontend/.env
-/backend/logs/*.log
+/backend/app/logs/*
+!/backend/app/logs/README.md
 /docker-compose.yml
 /.env
 /vertex.json
