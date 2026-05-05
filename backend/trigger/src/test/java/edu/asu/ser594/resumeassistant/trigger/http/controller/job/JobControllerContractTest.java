@@ -5,6 +5,7 @@ import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.UpdateJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
+import edu.asu.ser594.resumeassistant.api.job.facade.JobVectorSearchFacade;
 import edu.asu.ser594.resumeassistant.api.matching.facade.MatchingFacade;
 import edu.asu.ser594.resumeassistant.api.shared.service.ExceptionMessageResolver;
 import edu.asu.ser594.resumeassistant.domain.shared.service.MessageProvider;
@@ -55,6 +56,8 @@ class JobControllerContractTest {
     private JobFacade jobFacade;
     @MockitoBean
     private MatchingFacade matchingFacade;
+    @MockitoBean
+    private JobVectorSearchFacade jobVectorSearchFacade;
 
     @Test
     @DisplayName("Should deserialize multipart submit request and serialize JobResponse correctly")

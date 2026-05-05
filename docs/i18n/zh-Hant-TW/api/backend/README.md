@@ -356,6 +356,22 @@ Authorization: Bearer <access_token>
 - **URL**: `GET /api/v1/jobs/match/history`
 - **認證**: 需要
 
+#### 3.7 向量搜尋職位
+- **URL**: `POST /api/v1/jobs/vector-search`
+- **認證**: 需要
+
+---
+
+### 6. 嵌入向量模組 (Embedding)
+
+詳見 [embedding.md](embedding.md)
+
+本模組為 AI 層提供批次向量資料寫入能力。
+
+#### 6.1 批次 Upsert 職位向量
+- **URL**: `POST /api/v1/job-vectors/batch`
+- **認證**: 不需要（供內部 AI 服務使用）
+
 ---
 
 ### 4. 對話模組 (Conversation)
@@ -448,6 +464,8 @@ Authorization: Bearer <access_token>
 | 啟動職位配對 | POST | `/api/v1/jobs/match` | 啟動非同步職位配對 | 是 |
 | 查詢配對結果 | GET | `/api/v1/jobs/match/{matchId}` | 查詢配對任務結果 | 是 |
 | 取得配對歷史 | GET | `/api/v1/jobs/match/history` | 取得歷史配對記錄 | 是 |
+| 向量搜尋職位 | POST | `/api/v1/jobs/vector-search` | ANN 向量搜尋職位 | 是 |
+| 批次 Upsert 職位向量 | POST | `/api/v1/job-vectors/batch` | 批次 Upsert 職位向量（AI 層） | 否 |
 | 建立對話 | POST | `/api/v1/conversations` | 建立新對話 | 是 |
 | 發送訊息 | POST | `/api/v1/conversations/{conversationId}/messages` | 發送對話訊息 | 是 |
 | 取得對話 | GET | `/api/v1/conversations/{conversationId}` | 取得對話詳情（支援訊息分頁） | 是 |
@@ -635,6 +653,7 @@ Accept-Language: en
 - [職位配對模組詳細文件](job-matching.md)
 - [對話模組詳細文件](conversation.md)
 - [求職追蹤模組詳細文件](tracking.md)
+- [嵌入向量模組詳細文件](embedding.md)
 - [AI / MQ 互動介面文件](ai-mq-interfaces.md)
 - [回應格式與錯誤碼說明](response-format.md)
 

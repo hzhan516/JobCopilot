@@ -1,15 +1,10 @@
 package edu.asu.ser594.resumeassistant.trigger.http.controller.job;
 
 import edu.asu.ser594.resumeassistant.api.common.dto.ApiResponse;
-import edu.asu.ser594.resumeassistant.api.job.dto.request.JobMatchRequest;
-import edu.asu.ser594.resumeassistant.api.job.dto.request.JobScoreRequest;
-import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
-import edu.asu.ser594.resumeassistant.api.job.dto.request.UpdateJobRequest;
-import edu.asu.ser594.resumeassistant.api.job.dto.response.JobMatchResponse;
-import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
-import edu.asu.ser594.resumeassistant.api.job.dto.response.JobScoreHistoryResponse;
-import edu.asu.ser594.resumeassistant.api.job.dto.response.JobScoreResponse;
+import edu.asu.ser594.resumeassistant.api.job.dto.request.*;
+import edu.asu.ser594.resumeassistant.api.job.dto.response.*;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
+import edu.asu.ser594.resumeassistant.api.job.facade.JobVectorSearchFacade;
 import edu.asu.ser594.resumeassistant.api.matching.dto.response.JobMatchHistoryResponse;
 import edu.asu.ser594.resumeassistant.api.matching.facade.MatchingFacade;
 import edu.asu.ser594.resumeassistant.trigger.http.security.CurrentUser;
@@ -32,6 +27,7 @@ public class JobController {
 
     private final JobFacade jobFacade;
     private final MatchingFacade matchingFacade;
+    private final JobVectorSearchFacade jobVectorSearchFacade;
 
     /**
      * 提交新职位（Multipart 上传链接+截图）
@@ -155,6 +151,19 @@ public class JobController {
             @CurrentUser UUID userId) {
         log.info("User {} fetching score history", userId);
         List<JobScoreHistoryResponse> response = jobFacade.getScoreHistory(userId);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 向量搜索职位
+     * Vector search for jobs
+     */
+    @PostMapping("/vector-search")
+    public ApiResponse<List<VectorSearchResponse>> vectorSearch(
+            @CurrentUser UUID userId,
+            @Validated @RequestBody VectorSearchRequest request) {
+        log.info("User {} requesting vector search", userId);
+        List<VectorSearchResponse> response = jobVectorSearchFacade.search(request);
         return ApiResponse.success(response);
     }
 }

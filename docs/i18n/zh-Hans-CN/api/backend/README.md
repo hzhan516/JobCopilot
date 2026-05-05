@@ -356,6 +356,22 @@ Authorization: Bearer <access_token>
 - **URL**: `GET /api/v1/jobs/match/history`
 - **认证**: 需要
 
+#### 3.7 向量搜索职位
+- **URL**: `POST /api/v1/jobs/vector-search`
+- **认证**: 需要
+
+---
+
+### 6. 嵌入向量模块 (Embedding)
+
+详见 [embedding.md](embedding.md)
+
+本模块为 AI 层提供批量向量数据写入能力。
+
+#### 6.1 批量 Upsert 职位向量
+- **URL**: `POST /api/v1/job-vectors/batch`
+- **认证**: 不需要（供内部 AI 服务使用）
+
 ---
 
 ### 4. 对话模块 (Conversation)
@@ -448,6 +464,8 @@ Authorization: Bearer <access_token>
 | 启动职位匹配 | POST | `/api/v1/jobs/match` | 启动异步职位匹配 | 是 |
 | 查询匹配结果 | GET | `/api/v1/jobs/match/{matchId}` | 查询匹配任务结果 | 是 |
 | 获取匹配历史 | GET | `/api/v1/jobs/match/history` | 获取历史匹配记录 | 是 |
+| 向量搜索职位 | POST | `/api/v1/jobs/vector-search` | ANN 向量搜索职位 | 是 |
+| 批量 Upsert 职位向量 | POST | `/api/v1/job-vectors/batch` | 批量 Upsert 职位向量（AI 层） | 否 |
 | 创建对话 | POST | `/api/v1/conversations` | 创建新对话 | 是 |
 | 发送消息 | POST | `/api/v1/conversations/{conversationId}/messages` | 发送对话消息 | 是 |
 | 获取对话 | GET | `/api/v1/conversations/{conversationId}` | 获取对话详情（支持消息分页） | 是 |
@@ -504,6 +522,60 @@ Authorization: Bearer <access_token>
 {
   "versionId": UUID,   // 必填，版本 ID
   "content": String    // 必填，简历内容
+}
+```
+
+#### VectorSearchRequest (向量搜索请求)
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `queryText` | String | 否 | 查询文本，用于生成嵌入 |
+| `queryEmbedding` | List<Float> | 否 | 预计算嵌入向量 |
+| `limit` | Integer | 否 | 最大返回数（默认：10，最大：100） |
+| `filters` | Map<String, String> | 否 | 过滤条件（预留） |
+
+```java
+{
+  "queryText": String,           // 可选，queryEmbedding 为空时使用
+  "queryEmbedding": List<Float>, // 可选，优先于 queryText
+  "limit": Integer,              // 可选，默认 10
+  "filters": Map<String, String> // 可选
+}
+```
+
+#### BatchJobVectorUpsertRequest (批量职位向量 Upsert 请求)
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `items` | List<JobVectorItem> | 是 | 待 Upsert 的职位向量列表 |
+
+**JobVectorItem:**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `jobId` | String | 是 | 唯一职位标识符 |
+| `embedding` | List<Float> | 是 | 嵌入向量 |
+| `title` | String | 否 | 职位标题 |
+| `description` | String | 否 | 职位描述 |
+| `requirements` | List<String> | 否 | 职位要求 |
+| `rawContent` | String | 否 | 原始文本内容 |
+| `sourceFile` | String | 否 | 来源文件标识 |
+| `modelVersion` | String | 否 | 模型版本（默认：`gemini-embedding-001`） |
+
+```java
+{
+  "items": [
+    {
+      "jobId": String,           // 必填
+      "embedding": List<Float>,  // 必填
+      "title": String,           // 可选
+      "description": String,     // 可选
+      "requirements": List<String>, // 可选
+      "rawContent": String,      // 可选
+      "sourceFile": String,      // 可选
+      "modelVersion": String     // 可选
+    }
+  ]
 }
 ```
 
@@ -586,6 +658,31 @@ Authorization: Bearer <access_token>
 }
 ```
 
+#### VectorSearchResponse (向量搜索响应)
+
+```java
+{
+  "jobId": String,              // 职位 ID
+  "title": String,              // 职位标题
+  "company": String,            // 公司名称
+  "description": String,        // 职位描述
+  "requirements": List<String>, // 要求列表
+  "similarity": Float,          // 相似度得分（0-1）
+  "matchFactors": Map<String, Object> // 匹配因子
+}
+```
+
+#### BatchJobVectorUpsertResponse (批量 Upsert 响应)
+
+```java
+{
+  "total": Integer,        // 接收总数
+  "success": Integer,      // 成功数
+  "failed": Integer,       // 失败数
+  "failedJobIds": List<String> // 失败的职位 ID
+}
+```
+
 ---
 
 ## 校验规则
@@ -635,6 +732,7 @@ Accept-Language: en
 - [职位匹配模块详细文档](job-matching.md)
 - [对话模块详细文档](conversation.md)
 - [求职跟踪模块详细文档](tracking.md)
+- [嵌入向量模块详细文档](embedding.md)
 - [AI / MQ 交互接口文档](ai-mq-interfaces.md)
 - [响应格式与错误码说明](response-format.md)
 

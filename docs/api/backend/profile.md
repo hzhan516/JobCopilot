@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](profile.md) | [简体中文](../../i18n/zh-Hans-CN/api/backend/profile.md) | [繁體中文](../../i18n/zh-Hant-TW/api/backend/profile.md)
+
 # Profile API
 
 > User profile management endpoints.

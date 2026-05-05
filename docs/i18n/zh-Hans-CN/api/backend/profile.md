@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](../../../../api/backend/profile.md) | [简体中文](profile.md) | [繁體中文](../../../zh-Hant-TW/api/backend/profile.md)
+
 # 用户资料 API (Profile API)
 
 > 用户个人资料管理接口。

@@ -8,6 +8,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 职位向量 JPA 实体
@@ -44,6 +45,25 @@ public class JobVectorJpaEntity {
 
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
+
+    @Column(name = "title", columnDefinition = "TEXT")
+    private String title;
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "requirements", columnDefinition = "jsonb")
+    private List<String> requirements;
+
+    @Column(name = "raw_content", columnDefinition = "TEXT")
+    private String rawContent;
+
+    @Column(name = "source_file", length = 255)
+    private String sourceFile;
+
+    @Column(name = "model_version", length = 50)
+    private String modelVersion;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -234,6 +234,123 @@ To comply with the system architecture, the Java backend no longer directly call
 }
 ```
 
+### 1.8 Vector Search Jobs
+**Endpoint:** `POST /api/v1/jobs/vector-search`
+**Description:** Performs approximate nearest neighbor (ANN) vector search on the `job_vectors` table. Returns the most semantically similar jobs based on the provided query embedding or query text.
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+Content-Type: application/json
+```
+
+**Request Body (`VectorSearchRequest`):**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `queryText` | String | No | Query text. Used to generate embedding if `queryEmbedding` is not provided. |
+| `queryEmbedding` | List<Float> | No | Pre-computed query embedding vector. Takes precedence over `queryText`. |
+| `limit` | Integer | No | Maximum number of results to return. Default: 10, Max: 100. |
+| `filters` | Map<String, String> | No | Filter conditions (reserved for future extension). |
+
+**Request Example (with queryText):**
+```json
+{
+  "queryText": "Senior Java Developer with Spring Boot experience",
+  "limit": 10
+}
+```
+
+**Request Example (with queryEmbedding):**
+```json
+{
+  "queryEmbedding": [0.0123, -0.0456, 0.0789, "..."],
+  "limit": 5
+}
+```
+
+**Success Response (200):**
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": [
+    {
+      "jobId": "job-921716",
+      "title": "Senior Java Developer",
+      "company": "Tech Corp",
+      "description": "Looking for an experienced Java developer...",
+      "requirements": ["Java", "Spring Boot", "AWS"],
+      "similarity": 0.92,
+      "matchFactors": {
+        "similarity": 0.92
+      }
+    }
+  ]
+}
+```
+
+**Response Field Descriptions (`VectorSearchResponse`):**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `jobId` | String | Job unique identifier |
+| `title` | String | Job title |
+| `company` | String | Company name |
+| `description` | String | Job description |
+| `requirements` | List<String> | List of job requirements |
+| `similarity` | Float | Similarity score (0-1, higher is more similar) |
+| `matchFactors` | Map<String, Object> | Match factor details (reserved for extension) |
+
+**Error Responses:**
+
+- `400` — Missing both `queryText` and `queryEmbedding`
+- `401` — Unauthorized (invalid or missing JWT token)
+- `503` — AI Service unavailable (when `queryText` is provided but embedding generation fails)
+
+---
+
+## 2. Backend to AI Service Interfaces (Backend to Python AI Service via MQ)
+
+To comply with the system architecture, the Java backend no longer directly calls the AI service via HTTP synchronously; instead, it publishes asynchronous task requests via **RabbitMQ** and listens for processing result callbacks from the AI service.
+
+### 2.1 Job Parse Request (Backend -> AI Service)
+**Exchange:** `ai.direct.exchange`
+**Routing Key:** `ai.req.job.parse`
+**Queue:** `ai.queue.job.parse`
+
+**Message Body (`JobParseCommand`):**
+```json
+{
+  "jobId": "job-uuid-1234",
+  "url": "https://www.linkedin.com/jobs/view/12345",
+  "imageCheckEnabled": true
+}
+```
+
+### 2.2 Job Parse Result Callback (AI Service -> Backend)
+**Exchange:** `ai.direct.exchange`
+**Routing Key:** `backend.res.job.parse`
+**Queue:** `backend.queue.job.parse`
+
+**Message Body (`AiResultEvent`):**
+```json
+{
+  "referenceId": "job-uuid-1234",
+  "type": "JOB_PARSE",
+  "status": "COMPLETED",
+  "data": {
+    "title": "Software Engineer",
+    "company": "Tech Corp",
+    "description": "Full job description...",
+    "requirements": ["Java", "Spring Boot", "AWS"]
+  },
+  "errorMessage": null,
+  "eventType": "JOB"
+}
+```
+
 > **Notes:**
 > - If `status` is `FAILED`, then `errorMessage` must contain the specific reason text causing the failure, and `data` can be empty.
 > - After the AI service finishes processing, it must send the result to the `backend.res.job.parse` routing key, received by `AiResultMessageListener` and handled by `JobFacade.handleJobProcessResult`.

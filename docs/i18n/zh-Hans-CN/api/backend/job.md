@@ -194,6 +194,83 @@ Content-Type: application/json
 
 ---
 
+### 1.8 向量搜索职位 (Vector Search Jobs)
+**Endpoint:** `POST /api/v1/jobs/vector-search`
+**描述:** 对 `job_vectors` 表执行近似最近邻（ANN）向量搜索，基于提供的查询向量或查询文本返回语义最相似的职位。
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+Content-Type: application/json
+```
+
+**Request Body (`VectorSearchRequest`):**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `queryText` | String | 否 | 查询文本。当 `queryEmbedding` 未提供时用于生成向量。 |
+| `queryEmbedding` | List<Float> | 否 | 预计算的查询嵌入向量，优先于 `queryText`。 |
+| `limit` | Integer | 否 | 返回最大数量。默认：10，最大：100。 |
+| `filters` | Map<String, String> | 否 | 过滤条件（预留扩展）。 |
+
+**请求示例（使用 queryText）:**
+```json
+{
+  "queryText": "Senior Java Developer with Spring Boot experience",
+  "limit": 10
+}
+```
+
+**请求示例（使用 queryEmbedding）:**
+```json
+{
+  "queryEmbedding": [0.0123, -0.0456, 0.0789, "..."],
+  "limit": 5
+}
+```
+
+**成功响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": [
+    {
+      "jobId": "job-921716",
+      "title": "Senior Java Developer",
+      "company": "Tech Corp",
+      "description": "Looking for an experienced Java developer...",
+      "requirements": ["Java", "Spring Boot", "AWS"],
+      "similarity": 0.92,
+      "matchFactors": {
+        "similarity": 0.92
+      }
+    }
+  ]
+}
+```
+
+**响应字段说明 (`VectorSearchResponse`):**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `jobId` | String | 职位唯一标识符 |
+| `title` | String | 职位标题 |
+| `company` | String | 公司名称 |
+| `description` | String | 职位描述 |
+| `requirements` | List<String> | 职位要求列表 |
+| `similarity` | Float | 相似度得分（0-1，越大越相似） |
+| `matchFactors` | Map<String, Object> | 匹配因子详情（预留扩展） |
+
+**错误响应:**
+
+- `400` — `queryText` 和 `queryEmbedding` 均未提供
+- `401` — 未认证（JWT Token 无效或缺失）
+- `503` — AI 服务不可用（提供了 `queryText` 但嵌入生成失败）
+
+---
+
 ## 2. 后端与 AI 服务层交互接口 (Backend to Python AI Service via MQ)
 
 为了遵循系统架构，Java 后端不再直接通过 HTTP 同步调用 AI 服务，而是通过 **RabbitMQ** 发布异步任务请求，并监听 AI 服务的处理结果回调。

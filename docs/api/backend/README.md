@@ -356,6 +356,22 @@ This module provides job link submission, async parsing, intelligent matching, a
 - **URL**: `GET /api/v1/jobs/match/history`
 - **Authentication**: Required
 
+#### 3.7 Vector Search Jobs
+- **URL**: `POST /api/v1/jobs/vector-search`
+- **Authentication**: Required
+
+---
+
+### 6. Embedding Module (Embedding)
+
+See [embedding.md](embedding.md)
+
+This module provides batch vector data ingestion capabilities for the AI layer.
+
+#### 6.1 Batch Upsert Job Vectors
+- **URL**: `POST /api/v1/job-vectors/batch`
+- **Authentication**: Not required (intended for internal AI service use)
+
 ---
 
 ### 4. Conversation Module (Conversation)
@@ -448,6 +464,8 @@ This module provides application status flow, event recording, and statistical a
 | Start Job Matching | POST | `/api/v1/jobs/match` | Start async job matching | Yes |
 | Query Match Results | GET | `/api/v1/jobs/match/{matchId}` | Query match task results | Yes |
 | Get Match History | GET | `/api/v1/jobs/match/history` | Get historical match records | Yes |
+| Vector Search Jobs | POST | `/api/v1/jobs/vector-search` | ANN vector search for jobs | Yes |
+| Batch Upsert Job Vectors | POST | `/api/v1/job-vectors/batch` | Batch upsert job vectors (AI layer) | No |
 | Create Conversation | POST | `/api/v1/conversations` | Create new conversation | Yes |
 | Send Message | POST | `/api/v1/conversations/{conversationId}/messages` | Send conversation message | Yes |
 | Get Conversation | GET | `/api/v1/conversations/{conversationId}` | Get conversation details (supports message pagination) | Yes |
@@ -504,6 +522,60 @@ This module provides application status flow, event recording, and statistical a
 {
   "versionId": UUID,   // Required, version ID
   "content": String    // Required, resume content
+}
+```
+
+#### VectorSearchRequest (Vector Search Request)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `queryText` | String | No | Query text for embedding generation |
+| `queryEmbedding` | List<Float> | No | Pre-computed embedding vector |
+| `limit` | Integer | No | Max results (default: 10, max: 100) |
+| `filters` | Map<String, String> | No | Filter conditions (reserved) |
+
+```java
+{
+  "queryText": String,           // Optional, used when queryEmbedding is absent
+  "queryEmbedding": List<Float>, // Optional, takes precedence over queryText
+  "limit": Integer,              // Optional, default 10
+  "filters": Map<String, String> // Optional
+}
+```
+
+#### BatchJobVectorUpsertRequest (Batch Job Vector Upsert Request)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `items` | List<JobVectorItem> | Yes | List of job vectors to upsert |
+
+**JobVectorItem:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `jobId` | String | Yes | Unique job identifier |
+| `embedding` | List<Float> | Yes | Embedding vector |
+| `title` | String | No | Job title |
+| `description` | String | No | Job description |
+| `requirements` | List<String> | No | Job requirements |
+| `rawContent` | String | No | Raw text content |
+| `sourceFile` | String | No | Source file identifier |
+| `modelVersion` | String | No | Model version (default: `gemini-embedding-001`) |
+
+```java
+{
+  "items": [
+    {
+      "jobId": String,           // Required
+      "embedding": List<Float>,  // Required
+      "title": String,           // Optional
+      "description": String,     // Optional
+      "requirements": List<String>, // Optional
+      "rawContent": String,      // Optional
+      "sourceFile": String,      // Optional
+      "modelVersion": String     // Optional
+    }
+  ]
 }
 ```
 
@@ -586,6 +658,31 @@ This module provides application status flow, event recording, and statistical a
 }
 ```
 
+#### VectorSearchResponse (Vector Search Response)
+
+```java
+{
+  "jobId": String,              // Job ID
+  "title": String,              // Job title
+  "company": String,            // Company name
+  "description": String,        // Job description
+  "requirements": List<String>, // Requirements list
+  "similarity": Float,          // Similarity score (0-1)
+  "matchFactors": Map<String, Object> // Match factors
+}
+```
+
+#### BatchJobVectorUpsertResponse (Batch Upsert Response)
+
+```java
+{
+  "total": Integer,        // Total items received
+  "success": Integer,      // Successfully persisted count
+  "failed": Integer,       // Failed count
+  "failedJobIds": List<String> // Failed job IDs
+}
+```
+
 ---
 
 ## Validation Rules
@@ -635,6 +732,7 @@ Accept-Language: en
 - [Job Matching Module Detailed Documentation](job-matching.md)
 - [Conversation Module Detailed Documentation](conversation.md)
 - [Job Tracking Module Detailed Documentation](tracking.md)
+- [Embedding Module Detailed Documentation](embedding.md)
 - [AI / MQ Interaction Interface Documentation](ai-mq-interfaces.md)
 - [Response Format and Error Code Description](response-format.md)
 
