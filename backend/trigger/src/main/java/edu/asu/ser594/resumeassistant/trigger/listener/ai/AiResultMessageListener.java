@@ -1,27 +1,26 @@
 package edu.asu.ser594.resumeassistant.trigger.listener.ai;
 
 import edu.asu.ser594.resumeassistant.api.conversation.facade.ConversationFacade;
+import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
 import edu.asu.ser594.resumeassistant.api.resume.facade.ResumeFacade;
-import edu.asu.ser594.resumeassistant.domain.embedding.entity.JobVector;
-import edu.asu.ser594.resumeassistant.domain.embedding.entity.ResumeVector;
-import edu.asu.ser594.resumeassistant.domain.embedding.repository.JobVectorRepository;
-import edu.asu.ser594.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
-import edu.asu.ser594.resumeassistant.infrastructure.config.EmbeddingProperties;
-import edu.asu.ser594.resumeassistant.infrastructure.messaging.config.RabbitMqConfig;
-import edu.asu.ser594.resumeassistant.infrastructure.messaging.stream.ConversationStreamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * AI 结果消息监听器 / AI result message listener
+ * <p>
+ * 严格遵循 DDD 分层规范：仅依赖 API 层 Facade 接口，不直接触碰 Domain 或 Infrastructure。
+ * 队列名称通过 ${...} 占位符从配置文件中读取，解除对 RabbitMqConfig 配置类的直接依赖。
+ * Strictly follows DDD layering: only depends on API-layer Facade interfaces,
+ * never directly touches Domain or Infrastructure.
+ * Queue names are read from configuration files via ${...} placeholders,
+ * decoupling from the RabbitMqConfig class.
  */
 @Slf4j
 @Component
@@ -31,15 +30,12 @@ public class AiResultMessageListener {
     private final JobFacade jobFacade;
     private final ResumeFacade resumeFacade;
     private final ConversationFacade conversationFacade;
-    private final ResumeVectorRepository resumeVectorRepository;
-    private final JobVectorRepository jobVectorRepository;
-    private final ConversationStreamService streamService;
-    private final EmbeddingProperties embeddingProperties;
+    private final VectorFacade vectorFacade;
 
     /**
      * 监听职位解析结果 / Listen for job parse results
      */
-    @RabbitListener(queues = RabbitMqConfig.QUEUE_RES_JOB_PARSE)
+    @RabbitListener(queues = "${app.rabbitmq.queue.res.job-parse}")
     public void onJobParseResult(AiResultEvent event) {
         log.info("Received AiResultEvent for JOB_PARSE, referenceId: {}, status: {}", event.referenceId(), event.status());
         try {
@@ -52,7 +48,7 @@ public class AiResultMessageListener {
     /**
      * 监听简历解析结果 / Listen for resume parse results
      */
-    @RabbitListener(queues = RabbitMqConfig.QUEUE_RES_RESUME_PARSE)
+    @RabbitListener(queues = "${app.rabbitmq.queue.res.resume-parse}")
     public void onResumeParseResult(AiResultEvent event) {
         log.info("Received AiResultEvent for RESUME_PARSE, referenceId: {}, status: {}", event.referenceId(), event.status());
         try {
@@ -65,29 +61,11 @@ public class AiResultMessageListener {
     /**
      * 监听向量生成结果 / Listen for vector generation results
      */
-    @SuppressWarnings("unchecked")
-    @RabbitListener(queues = RabbitMqConfig.QUEUE_RES_VECTOR_GEN)
+    @RabbitListener(queues = "${app.rabbitmq.queue.res.vector-gen}")
     public void onVectorGenResult(AiResultEvent event) {
         log.info("Received AiResultEvent for VECTOR_GEN, referenceId: {}, status: {}", event.referenceId(), event.status());
         try {
-            String entityType = event.eventType() != null ? event.eventType() : extractEntityType(event);
-            float[] embeddingArray = extractEmbedding(event);
-
-            if ("COMPLETED".equals(event.status()) && embeddingArray != null) {
-                if (embeddingArray.length != embeddingProperties.getDimension()) {
-                    log.error("向量维度不匹配: 期望 {}, 实际 {}。referenceId: {}, entityType: {}",
-                            embeddingProperties.getDimension(), embeddingArray.length,
-                            event.referenceId(), entityType);
-                    saveFailedVector(event.referenceId(), entityType,
-                            "Embedding dimension mismatch: expected " + embeddingProperties.getDimension()
-                                    + ", got " + embeddingArray.length);
-                    return;
-                }
-                saveCompletedVector(event.referenceId(), entityType, embeddingArray);
-            } else {
-                saveFailedVector(event.referenceId(), entityType, event.errorMessage());
-            }
-
+            vectorFacade.handleVectorGenResult(event);
         } catch (Exception e) {
             log.error("Error processing AiResultEvent for VECTOR_GEN referenceId: {}", event.referenceId(), e);
         }
@@ -96,7 +74,7 @@ public class AiResultMessageListener {
     /**
      * 监听对话回复结果 / Listen for conversation reply results
      */
-    @RabbitListener(queues = RabbitMqConfig.QUEUE_RES_CONVERSATION)
+    @RabbitListener(queues = "${app.rabbitmq.queue.res.conversation}")
     public void onConversationReply(AiResultEvent event) {
         log.info("Received AiResultEvent for CONVERSATION_REPLY, referenceId: {}, status: {}", event.referenceId(), event.status());
         try {
@@ -110,7 +88,7 @@ public class AiResultMessageListener {
                         null
                 );
                 // 释放等待中的流连接 / Release pending stream connection
-                streamService.failReply(event.referenceId(), errorContent);
+                conversationFacade.failAiReply(event.referenceId(), errorContent);
                 return;
             }
 
@@ -123,10 +101,10 @@ public class AiResultMessageListener {
             log.info("Saved AI reply for conversation: {}", event.referenceId());
 
             // 唤醒等待中的流请求 / Wake up pending stream request
-            streamService.completeReply(event.referenceId(), content);
+            conversationFacade.completeAiReply(event.referenceId(), content);
         } catch (Exception e) {
             log.error("Error processing AiResultEvent for CONVERSATION_REPLY referenceId: {}", event.referenceId(), e);
-            streamService.failReply(event.referenceId(), e.getMessage());
+            conversationFacade.failAiReply(event.referenceId(), e.getMessage());
         }
     }
 
@@ -147,7 +125,6 @@ public class AiResultMessageListener {
     }
 
     // 提取 AI 优化后的 Markdown / Extract AI optimized markdown
-    @SuppressWarnings("unchecked")
     private String extractAiOptimizedMarkdown(AiResultEvent event) {
         if (event.data() == null) {
             return null;
@@ -159,61 +136,5 @@ public class AiResultMessageListener {
             }
         }
         return null;
-    }
-
-    // 提取实体类型 / Extract entity type
-    private String extractEntityType(AiResultEvent event) {
-        if (event.data() != null && event.data().containsKey("entityType")) {
-            return (String) event.data().get("entityType");
-        }
-        // 默认回退 / Default fallback
-        return "JOB";
-    }
-
-    // 提取嵌入向量 / Extract embedding vector
-    @SuppressWarnings("unchecked")
-    private float[] extractEmbedding(AiResultEvent event) {
-        if (event.data() != null && event.data().containsKey("embedding")) {
-            Object rawEmbedding = event.data().get("embedding");
-            if (rawEmbedding instanceof List<?> list) {
-                float[] arr = new float[list.size()];
-                for (int i = 0; i < list.size(); i++) {
-                    Object val = list.get(i);
-                    if (val instanceof Number n) {
-                        arr[i] = n.floatValue();
-                    }
-                }
-                return arr;
-            }
-        }
-        return null;
-    }
-
-    // 保存成功的向量 / Save completed vector
-    private void saveCompletedVector(String referenceId, String entityType, float[] embedding) {
-        String id = UUID.randomUUID().toString();
-        if ("RESUME".equalsIgnoreCase(entityType) || "RESUME_VECTOR".equalsIgnoreCase(entityType)) {
-            ResumeVector vector = ResumeVector.createCompleted(id, referenceId, embedding);
-            resumeVectorRepository.save(vector);
-            log.info("Saved COMPLETED resume vector for versionId: {}", referenceId);
-        } else {
-            JobVector vector = JobVector.createCompleted(id, referenceId, embedding);
-            jobVectorRepository.save(vector);
-            log.info("Saved COMPLETED job vector for jobId: {}", referenceId);
-        }
-    }
-
-    // 保存失败的向量 / Save failed vector
-    private void saveFailedVector(String referenceId, String entityType, String errorMessage) {
-        String id = UUID.randomUUID().toString();
-        if ("RESUME".equalsIgnoreCase(entityType) || "RESUME_VECTOR".equalsIgnoreCase(entityType)) {
-            ResumeVector vector = ResumeVector.createFailed(id, referenceId, errorMessage);
-            resumeVectorRepository.save(vector);
-            log.warn("Saved FAILED resume vector for versionId: {}", referenceId);
-        } else {
-            JobVector vector = JobVector.createFailed(id, referenceId, errorMessage);
-            jobVectorRepository.save(vector);
-            log.warn("Saved FAILED job vector for jobId: {}", referenceId);
-        }
     }
 }

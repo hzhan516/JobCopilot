@@ -12,9 +12,15 @@ import java.util.UUID;
  * User profile entity
  * <p>
  * 设计说明：
- * - 使用 @Getter 暴露字段访问
- * - 使用 @Builder(toBuilder = true) 支持构建器模式和基于现有对象的更新
- * - 可变字段通过领域方法修改，确保业务规则校验
+ * - 所有字段均为 final，实体完全不可变
+ * - 使用 @Builder(toBuilder = true) 支持构建器模式和基于现有对象的不可变更新
+ * - 属性修改通过领域方法返回新实例，确保业务规则校验和副作用可追踪
+ * <p>
+ * Design notes:
+ * - All fields are final; the entity is fully immutable.
+ * - Uses @Builder(toBuilder = true) to support builder pattern and immutable updates.
+ * - Attribute modifications return new instances via domain methods,
+ *   ensuring business rule validation and traceable side effects.
  */
 @Getter
 @Builder(toBuilder = true)
@@ -23,12 +29,12 @@ public class UserProfile implements Entity<UUID> {
     private final UUID id;
     private final UUID userId;
     private final LocalDateTime createdAt;
-    private String fullName;
-    private String avatarUrl;
-    private String phone;
-    private String targetPosition;
-    private String preferredLocation;
-    private LocalDateTime updatedAt;
+    private final String fullName;
+    private final String avatarUrl;
+    private final String phone;
+    private final String targetPosition;
+    private final String preferredLocation;
+    private final LocalDateTime updatedAt;
 
     /**
      * 全参构造函数 - 由 Lombok @Builder 使用
@@ -65,31 +71,54 @@ public class UserProfile implements Entity<UUID> {
 
     /**
      * 更新头像
-     * Update avatar
+     * Update avatar.
+     * <p>
+     * 返回一个新的不可变实例，原实例保持不变。
+     * Returns a new immutable instance; the original remains unchanged.
+     *
+     * @param avatarUrl 新头像 URL / New avatar URL
+     * @return 更新后的用户资料 / Updated user profile
      */
-    public void updateAvatar(String avatarUrl) {
-        this.avatarUrl = avatarUrl;
-        this.updatedAt = LocalDateTime.now();
+    public UserProfile updateAvatar(String avatarUrl) {
+        return this.toBuilder()
+                .avatarUrl(avatarUrl)
+                .updatedAt(LocalDateTime.now())
+                .build();
     }
 
     /**
      * 更新个人资料
-     * Update profile
+     * Update profile.
+     * <p>
+     * 返回一个新的不可变实例，原实例保持不变。
+     * 仅非空参数会覆盖现有值。
+     * Returns a new immutable instance; the original remains unchanged.
+     * Only non-null parameters override existing values.
+     *
+     * @param fullName         全名 / Full name
+     * @param phone            电话 / Phone
+     * @param targetPosition   目标职位 / Target position
+     * @param preferredLocation 偏好地点 / Preferred location
+     * @return 更新后的用户资料 / Updated user profile
      */
-    public void updateProfile(String fullName, String phone, String targetPosition, String preferredLocation) {
+    public UserProfile updateProfile(String fullName, String phone, String targetPosition, String preferredLocation) {
+        UserProfileBuilder builder = this.toBuilder()
+                .updatedAt(LocalDateTime.now());
+
         if (fullName != null) {
-            this.fullName = fullName;
+            builder.fullName(fullName);
         }
         if (phone != null) {
-            this.phone = phone;
+            builder.phone(phone);
         }
         if (targetPosition != null) {
-            this.targetPosition = targetPosition;
+            builder.targetPosition(targetPosition);
         }
         if (preferredLocation != null) {
-            this.preferredLocation = preferredLocation;
+            builder.preferredLocation(preferredLocation);
         }
-        this.updatedAt = LocalDateTime.now();
+
+        return builder.build();
     }
 
     @Override

@@ -40,6 +40,14 @@ app:
     dimension: ${LLM_EMBEDDING_MODEL_DIMENSION:1536}
   ai-service:
     base-url: ${AI_SERVICE_BASE_URL:http://localhost:8000}
+  rabbitmq:
+    queue:
+      res:
+        job-parse: backend.queue.job.parse
+        resume-parse: backend.queue.resume.parse
+        vector-gen: backend.queue.vector.gen
+        conversation: backend.queue.conversation
+        job-rank: backend.queue.job.rank
 
 # JWT 配置 / JWT configuration
 jwt:

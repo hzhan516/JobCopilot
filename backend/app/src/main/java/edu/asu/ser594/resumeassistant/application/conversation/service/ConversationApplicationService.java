@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.application.conversation.service;
 
+import edu.asu.ser594.resumeassistant.api.conversation.port.ConversationStreamPort;
 import edu.asu.ser594.resumeassistant.application.conversation.command.CreateConversationCommand;
 import edu.asu.ser594.resumeassistant.application.conversation.command.SendMessageCommand;
 import edu.asu.ser594.resumeassistant.domain.conversation.entity.Conversation;
@@ -46,6 +47,7 @@ public class ConversationApplicationService {
     private final AiMessagePublisherPort aiMessagePublisherPort;
     private final FileStorageService fileStorageService;
     private final MessageProvider messageProvider;
+    private final ConversationStreamPort streamPort;
 
     /**
      * 创建对话
@@ -158,7 +160,7 @@ public class ConversationApplicationService {
     @Transactional
     public String uploadAttachment(UUID conversationId, UUID userId, InputStream inputStream, long size, String contentType, String fileName) {
         log.info("Uploading attachment for conversation: {}", conversationId);
-        Conversation conversation = getConversationWithOwnershipCheck(conversationId, userId);
+        getConversationWithOwnershipCheck(conversationId, userId); // 验证所有权 / Verify ownership
 
         String objectKey = "conversations/" + conversationId + "/" + UUID.randomUUID() + "_" + fileName;
         fileStorageService.upload(objectKey, inputStream, size, contentType);
@@ -326,6 +328,24 @@ public class ConversationApplicationService {
             }
         }
         return relatedTexts;
+    }
+
+    /**
+     * 完成 AI 流式回复
+     * Complete AI stream reply.
+     */
+    public void completeAiReply(UUID conversationId, String content) {
+        streamPort.completeReply(conversationId.toString(), content);
+        log.info("Completed AI stream reply for conversation: {}", conversationId);
+    }
+
+    /**
+     * 标记 AI 流式回复失败
+     * Mark AI stream reply as failed.
+     */
+    public void failAiReply(UUID conversationId, String errorMessage) {
+        streamPort.failReply(conversationId.toString(), errorMessage);
+        log.warn("Failed AI stream reply for conversation: {}, error: {}", conversationId, errorMessage);
     }
 
     /**

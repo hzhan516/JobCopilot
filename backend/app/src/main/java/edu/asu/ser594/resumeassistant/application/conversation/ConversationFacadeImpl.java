@@ -102,6 +102,16 @@ public class ConversationFacadeImpl implements ConversationFacade {
     }
 
     @Override
+    public void completeAiReply(String conversationId, String content) {
+        applicationService.completeAiReply(UUID.fromString(conversationId), content);
+    }
+
+    @Override
+    public void failAiReply(String conversationId, String errorMessage) {
+        applicationService.failAiReply(UUID.fromString(conversationId), errorMessage);
+    }
+
+    @Override
     public String uploadAttachment(String conversationId, MultipartFile file, UUID userId) {
         try {
             return applicationService.uploadAttachment(

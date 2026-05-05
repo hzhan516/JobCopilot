@@ -1,22 +1,16 @@
 package edu.asu.ser594.resumeassistant.trigger.listener.ai;
 
 import edu.asu.ser594.resumeassistant.api.conversation.facade.ConversationFacade;
+import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
 import edu.asu.ser594.resumeassistant.api.resume.facade.ResumeFacade;
-import edu.asu.ser594.resumeassistant.domain.embedding.entity.JobVector;
-import edu.asu.ser594.resumeassistant.domain.embedding.entity.ResumeVector;
-import edu.asu.ser594.resumeassistant.domain.embedding.repository.JobVectorRepository;
-import edu.asu.ser594.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
-import edu.asu.ser594.resumeassistant.infrastructure.config.EmbeddingProperties;
-import edu.asu.ser594.resumeassistant.infrastructure.messaging.stream.ConversationStreamService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -24,6 +18,10 @@ import static org.mockito.Mockito.verify;
 
 /**
  * AI 结果消息监听器测试 / AI result message listener tests
+ * <p>
+ * 验证 Listener 仅通过 API 层 Facade 接口委托，不直接依赖 Domain 或 Infrastructure。
+ * Verifies that the listener only delegates through API-layer Facade interfaces
+ * without direct dependency on Domain or Infrastructure.
  */
 @ExtendWith(MockitoExtension.class)
 class AiResultMessageListenerTest {
@@ -38,16 +36,7 @@ class AiResultMessageListenerTest {
     private ConversationFacade conversationFacade;
 
     @Mock
-    private ResumeVectorRepository resumeVectorRepository;
-
-    @Mock
-    private JobVectorRepository jobVectorRepository;
-
-    @Mock
-    private ConversationStreamService streamService;
-
-    @Mock
-    private EmbeddingProperties embeddingProperties;
+    private VectorFacade vectorFacade;
 
     @InjectMocks
     private AiResultMessageListener listener;
@@ -77,14 +66,13 @@ class AiResultMessageListenerTest {
     }
 
     @Test
-    void onVectorGenResult_ShouldCallEmbeddingRepositoryForJob() {
+    void onVectorGenResult_ShouldCallVectorFacade() {
         // 准备 / Given
-        org.mockito.Mockito.when(embeddingProperties.getDimension()).thenReturn(2);
         AiResultEvent event = new AiResultEvent(
                 "job-123",
                 "VECTOR_GEN",
                 "COMPLETED",
-                Map.of("embedding", List.of(0.1, 0.2)),
+                Map.of("embedding", java.util.List.of(0.1, 0.2)),
                 null,
                 "JOB"
         );
@@ -93,27 +81,7 @@ class AiResultMessageListenerTest {
         listener.onVectorGenResult(event);
 
         // 验证 / Then
-        verify(jobVectorRepository).save(any(JobVector.class));
-    }
-
-    @Test
-    void onVectorGenResult_ShouldCallEmbeddingRepositoryForResume() {
-        // 准备 / Given
-        org.mockito.Mockito.when(embeddingProperties.getDimension()).thenReturn(2);
-        AiResultEvent event = new AiResultEvent(
-                "resume-456",
-                "VECTOR_GEN",
-                "COMPLETED",
-                Map.of("embedding", List.of(0.3, 0.4), "entityType", "RESUME"),
-                null,
-                "RESUME"
-        );
-
-        // 执行 / When
-        listener.onVectorGenResult(event);
-
-        // 验证 / Then
-        verify(resumeVectorRepository).save(any(ResumeVector.class));
+        verify(vectorFacade).handleVectorGenResult(event);
     }
 
     @Test
@@ -133,7 +101,7 @@ class AiResultMessageListenerTest {
 
         // 验证 / Then
         verify(conversationFacade).saveAiReply("conv-1", "Hello from AI", "http://minio/file.pdf", null);
-        verify(streamService).completeReply("conv-1", "Hello from AI");
+        verify(conversationFacade).completeAiReply("conv-1", "Hello from AI");
     }
 
     @Test
@@ -156,7 +124,7 @@ class AiResultMessageListenerTest {
 
         // 验证 / Then
         verify(conversationFacade).saveAiReply("conv-1", "Here is your optimized resume", null, "# Optimized Resume");
-        verify(streamService).completeReply("conv-1", "Here is your optimized resume");
+        verify(conversationFacade).completeAiReply("conv-1", "Here is your optimized resume");
     }
 
     @Test
@@ -179,7 +147,7 @@ class AiResultMessageListenerTest {
 
         // 验证 / Then
         verify(conversationFacade).saveAiReply("conv-1", "No changes needed", null, null);
-        verify(streamService).completeReply("conv-1", "No changes needed");
+        verify(conversationFacade).completeAiReply("conv-1", "No changes needed");
     }
 
     @Test
@@ -199,6 +167,6 @@ class AiResultMessageListenerTest {
 
         // 验证 / Then
         verify(conversationFacade).saveAiReply(eq("conv-1"), contains("AI response failed"), isNull(), isNull());
-        verify(streamService).failReply(eq("conv-1"), contains("AI response failed"));
+        verify(conversationFacade).failAiReply(eq("conv-1"), contains("AI response failed"));
     }
 }

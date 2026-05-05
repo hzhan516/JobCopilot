@@ -49,8 +49,8 @@ public class ProfileApplicationService {
         UserProfile profile = userProfileRepository.findByUserId(command.userId())
                 .orElseThrow(() -> new IllegalArgumentException("Profile not found for user: " + command.userId()));
 
-        profile.updateProfile(command.fullName(), command.phone(), command.targetPosition(), command.preferredLocation());
-        return userProfileRepository.save(profile);
+        UserProfile updated = profile.updateProfile(command.fullName(), command.phone(), command.targetPosition(), command.preferredLocation());
+        return userProfileRepository.save(updated);
     }
 
     /**
@@ -66,7 +66,7 @@ public class ProfileApplicationService {
         UserProfile profile = userProfileRepository.findByUserId(command.userId())
                 .orElseThrow(() -> new IllegalArgumentException("Profile not found for user: " + command.userId()));
 
-        profile.updateAvatar(command.avatarUrl());
-        return userProfileRepository.save(profile);
+        UserProfile updated = profile.updateAvatar(command.avatarUrl());
+        return userProfileRepository.save(updated);
     }
 }

@@ -55,6 +55,14 @@ storage:
 app:
   embedding:
     dimension: ${LLM_EMBEDDING_MODEL_DIMENSION:1536}
+  rabbitmq:
+    queue:
+      res:
+        job-parse: backend.queue.job.parse
+        resume-parse: backend.queue.resume.parse
+        vector-gen: backend.queue.vector.gen
+        conversation: backend.queue.conversation
+        job-rank: backend.queue.job.rank
 
 # JWT（从环境变量读取，必须设置）/ JWT (read from environment variables, must be set)
 jwt:

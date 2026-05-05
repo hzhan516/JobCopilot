@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.infrastructure.messaging.stream;
 
+import edu.asu.ser594.resumeassistant.api.conversation.port.ConversationStreamPort;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -21,7 +22,7 @@ import java.util.concurrent.TimeUnit;
  */
 @Service
 @Slf4j
-public class ConversationStreamService {
+public class ConversationStreamService implements ConversationStreamPort {
 
     private static final long DEFAULT_TIMEOUT_SECONDS = 60L;
     /**

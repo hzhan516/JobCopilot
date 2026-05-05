@@ -96,7 +96,7 @@ class ProfileFacadeImplTest {
         when(profileApplicationService.updateProfile(any(UpdateProfileCommand.class)))
                 .thenAnswer(inv -> {
                     UpdateProfileCommand cmd = inv.getArgument(0);
-                    testProfile.updateProfile(cmd.fullName(), cmd.phone(), cmd.targetPosition(), cmd.preferredLocation());
+                    testProfile = testProfile.updateProfile(cmd.fullName(), cmd.phone(), cmd.targetPosition(), cmd.preferredLocation());
                     return testProfile;
                 });
 
@@ -129,7 +129,7 @@ class ProfileFacadeImplTest {
         when(profileApplicationService.updateAvatar(any(UpdateAvatarCommand.class)))
                 .thenAnswer(inv -> {
                     UpdateAvatarCommand cmd = inv.getArgument(0);
-                    testProfile.updateAvatar(cmd.avatarUrl());
+                    testProfile = testProfile.updateAvatar(cmd.avatarUrl());
                     return testProfile;
                 });
 
