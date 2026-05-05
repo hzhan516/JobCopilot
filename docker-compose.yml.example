@@ -117,6 +117,10 @@ services:
       # 共享存储卷（简历文件）
       # 共享儲存卷（履歷檔案）
       - shared-storage:/app/uploads
+      # Backend logs (mapped to host directory for persistence)
+      # 后端日志（映射到主机目录以持久化）
+      # 後端日誌（映射到主機目錄以持久化）
+      - ./backend/logs:/app/backend/logs
     networks:
       - resume-network
     depends_on:

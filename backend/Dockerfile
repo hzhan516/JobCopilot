@@ -75,7 +75,7 @@ WORKDIR /app
 
 # 创建上传目录与日志目录（resume 用户需可写）
 # Create upload and log directories (resume user must be able to write)
-RUN mkdir -p /app/uploads /app/logs && chown -R resume:resume /app
+RUN mkdir -p /app/uploads /app/backend/logs && chown -R resume:resume /app
 
 # 为 resume 用户创建 home 目录（LibreOffice 需要可写的 $HOME）
 # Create home directory for resume user (LibreOffice needs a writable $HOME)
