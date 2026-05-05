@@ -6,6 +6,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from app.config import (
     LLM_EMBEDDING_MODEL,
     LLM_EMBEDDING_MODEL_DIMENSION,
+    LLM_REQUEST_TIMEOUT_SECONDS,
 )
 from app.schemas import AiResultEvent, VectorGenCommand
 
@@ -33,6 +34,7 @@ def generate_embedding(text: str) -> list[float]:
         model=LLM_EMBEDDING_MODEL,
         input=[cleaned_text],
         dimensions=LLM_EMBEDDING_MODEL_DIMENSION,
+        timeout=LLM_REQUEST_TIMEOUT_SECONDS,
     )
 
     if not response.data:

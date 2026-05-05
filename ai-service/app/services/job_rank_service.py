@@ -4,7 +4,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 
 # Job ranking utilities combining lexical features with optional LLM explanations.
 
-from app.config import LLM_TEXT_MODEL
+from app.config import LLM_REQUEST_TIMEOUT_SECONDS, LLM_TEXT_MODEL
 from app.schemas import JobRankCommand, JobRankResultPayload, JobRankResultItem, MatchFactors
 
 
@@ -93,7 +93,7 @@ def _safe_llm_call(prompt: str) -> str:
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3,
         max_tokens=150,
-        timeout=10  # Force 10 second timeout to prevent MQ consumer from hanging
+        timeout=min(10.0, LLM_REQUEST_TIMEOUT_SECONDS),
     )
     return response.choices[0].message.content.strip()
 

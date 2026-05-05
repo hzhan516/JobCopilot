@@ -1,6 +1,7 @@
 import json
 import logging
 import math
+import threading
 import time
 from pathlib import Path
 
@@ -15,18 +16,21 @@ logger = logging.getLogger(__name__)
 JOBS_DATASET_FILE = Path(__file__).resolve().parents[2] / "data_pipeline" / "output" / "normalized_jobs_sample.jsonl"
 _JOB_ROWS_CACHE: list[dict] | None = None
 _JOB_EMBEDDING_CACHE: dict[str, list[float]] = {}
+_JOB_CACHE_LOCK = threading.RLock()
 
 
 # Load and cache normalized job rows from the dataset file.
 def _load_jobs() -> list[dict]:
     global _JOB_ROWS_CACHE
 
-    if _JOB_ROWS_CACHE is not None:
-        return _JOB_ROWS_CACHE
+    with _JOB_CACHE_LOCK:
+        if _JOB_ROWS_CACHE is not None:
+            return _JOB_ROWS_CACHE
 
     rows: list[dict] = []
     if not JOBS_DATASET_FILE.exists():
-        _JOB_ROWS_CACHE = rows
+        with _JOB_CACHE_LOCK:
+            _JOB_ROWS_CACHE = rows
         return rows
 
     with JOBS_DATASET_FILE.open("r", encoding="utf-8") as file:
@@ -39,7 +43,8 @@ def _load_jobs() -> list[dict]:
             if payload.get("job_id") and payload.get("title"):
                 rows.append(payload)
 
-    _JOB_ROWS_CACHE = rows
+    with _JOB_CACHE_LOCK:
+        _JOB_ROWS_CACHE = rows
     return rows
 
 
@@ -101,9 +106,10 @@ def _get_job_embedding(job: dict) -> list[float] | None:
     if not job_id:
         return None
 
-    cached = _JOB_EMBEDDING_CACHE.get(job_id)
-    if cached is not None:
-        return cached
+    with _JOB_CACHE_LOCK:
+        cached = _JOB_EMBEDDING_CACHE.get(job_id)
+        if cached is not None:
+            return cached
 
     try:
         embedding = generate_embedding(_job_text(job)[:8000])
@@ -111,7 +117,8 @@ def _get_job_embedding(job: dict) -> list[float] | None:
         logger.exception("Failed to generate embedding for job_id=%s", job.get("job_id"))
         return None
 
-    _JOB_EMBEDDING_CACHE[job_id] = embedding
+    with _JOB_CACHE_LOCK:
+        _JOB_EMBEDDING_CACHE[job_id] = embedding
     return embedding
 
 

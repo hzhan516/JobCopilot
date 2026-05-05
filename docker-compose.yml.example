@@ -171,6 +171,7 @@ services:
       - LLM_VISION_MODEL=${LLM_VISION_MODEL:-gemini/gemini-2.5-flash}
       - LLM_EMBEDDING_MODEL=${LLM_EMBEDDING_MODEL:-gemini/gemini-embedding-001}
       - LLM_EMBEDDING_MODEL_DIMENSION=${LLM_EMBEDDING_MODEL_DIMENSION:-1536}
+      - LLM_REQUEST_TIMEOUT_SECONDS=${LLM_REQUEST_TIMEOUT_SECONDS:-60}
       # Log Level / 日志级别 / 日誌層級
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
