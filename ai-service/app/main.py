@@ -10,10 +10,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
-from app.config import LOG_LEVEL
+from app.config import LOG_LEVEL, LLM_EMBEDDING_MODEL, LLM_EMBEDDING_MODEL_DIMENSION
 from app.mq.consumer import create_connection, setup_all_queues, start_all_consumers
 
 from app.schemas import (
+    EmbeddingRequest,
+    EmbeddingResponse,
     JobMatchRequest,
     JobMatchResponse,
     SuitabilityRequest,
@@ -22,12 +24,15 @@ from app.schemas import (
 
 from app.services.job_matching_service import find_job_matches
 from app.services.suitability_service import evaluate_suitability_with_vertex
+from app.services.vector_service import generate_embedding
 
 
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
+
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -144,10 +149,33 @@ async def match_jobs(request: JobMatchRequest) -> JobMatchResponse:
     return find_job_matches(request)
 
 
+@app.post("/api/v1/ai/embeddings", response_model=EmbeddingResponse)
+async def batch_embeddings(request: EmbeddingRequest) -> EmbeddingResponse:
+    if not request.texts:
+        return EmbeddingResponse(
+            embeddings=[],
+            modelUsed=LLM_EMBEDDING_MODEL,
+            count=0,
+        )
+
+    embeddings: list[list[float]] = []
+    for text in request.texts:
+        try:
+            embeddings.append(generate_embedding(text))
+        except Exception:
+            logger.exception("Embedding failed for: %s", text[:100])
+            embeddings.append([0.0] * LLM_EMBEDDING_MODEL_DIMENSION)
+
+    return EmbeddingResponse(
+        embeddings=embeddings,
+        modelUsed=request.model or LLM_EMBEDDING_MODEL,
+        count=len(embeddings),
+    )
+
+
 if __name__ == "__main__":
     _start_mq_consumer_once()
 
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
-

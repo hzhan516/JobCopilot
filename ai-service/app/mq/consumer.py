@@ -1,5 +1,6 @@
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 # RabbitMQ consumers for AI workflow requests: declare queues, parse commands, handle messages,
 # and dispatch results or failures back to the appropriate result queues.
@@ -53,6 +54,7 @@ from app.services.resume_orchestrator import process_resume
 from app.services.vector_service import process_vector
 
 logger = logging.getLogger(__name__)
+_executor = ThreadPoolExecutor(max_workers=10, thread_name_prefix="ai-worker-")
 
 JOB_PARSE_FAILED_MESSAGE = "AI service failed while parsing the job posting. Please try again."
 RESUME_PARSE_FAILED_MESSAGE = "AI service failed while parsing the resume. Please try again."
@@ -324,83 +326,63 @@ def handle_job_rank_message(
         )
 
 
-# MQ callback for job parsing requests.
-def job_message_callback(ch, method, properties, body) -> None:
-    try:
-        handle_job_message(ch, body)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception:
-        logger.exception("Failed to process job message")
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+# Wrap MQ handlers in a worker pool and ACK/NACK from the RabbitMQ thread.
+# 使用线程池处理耗时任务，并通过 RabbitMQ 线程安全回调确认或拒绝消息。
+def _async_handler(wrapped_handler, log_raw_payload: bool = False):
+    def wrapper(ch, method, properties, body) -> None:
+        delivery_tag = method.delivery_tag
 
+        if log_raw_payload:
+            logger.info(
+                "Received raw conversation MQ message: delivery_tag=%s, body=%s",
+                delivery_tag,
+                body.decode("utf-8", errors="replace")[:1000],
+            )
 
-# MQ callback for resume parsing requests.
-def resume_message_callback(ch, method, properties, body) -> None:
-    try:
-        handle_resume_message(ch, body)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception:
-        logger.exception("Failed to process resume message")
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+        def task() -> None:
+            try:
+                wrapped_handler(ch, body)
+                ch.connection.add_callback_threadsafe(
+                    lambda: ch.basic_ack(delivery_tag=delivery_tag)
+                )
+            except Exception:
+                logger.exception("Handler failed, tag=%s", delivery_tag)
+                ch.connection.add_callback_threadsafe(
+                    lambda: ch.basic_nack(delivery_tag=delivery_tag, requeue=False)
+                )
 
+        _executor.submit(task)
 
-# MQ callback for vector generation requests.
-def vector_message_callback(ch, method, properties, body) -> None:
-    try:
-        handle_vector_message(ch, body)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception:
-        logger.exception("Failed to process vector message")
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
-
-
-# MQ callback for conversation requests with raw payload logging.
-def conversation_message_callback(ch, method, properties, body) -> None:
-    logger.info(
-        "Received raw conversation MQ message: delivery_tag=%s, body=%s",
-        method.delivery_tag,
-        body.decode("utf-8", errors="replace")[:1000],
-    )
-    try:
-        handle_conversation_message(ch, body)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception:
-        logger.exception("Failed to process conversation message")
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
-
-
-# MQ callback for job ranking requests.
-def job_rank_message_callback(ch, method, properties, body) -> None:
-    try:
-        handle_job_rank_message(ch, body)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception:
-        logger.exception("Failed to process job rank message")
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+    return wrapper
 
 
 # Start all consumer subscriptions and begin consuming.
 def start_all_consumers(channel: pika.adapters.blocking_connection.BlockingChannel) -> None:
-    channel.basic_qos(prefetch_count=1)
+    channel.basic_qos(prefetch_count=10)
 
     channel.basic_consume(
         queue=JOB_PARSE_REQUEST_QUEUE,
-        on_message_callback=job_message_callback,
+        on_message_callback=_async_handler(handle_job_message),
+        auto_ack=False,
     )
     channel.basic_consume(
         queue=RESUME_PARSE_REQUEST_QUEUE,
-        on_message_callback=resume_message_callback,
+        on_message_callback=_async_handler(handle_resume_message),
+        auto_ack=False,
     )
     channel.basic_consume(
         queue=VECTOR_GEN_REQUEST_QUEUE,
-        on_message_callback=vector_message_callback,
+        on_message_callback=_async_handler(handle_vector_message),
+        auto_ack=False,
     )
     channel.basic_consume(
         queue=CONVERSATION_REQUEST_QUEUE,
-        on_message_callback=conversation_message_callback,
+        on_message_callback=_async_handler(handle_conversation_message, log_raw_payload=True),
+        auto_ack=False,
     )
     channel.basic_consume(
         queue=JOB_RANK_REQUEST_QUEUE,
-        on_message_callback=job_rank_message_callback,
+        on_message_callback=_async_handler(handle_job_rank_message),
+        auto_ack=False,
     )
     channel.start_consuming()
