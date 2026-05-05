@@ -14,6 +14,7 @@ from app.config import (
     LLM_TEXT_MODEL,
     LLM_VISION_MODEL,
     LLM_TEMPERATURE,
+    LLM_REQUEST_TIMEOUT_SECONDS,
 )
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,7 @@ def _generate_text(model: str, messages: list[dict[str, Any]]) -> str:
             model=model,
             messages=messages,
             temperature=LLM_TEMPERATURE,
+            timeout=LLM_REQUEST_TIMEOUT_SECONDS,
         )
     except Exception:
         logger.exception("LLM completion failed: model=%s", model)
