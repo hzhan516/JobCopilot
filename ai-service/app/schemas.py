@@ -85,6 +85,17 @@ class AiResultEvent(AppBaseModel):
     event_type: str | None = Field(default=None, alias="eventType")
 
 
+class EmbeddingRequest(AppBaseModel):
+    texts: list[str] = Field(default_factory=list)
+    model: str | None = Field(default=None)
+
+
+class EmbeddingResponse(AppBaseModel):
+    embeddings: list[list[float]] = Field(default_factory=list)
+    model_used: str = Field(alias="modelUsed")
+    count: int
+
+
 class SuitabilityRequest(AppBaseModel):
     resume: ParsedResumeContent
     job: ParsedJobContent

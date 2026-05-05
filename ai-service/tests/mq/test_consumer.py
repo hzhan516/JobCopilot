@@ -17,12 +17,13 @@ from app.mq.consumer import (
     handle_vector_message,
     handle_conversation_message,
     handle_job_rank_message,
-    job_message_callback,
-    resume_message_callback,
-    vector_message_callback,
-    conversation_message_callback,
-    job_rank_message_callback,
+    _async_handler,
     start_all_consumers,
+    JOB_PARSE_FAILED_MESSAGE,
+    RESUME_PARSE_FAILED_MESSAGE,
+    VECTOR_GEN_FAILED_MESSAGE,
+    CONVERSATION_FAILED_MESSAGE,
+    JOB_RANK_FAILED_MESSAGE,
 )
 from app.config import AI_DLQ_QUEUE
 from app.schemas import (
@@ -131,7 +132,7 @@ def test_handle_job_message_failure(mock_publish, mock_process):
     mock_publish.assert_called_once()
     published_event = mock_publish.call_args[0][1]
     assert published_event.status == "FAILED"
-    assert published_event.error_message == "Processing failed"
+    assert published_event.error_message == JOB_PARSE_FAILED_MESSAGE
 
 @patch("app.mq.consumer.process_resume")
 @patch("app.mq.consumer.publish_ai_result")
@@ -161,7 +162,7 @@ def test_handle_resume_message_failure(mock_publish, mock_process):
     mock_publish.assert_called_once()
     published_event = mock_publish.call_args[0][1]
     assert published_event.status == "FAILED"
-    assert published_event.error_message == "Processing failed"
+    assert published_event.error_message == RESUME_PARSE_FAILED_MESSAGE
 
 @patch("app.mq.consumer.process_vector")
 @patch("app.mq.consumer.publish_ai_result")
@@ -191,7 +192,7 @@ def test_handle_vector_message_failure(mock_publish, mock_process):
     mock_publish.assert_called_once()
     published_event = mock_publish.call_args[0][1]
     assert published_event.status == "FAILED"
-    assert published_event.error_message == "Processing failed"
+    assert published_event.error_message == VECTOR_GEN_FAILED_MESSAGE
 
 @patch("app.mq.consumer.process_conversation")
 @patch("app.mq.consumer.publish_ai_result")
@@ -221,7 +222,7 @@ def test_handle_conversation_message_failure(mock_publish, mock_process):
     mock_publish.assert_called_once()
     published_event = mock_publish.call_args[0][1]
     assert published_event.status == "FAILED"
-    assert published_event.error_message == "Processing failed"
+    assert published_event.error_message == CONVERSATION_FAILED_MESSAGE
 
 @patch("app.mq.consumer.rank_jobs")
 @patch("app.mq.consumer.publish_job_rank_result")
@@ -251,132 +252,54 @@ def test_handle_job_rank_message_failure(mock_publish, mock_rank):
     mock_publish.assert_called_once()
     published_payload = mock_publish.call_args[0][1]
     assert published_payload["status"] == "FAILED"
-    assert published_payload["errorMessage"] == "Processing failed"
+    assert published_payload["errorMessage"] == JOB_RANK_FAILED_MESSAGE
 
-@patch("app.mq.consumer.handle_job_message")
-def test_job_message_callback_success(mock_handle):
+@patch("app.mq.consumer._executor.submit")
+def test_async_handler_acknowledges_success(mock_submit):
+    mock_submit.side_effect = lambda task: task()
     mock_channel = MagicMock()
+    mock_connection = MagicMock()
+    mock_channel.connection = mock_connection
     mock_method = MagicMock()
     mock_method.delivery_tag = 1
-    
-    job_message_callback(mock_channel, mock_method, None, b"body")
-    
+    mock_handle = MagicMock()
+
+    callback = _async_handler(mock_handle)
+    callback(mock_channel, mock_method, None, b"body")
+
     mock_handle.assert_called_once_with(mock_channel, b"body")
+    mock_connection.add_callback_threadsafe.assert_called_once()
+    ack_callback = mock_connection.add_callback_threadsafe.call_args[0][0]
+    ack_callback()
     mock_channel.basic_ack.assert_called_once_with(delivery_tag=1)
 
-@patch("app.mq.consumer.handle_job_message")
-def test_job_message_callback_failure(mock_handle):
-    mock_channel = MagicMock()
-    mock_method = MagicMock()
-    mock_method.delivery_tag = 1
-    
-    mock_handle.side_effect = Exception("Error")
-    
-    job_message_callback(mock_channel, mock_method, None, b"body")
-    
-    mock_handle.assert_called_once_with(mock_channel, b"body")
-    mock_channel.basic_nack.assert_called_once_with(delivery_tag=1, requeue=False)
 
-@patch("app.mq.consumer.handle_resume_message")
-def test_resume_message_callback_success(mock_handle):
+@patch("app.mq.consumer._executor.submit")
+def test_async_handler_nacks_failure(mock_submit):
+    mock_submit.side_effect = lambda task: task()
     mock_channel = MagicMock()
+    mock_connection = MagicMock()
+    mock_channel.connection = mock_connection
     mock_method = MagicMock()
     mock_method.delivery_tag = 1
-    
-    resume_message_callback(mock_channel, mock_method, None, b"body")
-    
-    mock_handle.assert_called_once_with(mock_channel, b"body")
-    mock_channel.basic_ack.assert_called_once_with(delivery_tag=1)
+    mock_handle = MagicMock(side_effect=Exception("Error"))
 
-@patch("app.mq.consumer.handle_resume_message")
-def test_resume_message_callback_failure(mock_handle):
-    mock_channel = MagicMock()
-    mock_method = MagicMock()
-    mock_method.delivery_tag = 1
-    
-    mock_handle.side_effect = Exception("Error")
-    
-    resume_message_callback(mock_channel, mock_method, None, b"body")
-    
-    mock_handle.assert_called_once_with(mock_channel, b"body")
-    mock_channel.basic_nack.assert_called_once_with(delivery_tag=1, requeue=False)
+    callback = _async_handler(mock_handle)
+    callback(mock_channel, mock_method, None, b"body")
 
-@patch("app.mq.consumer.handle_vector_message")
-def test_vector_message_callback_success(mock_handle):
-    mock_channel = MagicMock()
-    mock_method = MagicMock()
-    mock_method.delivery_tag = 1
-    
-    vector_message_callback(mock_channel, mock_method, None, b"body")
-    
     mock_handle.assert_called_once_with(mock_channel, b"body")
-    mock_channel.basic_ack.assert_called_once_with(delivery_tag=1)
-
-@patch("app.mq.consumer.handle_vector_message")
-def test_vector_message_callback_failure(mock_handle):
-    mock_channel = MagicMock()
-    mock_method = MagicMock()
-    mock_method.delivery_tag = 1
-    
-    mock_handle.side_effect = Exception("Error")
-    
-    vector_message_callback(mock_channel, mock_method, None, b"body")
-    
-    mock_handle.assert_called_once_with(mock_channel, b"body")
-    mock_channel.basic_nack.assert_called_once_with(delivery_tag=1, requeue=False)
-
-@patch("app.mq.consumer.handle_conversation_message")
-def test_conversation_message_callback_success(mock_handle):
-    mock_channel = MagicMock()
-    mock_method = MagicMock()
-    mock_method.delivery_tag = 1
-    
-    conversation_message_callback(mock_channel, mock_method, None, b"body")
-    
-    mock_handle.assert_called_once_with(mock_channel, b"body")
-    mock_channel.basic_ack.assert_called_once_with(delivery_tag=1)
-
-@patch("app.mq.consumer.handle_conversation_message")
-def test_conversation_message_callback_failure(mock_handle):
-    mock_channel = MagicMock()
-    mock_method = MagicMock()
-    mock_method.delivery_tag = 1
-    
-    mock_handle.side_effect = Exception("Error")
-    
-    conversation_message_callback(mock_channel, mock_method, None, b"body")
-    
-    mock_handle.assert_called_once_with(mock_channel, b"body")
-    mock_channel.basic_nack.assert_called_once_with(delivery_tag=1, requeue=False)
-
-@patch("app.mq.consumer.handle_job_rank_message")
-def test_job_rank_message_callback_success(mock_handle):
-    mock_channel = MagicMock()
-    mock_method = MagicMock()
-    mock_method.delivery_tag = 1
-    
-    job_rank_message_callback(mock_channel, mock_method, None, b"body")
-    
-    mock_handle.assert_called_once_with(mock_channel, b"body")
-    mock_channel.basic_ack.assert_called_once_with(delivery_tag=1)
-
-@patch("app.mq.consumer.handle_job_rank_message")
-def test_job_rank_message_callback_failure(mock_handle):
-    mock_channel = MagicMock()
-    mock_method = MagicMock()
-    mock_method.delivery_tag = 1
-    
-    mock_handle.side_effect = Exception("Error")
-    
-    job_rank_message_callback(mock_channel, mock_method, None, b"body")
-    
-    mock_handle.assert_called_once_with(mock_channel, b"body")
+    mock_connection.add_callback_threadsafe.assert_called_once()
+    nack_callback = mock_connection.add_callback_threadsafe.call_args[0][0]
+    nack_callback()
     mock_channel.basic_nack.assert_called_once_with(delivery_tag=1, requeue=False)
 
 def test_start_all_consumers():
     mock_channel = MagicMock()
     start_all_consumers(mock_channel)
     
-    mock_channel.basic_qos.assert_called_once_with(prefetch_count=1)
+    mock_channel.basic_qos.assert_called_once_with(prefetch_count=10)
     assert mock_channel.basic_consume.call_count == 5
+    for call in mock_channel.basic_consume.call_args_list:
+        assert call.kwargs["auto_ack"] is False
+        assert callable(call.kwargs["on_message_callback"])
     mock_channel.start_consuming.assert_called_once()
