@@ -1,132 +1,64 @@
-import { useEffect, useState, useCallback } from 'react';
-import type { Job, JobScoreResponse, ResumeGroup } from '@/types';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { jobService } from '@/services/jobService';
+import type { ResumeGroup } from '@/types';
+import { useJobStore } from '@/store/job.store';
 import { resumeService } from '@/services/resumeService';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Briefcase,
-  Building2,
-  Search,
-  Filter,
-  ExternalLink,
-  Sparkles,
-  Loader2,
-  Plus,
-  Link as LinkIcon,
-  Image,
-  Star,
-} from 'lucide-react';
 import { toast } from 'sonner';
+import JobListHeader from './components/JobListHeader';
+import JobFilterBar from './components/JobFilterBar';
+import JobCard from './components/JobCard';
+import JobListSkeleton from './components/JobListSkeleton';
+import JobEmptyState from './components/JobEmptyState';
+import JobCreateModal from './components/JobCreateModal';
 
-const MAX_SCREENSHOT_SIZE = 5 * 1024 * 1024; // 5MB
-
+/**
+ * JobList 容器组件
+ * JobList container — orchestrates data fetching, state management,
+ * and assembles presentational child components.
+ */
 export default function JobList() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('date');
 
-  // 简历列表
+  // === Job Store（全局业务状态）===
+  const jobs = useJobStore((state) => state.filteredJobs);
+  const loading = useJobStore((state) => state.loading);
+  const filters = useJobStore((state) => state.filters);
+  const scoreResults = useJobStore((state) => state.scoreResults);
+  const scoringState = useJobStore((state) => state.scoringState);
+  const selectedResumes = useJobStore((state) => state.selectedResumes);
+  const fetchJobs = useJobStore((state) => state.fetchJobs);
+  const loadScoreHistory = useJobStore((state) => state.loadScoreHistory);
+  const setSearchQuery = useJobStore((state) => state.setSearchQuery);
+  const setSortBy = useJobStore((state) => state.setSortBy);
+  const setSelectedResume = useJobStore((state) => state.setSelectedResume);
+  const scoreJob = useJobStore((state) => state.scoreJob);
+  const submitJobToStore = useJobStore((state) => state.submitJob);
+
+  // === 局部 UI 状态（无需全局共享）===
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+
+  // === 简历数据（Resume 领域，由本地管理）===
   const [resumes, setResumes] = useState<ResumeGroup[]>([]);
 
-  // 新加职位对话框
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [jobUrl, setJobUrl] = useState('');
-  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // 评分状态（按 jobId + resumeVersionId 记录）
-  const [scoringState, setScoringState] = useState<Record<string, boolean>>({});
-  const [scoreResults, setScoreResults] = useState<Record<string, JobScoreResponse>>({});
-
-  // 每个职位当前选中的简历版本
-  const [selectedResumes, setSelectedResumes] = useState<Record<string, string>>({});
-
-  const loadJobs = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await jobService.getJobs();
-      setJobs(data);
-      setFilteredJobs(data);
-    } catch {
-      toast.error(t('jobList.loadError'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [t]);
-
-  const loadResumes = useCallback(async () => {
-    try {
-      const data = await resumeService.getResumeGroups();
-      setResumes(data);
-    } catch {
-      // 静默处理
-    }
-  }, []);
-
-  // 加载历史评分记录，刷新后仍能显示之前的评分结果
-  const loadScoreHistory = useCallback(async () => {
-    try {
-      const history = await jobService.getScoreHistory();
-      const newScoreResults: Record<string, JobScoreResponse> = {};
-      const newSelectedResumes: Record<string, string> = {};
-
-      for (const record of history) {
-        const key = `${record.jobId}_${record.resumeVersionId}`;
-        newScoreResults[key] = {
-          suitable: record.suitable,
-          summary: record.summary,
-          finalScore: record.finalScore,
-          breakdown: {
-            skillScore: record.skillScore,
-            experienceScore: record.experienceScore,
-            overallScore: record.overallScore,
-          },
-        };
-        // 只设置一次：取该职位最新的评分简历（history 已按 createdAt 降序）
-        if (!newSelectedResumes[record.jobId]) {
-          newSelectedResumes[record.jobId] = record.resumeVersionId;
-        }
-      }
-
-      setScoreResults(newScoreResults);
-      setSelectedResumes((prev) => ({ ...prev, ...newSelectedResumes }));
-    } catch {
-      // 评分历史非关键数据，静默处理
-    }
-  }, []);
-
+  // === 初始化数据加载 ===
   useEffect(() => {
-    loadJobs();
-    loadResumes();
+    fetchJobs();
     loadScoreHistory();
-  }, [loadJobs, loadResumes, loadScoreHistory]);
 
-  // 智能轮询：有简历正在解析时，每3秒刷新一次简历列表
+    // 初始化加载简历列表（内联以避免 ESLint set-state-in-effect 误报）
+    resumeService
+      .getResumeGroups()
+      .then((data) => {
+        setResumes(data);
+      })
+      .catch(() => {
+        // 简历加载非关键路径，静默处理
+      });
+  }, [fetchJobs, loadScoreHistory]);
+
+  // === 智能轮询：简历解析状态 ===
   useEffect(() => {
     const hasPendingResume = resumes.some((group) =>
       [group.originalVersion, group.convertedVersion, group.aiOptimizedVersion]
@@ -136,391 +68,123 @@ export default function JobList() {
     if (!hasPendingResume) return;
 
     const interval = setInterval(() => {
-      loadResumes();
+      resumeService
+        .getResumeGroups()
+        .then((data) => {
+          setResumes(data);
+        })
+        .catch(() => {
+          // 静默处理
+        });
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [resumes, loadResumes]);
+  }, [resumes]);
 
-  // 筛选和排序
-  useEffect(() => {
-    let result = [...jobs];
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter((job) => {
-        const title = job.parsedContent?.title?.toLowerCase() || '';
-        const company = job.parsedContent?.company?.toLowerCase() || '';
-        const desc = job.parsedContent?.description?.toLowerCase() || '';
-        return title.includes(query) || company.includes(query) || desc.includes(query);
-      });
-    }
-
-    switch (sortBy) {
-      case 'date':
-        result.sort((a, b) => {
-          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          return dateB - dateA;
-        });
-        break;
-      case 'status':
-        result.sort((a, b) => a.status.localeCompare(b.status));
-        break;
-    }
-
-    setFilteredJobs(result);
-  }, [jobs, searchQuery, sortBy]);
-
-  // 获取所有可用的简历版本列表（排除原版简历，仅保留转换版和 AI 优化版）
-  const availableResumeVersions = resumes.flatMap((group) =>
-    [group.convertedVersion, group.aiOptimizedVersion]
-      .filter((v): v is NonNullable<typeof v> => !!v && v.exists)
-      .map((version) => ({
-        versionId: version.versionId,
-        label: `${group.title} - ${version.versionId.slice(0, 8)}`,
-        parseStatus: version.parseStatus,
-      }))
+  // === 派生数据：可用简历版本列表 ===
+  const availableResumeVersions = useMemo(
+    () =>
+      resumes.flatMap((group) =>
+        [group.convertedVersion, group.aiOptimizedVersion]
+          .filter((v): v is NonNullable<typeof v> => !!v && v.exists)
+          .map((version) => ({
+            versionId: version.versionId,
+            label: `${group.title} - ${version.versionId.slice(0, 8)}`,
+            parseStatus: version.parseStatus,
+          }))
+      ),
+    [resumes]
   );
 
-  // 提交新职位
-  const handleSubmitJob = async () => {
-    if (!jobUrl.trim()) {
-      toast.error(t('jobList.urlRequired'));
-      return;
-    }
-    if (!screenshotFile) {
-      toast.error(t('jobList.screenshotRequired'));
-      return;
-    }
-    if (screenshotFile.size > MAX_SCREENSHOT_SIZE) {
-      toast.error(t('jobList.screenshotTooLarge'));
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      await jobService.submitJob(jobUrl.trim(), screenshotFile);
-      toast.success(t('jobList.submitSuccess'));
-      setAddDialogOpen(false);
-      setJobUrl('');
-      setScreenshotFile(null);
-      loadJobs();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || t('jobList.submitError'));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // 开始评分
-  const handleScoreJob = async (jobId: string) => {
-    const resumeVersionId = selectedResumes[jobId];
-    if (!resumeVersionId) {
-      toast.error(t('jobList.selectResumeForScore'));
-      return;
-    }
-
-    const stateKey = `${jobId}_${resumeVersionId}`;
-    try {
-      setScoringState((prev) => ({ ...prev, [stateKey]: true }));
-      const result = await jobService.scoreJob(jobId, { resumeVersionId });
-      setScoreResults((prev) => ({ ...prev, [stateKey]: result }));
-      toast.success(t('jobList.scoreSuccess'));
-    } catch (error: unknown) {
-      const err = error as { response?: { status?: number; data?: { message?: string } } };
-      if (err.response?.status === 503) {
-        toast.warning(err.response?.data?.message || t('jobList.aiServiceUnavailable'));
-      } else if (err.response?.status === 422) {
-        toast.warning(err.response?.data?.message || t('jobList.scoringNotReady'));
-      } else {
-        toast.error(err.response?.data?.message || t('jobList.scoreError'));
+  // === 事件处理器 ===
+  const handleScoreJob = useCallback(
+    async (jobId: string) => {
+      const resumeVersionId = selectedResumes[jobId];
+      if (!resumeVersionId) {
+        toast.error(t('jobList.selectResumeForScore'));
+        return;
       }
-    } finally {
-      setScoringState((prev) => ({ ...prev, [stateKey]: false }));
-    }
-  };
+      await scoreJob(jobId, resumeVersionId);
+    },
+    [selectedResumes, scoreJob, t]
+  );
 
-  // 渲染骨架屏
-  if (isLoading) {
+  const handleSubmitJob = useCallback(
+    async (url: string, screenshot: File) => {
+      await submitJobToStore(url, screenshot);
+      setAddDialogOpen(false);
+    },
+    [submitJobToStore]
+  );
+
+  // === 渲染加载态 ===
+  if (loading && jobs.length === 0) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">{t('jobList.title')}</h1>
-          <p className="text-gray-500 mt-1">{t('jobList.subtitle')}</p>
-        </div>
-        <div className="flex space-x-4">
-          <Skeleton className="h-10 flex-1" />
-          <Skeleton className="h-10 w-32" />
-          <Skeleton className="h-10 w-40" />
-        </div>
-        <div className="grid gap-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-48" />
-          ))}
-        </div>
-      </div>
+      <JobListSkeleton
+        title={t('jobList.title')}
+        subtitle={t('jobList.subtitle')}
+      />
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* 页面标题 */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">{t('jobList.title')}</h1>
-          <p className="text-gray-500 mt-1">{t('jobList.subtitle')}</p>
-        </div>
-        <Button onClick={() => setAddDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          {t('jobList.addJob')}
-        </Button>
-      </div>
+      <JobListHeader
+        title={t('jobList.title')}
+        subtitle={t('jobList.subtitle')}
+        addButtonLabel={t('jobList.addJob')}
+        onAddClick={() => setAddDialogOpen(true)}
+      />
 
-      {/* 筛选栏 */}
-      <div className="flex flex-col lg:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
-            placeholder={t('jobList.searchPlaceholder')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <div className="flex gap-4">
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-40">
-              <Filter className="w-4 h-4 mr-2" />
-              <SelectValue placeholder={t('jobList.sortBy')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="date">{t('jobList.sortDate')}</SelectItem>
-              <SelectItem value="status">{t('jobList.sortStatus')}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <JobFilterBar
+        searchQuery={filters.searchQuery}
+        sortBy={filters.sortBy}
+        searchPlaceholder={t('jobList.searchPlaceholder')}
+        sortLabel={t('jobList.sortBy')}
+        sortOptions={[
+          { value: 'date', label: t('jobList.sortDate') },
+          { value: 'status', label: t('jobList.sortStatus') },
+        ]}
+        onSearchChange={setSearchQuery}
+        onSortChange={(value) => setSortBy(value as 'date' | 'status')}
+      />
 
-      {/* 职位列表 */}
       <div className="grid gap-4">
-        {filteredJobs.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <Briefcase className="w-16 h-16 text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">{t('jobList.emptyTitle')}</h3>
-              <p className="text-gray-500">{t('jobList.emptyDesc')}</p>
-            </CardContent>
-          </Card>
+        {jobs.length === 0 ? (
+          <JobEmptyState
+            title={t('jobList.emptyTitle')}
+            description={t('jobList.emptyDesc')}
+          />
         ) : (
-          filteredJobs.map((job) => {
-            const currentResumeId = selectedResumes[job.id] || '';
-            const currentResume = availableResumeVersions.find((v) => v.versionId === currentResumeId);
+          jobs.map((job) => {
+            const currentResumeId = selectedResumes[job.id] ?? '';
             const scoreKey = `${job.id}_${currentResumeId}`;
-            const isScoring = scoringState[scoreKey] || false;
+            const isScoring = scoringState[scoreKey] ?? false;
             const scoreResult = scoreResults[scoreKey];
 
             return (
-              <Card key={job.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-xl font-semibold text-gray-900">
-                          {job.parsedContent?.title || t('jobDetail.unknownTitle')}
-                        </h3>
-                        <Badge variant={job.status === 'COMPLETED' ? 'default' : 'secondary'}>
-                          {t(`jobDetail.status.${job.status}`)}
-                        </Badge>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                        <span className="flex items-center">
-                          <Building2 className="w-4 h-4 mr-1" />
-                          {job.parsedContent?.company || t('jobDetail.unknownCompany')}
-                        </span>
-                        {job.parsedContent?.location && (
-                          <span className="flex items-center">
-                            <span className="w-4 h-4 mr-1">📍</span>
-                            {job.parsedContent.location}
-                          </span>
-                        )}
-                        {job.parsedContent?.salary && (
-                          <span className="flex items-center">
-                            <span className="w-4 h-4 mr-1">💰</span>
-                            {job.parsedContent.salary}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/jobs/${job.id}`)}
-                    >
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      {t('jobList.viewDetails')}
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-gray-600 line-clamp-2">
-                    {job.parsedContent?.description || t('jobDetail.noDescription')}
-                  </p>
-
-                  {/* 评分区域 */}
-                  {job.status === 'COMPLETED' && availableResumeVersions.length > 0 && (
-                    <div className="border rounded-lg p-4 bg-gray-50/50 space-y-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                        <Select
-                          value={currentResumeId}
-                          onValueChange={(val) =>
-                            setSelectedResumes((prev) => ({ ...prev, [job.id]: val }))
-                          }
-                        >
-                          <SelectTrigger className="w-full sm:w-64">
-                            <SelectValue placeholder={t('jobList.selectResumeForScore')} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableResumeVersions.map((rv) => (
-                              <SelectItem key={rv.versionId} value={rv.versionId}>
-                                {rv.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          size="sm"
-                          onClick={() => handleScoreJob(job.id)}
-                          disabled={!currentResumeId || isScoring || job.status !== 'COMPLETED' || (currentResume?.parseStatus !== 'COMPLETED')}
-                          title={job.status !== 'COMPLETED' ? t('jobList.scoringNotReady') : currentResume?.parseStatus !== 'COMPLETED' ? t('jobList.resumeParsing') : undefined}
-                        >
-                          {isScoring ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <Sparkles className="w-4 h-4 mr-2" />
-                          )}
-                          {t('jobList.startScore')}
-                        </Button>
-                      </div>
-
-                      {/* 评分结果 */}
-                      {scoreResult && (
-                        <div className="rounded-md border bg-white p-3 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-400">
-                              {t('jobList.scoredWithResume')}: {
-                                (() => {
-                                  for (const group of resumes) {
-                                    for (const v of [group.convertedVersion, group.aiOptimizedVersion, group.originalVersion]) {
-                                      if (v?.versionId === currentResumeId) return group.title;
-                                    }
-                                  }
-                                  return t('common.notSpecified');
-                                })()
-                              }
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <Badge
-                              className={
-                                scoreResult.finalScore >= 0.7
-                                  ? 'bg-green-100 text-green-700'
-                                  : scoreResult.finalScore >= 0.4
-                                  ? 'bg-blue-100 text-blue-700'
-                                  : 'bg-gray-100 text-gray-700'
-                              }
-                            >
-                              <Star className="w-3 h-3 mr-1" />
-                              {t('jobList.matchScore', {
-                                score: Math.round(scoreResult.finalScore * 100),
-                              })}
-                            </Badge>
-                            <span className="text-sm text-gray-500">
-                              {scoreResult.suitable
-                                ? t('jobList.suitable')
-                                : t('jobList.notSuitable')}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-700">{scoreResult.summary}</p>
-                          <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-                            <span>
-                              {t('jobList.skillScore')}: {Math.round(scoreResult.breakdown.skillScore * 100)}%
-                            </span>
-                            <span>
-                              {t('jobList.experienceScore')}: {Math.round(scoreResult.breakdown.experienceScore * 100)}%
-                            </span>
-                            <span>
-                              {t('jobList.overallScore')}: {Math.round(scoreResult.breakdown.overallScore * 100)}%
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <JobCard
+                key={job.id}
+                job={job}
+                availableResumeVersions={availableResumeVersions}
+                selectedResumeId={currentResumeId}
+                scoreResult={scoreResult}
+                isScoring={isScoring}
+                resumes={resumes}
+                onSelectResume={(versionId) => setSelectedResume(job.id, versionId)}
+                onScore={() => handleScoreJob(job.id)}
+                onViewDetail={() => navigate(`/jobs/${job.id}`)}
+              />
             );
           })
         )}
       </div>
 
-      {/* 新加职位对话框 */}
-      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('jobList.addJobDialogTitle')}</DialogTitle>
-            <DialogDescription>{t('jobList.addJobDialogDesc')}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block flex items-center">
-                <LinkIcon className="w-4 h-4 mr-1" />
-                {t('jobList.jobUrl')}
-              </label>
-              <Input
-                placeholder={t('jobList.jobUrlPlaceholder')}
-                value={jobUrl}
-                onChange={(e) => setJobUrl(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block flex items-center">
-                <Image className="w-4 h-4 mr-1" />
-                {t('jobList.jobScreenshot')}
-              </label>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] || null;
-                  if (file && file.size > MAX_SCREENSHOT_SIZE) {
-                    toast.error(t('jobList.screenshotTooLarge'));
-                    setScreenshotFile(null);
-                    e.target.value = '';
-                    return;
-                  }
-                  setScreenshotFile(file);
-                }}
-              />
-              <p className="text-xs text-gray-500 mt-1">{t('jobList.screenshotHint')}</p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button onClick={handleSubmitJob} disabled={isSubmitting}>
-              {isSubmitting ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Plus className="w-4 h-4 mr-2" />
-              )}
-              {t('jobList.submitJob')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <JobCreateModal
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        onSubmit={handleSubmitJob}
+      />
     </div>
   );
 }

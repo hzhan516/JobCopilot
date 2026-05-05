@@ -2,6 +2,9 @@ import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestCo
 import type { ApiResponse, AuthResponse, LoginRequest, RegisterRequest, LoginByGoogleRequest } from '@/types';
 import tokenStorage from './tokenStorage';
 
+// 最大重试次数（网络抖动时）
+const MAX_RETRIES = 2;
+
 // 创建 axios 实例
 const apiClient: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
@@ -64,12 +67,40 @@ async function doRefreshToken(): Promise<string | null> {
   return null;
 }
 
-// 响应拦截器 - 统一错误处理与 Token 自动续期
+/**
+ * 判断是否为可重试的网络错误
+ * Determine if an error is a retryable network error
+ */
+function isRetryableNetworkError(error: AxiosError<unknown>): boolean {
+  return (
+    !error.response && // 无响应（网络层失败）
+    error.code !== 'ECONNABORTED' // 排除主动超时（timeout）
+  );
+}
+
+// 响应拦截器 - 统一错误处理、Token 自动续期、请求重试
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiResponse<unknown>>) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean; _retryCount?: number };
 
+    // ========== 1. 网络错误重试机制（仅对 GET 请求） ==========
+    if (
+      originalRequest &&
+      originalRequest.method?.toLowerCase() === 'get' &&
+      isRetryableNetworkError(error)
+    ) {
+      const retryCount = originalRequest._retryCount ?? 0;
+      if (retryCount < MAX_RETRIES) {
+        originalRequest._retryCount = retryCount + 1;
+        // 指数退避：1s, 2s
+        const delayMs = 1000 * Math.pow(2, retryCount);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        return apiClient(originalRequest);
+      }
+    }
+
+    // ========== 2. Token 自动续期 ==========
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       // 登录/注册失败时的 401 由调用方自行处理，不执行全局跳转
       if (
@@ -114,6 +145,46 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// ========== AbortController 工具函数 ==========
+
+/**
+ * 创建一个可取消的请求包装器
+ * Creates an abortable request wrapper
+ *
+ * @example
+ * const { execute, abort } = createAbortableRequest();
+ *
+ * execute(async (signal) => {
+ *   const jobs = await jobService.getJobs(signal);
+ *   return jobs;
+ * });
+ *
+ * // 取消当前请求
+ * abort();
+ */
+export function createAbortableRequest() {
+  let controller: AbortController | null = null;
+
+  const execute = <T>(fn: (signal: AbortSignal) => Promise<T>): Promise<T> => {
+    // 取消之前的请求
+    controller?.abort();
+    controller = new AbortController();
+
+    return fn(controller.signal).finally(() => {
+      if (controller?.signal.aborted === false) {
+        controller = null;
+      }
+    });
+  };
+
+  const abort = (reason?: string): void => {
+    controller?.abort(reason);
+    controller = null;
+  };
+
+  return { execute, abort };
+}
 
 // 认证服务
 export const authService = {

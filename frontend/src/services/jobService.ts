@@ -13,9 +13,11 @@ import type {
 
 // 职位服务
 export const jobService = {
-  // 获取职位列表
-  getJobs: async (): Promise<Job[]> => {
-    const response = await apiClient.get<ApiResponse<Job[]>>('/v1/jobs');
+  // 获取职位列表（支持 AbortController）
+  getJobs: async (signal?: AbortSignal): Promise<Job[]> => {
+    const response = await apiClient.get<ApiResponse<Job[]>>('/v1/jobs', {
+      signal,
+    });
     if (response.data.code === 200) {
       return response.data.data;
     }

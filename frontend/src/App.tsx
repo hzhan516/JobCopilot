@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/sonner';
 
 // 布局
 import MainLayout from '@/components/layout/MainLayout';
+import ErrorBoundary from '@/components/layout/ErrorBoundary';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import PublicRoute from '@/components/PublicRoute';
 
@@ -24,8 +25,9 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <Routes>
-          {/* 公开路由 - 已登录用户将被重定向 */}
+        <ErrorBoundary>
+          <Routes>
+            {/* 公开路由 - 已登录用户将被重定向 */}
           <Route
             path="/login"
             element={
@@ -138,7 +140,8 @@ function App() {
           {/* 404 重定向 */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </Router>
+      </ErrorBoundary>
+    </Router>
       <Toaster position="top-center" richColors />
     </AuthProvider>
   );
