@@ -1,6 +1,5 @@
 import json
 import logging
-import traceback
 
 # RabbitMQ consumers for AI workflow requests: declare queues, parse commands, handle messages,
 # and dispatch results or failures back to the appropriate result queues.
@@ -54,6 +53,12 @@ from app.services.resume_orchestrator import process_resume
 from app.services.vector_service import process_vector
 
 logger = logging.getLogger(__name__)
+
+JOB_PARSE_FAILED_MESSAGE = "AI service failed while parsing the job posting. Please try again."
+RESUME_PARSE_FAILED_MESSAGE = "AI service failed while parsing the resume. Please try again."
+VECTOR_GEN_FAILED_MESSAGE = "AI service failed while generating embeddings. Please try again."
+CONVERSATION_FAILED_MESSAGE = "AI service failed while generating the chat response. Please try again."
+JOB_RANK_FAILED_MESSAGE = "AI service failed while ranking jobs. Please try again."
 
 QUEUE_ARGUMENTS = {
     "x-dead-letter-exchange": AI_DLX_EXCHANGE,
@@ -228,7 +233,7 @@ def handle_job_message(
         result = build_failed_event(
             reference_id=command.job_id,
             event_type="JOB_PARSE",
-            error_message=str(exc) + "\n\n" + traceback.format_exc(),
+            error_message=JOB_PARSE_FAILED_MESSAGE,
             event_entity_type="JOB",
         )
 
@@ -248,7 +253,7 @@ def handle_resume_message(
         result = build_failed_event(
             reference_id=command.resume_id,
             event_type="RESUME_PARSE",
-            error_message=str(exc) + "\n\n" + traceback.format_exc(),
+            error_message=RESUME_PARSE_FAILED_MESSAGE,
             event_entity_type=None,
         )
 
@@ -268,7 +273,7 @@ def handle_vector_message(
         result = build_failed_event(
             reference_id=command.reference_id,
             event_type="VECTOR_GEN",
-            error_message=str(exc) + "\n\n" + traceback.format_exc(),
+            error_message=VECTOR_GEN_FAILED_MESSAGE,
             event_entity_type=command.entity_type,
         )
 
@@ -288,7 +293,7 @@ def handle_conversation_message(
         result = build_failed_event(
             reference_id=command.conversation_id,
             event_type="CONVERSATION_REPLY",
-            error_message=str(exc) + "\n\n" + traceback.format_exc(),
+            error_message=CONVERSATION_FAILED_MESSAGE,
             event_entity_type=None,
         )
 
@@ -314,7 +319,7 @@ def handle_job_rank_message(
                 "status": "FAILED",
                 "rankTimeMs": 0,
                 "rankedResults": [],
-                "errorMessage": str(exc) + "\n\n" + traceback.format_exc(),
+                "errorMessage": JOB_RANK_FAILED_MESSAGE,
             },
         )
 
