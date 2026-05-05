@@ -7,6 +7,7 @@ import os
 import threading
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
 from app.config import LOG_LEVEL
@@ -57,9 +58,17 @@ async def root():
 @app.get("/health")
 async def health_check():
     if not _mq_is_connected:
-        raise HTTPException(status_code=503, detail="RabbitMQ consumer not connected")
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "degraded",
+                "mq_connected": False,
+                "message": "Initializing or waiting for RabbitMQ connection..."
+            }
+        )
     return {
         "status": "healthy",
+        "mq_connected": True,
         "vertex_project_configured": os.getenv("VERTEX_PROJECT_ID") is not None and os.getenv("VERTEX_PROJECT_ID") != "ser594-ai-service",
         "vertex_location": os.getenv("VERTEX_LOCATION", "global"),
     }
@@ -83,13 +92,14 @@ def initialize_mq() -> None:
     global _mq_is_connected
     import time
     
-    max_retries = 10
     retry_delay = 5
     
     logger = logging.getLogger(__name__)
-    for attempt in range(max_retries):
+    attempt = 0
+    while True:
+        attempt += 1
         try:
-            logger.info("Starting RabbitMQ consumers (Attempt %d/%d)...", attempt + 1, max_retries)
+            logger.info("Starting RabbitMQ consumers (Attempt %d)...", attempt)
             connection = create_connection()
             channel = connection.channel()
             setup_all_queues(channel)
@@ -97,15 +107,10 @@ def initialize_mq() -> None:
             _mq_is_connected = True
             start_all_consumers(channel)
             break # Successfully connected and consuming
-        except Exception:
+        except Exception as e:
             _mq_is_connected = False
-            logger.exception("RabbitMQ consumer startup failed")
-            if attempt < max_retries - 1:
-                logger.info("Retrying in %d seconds...", retry_delay)
-                time.sleep(retry_delay)
-            else:
-                logger.error("Max retries reached. Giving up on RabbitMQ connection.")
-                raise
+            logger.warning("RabbitMQ consumer startup failed (Attempt %d): %s. Retrying in %d seconds...", attempt, e, retry_delay)
+            time.sleep(retry_delay)
 
 
 def _start_mq_consumer_once() -> None:
