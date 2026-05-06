@@ -24,4 +24,9 @@ public class EmbeddingConfigImpl implements EmbeddingConfig {
     public int getDimension() {
         return embeddingProperties.getDimension();
     }
+
+    @Override
+    public String getDefaultModelVersion() {
+        return embeddingProperties.getModelVersion();
+    }
 }

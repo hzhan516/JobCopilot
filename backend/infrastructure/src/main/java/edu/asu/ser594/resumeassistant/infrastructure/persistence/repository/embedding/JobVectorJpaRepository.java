@@ -29,10 +29,10 @@ public interface JobVectorJpaRepository extends JpaRepository<JobVectorJpaEntity
               description,
               requirements,
               raw_content,
-              1 - (embedding <=> CAST(:vectorStr AS vector(1536))) AS similarity
+              1 - (embedding <=> CAST(:vectorStr AS vector(#{@embeddingProperties.dimension}))) AS similarity
             FROM job_vectors
             WHERE status = 'COMPLETED'
-            ORDER BY embedding <=> CAST(:vectorStr AS vector(1536))
+            ORDER BY embedding <=> CAST(:vectorStr AS vector(#{@embeddingProperties.dimension}))
             LIMIT :limit
             """, nativeQuery = true)
     List<Object[]> findNearestNeighbors(@Param("vectorStr") String vectorStr, @Param("limit") int limit);

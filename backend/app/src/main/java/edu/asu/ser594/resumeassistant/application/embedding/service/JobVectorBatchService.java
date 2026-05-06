@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.application.embedding.service;
 
+import edu.asu.ser594.resumeassistant.api.embedding.config.EmbeddingConfig;
 import edu.asu.ser594.resumeassistant.api.embedding.dto.request.BatchJobVectorUpsertRequest.JobVectorItem;
 import edu.asu.ser594.resumeassistant.api.embedding.dto.response.BatchJobVectorUpsertResponse;
 import edu.asu.ser594.resumeassistant.domain.embedding.entity.JobVector;
@@ -9,12 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * 职位向量批量服务
@@ -30,6 +26,7 @@ import java.util.UUID;
 public class JobVectorBatchService {
 
     private final JobVectorRepository jobVectorRepository;
+    private final EmbeddingConfig embeddingConfig;
 
     /**
      * 批量 Upsert 职位向量（带数据库去重）
@@ -67,6 +64,9 @@ public class JobVectorBatchService {
 
                 float[] embedding = convertListToArray(item.embedding());
                 String vectorId = existingOpt.map(JobVector::getId).orElse(UUID.randomUUID().toString());
+                String modelVersion = item.modelVersion() != null
+                        ? item.modelVersion()
+                        : embeddingConfig.getDefaultModelVersion();
                 JobVector vector = JobVector.createCompleted(
                         vectorId,
                         item.jobId(),
@@ -76,7 +76,7 @@ public class JobVectorBatchService {
                         item.requirements(),
                         item.rawContent(),
                         item.sourceFile(),
-                        item.modelVersion()
+                        modelVersion
                 );
                 vectorsToSave.add(vector);
             } catch (Exception e) {

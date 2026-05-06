@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS job_vectors
     status        VARCHAR(32) NOT NULL,
     error_message TEXT,
     created_at    TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at    TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    description VARCHAR(255)
 );
 
 -- 索引 / Indexes

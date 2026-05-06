@@ -34,12 +34,13 @@ spring:
   flyway:
     enabled: ${SPRING_FLYWAY_ENABLED:false}
 
-# 嵌入向量维度 / Embedding vector dimension
+# 应用级配置 / Application-level configuration
 app:
   embedding:
     dimension: ${LLM_EMBEDDING_MODEL_DIMENSION:1536}
-  ai-service:
-    base-url: ${AI_SERVICE_BASE_URL:http://localhost:8000}
+    model-version: ${LLM_EMBEDDING_MODEL:gemini/gemini-embedding-001}
+  search:
+    max-limit: ${SEARCH_MAX_LIMIT:100}
   rabbitmq:
     queue:
       res:
@@ -47,6 +48,11 @@ app:
         resume-parse: backend.queue.resume.parse
         conversation: backend.queue.conversation
         job-rank: backend.queue.job.rank
+
+# AI 服务连接地址 / AI service connection URL
+ai:
+  service:
+    base-url: ${AI_SERVICE_BASE_URL:http://localhost:8000}
 
 # JWT 配置 / JWT configuration
 jwt:

@@ -16,6 +16,10 @@ This document describes every environment variable used by the Resume Assistant 
 - [C. Authentication / JWT](#c-authentication--jwt)
 - [D. Frontend / Web App](#d-frontend--web-app)
 - [E. Spring Boot / Backend](#e-spring-boot--backend)
+- [K. JWT Token Lifetime](#k-jwt-token-lifetime)
+- [L. AI Service Connection](#l-ai-service-connection)
+- [M. File Storage](#m-file-storage)
+- [N. Backend Logging](#n-backend-logging)
 - [F. AI Provider Keys](#f-ai-provider-keys)
 - [G. Model Parameters](#g-model-parameters)
 - [H. AI Service Logging](#h-ai-service-logging)
@@ -214,6 +218,26 @@ openssl rand -base64 48
 | **Valid values** | `dev`, `prod`, `test` |
 | **Security notes** | The `dev` profile disables Flyway, uses a 24-hour JWT expiry, and enables verbose error messages. **Never use `dev` in production.** The `prod` profile enables Flyway validation, sets 1-hour JWT expiry, and hides stack traces from API responses. |
 | **Common mistakes** | Deploying with `SPRING_PROFILES_ACTIVE=dev` in production. |
+
+### `SPRING_APPLICATION_NAME`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Application name displayed in Spring Boot Actuator, metrics, and logs. |
+| **Default** | `resume-assistant-backend` |
+| **Valid values** | Any valid Spring Boot application name |
+| **Security notes** | Not a secret. Used for observability and service discovery. |
+| **Common mistakes** | Using spaces or special characters that break URL-safe identifiers. |
+
+### `SPRING_FLYWAY_ENABLED`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Whether to run Flyway database migrations on startup. |
+| **Default** | `false` (dev) / `true` (prod) |
+| **Valid values** | `true`, `false` |
+| **Security notes** | Disabling Flyway in production prevents schema updates, which may cause runtime errors when the code expects newer tables or columns. Only disable if you manage schema changes manually. |
+| **Common mistakes** | <ul><li>Setting `false` in production and forgetting to apply migrations manually.</li><li>Changing this after the database has been initialized without understanding the impact on existing data.</li></ul> |
 
 ---
 
@@ -437,3 +461,427 @@ openssl rand -base64 32
 ```
 
 If left empty, both the backend interceptor and the AI service middleware skip the check. This is convenient for local development but **must not** be used in production.
+
+## K. JWT Token Lifetime
+
+### `JWT_ACCESS_EXPIRATION`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Access token expiration time in milliseconds. Controls how long a user stays logged in before re-authenticating. |
+| **Default** | `86400000` (24 hours in dev) / `3600000` (1 hour in prod) |
+| **Valid values** | Positive integer (milliseconds) |
+| **Security notes** | Shorter values improve security by limiting the window of opportunity for stolen tokens. Longer values improve user experience but increase risk. In production, 1 hour (`3600000`) is recommended. |
+| **Common mistakes** | <ul><li>Setting an extremely long value (e.g. `31536000000` = 1 year) for convenience, which defeats the purpose of token rotation.</li><li>Forgetting that the prod profile defaults to 1 hour even if you set a different dev value.</li></ul> |
+
+### `JWT_REFRESH_EXPIRATION`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Refresh token expiration time in milliseconds. Controls how long a refresh token remains valid for obtaining new access tokens. |
+| **Default** | `604800000` (7 days) |
+| **Valid values** | Positive integer (milliseconds); must be greater than `JWT_ACCESS_EXPIRATION` |
+| **Security notes** | Refresh tokens are long-lived by design. If a refresh token is compromised, an attacker can maintain access for the entire expiration period. Consider shorter values (e.g. 1–3 days) for high-security deployments. |
+| **Common mistakes** | Setting `JWT_REFRESH_EXPIRATION` shorter than `JWT_ACCESS_EXPIRATION`, which makes it impossible to refresh tokens before they expire. |
+
+---
+
+## L. AI Service Connection
+
+### `AI_SERVICE_BASE_URL`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Base URL of the AI service REST API as seen from the backend. The backend calls this endpoint for vector generation and job matching. |
+| **Default** | `http://localhost:8000` (non-Docker) / `http://ai-service:8000` (Docker) |
+| **Valid values** | Any HTTP URL reachable from the backend container or process |
+| **Security notes** | Uses Docker service name resolution inside the container network. Never expose this endpoint to the public internet without authentication. |
+| **Common mistakes** | <ul><li>Setting `http://localhost:8000` when running inside Docker — containers cannot resolve `localhost` to the host.</li><li>Trying to override this via `.env` when `docker-compose.yml` hardcodes the value in the `backend` service `environment` block. Remove the hardcoded line in `docker-compose.yml` first.</li></ul> |
+
+---
+
+## M. File Storage
+
+### `STORAGE_TYPE`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Determines which storage backend the backend uses for uploaded resume files. |
+| **Default** | `minio` (Spring Boot default) / `local` (Docker Compose hardcoded) |
+| **Valid values** | `minio`, `local`, `s3`, `oss` |
+| **Security notes** | `local` stores files in a Docker volume or local filesystem. For production with multiple backend replicas, use `minio` or `s3` so all instances share the same object store. |
+| **Common mistakes** | <ul><li>Setting `STORAGE_TYPE=minio` without configuring the MinIO endpoint and credentials.</li><li>Using `local` in a multi-replica deployment, causing files uploaded to one replica to be invisible to others.</li></ul> |
+
+### MinIO Settings (`STORAGE_TYPE=minio`)
+
+### `MINIO_ENDPOINT`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | URL of the MinIO server. |
+| **Default** | `http://localhost:9000` (dev) / `http://minio:9000` (Docker) |
+| **Valid values** | Any HTTP(S) URL |
+| **Security notes** | Use HTTPS in production. Verify the TLS certificate or configure the backend trust store. |
+| **Common mistakes** | Using `http://localhost:9000` inside Docker instead of the service name. |
+
+### `MINIO_ACCESS_KEY`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | MinIO access key (username). |
+| **Default** | `minioadmin` |
+| **Valid values** | Any string |
+| **Security notes** | Rotate from the default `minioadmin` immediately in production. |
+| **Common mistakes** | Reusing the same credentials across dev and production MinIO instances. |
+
+### `MINIO_SECRET_KEY`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | MinIO secret key (password). |
+| **Default** | `minioadmin` |
+| **Valid values** | Any string; recommended length ≥ 16 |
+| **Security notes** | Store in a secrets manager. Leaked keys grant full read/write access to all buckets. |
+| **Common mistakes** | Committing keys to Git or sharing them in chat messages. |
+
+### `MINIO_BUCKET_NAME`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Name of the MinIO bucket for resume files. |
+| **Default** | `resumes` |
+| **Valid values** | Any valid S3 bucket name |
+| **Security notes** | Bucket names are globally unique in S3, but only locally unique in MinIO. |
+| **Common mistakes** | Using uppercase letters or underscores, which are invalid in DNS-compatible S3 bucket names. |
+
+### `MINIO_CONNECT_TIMEOUT`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | TCP connection timeout to MinIO in milliseconds. |
+| **Default** | `5000` |
+| **Valid values** | Positive integer (ms) |
+| **Security notes** | Short timeouts prevent hanging on unreachable endpoints but may fail on slow networks. |
+| **Common mistakes** | Setting this too low (< 1000 ms) on high-latency networks. |
+
+### `MINIO_WRITE_TIMEOUT`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Socket write timeout to MinIO in milliseconds. |
+| **Default** | `60000` |
+| **Valid values** | Positive integer (ms) |
+| **Security notes** | Large file uploads need sufficient timeout. |
+| **Common mistakes** | Setting this too low for multi-MB resume PDF uploads. |
+
+### `MINIO_READ_TIMEOUT`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Socket read timeout from MinIO in milliseconds. |
+| **Default** | `30000` |
+| **Valid values** | Positive integer (ms) |
+| **Security notes** | Downloading large files requires adequate timeout. |
+| **Common mistakes** | Same as write timeout — insufficient for large files. |
+
+### Local Storage Settings (`STORAGE_TYPE=local`)
+
+### `LOCAL_STORAGE_BASE_PATH`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Root directory for local file storage. |
+| **Default** | `./uploads` (dev) / `/app/uploads` (Docker) |
+| **Valid values** | Any absolute or relative filesystem path |
+| **Security notes** | Ensure the directory is writable by the backend process user. In Docker, use a mounted volume for persistence. |
+| **Common mistakes** | Using a relative path that resolves differently depending on the working directory. |
+
+### `LOCAL_STORAGE_RESUME_PATH`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Subdirectory under `LOCAL_STORAGE_BASE_PATH` for resume files. |
+| **Default** | `resumes` |
+| **Valid values** | Any valid directory name |
+| **Security notes** | No special requirements. |
+| **Common mistakes** | Using path separators (e.g. `resumes/2024`) — this is handled by `LOCAL_STORAGE_DATE_SUBDIR`. |
+
+### `LOCAL_STORAGE_DATE_SUBDIR`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Whether to create date-based subdirectories (e.g. `2025/05/06/`) for uploaded files. |
+| **Default** | `true` |
+| **Valid values** | `true`, `false` |
+| **Security notes** | Date subdirectories make it harder to enumerate all files by scanning a single directory. |
+| **Common mistakes** | Setting `false` and accumulating thousands of files in a single folder, degrading filesystem performance. |
+
+### `LOCAL_STORAGE_URL_PREFIX`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | URL prefix prepended to generated file access URLs. Useful when serving files through an Nginx reverse proxy. |
+| **Default** | *(empty)* |
+| **Valid values** | Any URL path prefix, e.g. `/files`, `https://cdn.example.com` |
+| **Security notes** | If empty, the backend generates relative URLs. Setting an external CDN improves performance but requires proper access control. |
+| **Common mistakes** | Adding a trailing slash that causes double slashes in URLs. |
+
+### AWS S3 Settings (`STORAGE_TYPE=s3`)
+
+### `AWS_S3_REGION`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | AWS region for S3 operations. |
+| **Default** | `us-east-1` |
+| **Valid values** | Any valid AWS region code |
+| **Security notes** | Choose a region close to your deployment to minimize latency and comply with data residency. |
+| **Common mistakes** | Using a region where the bucket does not exist, causing `NoSuchBucket` errors. |
+
+### `AWS_S3_ENDPOINT`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Custom endpoint for S3-compatible storage (MinIO, Ceph, Wasabi, etc.). |
+| **Default** | *(empty)* |
+| **Valid values** | Any HTTP(S) URL or empty |
+| **Security notes** | Leave empty for official AWS S3. Required for third-party S3-compatible services. |
+| **Common mistakes** | Setting this for genuine AWS S3, which overrides the official endpoint and causes signature errors. |
+
+### `AWS_S3_ACCESS_KEY`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | AWS IAM access key or S3-compatible access key. |
+| **Default** | *(empty)* |
+| **Valid values** | Any string |
+| **Security notes** | Use IAM roles (instance profiles) instead of long-term access keys when running on AWS EC2/EKS. |
+| **Common mistakes** | Using root account keys instead of scoped IAM user keys. |
+
+### `AWS_S3_SECRET_KEY`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | AWS IAM secret key or S3-compatible secret key. |
+| **Default** | *(empty)* |
+| **Valid values** | Any string |
+| **Security notes** | Same as access key — prefer IAM roles. Never commit to version control. |
+| **Common mistakes** | Pasting the key with surrounding whitespace or quotes. |
+
+### `AWS_S3_BUCKET_NAME`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Name of the S3 bucket for resume files. |
+| **Default** | *(empty)* |
+| **Valid values** | Any valid S3 bucket name |
+| **Security notes** | Ensure the bucket policy restricts public access. Enable server-side encryption. |
+| **Common mistakes** | Using a bucket name that is already taken in the global S3 namespace. |
+
+### `AWS_S3_PATH_STYLE`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Whether to use path-style bucket URLs (`s3.example.com/bucketname`) instead of virtual-hosted-style (`bucketname.s3.example.com`). |
+| **Default** | `false` |
+| **Valid values** | `true`, `false` |
+| **Security notes** | Path-style is required for some third-party S3-compatible services (e.g. MinIO without DNS). AWS S3 recommends virtual-hosted-style. |
+| **Common mistakes** | Leaving `false` when using MinIO with IP-based endpoints, causing DNS resolution failures. |
+
+### `AWS_S3_CONNECTION_TIMEOUT`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | S3 connection timeout in milliseconds. |
+| **Default** | `5000` |
+| **Valid values** | Positive integer (ms) |
+| **Security notes** | Short timeouts improve resilience against unreachable endpoints. |
+| **Common mistakes** | Setting too low for high-latency regions. |
+
+### `AWS_S3_SOCKET_TIMEOUT`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | S3 socket timeout in milliseconds. |
+| **Default** | `50000` |
+| **Valid values** | Positive integer (ms) |
+| **Security notes** | Large file transfers need sufficient timeout. |
+| **Common mistakes** | Same as MinIO read/write timeouts. |
+
+### `AWS_S3_MAX_CONNECTIONS`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Maximum number of concurrent HTTP connections to S3. |
+| **Default** | `50` |
+| **Valid values** | Positive integer |
+| **Security notes** | Higher values improve throughput for bulk uploads but consume more memory. |
+| **Common mistakes** | Setting extremely high values (> 500) without monitoring, causing memory pressure. |
+
+### `AWS_S3_ENCRYPTION_ENABLED`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Whether to enable server-side encryption for uploaded objects. |
+| **Default** | `false` |
+| **Valid values** | `true`, `false` |
+| **Security notes** | Enable this in production to meet compliance requirements (GDPR, HIPAA, etc.). |
+| **Common mistakes** | Enabling encryption without specifying a KMS key, which may use the default AWS-managed key with different permissions. |
+
+### `AWS_S3_KMS_KEY_ID`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | AWS KMS key ID or ARN for server-side encryption. Only used when `AWS_S3_ENCRYPTION_ENABLED=true`. |
+| **Default** | *(empty)* |
+| **Valid values** | KMS key ID, key ARN, or alias ARN |
+| **Security notes** | Using a customer-managed key (CMK) provides audit trails and fine-grained access control. |
+| **Common mistakes** | Specifying a key from a different region, causing cross-region KMS calls and higher latency. |
+
+### Aliyun OSS Settings (`STORAGE_TYPE=oss`)
+
+### `ALIYUN_OSS_ENDPOINT`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | OSS endpoint URL. |
+| **Default** | *(empty)* |
+| **Valid values** | Any valid OSS endpoint, e.g. `https://oss-cn-hangzhou.aliyuncs.com` |
+| **Security notes** | Use internal endpoints (`oss-cn-hangzhou-internal.aliyuncs.com`) when both backend and OSS are in the same Alibaba Cloud region to avoid public network charges. |
+| **Common mistakes** | Using a public endpoint when an internal one is available, incurring unnecessary egress fees. |
+
+### `ALIYUN_OSS_ACCESS_KEY_ID`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Aliyun AccessKey ID. |
+| **Default** | *(empty)* |
+| **Valid values** | Any valid Aliyun AccessKey ID |
+| **Security notes** | Prefer RAM roles (instance roles) over long-term AccessKeys when running on Alibaba Cloud ECS. |
+| **Common mistakes** | Using the root account AccessKey instead of a RAM user key with limited permissions. |
+
+### `ALIYUN_OSS_ACCESS_KEY_SECRET`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Aliyun AccessKey secret. |
+| **Default** | *(empty)* |
+| **Valid values** | Any string |
+| **Security notes** | Same as AccessKey ID — prefer RAM roles. |
+| **Common mistakes** | Committing secrets to version control. |
+
+### `ALIYUN_OSS_BUCKET_NAME`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Name of the OSS bucket for resume files. |
+| **Default** | *(empty)* |
+| **Valid values** | Any valid OSS bucket name |
+| **Security notes** | Ensure the bucket ACL and policy restrict public access. |
+| **Common mistakes** | Using a bucket in a different region from the endpoint, causing cross-region latency. |
+
+### `ALIYUN_OSS_CDN_DOMAIN`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Custom CDN domain for generating public file URLs. |
+| **Default** | *(empty)* |
+| **Valid values** | Any valid domain, e.g. `https://cdn.example.com` |
+| **Security notes** | CDN domains should have proper access control and HTTPS. |
+| **Common mistakes** | Forgetting to configure CDN origin pull settings after setting the domain. |
+
+### `ALIYUN_OSS_CONNECTION_TIMEOUT`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | OSS connection timeout in milliseconds. |
+| **Default** | `5000` |
+| **Valid values** | Positive integer (ms) |
+| **Security notes** | Same as S3 connection timeout. |
+| **Common mistakes** | Same as S3. |
+
+### `ALIYUN_OSS_SOCKET_TIMEOUT`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | OSS socket timeout in milliseconds. |
+| **Default** | `50000` |
+| **Valid values** | Positive integer (ms) |
+| **Security notes** | Same as S3 socket timeout. |
+| **Common mistakes** | Same as S3. |
+
+### `ALIYUN_OSS_MAX_CONNECTIONS`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Maximum concurrent connections to OSS. |
+| **Default** | `50` |
+| **Valid values** | Positive integer |
+| **Security notes** | Same as S3 max connections. |
+| **Common mistakes** | Same as S3. |
+
+### `ALIYUN_OSS_DOWNLOAD_BUFFER`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Buffer size for OSS downloads in kilobytes. |
+| **Default** | `64` |
+| **Valid values** | Positive integer (KB) |
+| **Security notes** | Larger buffers improve download speed but increase memory usage. |
+| **Common mistakes** | Setting extremely large values (> 1024 KB) for small files, wasting memory. |
+
+### `ALIYUN_OSS_UPLOAD_PART_SIZE`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Part size for multipart uploads in megabytes. |
+| **Default** | `5` |
+| **Valid values** | Positive integer (MB) |
+| **Security notes** | Multipart uploads are required for files > 5 GB. Smaller parts improve resume capability but increase API call overhead. |
+| **Common mistakes** | Setting part size below the OSS minimum (1 MB) or above the maximum (5 GB). |
+
+### `ALIYUN_OSS_SSE`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Server-side encryption algorithm for OSS objects. |
+| **Default** | *(empty)* |
+| **Valid values** | `AES256`, `KMS`, `SM4`, or empty |
+| **Security notes** | Enable encryption for compliance. `AES256` is the simplest option. `KMS` provides audit trails. |
+| **Common mistakes** | Setting `KMS` without configuring the KMS key ID. |
+
+### `ALIYUN_OSS_KMS_KEY_ID`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | KMS key ID for OSS encryption. Only used when `ALIYUN_OSS_SSE=KMS`. |
+| **Default** | *(empty)* |
+| **Valid values** | Any valid Aliyun KMS key ID |
+| **Security notes** | Using a customer-managed key provides better access control than the default service key. |
+| **Common mistakes** | Specifying a key from a different region or without proper RAM permissions. |
+
+---
+
+## N. Backend Logging
+
+### `LOG_HIBERNATE_LEVEL`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Log level for Hibernate SQL statements and JDBC operations. |
+| **Default** | `DEBUG` (dev) / `WARN` (prod) |
+| **Valid values** | `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, `OFF` |
+| **Security notes** | `DEBUG` and `TRACE` may log bind parameter values that contain personal data from resumes. Never use `DEBUG` in production without log sanitization. |
+| **Common mistakes** | Leaving `DEBUG` on in production and accidentally logging PII (personally identifiable information) to persistent files. |
+
+### `LOG_APP_LEVEL`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Log level for application code (`edu.asu.ser594.resumeassistant`). |
+| **Default** | `DEBUG` (dev) / `INFO` (prod) |
+| **Valid values** | `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, `OFF` |
+| **Security notes** | `DEBUG` prints request details, service calls, and exception stack traces. Useful for troubleshooting but generates large log volumes. |
+| **Common mistakes** | Setting `TRACE` without log rotation, causing disk space exhaustion within hours on busy servers. |
+
+---

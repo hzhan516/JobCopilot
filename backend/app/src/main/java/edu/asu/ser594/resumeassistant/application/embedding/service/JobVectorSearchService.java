@@ -8,6 +8,7 @@ import edu.asu.ser594.resumeassistant.domain.embedding.repository.JobVectorRepos
 import edu.asu.ser594.resumeassistant.domain.embedding.valueobject.JobVectorSearchResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -31,6 +32,9 @@ public class JobVectorSearchService {
     private final JobVectorRepository jobVectorRepository;
     private final ObjectMapper objectMapper;
 
+    @Value("${app.search.max-limit:100}")
+    private int maxSearchLimit;
+
     /**
      * 执行向量搜索
      * Execute vector search
@@ -52,9 +56,9 @@ public class JobVectorSearchService {
         }
 
         String vectorStr = buildPgVectorLiteral(embedding);
-        int limit = request.limit();
+        int limit = Math.min(request.limit(), maxSearchLimit);
 
-        log.info("Executing vector search with limit: {}", limit);
+        log.info("Executing vector search with limit: {} (capped at {})", limit, maxSearchLimit);
         List<JobVectorSearchResult> results = jobVectorRepository.findNearestNeighbors(vectorStr, limit);
         log.info("Vector search returned {} results", results.size());
 

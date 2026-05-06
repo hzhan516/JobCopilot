@@ -19,15 +19,17 @@ public record VectorSearchRequest(
         Map<String, String> filters
 ) {
     /**
-     * 紧凑构造函数，处理默认值
-     * Compact constructor to handle default values
+     * 紧凑构造函数，处理默认值与下限
+     * Compact constructor to handle default values and lower bound.
+     * <p>
+     * 上限由服务层根据 {@code app.search.max-limit} 配置控制，
+     * 不在此处硬编码。
+     * The upper bound is controlled by the service layer via {@code app.search.max-limit},
+     * not hard-coded here.
      */
     public VectorSearchRequest {
         if (limit == null || limit <= 0) {
             limit = 10;
-        }
-        if (limit > 100) {
-            limit = 100;
         }
     }
 }

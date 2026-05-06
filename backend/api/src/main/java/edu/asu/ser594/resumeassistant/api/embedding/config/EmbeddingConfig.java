@@ -17,4 +17,12 @@ public interface EmbeddingConfig {
      * @return 维度值 / Dimension value
      */
     int getDimension();
+
+    /**
+     * 获取默认嵌入模型版本
+     * Get default embedding model version.
+     *
+     * @return 模型版本字符串 / Model version string
+     */
+    String getDefaultModelVersion();
 }

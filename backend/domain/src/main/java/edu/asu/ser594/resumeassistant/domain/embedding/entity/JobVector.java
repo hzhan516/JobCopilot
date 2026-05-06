@@ -65,8 +65,7 @@ public class JobVector {
                                             String rawContent, String sourceFile, String modelVersion) {
         LocalDateTime now = LocalDateTime.now();
         return new JobVector(id, jobId, embedding, VectorStatus.COMPLETED, null, now, now,
-                title, description, requirements, rawContent, sourceFile,
-                modelVersion != null ? modelVersion : "gemini-embedding-001");
+                title, description, requirements, rawContent, sourceFile, modelVersion);
     }
 
     /**

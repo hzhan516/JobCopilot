@@ -532,7 +532,11 @@ CREATE TABLE IF NOT EXISTS job_vectors
 ) NOT NULL,
     error_message TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    description VARCHAR
+(
+    255
+)
     );
 
 CREATE INDEX IF NOT EXISTS idx_job_vectors_job_id ON job_vectors (job_id);

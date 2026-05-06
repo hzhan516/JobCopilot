@@ -30,6 +30,7 @@ public class VectorApplicationService {
     private final JobVectorRepository jobVectorRepository;
     private final EmbeddingConfig embeddingConfig;
     private final EmbeddingService embeddingService;
+    private final FailedVectorPersistenceService failedVectorPersistenceService;
 
     /**
      * 同步生成向量并保存
@@ -71,7 +72,11 @@ public class VectorApplicationService {
             resumeVectorRepository.save(vector);
             log.info("Saved COMPLETED resume vector for versionId: {}", referenceId);
         } else {
-            JobVector vector = JobVector.createCompleted(id, referenceId, embedding);
+            JobVector vector = JobVector.createCompleted(
+                    id, referenceId, embedding,
+                    null, null, null, null, null,
+                    embeddingConfig.getDefaultModelVersion()
+            );
             jobVectorRepository.save(vector);
             log.info("Saved COMPLETED job vector for jobId: {}", referenceId);
         }
@@ -79,16 +84,7 @@ public class VectorApplicationService {
 
     // 保存失败的向量 / Save failed vector
     private void saveFailedVector(String referenceId, String entityType, String errorMessage) {
-        String id = UUID.randomUUID().toString();
-        if (isResumeEntity(entityType)) {
-            ResumeVector vector = ResumeVector.createFailed(id, referenceId, errorMessage);
-            resumeVectorRepository.save(vector);
-            log.warn("Saved FAILED resume vector for versionId: {}", referenceId);
-        } else {
-            JobVector vector = JobVector.createFailed(id, referenceId, errorMessage);
-            jobVectorRepository.save(vector);
-            log.warn("Saved FAILED job vector for jobId: {}", referenceId);
-        }
+        failedVectorPersistenceService.saveFailedVector(referenceId, entityType, errorMessage);
     }
 
     private boolean isResumeEntity(String entityType) {

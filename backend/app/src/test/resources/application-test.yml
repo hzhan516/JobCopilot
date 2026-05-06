@@ -8,10 +8,13 @@ spring:
   flyway:
     enabled: false
 
-# 嵌入向量维度 / Embedding vector dimension
+# 应用级配置 / Application-level configuration
 app:
   embedding:
     dimension: ${LLM_EMBEDDING_MODEL_DIMENSION:1536}
+    model-version: ${LLM_EMBEDDING_MODEL:gemini/gemini-embedding-001}
+  search:
+    max-limit: ${SEARCH_MAX_LIMIT:100}
 
 # JWT Configuration
 jwt:

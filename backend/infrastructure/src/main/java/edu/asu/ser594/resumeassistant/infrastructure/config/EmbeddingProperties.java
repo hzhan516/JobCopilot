@@ -20,4 +20,10 @@ public class EmbeddingProperties {
      * Embedding vector dimension, must match the selected model output dimension
      */
     private int dimension = 1536;
+
+    /**
+     * 默认嵌入模型版本，用于记录向量生成来源
+     * Default embedding model version, used to track vector generation source
+     */
+    private String modelVersion = "gemini/gemini-embedding-001";
 }

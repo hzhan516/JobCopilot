@@ -2,6 +2,9 @@
 # 生产环境配置 / Production environment configuration
 
 spring:
+  application:
+    name: ${SPRING_APPLICATION_NAME:resume-assistant-backend}
+
   # 数据库（从环境变量读取）/ Database (read from environment variables)
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/resume_assistant}
@@ -17,7 +20,7 @@ spring:
 
   # Flyway / Flyway configuration
   flyway:
-    enabled: true
+    enabled: ${SPRING_FLYWAY_ENABLED:true}
     locations: classpath:db/migration
 
   # RabbitMQ（从环境变量读取）/ RabbitMQ (read from environment variables)
@@ -51,10 +54,13 @@ storage:
     date-subdirectory: ${LOCAL_STORAGE_DATE_SUBDIR:true}
     url-prefix: ${LOCAL_STORAGE_URL_PREFIX:}
 
-# 嵌入向量维度 / Embedding vector dimension
+# 应用级配置 / Application-level configuration
 app:
   embedding:
     dimension: ${LLM_EMBEDDING_MODEL_DIMENSION:1536}
+    model-version: ${LLM_EMBEDDING_MODEL:gemini/gemini-embedding-001}
+  search:
+    max-limit: ${SEARCH_MAX_LIMIT:100}
   rabbitmq:
     queue:
       res:
@@ -64,13 +70,20 @@ app:
         conversation: backend.queue.conversation
         job-rank: backend.queue.job.rank
 
+# AI 服务连接地址 / AI service connection URL
+ai:
+  service:
+    base-url: ${AI_SERVICE_BASE_URL:http://ai-service:8000}
+
 # JWT（从环境变量读取，必须设置）/ JWT (read from environment variables, must be set)
 jwt:
   secret: ${JWT_SECRET}
-  access-token-expiration: 3600000       # 1小时 / 1 hour
-  refresh-token-expiration: 604800000    # 7天 / 7 days
+  access-token-expiration: ${JWT_ACCESS_EXPIRATION:3600000}       # 1小时 / 1 hour
+  refresh-token-expiration: ${JWT_REFRESH_EXPIRATION:604800000}    # 7天 / 7 days
 
 # 日志 / Logging
 logging:
   level:
     root: INFO
+    org.hibernate.SQL: ${LOG_HIBERNATE_LEVEL:WARN}
+    edu.asu.ser594.resumeassistant: ${LOG_APP_LEVEL:INFO}
