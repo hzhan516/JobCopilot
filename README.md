@@ -167,8 +167,10 @@ If you run the AI service locally instead of in Docker, source the rootÂ `.env`Â
 | Frontend            | http://localhost                      | Web application                |
 | Backend API         | http://localhost:8080/api             | REST API endpoints             |
 | Backend Health      | http://localhost:8080/actuator/health | Health check                   |
-| AI Service          | http://localhost:8000                 | FastAPI documentation / health |
+| AI Service          | Dynamic Port                          | FastAPI documentation / health |
 | RabbitMQ Management | http://localhost:15672                | Message queue UI (guest/guest) |
+
+*Note: To find the AI Service URL, run `docker compose port ai-service 8000`.*
 
 ### 5. Stop Services
 

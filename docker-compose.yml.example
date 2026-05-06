@@ -147,8 +147,11 @@ services:
       context: ./ai-service
       dockerfile: Dockerfile
     container_name: resume-assistant-ai
+    # Dynamic port mapping to allow --scale ai-service=N without conflicts
+    # 动态端口映射，以允许无冲突地使用 --scale ai-service=N
+    # 動態連接埠對應，以允許無衝突地使用 --scale ai-service=N
     ports:
-      - "8000:8000"
+      - "8000"
     env_file:
       - .env
     environment:

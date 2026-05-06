@@ -159,8 +159,10 @@ podman compose up -d
 | 前端         | http://localhost                      | Web应用                 |
 | 后端API      | http://localhost:8080/api             | REST API端点            |
 | 后端健康检查     | http://localhost:8080/actuator/health | 健康检查                  |
-| AI服务       | http://localhost:8000                 | FastAPI文档             |
+| AI服务       | 动态端口                              | FastAPI文档             |
 | RabbitMQ管理 | http://localhost:15672                | 消息队列管理界面（guest/guest） |
+
+*注：要查找 AI 服务的 URL，请运行 `docker compose port ai-service 8000`。*
 
 ### 5. 停止服务
 
