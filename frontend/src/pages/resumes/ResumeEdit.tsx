@@ -19,33 +19,7 @@ export default function ResumeEdit() {
     }
   }, [groupId, currentGroup, fetchGroupDetail]);
 
-  if (loading && !currentGroup) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!currentGroup) {
-    return (
-      <div className="text-center py-12">
-        <h2 className="text-2xl font-semibold mb-4">{t('resume.detail.notFound')}</h2>
-        <Button onClick={() => navigate('/resumes')}>{t('resume.edit.back')}</Button>
-      </div>
-    );
-  }
-
-  const version = currentGroup.versions.find((v) => v.versionId === versionId);
-
-  if (!version) {
-    return (
-      <div className="text-center py-12">
-        <h2 className="text-2xl font-semibold mb-4">{t('resume.detail.versionNotFound')}</h2>
-        <Button onClick={() => navigate(`/resumes/${groupId}`)}>{t('resume.edit.backToDetail')}</Button>
-      </div>
-    );
-  }
+  const version = currentGroup?.versions.find((v) => v.versionId === versionId);
 
   const handleSave = async (content: string) => {
     if (versionId) {
@@ -64,6 +38,32 @@ export default function ResumeEdit() {
   const handleCancel = () => {
     navigate(`/resumes/${groupId}`);
   };
+
+  if (loading && !currentGroup) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!currentGroup) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-semibold mb-4">{t('resume.detail.notFound')}</h2>
+        <Button onClick={() => navigate('/resumes')}>{t('resume.edit.back')}</Button>
+      </div>
+    );
+  }
+
+  if (!version) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-semibold mb-4">{t('resume.detail.versionNotFound')}</h2>
+        <Button onClick={() => navigate(`/resumes/${groupId}`)}>{t('resume.edit.backToDetail')}</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-6 h-[calc(100vh-4rem)] flex flex-col">

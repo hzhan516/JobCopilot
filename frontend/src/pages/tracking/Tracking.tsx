@@ -41,6 +41,22 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
+type TrackingStatsWithAccepted = TrackingStatsResponse & {
+  accepted?: number;
+};
+
+const STATUS_DISTRIBUTION: Array<{
+  key: keyof TrackingStatsResponse;
+  labelKey: string;
+  color: string;
+}> = [
+  { key: 'applied', labelKey: 'tracking.status.APPLIED', color: 'bg-blue-500' },
+  { key: 'screening', labelKey: 'tracking.status.SCREENING', color: 'bg-yellow-500' },
+  { key: 'interview', labelKey: 'tracking.status.INTERVIEWING', color: 'bg-purple-500' },
+  { key: 'offer', labelKey: 'tracking.status.OFFER', color: 'bg-green-500' },
+  { key: 'rejected', labelKey: 'tracking.status.REJECTED', color: 'bg-red-500' },
+];
+
 export default function TrackingPage() {
   const { t } = useTranslation();
   const [trackings, setTrackings] = useState<Tracking[]>([]);
@@ -156,7 +172,7 @@ export default function TrackingPage() {
     if (!stats || stats.total === 0) return 0;
     // 后端接口目前无 accepted 字段，用类型断言兼容未来扩展
     // Backend currently has no accepted field; use type assertion for future compatibility
-    const accepted = (stats as any).accepted ?? 0;
+    const accepted = (stats as TrackingStatsWithAccepted).accepted ?? 0;
     return ((stats.offer + accepted) / stats.total) * 100;
   }, [stats]);
 
@@ -278,14 +294,8 @@ export default function TrackingPage() {
       {/* Status distribution mini bar chart */}
       {stats && stats.total > 0 && (
         <div className="mt-4 space-y-2">
-          {[
-            { key: 'applied', labelKey: 'tracking.status.APPLIED', color: 'bg-blue-500' },
-            { key: 'screening', labelKey: 'tracking.status.SCREENING', color: 'bg-yellow-500' },
-            { key: 'interview', labelKey: 'tracking.status.INTERVIEWING', color: 'bg-purple-500' },
-            { key: 'offer', labelKey: 'tracking.status.OFFER', color: 'bg-green-500' },
-            { key: 'rejected', labelKey: 'tracking.status.REJECTED', color: 'bg-red-500' },
-          ].map(({ key, labelKey, color }) => {
-            const count = (stats as any)[key] ?? 0;
+          {STATUS_DISTRIBUTION.map(({ key, labelKey, color }) => {
+            const count = stats[key] ?? 0;
             const pct = stats.total > 0 ? (count / stats.total) * 100 : 0;
             return (
               <div key={key} className="flex items-center gap-3">
