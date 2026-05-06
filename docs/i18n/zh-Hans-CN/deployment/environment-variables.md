@@ -1,0 +1,439 @@
+# Resume Assistant — 环境变量参考手册
+
+> [English](../../../deployment/environment-variables.md) | [繁體中文](../../../i18n/zh-Hant-TW/deployment/environment-variables.md)
+
+本文档描述 Resume Assistant 技术栈使用的所有环境变量。变量按功能区域组织，与 `.env.example` 中的注释区块一一对应。
+
+> **快速提示**：编辑前先执行 `cp .env.example .env`。切勿将 `.env` 提交到版本控制。
+
+---
+
+## 目录
+
+- [Docker Compose 配置](#docker-compose-配置)
+- [A. 数据库 / PostgreSQL](#a-数据库--postgresql)
+- [B. 消息队列 / RabbitMQ](#b-消息队列--rabbitmq)
+- [C. 身份验证 / JWT](#c-身份验证--jwt)
+- [D. 前端 / Web 应用](#d-前端--web-应用)
+- [E. Spring Boot / 后端](#e-spring-boot--后端)
+- [F. AI 提供商密钥](#f-ai-提供商密钥)
+- [G. 模型参数](#g-模型参数)
+- [H. AI 服务日志](#h-ai-服务日志)
+- [I. Vertex AI 设置](#i-vertex-ai-设置)
+- [J. 内部 API 密钥](#j-内部-api-密钥)
+
+---
+
+## Docker Compose 配置
+
+以下值**未**在 `.env.example` 中定义，但可通过 `docker-compose.yml` 配置。它们影响容器命名和宿主机端口绑定。
+
+### `COMPOSE_PROJECT_NAME`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 容器名称、数据卷和网络的前缀。支持在同一 Docker 宿主机上运行多个独立实例。 |
+| **默认值** | 项目根目录的目录名（例如 `ser594_ai_prject`） |
+| **有效取值** | 任意小写字母数字字符串，可含连字符/下划线 |
+| **安全说明** | 使用不同的项目名称可防止开发、预发布和生产环境之间的意外交叉污染。 |
+| **常见错误** | 对同一仓库的两个克隆使用相同的项目名称，导致端口和数据卷冲突。 |
+
+### `FRONTEND_HOST_PORT`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 映射到 Nginx 容器端口 `80` 的宿主机端口。 |
+| **默认值** | `8081`（在 `docker-compose.yml.example` 中） |
+| **有效取值** | 宿主机上任意空闲的 TCP 端口（`80`、`8080`、`8081`、`3000` 等） |
+| **安全说明** | 生产环境中应设为 `80`（或在 TLS 终结器后设为 `443`）。请勿将后端/AI/数据库端口暴露给宿主机。 |
+| **常见错误** | 在 macOS/Linux 上未使用 `sudo` 就将此值设为 `80`，因为小于 1024 的端口需要 root 权限。本地开发请使用 `8081`。 |
+
+### `STORAGE_TYPE`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 决定上传的简历文件持久化存储位置。 |
+| **默认值** | `local`（在 `docker-compose.yml` 中硬编码） |
+| **有效取值** | `local`（Docker 卷）、`minio`（自托管 S3 兼容）、`s3`、`oss` |
+| **安全说明** | `local` 将文件存储在命名 Docker 卷（`shared-storage`）中。对于多主机部署，请切换到 `minio` 或 `s3`，以便所有副本共享同一个对象存储。 |
+| **常见错误** | 在未配置 `MINIO_ENDPOINT`、`MINIO_ACCESS_KEY` 和 `MINIO_SECRET_KEY` 的情况下将 `STORAGE_TYPE` 设为 `minio`，导致运行时文件上传失败。 |
+
+---
+
+## A. 数据库 / PostgreSQL
+
+### `POSTGRES_DB`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 容器首次启动时创建的默认数据库名称。 |
+| **默认值** | `resume_assistant` |
+| **有效取值** | 任意有效的 PostgreSQL 标识符 |
+| **安全说明** | 数据库名称不是机密，但偏离默认值可使自动化扫描稍微困难。 |
+| **常见错误** | 在数据卷已初始化后重命名此变量无效。`docker-entrypoint-initdb.d` 仅在数据目录为空时首次运行。 |
+
+### `POSTGRES_USER`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | PostgreSQL 实例的超级用户名称。 |
+| **默认值** | `resume_user` |
+| **有效取值** | 任意有效的 PostgreSQL 用户名 |
+| **安全说明** | 避免使用 `postgres` 作为用户名。生产环境中请使用具有有限权限的专用应用账户。 |
+| **常见错误** | 与 `POSTGRES_DB` 相同——初始化后更改需要重建数据卷。 |
+
+### `POSTGRES_PASSWORD`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | `POSTGRES_USER` 的密码。 |
+| **默认值** | `resume_pass` |
+| **有效取值** | 任意字符串；建议长度 ≥ 16 个字符 |
+| **安全说明** | 即使 PostgreSQL 位于隔离的 Docker 网络中，强密码仍是纵深防御的必备措施。如果容器被攻破并获得网络访问权限，弱凭据将允许轻易访问数据库。 |
+| **常见错误** | 在任何非本地环境中保留默认的 `resume_pass`。 |
+
+### `POSTGRES_HOST`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 后端连接 PostgreSQL 时使用的主机名。 |
+| **默认值** | `postgres`（Docker 服务名） |
+| **有效取值** | Docker 服务名、容器 IP 或外部主机名 |
+| **安全说明** | 使用 Docker 服务名（`postgres`）可确保流量不会离开内部桥接网络。 |
+| **常见错误** | 在容器内部将其设为 `localhost`——容器不共享主机的回环接口。 |
+
+### `POSTGRES_PORT`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | PostgreSQL 监听端口。 |
+| **默认值** | `5432` |
+| **有效取值** | `1024–65535` |
+| **安全说明** | 非标准端口带来的安全收益极小（通过隐蔽实现安全）。网络隔离才是主要防御手段。 |
+| **常见错误** | 更改此值但未同步更新 `docker-compose.yml` 中的 `ports` 映射。 |
+
+---
+
+## B. 消息队列 / RabbitMQ
+
+### `RABBITMQ_HOST`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 后端和 AI 服务连接 RabbitMQ 时使用的主机名。 |
+| **默认值** | `rabbitmq`（Docker 服务名） |
+| **有效取值** | Docker 服务名或外部主机名 |
+| **安全说明** | 内部 Docker DNS 解析使 AMQP 流量不经过宿主机网络。 |
+| **常见错误** | 在容器内部使用 `localhost`。 |
+
+### `RABBITMQ_PORT`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | AMQP 协议端口。 |
+| **默认值** | `5672` |
+| **有效取值** | `5672`（标准）、`5671`（TLS） |
+| **安全说明** | 生产环境中通过切换到端口 `5671` 并挂载 TLS 证书来启用 TLS（`amqps://`）。 |
+| **常见错误** | 将其与管理面板端口（`15672`）混淆。 |
+
+### `RABBITMQ_USERNAME`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | AMQP 认证用户名。 |
+| **默认值** | `guest` |
+| **有效取值** | 任意字符串 |
+| **安全说明** | `guest` 账户在 RabbitMQ 中默认禁用于远程连接。生产环境中务必覆盖此值。 |
+| **常见错误** | 在生产部署中使用 `guest`。 |
+
+### `RABBITMQ_PASSWORD`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | AMQP 认证密码。 |
+| **默认值** | `guest` |
+| **有效取值** | 任意字符串；建议长度 ≥ 16 个字符 |
+| **安全说明** | 这是纵深防御的第四层。即使攻击者攻破网络，仍需要有效的 MQ 凭据才能发布或消费消息。 |
+| **常见错误** | 与 `POSTGRES_PASSWORD` 或 `JWT_SECRET` 使用相同的密码。请独立轮换。 |
+
+---
+
+## C. 身份验证 / JWT
+
+### `JWT_SECRET`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | JSON Web Token（JWT）的对称签名密钥。用于签名和验证所有用户身份验证令牌。 |
+| **默认值** | `change-this-to-a-long-random-secret-at-least-32-characters` |
+| **有效取值** | Base64 或纯文本字符串；**最少 32 字节（256 位）** |
+| **安全说明** | 这是整个技术栈中最关键的机密。任何知晓此值的人都可以伪造身份验证令牌并冒充任意用户（包括管理员）。生产环境中请将其存储在密钥管理器中（Docker secrets、HashiCorp Vault、AWS Secrets Manager 等）。 |
+| **常见错误** | <ul><li>使用简短的人类可读字符串，如 `my-secret` 或 `password123`。</li><li>将 `.env` 提交到 Git。</li><li>在开发/预发布/生产环境中使用相同的密钥。</li><li>未做规划就轮换密钥——**所有活跃用户将被迫立即重新登录**，因为其现有令牌将无法通过验证。</li></ul> |
+
+**推荐生成方式：**
+
+```bash
+# 48 字节 = 64 个 base64 字符
+openssl rand -base64 48
+```
+
+---
+
+## D. 前端 / Web 应用
+
+### `VITE_GOOGLE_CLIENT_ID`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 前端"使用 Google 登录"的 Google OAuth 2.0 客户端 ID。 |
+| **默认值** | `your-google-oauth-client-id.apps.googleusercontent.com` |
+| **有效取值** | Google Cloud Console 中有效的 OAuth 2.0 客户端 ID |
+| **安全说明** | 这是公开的客户端 ID（不是密钥）。它会被嵌入到编译后的 JavaScript 包中。请在 Google Cloud Console 中将授权的 JavaScript 来源限制为您的生产域名。 |
+| **常见错误** | <ul><li>本地开发时未将 `http://localhost` 添加到授权来源。</li><li>将其与客户端密钥混淆（OAuth 2.0 隐式/带 PKCE 的授权码流程不需要客户端密钥）。</li></ul> |
+
+### `VITE_API_BASE_URL`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 所有前端 API 调用的基础 URL 前缀。 |
+| **默认值** | *（空）* |
+| **有效取值** | 空字符串、`/api` 或以 `/` 开头的相对路径 |
+| **安全说明** | **关键警告**：此值必须为相对路径或空。当前端在 Nginx 后运行时，API 调用会自动添加前缀并代理到后端。若设置为绝对 URL（例如 `http://localhost:8080/api`），浏览器将直接连接后端，绕过 Nginx，暴露后端端口，破坏 CORS 和单入口安全模型。 |
+| **常见错误** | <ul><li>本地开发时将 `VITE_API_BASE_URL` 设为 `http://localhost:8080/api`——这会将后端地址泄露给用户，且在生产环境中会失败。</li><li>将其设为内部 Docker 主机名，如 `http://backend:8080`——浏览器无法解析 Docker 服务名称。</li></ul> |
+
+---
+
+## E. Spring Boot / 后端
+
+### `SPRING_PROFILES_ACTIVE`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 激活 Spring Boot 配置配置文件（Profile）。 |
+| **默认值** | `dev` |
+| **有效取值** | `dev`、`prod`、`test` |
+| **安全说明** | `dev` 配置文件禁用 Flyway、使用 24 小时 JWT 过期时间，并启用详细错误消息。**绝不要在生产环境中使用 `dev`。** `prod` 配置文件启用 Flyway 验证、设置 1 小时 JWT 过期时间，并隐藏 API 响应中的堆栈跟踪。 |
+| **常见错误** | 生产部署时仍使用 `SPRING_PROFILES_ACTIVE=dev`。 |
+
+---
+
+## F. AI 提供商密钥
+
+您只需配置**一个**提供商。选择由 `LLM_TEXT_MODEL`、`LLM_VISION_MODEL` 和 `LLM_EMBEDDING_MODEL` 中的前缀决定。
+
+### `GEMINI_API_KEY`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | Google AI Studio 的 API 密钥（通过 LiteLLM 使用 Gemini 模型）。 |
+| **默认值** | `[replace-with-your-gemini-api-key]` |
+| **有效取值** | [Google AI Studio](https://aistudio.google.com/app/apikey) 中有效的 Gemini API 密钥 |
+| **安全说明** | Gemini 提供免费额度。免费 tier 不需要信用卡或 GCP 计费。请将此密钥视为机密——任何获得它的人都可以消耗您的额度。 |
+| **常见错误** | <ul><li>将密钥粘贴到 `.env` 时带有周围空白或引号。</li><li>使用 GCP 服务账号密钥代替 AI Studio API 密钥。</li></ul> |
+
+### `OPENAI_API_KEY`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 通过 LiteLLM 使用 OpenAI 模型（GPT-4o 等）的 API 密钥。 |
+| **默认值** | *（空）* |
+| **有效取值** | 以 `sk-` 开头的有效 OpenAI API 密钥 |
+| **安全说明** | OpenAI 是付费服务。请设置消费限额并监控使用仪表板，以避免意外账单。 |
+| **常见错误** | 同时设置此变量和 `GEMINI_API_KEY`。LiteLLM 将使用与模型前缀匹配的提供商，但保留多个密钥会增加攻击面。 |
+
+### `ANTHROPIC_API_KEY`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 通过 LiteLLM 使用 Anthropic Claude 模型的 API 密钥。 |
+| **默认值** | *（空）* |
+| **有效取值** | 有效的 Anthropic API 密钥 |
+| **安全说明** | Claude 模型通常比 Gemini Flash 更昂贵。切换前请评估成本。 |
+| **常见错误** | 切换提供商时忘记将模型前缀从 `gemini/` 更新为 `anthropic/`。 |
+
+### `GROQ_API_KEY`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 通过 LiteLLM 使用 Groq（快速推理）模型的 API 密钥。 |
+| **默认值** | *（空）* |
+| **有效取值** | 有效的 Groq API 密钥 |
+| **安全说明** | Groq 提供极低延迟，但模型选择有限。 |
+| **常见错误** | 期望 Groq 提供嵌入支持——大多数 Groq 模型仅支持文本生成。 |
+
+### `OLLAMA_API_BASE`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 本地 Ollama 实例的基础 URL（自托管开源模型）。 |
+| **默认值** | `http://localhost:11434` |
+| **有效取值** | AI 服务容器可达的任意 HTTP URL |
+| **安全说明** | AI 服务容器内的 `localhost:11434` 指的是容器本身，而非 Docker 宿主机。要连接宿主机，请使用 `http://host.docker.internal:11434`（Docker Desktop）或宿主机的局域网 IP。 |
+| **常见错误** | <ul><li>保留默认的 `localhost:11434`，然后疑惑 AI 服务为何无法连接。</li><li>启动技术栈前未拉取模型（`ollama pull llama3`）。</li></ul> |
+
+---
+
+## G. 模型参数
+
+### `LLM_TEXT_MODEL`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 通用文本生成（职位解析、简历优化、对话）的模型标识符。 |
+| **默认值** | `gemini/gemini-2.5-flash` |
+| **有效取值** | 任意 LiteLLM 支持的带提供商前缀的模型字符串，例如 `gemini/gemini-2.5-flash`、`openai/gpt-4o-mini`、`vertex_ai/gemini-2.5-flash` |
+| **安全说明** | 模型名称不是机密，但未经预算就切换到更昂贵的模型（例如 `gpt-4o`）可能导致意外成本。 |
+| **常见错误** | 使用与配置的 API 密钥不匹配的模型前缀（例如使用 `GEMINI_API_KEY` 时却用 `openai/` 前缀）。 |
+
+### `LLM_VISION_MODEL`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 视觉/多模态任务（简历图片解析）的模型标识符。 |
+| **默认值** | `gemini/gemini-2.5-flash` |
+| **有效取值** | 任意支持视觉输入的 LiteLLM 模型 |
+| **安全说明** | 视觉模型通常按 token 计费更贵。请确保所选模型支持图像输入。 |
+| **常见错误** | 为视觉任务选择纯文本模型（例如 `text-embedding-ada-002`）。 |
+
+### `LLM_EMBEDDING_MODEL`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 生成文本嵌入（向量检索）的模型标识符。 |
+| **默认值** | `gemini/gemini-embedding-001` |
+| **有效取值** | 任意 LiteLLM 支持的嵌入模型 |
+| **安全说明** | 嵌入模型的输出维度必须与 `LLM_EMBEDDING_MODEL_DIMENSION` 匹配。 |
+| **常见错误** | 切换嵌入模型时未更新维度，导致 PostgreSQL 中向量插入失败。 |
+
+### `LLM_EMBEDDING_MODEL_DIMENSION`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 所选嵌入模型的输出维度。必须与模型实际产生的向量大小匹配。 |
+| **默认值** | `1536` |
+| **有效取值** | 与模型输出维度匹配的正整数 |
+| **安全说明** | 维度不正确会导致运行时 SQL 错误（插入 `pgvector` 列时失败），但不会造成安全漏洞。 |
+| **常见错误** | <ul><li>将 `LLM_EMBEDDING_MODEL` 改为 `openai/text-embedding-3-large`（3072 维）却保留 `LLM_EMBEDDING_MODEL_DIMENSION=1536`。</li><li>更改维度后忘记重建 PostgreSQL 数据卷——现有向量列保留旧维度，将拒绝新插入。</li></ul> |
+
+**维度对照表：**
+
+| 模型 | 维度 |
+|------|------|
+| `gemini/gemini-embedding-001` | `768` |
+| `openai/text-embedding-ada-002` | `1536` |
+| `openai/text-embedding-3-small` | `1536` |
+| `openai/text-embedding-3-large` | `3072` |
+| `sentence-transformers/all-MiniLM-L6-v2` | `384` |
+
+> **注意**：`.env.example` 中的默认值 `1536` 对应 OpenAI Ada-002。若使用 Gemini 嵌入，请改为 `768`。
+
+### `LLM_TEMPERATURE`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 控制 LLM 输出的随机性（创造性）。 |
+| **默认值** | `0.1` |
+| **有效取值** | `0.0` 到 `2.0` |
+| **安全说明** | 较低的值产生更确定的输出，对于结构化 JSON 提取（简历解析、职位匹配）更安全。较高的值增加幻觉风险。 |
+| **常见错误** | 为结构化提取任务设置 `1.0` 或更高，导致无效的 JSON 响应，破坏下游解析器。 |
+
+### `LLM_REQUEST_TIMEOUT_SECONDS`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 每次 LiteLLM 请求（文本、视觉、嵌入）的最大等待时间。 |
+| **默认值** | `60` |
+| **有效取值** | 正整数（秒） |
+| **安全说明** | 超长的超时可能在重负载下耗尽工作线程。较短的超时提高弹性，但可能导致对慢模型的不必要的重试。 |
+| **常见错误** | 对于大简历文件或批量嵌入作业，将此值设得太低（< 10 秒）。 |
+
+### `BACKEND_SERVICE_URL`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | AI 服务调用后端 API（例如向量 upsert）时使用的 URL。 |
+| **默认值** | `http://backend:8080` |
+| **有效取值** | AI 服务容器可达的任意 HTTP URL |
+| **安全说明** | 使用 Docker 服务名 `backend`，使流量保持在内部网络中。 |
+| **常见错误** | 在 AI 服务容器内部使用 `http://localhost:8080`。 |
+
+### `BACKEND_QUERY_TIMEOUT`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | AI 服务调用后端 API 时的超时秒数。 |
+| **默认值** | `5` |
+| **有效取值** | 正整数（秒） |
+| **安全说明** | 较短的超时可防止 AI 服务在 backend 过载时挂起。 |
+| **常见错误** | 批量向量 upsert 时将此值设得太低，导致部分数据插入。 |
+
+---
+
+## H. AI 服务日志
+
+### `LOG_LEVEL`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 控制 AI 服务日志记录器（structlog）的详细程度。 |
+| **默认值** | `INFO` |
+| **有效取值** | `DEBUG`、`INFO`、`WARNING`、`ERROR`、`CRITICAL` |
+| **安全说明** | `DEBUG` 可能记录包含简历内容或用户数据的请求负载。未经日志脱敏和保留策略，切勿在生产环境中使用 `DEBUG`。 |
+| **常见错误** | 生产环境中保留 `DEBUG` 级别，意外将个人身份信息（PII）记录到持久化日志文件中。 |
+
+---
+
+## I. Vertex AI 设置
+
+### `VERTEX_PROJECT_ID`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | Vertex AI 的 Google Cloud 项目 ID（仅在使用 `vertex_ai/` 模型前缀时需要）。 |
+| **默认值** | `ser594-ai-service` |
+| **有效取值** | 任意有效的 Google Cloud 项目 ID |
+| **安全说明** | 不是机密。仅用于标识计费项目。 |
+| **常见错误** | 通过 AI Studio 使用 Gemini（`gemini/` 前缀）时设置此值——该模式下此值被忽略。 |
+
+### `VERTEX_LOCATION`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | Vertex AI 模型推理的区域/位置。 |
+| **默认值** | `global` |
+| **有效取值** | `global`、`us-central1`、`europe-west4`、`asia-northeast1` 等 |
+| **安全说明** | 选择靠近部署位置的区域以最小化延迟，并满足数据驻留合规要求。 |
+| **常见错误** | 使用所选模型不可用的区域，导致 `404 Model not found` 错误。 |
+
+### `VERTEX_CREDENTIALS`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | Google Cloud 服务账号 JSON 密钥文件的宿主机绝对路径。以只读卷形式挂载到 AI 服务容器中。 |
+| **默认值** | *（空）* |
+| **有效取值** | 绝对文件系统路径，例如 `/home/user/service-account.json` |
+| **安全说明** | **关键警告**：此值**必须**为绝对路径。相对路径或纯文件名（例如 `vertex.json`）会被 Docker/Podman 解释为命名卷引用，从而静默创建一个空卷而非挂载您的凭据文件。该文件以只读方式挂载（`:ro`）以防止意外修改。请将此密钥存储在密钥管理器中并定期轮换。 |
+| **常见错误** | <ul><li>使用相对路径，如 `./vertex.json` 或 `~/keys/gcp.json`。</li><li>使用项目目录内已被 `.gitignore` 的路径，但忘记将文件复制到部署主机。</li><li>通过 AI Studio 使用 Gemini（`gemini/` 前缀）时设置此值——AI Studio 模式不需要 ADC 凭据。</li></ul> |
+
+---
+
+## J. 内部 API 密钥
+
+### `INTERNAL_API_KEY`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 后端与 AI 服务 REST 端点之间的共享密钥。保护嵌入生成端点免受未经授权的内网访问。 |
+| **默认值** | *（空）* |
+| **有效取值** | 任意字符串；建议长度 ≥ 32 个字符 |
+| **安全说明** | 这是**应用层纵深防御**密钥。即使攻击者攻破某个容器并获得内部 Docker 网络的访问权限，没有此密钥也无法调用 LLM 嵌入端点。后端通过 `InternalApiKeyInterceptor` 自动将其附加到每个出站 REST 请求。AI 服务中间件在请求头缺失或不正确时返回 HTTP 401。 |
+| **常见错误** | <ul><li>在 `docker-compose.yml` 中为 `backend` 和 `ai-service` 设置不同的值——两个服务必须共享**完全相同的值**。</li><li>使用短且易被猜中的字符串。</li><li>生产环境中忘记设置，因为它在为空时也能正常工作（两端均跳过验证）。</li></ul> |
+
+**推荐生成方式：**
+
+```bash
+# 32 字节 = 44 个 base64 字符
+openssl rand -base64 32
+```
+
+若留空，后端拦截器和 AI 服务中间件均跳过检查。这便于本地开发，但**绝不可**用于生产环境。

@@ -7,6 +7,8 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
 
+import edu.asu.ser594.resumeassistant.infrastructure.rest.InternalApiKeyInterceptor;
+
 /**
  * Infrastructure 模块配置
  * 显式扫描 infrastructure 包下的所有 Spring 组件
@@ -16,8 +18,10 @@ import org.springframework.web.client.RestTemplate;
 public class InfrastructureConfig {
 
     @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
+    public RestTemplate restTemplate(InternalApiKeyInterceptor internalApiKeyInterceptor) {
+        RestTemplate restTemplate = new RestTemplate();
+        restTemplate.getInterceptors().add(internalApiKeyInterceptor);
+        return restTemplate;
     }
 
     @Bean

@@ -6,7 +6,7 @@ import logging
 import os
 import threading
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
@@ -60,6 +60,41 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# ---------------------------------------------------------------------------
+# Internal API Key Middleware (Defense in Depth)
+# 应用层内部 API Key 中间件（纵深防御）
+# ---------------------------------------------------------------------------
+INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "")
+
+# Paths exempt from internal API key checks.
+# 免予内部 API Key 检查的路径。
+_SKIP_AUTH_PATHS = {"/health", "/", "/docs", "/openapi.json", "/redoc"}
+
+
+@app.middleware("http")
+async def internal_api_key_middleware(request: Request, call_next):
+    """
+    Validate X-Internal-API-Key header for all inbound HTTP requests.
+    Skipped when INTERNAL_API_KEY is unset (local development) or path is whitelisted.
+    对所有入站 HTTP 请求校验 X-Internal-API-Key header。
+    当 INTERNAL_API_KEY 未设置（本地开发）或路径在白名单内时跳过检查。
+    """
+    if INTERNAL_API_KEY and request.url.path not in _SKIP_AUTH_PATHS:
+        provided = request.headers.get("X-Internal-API-Key", "")
+        if provided != INTERNAL_API_KEY:
+            logger.warning(
+                "Unauthorized request: path=%s, remote=%s, header_present=%s",
+                request.url.path,
+                request.client.host if request.client else "unknown",
+                bool(provided),
+            )
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Unauthorized: invalid or missing internal API key"},
+            )
+    return await call_next(request)
+
 
 _mq_started = False
 _mq_is_connected = False
