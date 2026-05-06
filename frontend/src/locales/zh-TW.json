@@ -30,7 +30,7 @@
       "resumes": "我的履歷",
       "jobs": "職位匹配",
       "chat": "AI 聊天",
-      "tracking": "投遞追蹤"
+      "tracking": "申請管理"
     },
     "userMenu": {
       "profile": "個人中心",
@@ -118,7 +118,7 @@
       "jobsDesc": "基於履歷的智慧職位配對",
       "chat": "AI 聊天",
       "chatDesc": "獲取 AI 履歷優化建議",
-      "tracking": "投遞追蹤",
+      "tracking": "申請管理",
       "trackingDesc": "追蹤投遞和面試進度"
     },
     "recommendedJobs": {
@@ -152,6 +152,11 @@
     "salaryMax": "最高 {{max}}K",
     "salaryRange": "{{min}}K-{{max}}K",
     "matchScore": "配對 {{score}}%",
+    "matchFilter": "配對度篩選",
+    "matchAll": "全部配對",
+    "matchHigh": "高配對 (≥70%)",
+    "matchMedium": "中等配對 (40%~70%)",
+    "matchLow": "低配對 (<40%)",
     "viewDetails": "查看詳情",
     "loadError": "載入職位列表失敗",
     "addJob": "新增職位",
@@ -277,8 +282,8 @@
     "mockReply": "感謝您的提問！關於\"{{question}}\"，我建議您：\n\n1. 首先完善履歷內容，突出相關技能和經驗\n2. 針對目標職位定制履歷關鍵詞\n3. 準備相關專案案例和工作成果\n\n如需更詳細的建議，請告訴我您的具體情況。"
   },
   "tracking": {
-    "title": "投遞追蹤",
-    "subtitle": "管理您的求職投遞進度",
+    "title": "申請管理",
+    "subtitle": "管理您的求職申請和面試進度",
     "addRecord": "新增記錄",
     "stats": {
       "applied": "已投遞",
@@ -287,7 +292,7 @@
       "total": "總計"
     },
     "status": {
-      "PENDING": "待投遞",
+      "PENDING": "待申請",
       "APPLIED": "已投遞",
       "SCREENING": "篩選中",
       "INTERVIEWING": "面試中",
@@ -297,9 +302,9 @@
       "WITHDRAWN": "已撤回",
       "UNKNOWN": "未知"
     },
-    "recordList": "投遞記錄",
-    "emptyTitle": "暫無投遞記錄",
-    "emptyDesc": "新增您的第一條投遞記錄",
+    "recordList": "申請記錄",
+    "emptyTitle": "暫無申請記錄",
+    "emptyDesc": "新增您的第一條申請記錄",
     "company": "公司",
     "jobTitle": "職位名稱",
     "jobTitlePlaceholder": "例如：前端工程師",
@@ -308,16 +313,17 @@
     "notes": "備註",
     "notesPlaceholder": "可選",
     "add": "新增",
-    "addRecordTitle": "新增投遞記錄",
-    "addRecordDesc": "記錄您的求職投遞資訊",
+    "addRecordTitle": "新增申請記錄",
+    "addRecordDesc": "記錄您的求職申請資訊",
     "updateSuccess": "狀態更新成功",
     "updateFailed": "狀態更新失敗",
     "addSuccess": "新增成功",
     "addFailed": "新增失敗",
     "deleteSuccess": "刪除成功",
     "deleteFailed": "刪除失敗",
-    "loadError": "載入投遞記錄失敗",
-    "fillRequired": "請填寫所有必填項"
+    "loadError": "載入申請記錄失敗",
+    "fillRequired": "請填寫所有必填項",
+    "successRate": "成功率"
   },
   "resume": {
     "list": {

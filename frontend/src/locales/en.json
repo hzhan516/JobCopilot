@@ -30,7 +30,7 @@
       "resumes": "My Resumes",
       "jobs": "Jobs",
       "chat": "AI Chat",
-      "tracking": "Tracking"
+      "tracking": "Applications"
     },
     "userMenu": {
       "profile": "Profile",
@@ -118,7 +118,7 @@
       "jobsDesc": "Smart job matching based on your resume",
       "chat": "AI Chat",
       "chatDesc": "Get resume optimization help from AI",
-      "tracking": "Job Tracking",
+      "tracking": "Job Application",
       "trackingDesc": "Track applications and interviews"
     },
     "recommendedJobs": {
@@ -152,6 +152,11 @@
     "salaryMax": "Up to {{max}}K",
     "salaryRange": "{{min}}K-{{max}}K",
     "matchScore": "Match {{score}}%",
+    "matchFilter": "Match Filter",
+    "matchAll": "All Matches",
+    "matchHigh": "High Match (≥70%)",
+    "matchMedium": "Medium Match (40%~70%)",
+    "matchLow": "Low Match (<40%)",
     "viewDetails": "View Details",
     "loadError": "Failed to load job list",
     "addJob": "Add Job",
@@ -277,8 +282,8 @@
     "mockReply": "Thank you for your question! Regarding \"{{question}}\", I suggest you:\n\n1. First, complete your resume content, highlighting relevant skills and experience\n2. Customize resume keywords for the target position\n3. Prepare relevant project cases and work achievements\n\nIf you need more detailed advice, please tell me your specific situation."
   },
   "tracking": {
-    "title": "Job Tracking",
-    "subtitle": "Manage your job application progress",
+    "title": "Applications",
+    "subtitle": "Manage your job applications and interview progress",
     "addRecord": "Add Record",
     "stats": {
       "applied": "Applied",
@@ -317,7 +322,8 @@
     "deleteSuccess": "Deleted successfully",
     "deleteFailed": "Failed to delete",
     "loadError": "Failed to load application records",
-    "fillRequired": "Please fill in all required fields"
+    "fillRequired": "Please fill in all required fields",
+    "successRate": "Success Rate"
   },
   "resume": {
     "list": {

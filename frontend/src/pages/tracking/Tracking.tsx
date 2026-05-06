@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import type { Tracking } from '@/types';
+import type { Tracking, TrackingStatsResponse } from '@/types';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '@/utils/i18n';
 import { trackingService } from '@/services/trackingService';
@@ -52,6 +52,7 @@ export default function TrackingPage() {
     status: 'APPLIED' as Tracking['status'],
     notes: '',
   });
+  const [stats, setStats] = useState<TrackingStatsResponse | null>(null);
 
   const statusConfig: Record<string, { labelKey: string; color: string }> = useMemo(
     () => ({
@@ -79,10 +80,24 @@ export default function TrackingPage() {
     }
   }, [t]);
 
-  // 加载投递记录
+  // 加载统计信息
+  // Load tracking stats
+  const loadStats = useCallback(async () => {
+    try {
+      const data = await trackingService.getTrackingStats();
+      setStats(data);
+    } catch {
+      // 静默失败，回退到前端本地统计
+      // Silently fail and fall back to frontend local counts
+      setStats(null);
+    }
+  }, []);
+
+  // 加载投递记录和统计信息
   useEffect(() => {
     loadTrackings();
-  }, [loadTrackings]);
+    loadStats();
+  }, [loadTrackings, loadStats]);
 
   // 添加投递记录
   const handleAddTracking = async () => {
@@ -128,11 +143,22 @@ export default function TrackingPage() {
     }
   };
 
-  // 统计各状态数量
+  // 统计各状态数量（作为 stats API 失败时的回退）
+  // Count statuses locally (fallback when stats API fails)
   const statusCounts = trackings.reduce((acc, t) => {
     acc[t.status] = (acc[t.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  // 计算成功率
+  // Calculate success rate
+  const successRate = useMemo(() => {
+    if (!stats || stats.total === 0) return 0;
+    // 后端接口目前无 accepted 字段，用类型断言兼容未来扩展
+    // Backend currently has no accepted field; use type assertion for future compatibility
+    const accepted = (stats as any).accepted ?? 0;
+    return ((stats.offer + accepted) / stats.total) * 100;
+  }, [stats]);
 
   // 渲染加载状态
   if (isLoading) {
@@ -177,7 +203,7 @@ export default function TrackingPage() {
               <div>
                 <p className="text-sm text-gray-500">{t('tracking.stats.applied')}</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {statusCounts.APPLIED || 0}
+                  {stats?.applied ?? statusCounts.APPLIED ?? 0}
                 </p>
               </div>
               <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -192,7 +218,7 @@ export default function TrackingPage() {
               <div>
                 <p className="text-sm text-gray-500">{t('tracking.stats.interview')}</p>
                 <p className="text-2xl font-bold text-purple-600">
-                  {statusCounts.INTERVIEWING || 0}
+                  {stats?.interview ?? statusCounts.INTERVIEWING ?? 0}
                 </p>
               </div>
               <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
@@ -207,7 +233,7 @@ export default function TrackingPage() {
               <div>
                 <p className="text-sm text-gray-500">{t('tracking.stats.offered')}</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {statusCounts.OFFER || 0}
+                  {stats?.offer ?? statusCounts.OFFER ?? 0}
                 </p>
               </div>
               <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
@@ -221,7 +247,9 @@ export default function TrackingPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">{t('tracking.stats.total')}</p>
-                <p className="text-2xl font-bold text-gray-900">{trackings.length}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats?.total ?? trackings.length}
+                </p>
               </div>
               <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
                 <Calendar className="w-5 h-5 text-gray-600" />
@@ -230,6 +258,50 @@ export default function TrackingPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 成功率条形图 */}
+      {/* Success rate bar chart */}
+      <div className="mt-6">
+        <div className="flex justify-between text-sm mb-2">
+          <span className="font-medium text-gray-700">{t('tracking.successRate')}</span>
+          <span className="text-gray-500">{Math.round(successRate)}%</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-4">
+          <div
+            className="bg-green-500 h-4 rounded-full transition-all duration-500"
+            style={{ width: `${successRate}%` }}
+          />
+        </div>
+      </div>
+
+      {/* 状态分布迷你条形图 */}
+      {/* Status distribution mini bar chart */}
+      {stats && stats.total > 0 && (
+        <div className="mt-4 space-y-2">
+          {[
+            { key: 'applied', labelKey: 'tracking.status.APPLIED', color: 'bg-blue-500' },
+            { key: 'screening', labelKey: 'tracking.status.SCREENING', color: 'bg-yellow-500' },
+            { key: 'interview', labelKey: 'tracking.status.INTERVIEWING', color: 'bg-purple-500' },
+            { key: 'offer', labelKey: 'tracking.status.OFFER', color: 'bg-green-500' },
+            { key: 'rejected', labelKey: 'tracking.status.REJECTED', color: 'bg-red-500' },
+          ].map(({ key, labelKey, color }) => {
+            const count = (stats as any)[key] ?? 0;
+            const pct = stats.total > 0 ? (count / stats.total) * 100 : 0;
+            return (
+              <div key={key} className="flex items-center gap-3">
+                <span className="text-xs w-20 text-gray-600">{t(labelKey)}</span>
+                <div className="flex-1 bg-gray-200 rounded-full h-2">
+                  <div
+                    className={`${color} h-2 rounded-full transition-all`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <span className="text-xs w-6 text-right text-gray-500">{count}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* 投递记录列表 */}
       <Card>

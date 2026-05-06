@@ -117,7 +117,7 @@ function App() {
             }
           />
           <Route
-            path="/tracking"
+            path="/applications"
             element={
               <ProtectedRoute>
                 <MainLayout>

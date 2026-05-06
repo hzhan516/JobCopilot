@@ -93,4 +93,20 @@ public class AuthFacadeImpl implements AuthFacade {
                 .expiresIn(tokens.getExpiresIn())
                 .build();
     }
+
+    /**
+     * 刷新访问令牌 / Refresh access token
+     */
+    @Override
+    public AuthResponse refreshToken(String refreshToken) {
+        return authService.refreshToken(refreshToken);
+    }
+
+    /**
+     * 用户注销 / User logout
+     */
+    @Override
+    public void logout(String accessToken) {
+        authService.logout(accessToken);
+    }
 }

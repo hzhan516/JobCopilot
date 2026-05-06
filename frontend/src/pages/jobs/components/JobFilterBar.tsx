@@ -13,14 +13,23 @@ interface SortOption {
   label: string;
 }
 
+interface MatchFilterOption {
+  value: string;
+  label: string;
+}
+
 interface JobFilterBarProps {
   searchQuery: string;
   sortBy: string;
   searchPlaceholder: string;
   sortLabel: string;
   sortOptions: SortOption[];
+  matchFilter?: string;
+  matchFilterLabel?: string;
+  matchFilterOptions?: MatchFilterOption[];
   onSearchChange: (value: string) => void;
   onSortChange: (value: string) => void;
+  onMatchFilterChange?: (value: string) => void;
 }
 
 /**
@@ -33,8 +42,12 @@ export default function JobFilterBar({
   searchPlaceholder,
   sortLabel,
   sortOptions,
+  matchFilter,
+  matchFilterLabel,
+  matchFilterOptions,
   onSearchChange,
   onSortChange,
+  onMatchFilterChange,
 }: JobFilterBarProps) {
   return (
     <div className="flex flex-col lg:flex-row gap-4">
@@ -48,6 +61,21 @@ export default function JobFilterBar({
         />
       </div>
       <div className="flex gap-4">
+        {onMatchFilterChange && matchFilterOptions && (
+          <Select value={matchFilter} onValueChange={onMatchFilterChange}>
+            <SelectTrigger className="w-44">
+              <Filter className="w-4 h-4 mr-2" />
+              <SelectValue placeholder={matchFilterLabel} />
+            </SelectTrigger>
+            <SelectContent>
+              {matchFilterOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={sortBy} onValueChange={onSortChange}>
           <SelectTrigger className="w-40">
             <Filter className="w-4 h-4 mr-2" />

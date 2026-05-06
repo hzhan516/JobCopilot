@@ -19,4 +19,21 @@ public interface AuthFacade {
     // Google 登录
     // Login by Google
     AuthResponse loginByGoogle(LoginByGoogleRequest request);
+
+    /**
+     * 刷新访问令牌
+     * Refresh access token
+     *
+     * @param refreshToken 刷新令牌 / Refresh token
+     * @return 新认证响应 / New authentication response
+     */
+    AuthResponse refreshToken(String refreshToken);
+
+    /**
+     * 用户注销
+     * User logout
+     *
+     * @param accessToken 当前访问令牌 / Current access token
+     */
+    void logout(String accessToken);
 }

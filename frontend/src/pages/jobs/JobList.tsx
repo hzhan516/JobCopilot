@@ -38,6 +38,7 @@ export default function JobList() {
 
   // === 局部 UI 状态（无需全局共享）===
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [matchFilter, setMatchFilter] = useState<string>('ALL');
 
   // === 简历数据（Resume 领域，由本地管理）===
   const [resumes, setResumes] = useState<ResumeGroup[]>([]);
@@ -96,6 +97,29 @@ export default function JobList() {
     [resumes]
   );
 
+  // === 匹配度本地过滤（基于已有评分数据）===
+  // === Local match-score filtering (based on existing score data) ===
+  const displayJobs = useMemo(() => {
+    if (matchFilter === 'ALL') return jobs;
+    return jobs.filter((job) => {
+      const currentResumeId = selectedResumes[job.id] ?? '';
+      const scoreKey = `${job.id}_${currentResumeId}`;
+      const scoreResult = scoreResults[scoreKey];
+      if (!scoreResult) return false;
+      const score = scoreResult.finalScore;
+      switch (matchFilter) {
+        case 'HIGH':
+          return score >= 0.7;
+        case 'MEDIUM':
+          return score >= 0.4 && score < 0.7;
+        case 'LOW':
+          return score < 0.4;
+        default:
+          return true;
+      }
+    });
+  }, [jobs, matchFilter, selectedResumes, scoreResults]);
+
   // === 事件处理器 ===
   const handleScoreJob = useCallback(
     async (jobId: string) => {
@@ -145,18 +169,27 @@ export default function JobList() {
           { value: 'date', label: t('jobList.sortDate') },
           { value: 'status', label: t('jobList.sortStatus') },
         ]}
+        matchFilter={matchFilter}
+        matchFilterLabel={t('jobList.matchFilter')}
+        matchFilterOptions={[
+          { value: 'ALL', label: t('jobList.matchAll') },
+          { value: 'HIGH', label: t('jobList.matchHigh') },
+          { value: 'MEDIUM', label: t('jobList.matchMedium') },
+          { value: 'LOW', label: t('jobList.matchLow') },
+        ]}
         onSearchChange={setSearchQuery}
         onSortChange={(value) => setSortBy(value as 'date' | 'status')}
+        onMatchFilterChange={setMatchFilter}
       />
 
       <div className="grid gap-4">
-        {jobs.length === 0 ? (
+        {displayJobs.length === 0 ? (
           <JobEmptyState
             title={t('jobList.emptyTitle')}
             description={t('jobList.emptyDesc')}
           />
         ) : (
-          jobs.map((job) => {
+          displayJobs.map((job) => {
             const currentResumeId = selectedResumes[job.id] ?? '';
             const scoreKey = `${job.id}_${currentResumeId}`;
             const isScoring = scoringState[scoreKey] ?? false;

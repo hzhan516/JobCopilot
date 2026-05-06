@@ -30,7 +30,7 @@
       "resumes": "我的简历",
       "jobs": "职位匹配",
       "chat": "AI 聊天",
-      "tracking": "投递跟踪"
+      "tracking": "申请管理"
     },
     "userMenu": {
       "profile": "个人中心",
@@ -118,7 +118,7 @@
       "jobsDesc": "基于简历的智能职位匹配",
       "chat": "AI 聊天",
       "chatDesc": "获取 AI 简历优化建议",
-      "tracking": "投递跟踪",
+      "tracking": "申请管理",
       "trackingDesc": "跟踪投递和面试进度"
     },
     "recommendedJobs": {
@@ -153,6 +153,11 @@
     "salaryMax": "最高 {{max}}K",
     "salaryRange": "{{min}}K-{{max}}K",
     "matchScore": "匹配 {{score}}%",
+    "matchFilter": "匹配度筛选",
+    "matchAll": "全部匹配",
+    "matchHigh": "高分匹配 (≥70%)",
+    "matchMedium": "中等匹配 (40%~70%)",
+    "matchLow": "低分匹配 (<40%)",
     "viewDetails": "查看详情",
     "loadError": "加载职位列表失败",
     "addJob": "新加职位",
@@ -278,8 +283,8 @@
     "mockReply": "感谢您的提问！关于\"{{question}}\"，我建议您：\n\n1. 首先完善简历内容，突出相关技能和经验\n2. 针对目标职位定制简历关键词\n3. 准备相关项目案例和工作成果\n\n如需更详细的建议，请告诉我您的具体情况。"
   },
   "tracking": {
-    "title": "投递跟踪",
-    "subtitle": "管理您的求职投递进度",
+    "title": "申请管理",
+    "subtitle": "管理您的求职申请和面试进度",
     "addRecord": "添加记录",
     "stats": {
       "applied": "已投递",
@@ -288,7 +293,7 @@
       "total": "总计"
     },
     "status": {
-      "PENDING": "待投递",
+      "PENDING": "待申请",
       "APPLIED": "已投递",
       "SCREENING": "筛选中",
       "INTERVIEWING": "面试中",
@@ -298,9 +303,9 @@
       "WITHDRAWN": "已撤回",
       "UNKNOWN": "未知"
     },
-    "recordList": "投递记录",
-    "emptyTitle": "暂无投递记录",
-    "emptyDesc": "添加您的第一条投递记录",
+    "recordList": "申请记录",
+    "emptyTitle": "暂无申请记录",
+    "emptyDesc": "添加您的第一条申请记录",
     "company": "公司",
     "jobTitle": "职位名称",
     "jobTitlePlaceholder": "例如：前端工程师",
@@ -309,16 +314,17 @@
     "notes": "备注",
     "notesPlaceholder": "可选",
     "add": "添加",
-    "addRecordTitle": "添加投递记录",
-    "addRecordDesc": "记录您的求职投递信息",
+    "addRecordTitle": "添加申请记录",
+    "addRecordDesc": "记录您的求职申请信息",
     "updateSuccess": "状态更新成功",
     "updateFailed": "状态更新失败",
     "addSuccess": "添加成功",
     "addFailed": "添加失败",
     "deleteSuccess": "删除成功",
     "deleteFailed": "删除失败",
-    "loadError": "加载投递记录失败",
-    "fillRequired": "请填写所有必填项"
+    "loadError": "加载申请记录失败",
+    "fillRequired": "请填写所有必填项",
+    "successRate": "成功率"
   },
   "resume": {
     "list": {
