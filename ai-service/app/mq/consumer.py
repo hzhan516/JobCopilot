@@ -31,33 +31,25 @@ from app.config import (
     RABBITMQ_PASSWORD,
     RABBITMQ_PORT,
     RABBITMQ_USERNAME,
-    VECTOR_GEN_REQUEST_QUEUE,
-    VECTOR_GEN_REQUEST_ROUTING_KEY,
-    VECTOR_GEN_RESULT_QUEUE,
-    VECTOR_GEN_RESULT_ROUTING_KEY,
 )
 
 from app.mq.publisher import publish_ai_result, publish_job_rank_result
-from app.services.backend_client import send_vector_to_backend
 from app.schemas import (
     AiResultEvent,
     ConversationRequestCommand,
     JobRankCommand,
     JobParseCommand,
     ResumeParseCommand,
-    VectorGenCommand,
 )
 from app.services.conversation_service import process_conversation
 from app.services.job_rank_service import rank_jobs
 from app.services.job_orchestrator import process_job
 from app.services.resume_orchestrator import process_resume
-from app.services.vector_service import process_vector
 
 logger = logging.getLogger(__name__)
 
 JOB_PARSE_FAILED_MESSAGE = "AI service failed while parsing the job posting. Please try again."
 RESUME_PARSE_FAILED_MESSAGE = "AI service failed while parsing the resume. Please try again."
-VECTOR_GEN_FAILED_MESSAGE = "AI service failed while generating embeddings. Please try again."
 CONVERSATION_FAILED_MESSAGE = "AI service failed while generating the chat response. Please try again."
 JOB_RANK_FAILED_MESSAGE = "AI service failed while ranking jobs. Please try again."
 
@@ -133,19 +125,6 @@ def setup_all_queues(channel: pika.adapters.blocking_connection.BlockingChannel)
         routing_key=RESUME_PARSE_RESULT_ROUTING_KEY,
     )
 
-    declare_queue(channel, VECTOR_GEN_REQUEST_QUEUE)
-    channel.queue_bind(
-        exchange=AI_DIRECT_EXCHANGE,
-        queue=VECTOR_GEN_REQUEST_QUEUE,
-        routing_key=VECTOR_GEN_REQUEST_ROUTING_KEY,
-    )
-    declare_queue(channel, VECTOR_GEN_RESULT_QUEUE)
-    channel.queue_bind(
-        exchange=AI_DIRECT_EXCHANGE,
-        queue=VECTOR_GEN_RESULT_QUEUE,
-        routing_key=VECTOR_GEN_RESULT_ROUTING_KEY,
-    )
-
     declare_queue(channel, CONVERSATION_REQUEST_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
@@ -183,12 +162,6 @@ def parse_job_command(body: bytes) -> JobParseCommand:
 def parse_resume_command(body: bytes) -> ResumeParseCommand:
     payload = json.loads(body.decode("utf-8"))
     return ResumeParseCommand.model_validate(payload)
-
-
-# Parse a vector-generation command payload from the message body.
-def parse_vector_command(body: bytes) -> VectorGenCommand:
-    payload = json.loads(body.decode("utf-8"))
-    return VectorGenCommand.model_validate(payload)
 
 
 # Parse a conversation request command payload from the message body.
@@ -261,55 +234,6 @@ def handle_resume_message(
     publish_ai_result(channel, result)
 
 
-# Handle a vector-generation request and write the result to backend via HTTP API.
-# 处理向量生成请求并通过 HTTP API 将结果写入后端。
-def handle_vector_message(
-    channel: pika.adapters.blocking_connection.BlockingChannel,
-    body: bytes,
-) -> None:
-    command = parse_vector_command(body)
-    try:
-        result = process_vector(command)
-    except Exception as exc:
-        logger.exception("Vector processing failed: reference_id=%s", command.reference_id)
-        # 失败时仍通过 MQ 回传失败结果（后端暂无接收失败状态的 HTTP 端点）
-        result = build_failed_event(
-            reference_id=command.reference_id,
-            event_type="VECTOR_GEN",
-            error_message=VECTOR_GEN_FAILED_MESSAGE,
-            event_entity_type=command.entity_type,
-        )
-        publish_ai_result(channel, result)
-        return
-
-    # 成功时通过 HTTP API 写入后端，不再走 MQ 回传
-    embedding = result.data.get("embedding") if result.data else None
-    entity_type = result.data.get("entityType") if result.data else command.entity_type
-
-    if embedding:
-        try:
-            send_vector_to_backend(
-                reference_id=result.referenceId,
-                embedding=embedding,
-                entity_type=entity_type,
-            )
-            logger.info(
-                "Vector saved to backend via HTTP API: reference_id=%s, entity_type=%s",
-                result.referenceId,
-                entity_type,
-            )
-        except Exception:
-            logger.exception(
-                "Failed to save vector to backend via HTTP API: reference_id=%s",
-                result.referenceId,
-            )
-            # HTTP 写入失败时降级为 MQ 回传
-            publish_ai_result(channel, result)
-    else:
-        # embedding 为空时降级为 MQ 回传
-        publish_ai_result(channel, result)
-
-
 # Handle a conversation request and publish the result or failure.
 def handle_conversation_message(
     channel: pika.adapters.blocking_connection.BlockingChannel,
@@ -339,18 +263,22 @@ def handle_job_rank_message(
 
     try:
         result = rank_jobs(command)
-        publish_job_rank_result(channel, result.model_dump(by_alias=True))
+        publish_job_rank_result(
+            channel,
+            match_id=command.match_id,
+            status="COMPLETED",
+            rank_time_ms=result.rank_time_ms,
+            ranked_results=[item.model_dump(by_alias=True) for item in result.ranked_results],
+        )
     except Exception as exc:
         logger.exception("Job rank processing failed: match_id=%s", command.match_id)
         publish_job_rank_result(
             channel,
-            {
-                "matchId": command.match_id,
-                "status": "FAILED",
-                "rankTimeMs": 0,
-                "rankedResults": [],
-                "errorMessage": JOB_RANK_FAILED_MESSAGE,
-            },
+            match_id=command.match_id,
+            status="FAILED",
+            rank_time_ms=0,
+            ranked_results=[],
+            error_message=JOB_RANK_FAILED_MESSAGE,
         )
 
 
@@ -393,11 +321,6 @@ def start_all_consumers(channel: pika.adapters.blocking_connection.BlockingChann
     channel.basic_consume(
         queue=RESUME_PARSE_REQUEST_QUEUE,
         on_message_callback=_async_handler(handle_resume_message),
-        auto_ack=False,
-    )
-    channel.basic_consume(
-        queue=VECTOR_GEN_REQUEST_QUEUE,
-        on_message_callback=_async_handler(handle_vector_message),
         auto_ack=False,
     )
     channel.basic_consume(

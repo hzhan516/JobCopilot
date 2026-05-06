@@ -3,6 +3,7 @@ package edu.asu.ser594.resumeassistant.trigger.listener.ai;
 import edu.asu.ser594.resumeassistant.api.conversation.facade.ConversationFacade;
 import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
+import edu.asu.ser594.resumeassistant.api.matching.facade.MatchingFacade;
 import edu.asu.ser594.resumeassistant.api.resume.facade.ResumeFacade;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -37,6 +39,9 @@ class AiResultMessageListenerTest {
 
     @Mock
     private VectorFacade vectorFacade;
+
+    @Mock
+    private MatchingFacade matchingFacade;
 
     @InjectMocks
     private AiResultMessageListener listener;
@@ -66,22 +71,33 @@ class AiResultMessageListenerTest {
     }
 
     @Test
-    void onVectorGenResult_ShouldCallVectorFacade() {
+    void onJobRankResult_ShouldCallMatchingFacade() {
         // 准备 / Given
-        AiResultEvent event = new AiResultEvent(
-                "job-123",
-                "VECTOR_GEN",
-                "COMPLETED",
-                Map.of("embedding", java.util.List.of(0.1, 0.2)),
-                null,
-                "JOB"
+        Map<String, Object> data = Map.of(
+                "rankTimeMs", 150L,
+                "rankedResults", List.of(
+                        Map.of("jobId", "job-1", "title", "Title", "company", "Company",
+                                "matchScore", 0.95, "description", "Description")
+                )
         );
+        AiResultEvent event = new AiResultEvent("match-001", "JOB_RANK", "COMPLETED", data, null, null);
 
         // 执行 / When
-        listener.onVectorGenResult(event);
+        listener.onJobRankResult(event);
 
         // 验证 / Then
-        verify(vectorFacade).handleVectorGenResult(event);
+        verify(matchingFacade).saveJobRankResult(eq("match-001"), any(List.class), eq(150L));
+    }
+
+    @Test
+    void onJobRankResult_WhenFailed_ShouldNotCallMatchingFacade() {
+        // 准备 / Given
+        AiResultEvent event = new AiResultEvent("match-002", "JOB_RANK", "FAILED", null, "AI service error", null);
+
+        // 执行 / When
+        listener.onJobRankResult(event);
+
+        // 验证 / Then — matchingFacade 不应被调用
     }
 
     @Test

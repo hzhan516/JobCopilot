@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.application.matching.service;
 
+import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchItem;
 import edu.asu.ser594.resumeassistant.application.matching.command.SaveMatchResultCommand;
 import edu.asu.ser594.resumeassistant.application.matching.command.StartJobMatchCommand;
@@ -22,7 +23,6 @@ import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
 import edu.asu.ser594.resumeassistant.domain.resume.valueobject.ParseStatus;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobRankCommand;
-import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -67,6 +67,9 @@ class MatchingApplicationServiceTest {
 
     @Mock
     private AiMessagePublisherPort aiMessagePublisherPort;
+
+    @Mock
+    private VectorFacade vectorFacade;
 
     @Mock
     private VectorSearchPort vectorSearchPort;
@@ -177,7 +180,7 @@ class MatchingApplicationServiceTest {
         when(resumeVectorRepository.findByResumeVersionId(RESUME_VERSION_ID)).thenReturn(Optional.empty());
         when(jobMatchResultRepository.save(any(JobMatchResult.class))).thenAnswer(inv -> inv.getArgument(0));
         when(resumeVersionRepository.findById(UUID.fromString(RESUME_VERSION_ID))).thenReturn(Optional.of(resumeVersion));
-        doNothing().when(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
+        doNothing().when(vectorFacade).generateAndSaveVector(anyString(), anyString(), anyString());
 
         // 当&那么
         // When&Then
@@ -185,11 +188,7 @@ class MatchingApplicationServiceTest {
                 .isInstanceOf(ResumeVectorNotReadyException.class)
                 .hasMessageContaining("matching.resume.vector.not.ready");
 
-        verify(aiMessagePublisherPort).sendTextForVectorGeneration(argThat(cmd ->
-                cmd.referenceId().equals(RESUME_VERSION_ID)
-                        && cmd.entityType().equals("RESUME")
-                        && cmd.text().equals("resume content")
-        ));
+        verify(vectorFacade).generateAndSaveVector(eq(RESUME_VERSION_ID), eq("RESUME"), eq("resume content"));
     }
 
     @Test
@@ -216,7 +215,7 @@ class MatchingApplicationServiceTest {
         when(resumeVectorRepository.findByResumeVersionId(RESUME_VERSION_ID)).thenReturn(Optional.of(vector));
         when(jobMatchResultRepository.save(any(JobMatchResult.class))).thenAnswer(inv -> inv.getArgument(0));
         when(resumeVersionRepository.findById(UUID.fromString(RESUME_VERSION_ID))).thenReturn(Optional.of(resumeVersion));
-        doNothing().when(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
+        doNothing().when(vectorFacade).generateAndSaveVector(anyString(), anyString(), anyString());
 
         // 当&那么
         // When&Then
@@ -224,10 +223,7 @@ class MatchingApplicationServiceTest {
                 .isInstanceOf(ResumeVectorNotReadyException.class)
                 .hasMessageContaining("matching.resume.vector.not.ready");
 
-        verify(aiMessagePublisherPort).sendTextForVectorGeneration(argThat(cmd ->
-                cmd.referenceId().equals(RESUME_VERSION_ID)
-                        && cmd.entityType().equals("RESUME")
-        ));
+        verify(vectorFacade).generateAndSaveVector(eq(RESUME_VERSION_ID), eq("RESUME"), anyString());
     }
 
     @Test

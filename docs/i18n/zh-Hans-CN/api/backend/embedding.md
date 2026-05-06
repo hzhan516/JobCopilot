@@ -201,6 +201,28 @@ Content-Type: application/json
 
 ---
 
+### 1.4 同步向量生成（内部调用）
+
+**调用方**：`JobApplicationService`、`ResumeApplicationService`、`ConversationApplicationService`、`MatchingApplicationService`
+**被调方**：`VectorFacade.generateAndSaveVector(referenceId, entityType, text)`
+
+这是内部同步 REST 调用链（不涉及 MQ）：
+
+```
+应用服务 -> VectorFacade
+  -> VectorApplicationService
+    -> EmbeddingService.generate(text)
+      -> POST /api/v1/ai/embeddings (AI 服务)
+    -> 保存到 job_vectors / resume_vectors
+```
+
+**行为：**
+- 成功时：嵌入向量保存到 `job_vectors` 或 `resume_vectors`，状态为 `COMPLETED`
+- 失败时（AI 服务不可用或维度不匹配）：保存状态为 `FAILED` 的记录，并填充 `error_message`
+- 调用是同步的，会阻塞调用方事务，但异常会被捕获以避免级联失败
+
+---
+
 ## 2. 数据同步流程
 
 ### 启动同步（AI 服务 → 后端）

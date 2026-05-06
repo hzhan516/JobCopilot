@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.application.matching.service;
 
+import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
 import edu.asu.ser594.resumeassistant.application.matching.command.SaveMatchResultCommand;
 import edu.asu.ser594.resumeassistant.application.matching.command.StartJobMatchCommand;
 import edu.asu.ser594.resumeassistant.application.matching.query.GetMatchResultQuery;
@@ -18,7 +19,6 @@ import edu.asu.ser594.resumeassistant.domain.matching.valueobject.RecallResult;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobRankCommand;
-import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +45,7 @@ public class MatchingApplicationService {
     private final JobMatchResultRepository jobMatchResultRepository;
     private final MatchingModelRepository matchingModelRepository;
     private final AiMessagePublisherPort aiMessagePublisherPort;
+    private final VectorFacade vectorFacade;
     private final VectorSearchPort vectorSearchPort;
 
     /**
@@ -82,15 +83,10 @@ public class MatchingApplicationService {
 
             if (!vectorText.isEmpty()) {
                 try {
-                    VectorGenCommand vectorCmd = new VectorGenCommand(
-                            command.resumeVersionId(),
-                            "RESUME",
-                            vectorText
-                    );
-                    aiMessagePublisherPort.sendTextForVectorGeneration(vectorCmd);
-                    log.info("Triggered async vector re-generation for missing resume vector, versionId={}", command.resumeVersionId());
+                    vectorFacade.generateAndSaveVector(command.resumeVersionId(), "RESUME", vectorText);
+                    log.info("Synchronously generated vector for missing resume vector, versionId={}", command.resumeVersionId());
                 } catch (Exception e) {
-                    log.error("Failed to trigger vector re-generation for versionId={}", command.resumeVersionId(), e);
+                    log.error("Failed to generate vector for versionId={}", command.resumeVersionId(), e);
                 }
             }
 

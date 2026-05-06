@@ -19,9 +19,9 @@
             4. 發送 JobRankCommand 到 ai.req.job.rank
             5. 立即回傳 JobMatchResponse(matchId, status=PROCESSING)
 
-Python AI 服務 -> 消費 ai.req.job.rank -> 精排 -> 發送結果到 backend.res.job.rank
+Python AI 服務 -> 消費 ai.req.job.rank -> 精排 -> 發送 AiResultEvent 到 backend.res.job.rank
 
-JobRankResultListener -> 消費 backend.res.job.rank
+AiResultMessageListener.onJobRankResult() -> 消費 backend.res.job.rank
     -> MatchingFacade.saveJobRankResult()
         -> MatchingApplicationService.saveMatchResult()
             -> 更新 job_match_results 為 COMPLETED + rankedResults
@@ -150,25 +150,31 @@ Content-Type: application/json
 **路由鍵:** `backend.res.job.rank`  
 **佇列:** `backend.queue.job.rank`
 
+採用統一的 `AiResultEvent` 格式：
+
 ```json
 {
-  "matchId": "match-uuid-1234",
+  "referenceId": "match-uuid-1234",
+  "type": "JOB_RANK",
   "status": "COMPLETED",
-  "rankTimeMs": 150,
-  "rankedResults": [
-    {
-      "jobId": "job-001",
-      "title": "Senior Java Developer",
-      "company": "Tech Corp",
-      "matchScore": 0.92,
-      "matchFactors": {
-        "skillMatch": 0.95,
-        "experienceMatch": 0.90,
-        "locationMatch": 0.88
-      },
-      "description": "Looking for an experienced Java developer..."
-    }
-  ]
+  "data": {
+    "rankTimeMs": 150,
+    "rankedResults": [
+      {
+        "jobId": "job-001",
+        "title": "Senior Java Developer",
+        "company": "Tech Corp",
+        "matchScore": 0.92,
+        "matchFactors": {
+          "skillMatch": 0.95,
+          "experienceMatch": 0.90,
+          "locationMatch": 0.88
+        },
+        "description": "Looking for an experienced Java developer..."
+      }
+    ]
+  },
+  "errorMessage": null
 }
 ```
 

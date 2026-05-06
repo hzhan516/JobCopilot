@@ -19,9 +19,9 @@
             4. 发送 JobRankCommand 到 ai.req.job.rank
             5. 立即返回 JobMatchResponse(matchId, status=PROCESSING)
 
-Python AI 服务 -> 消费 ai.req.job.rank -> 精排 -> 发送结果到 backend.res.job.rank
+Python AI 服务 -> 消费 ai.req.job.rank -> 精排 -> 发送 AiResultEvent 到 backend.res.job.rank
 
-JobRankResultListener -> 消费 backend.res.job.rank
+AiResultMessageListener.onJobRankResult() -> 消费 backend.res.job.rank
     -> MatchingFacade.saveJobRankResult()
         -> MatchingApplicationService.saveMatchResult()
             -> 更新 job_match_results 为 COMPLETED + rankedResults

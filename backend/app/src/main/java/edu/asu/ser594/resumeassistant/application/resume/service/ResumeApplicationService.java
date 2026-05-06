@@ -1,6 +1,7 @@
 package edu.asu.ser594.resumeassistant.application.resume.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
 import edu.asu.ser594.resumeassistant.application.resume.command.CreateVersionCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeEditCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeUploadCommand;
@@ -13,7 +14,6 @@ import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepo
 import edu.asu.ser594.resumeassistant.domain.resume.valueobject.ParseStatus;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ResumeParseCommand;
-import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.exception.StorageException;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import edu.asu.ser594.resumeassistant.domain.shared.service.DocumentFormatConverter;
@@ -56,6 +56,7 @@ public class ResumeApplicationService {
     private final FileStorageService fileStorageService;
     private final DocumentFormatConverter documentFormatConverter;
     private final AiMessagePublisherPort aiMessagePublisherPort;
+    private final VectorFacade vectorFacade;
 
     // ==================== 命令处理 Command Handlers ====================
     private final ObjectMapper objectMapper;
@@ -102,18 +103,13 @@ public class ResumeApplicationService {
                     versionRepository.save(converted);
                     log.info("Auto-converted uploaded file to markdown for groupId={}", group.getId());
 
-                    // 触发 CONVERTED 版本向量生成
-                    // Trigger CONVERTED version vector generation
+                    // 同步生成 CONVERTED 版本向量
+                    // Synchronously generate vector for CONVERTED version
                     try {
-                        VectorGenCommand vectorCmd = new VectorGenCommand(
-                                converted.getId().toString(),
-                                "RESUME",
-                                markdown
-                        );
-                        aiMessagePublisherPort.sendTextForVectorGeneration(vectorCmd);
-                        log.info("Triggered async vector generation for converted versionId={}", converted.getId());
+                        vectorFacade.generateAndSaveVector(converted.getId().toString(), "RESUME", markdown);
+                        log.info("Vector generated and saved for converted versionId={}", converted.getId());
                     } catch (Exception e) {
-                        log.error("Failed to publish vector generation request for converted versionId={}", converted.getId(), e);
+                        log.error("Failed to generate vector for converted versionId={}", converted.getId(), e);
                     }
                 }
             } catch (IOException e) {
@@ -180,17 +176,12 @@ public class ResumeApplicationService {
         if (version.getVersionType() == ResumeVersion.VersionType.CONVERTED
                 || version.getVersionType() == ResumeVersion.VersionType.AI_OPTIMIZED) {
             try {
-                VectorGenCommand vectorCmd = new VectorGenCommand(
-                        version.getId().toString(),
-                        "RESUME",
-                        version.getContent()
-                );
-                aiMessagePublisherPort.sendTextForVectorGeneration(vectorCmd);
-                log.info("Triggered async vector re-generation for resume versionId={}", version.getId());
+                vectorFacade.generateAndSaveVector(version.getId().toString(), "RESUME", version.getContent());
+                log.info("Vector generated and saved for resume versionId={}", version.getId());
             } catch (Exception e) {
-                log.error("Failed to publish vector re-generation request for versionId={}", version.getId(), e);
-                // 编辑已持久化，向量异步补全；不阻塞用户
-                // Edit is already persisted; vector will be completed asynchronously; do not block user
+                log.error("Failed to generate vector for versionId={}", version.getId(), e);
+                // 编辑已持久化，向量同步生成失败但不阻塞用户
+                // Edit is already persisted; vector generation failed but do not block user
             }
         }
 
@@ -248,19 +239,14 @@ public class ResumeApplicationService {
             newVersion.markParseCompleted(original.getParsedContent());
         }
 
-        // 4.5 触发向量生成（内容非空时）
-        // 4.5 Trigger vector generation if content is not empty
+        // 4.5 同步生成向量（内容非空时）
+        // 4.5 Synchronously generate vector if content is not empty
         if (sourceContent != null && !sourceContent.isEmpty()) {
             try {
-                VectorGenCommand vectorCmd = new VectorGenCommand(
-                        newVersion.getId().toString(),
-                        "RESUME",
-                        sourceContent
-                );
-                aiMessagePublisherPort.sendTextForVectorGeneration(vectorCmd);
-                log.info("Triggered async vector generation for new converted versionId={}", newVersion.getId());
+                vectorFacade.generateAndSaveVector(newVersion.getId().toString(), "RESUME", sourceContent);
+                log.info("Vector generated and saved for new converted versionId={}", newVersion.getId());
             } catch (Exception e) {
-                log.error("Failed to publish vector generation request for new converted versionId={}", newVersion.getId(), e);
+                log.error("Failed to generate vector for new converted versionId={}", newVersion.getId(), e);
             }
         }
 
@@ -396,15 +382,10 @@ public class ResumeApplicationService {
                 }
             }
 
-            // 触发向量生成
-            // Trigger vector generation
-            VectorGenCommand vectorCmd = new VectorGenCommand(
-                    originalVersion.getId().toString(),
-                    "RESUME",
-                    parsedJsonStr
-            );
-            aiMessagePublisherPort.sendTextForVectorGeneration(vectorCmd);
-            log.info("Triggered async vector generation for resume versionId={}", originalVersion.getId());
+            // 同步生成向量
+            // Synchronously generate vector
+            vectorFacade.generateAndSaveVector(originalVersion.getId().toString(), "RESUME", parsedJsonStr);
+            log.info("Vector generated and saved for resume versionId={}", originalVersion.getId());
 
         } catch (Exception e) {
             log.error("Failed to process parsed data or trigger vector gen for versionId={}", originalVersion.getId(), e);

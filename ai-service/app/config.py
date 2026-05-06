@@ -22,11 +22,6 @@ RESUME_PARSE_RESULT_QUEUE = "backend.queue.resume.parse"
 RESUME_PARSE_REQUEST_ROUTING_KEY = "ai.req.resume.parse"
 RESUME_PARSE_RESULT_ROUTING_KEY = "backend.res.resume.parse"
 
-VECTOR_GEN_REQUEST_QUEUE = "ai.queue.vector.gen"
-VECTOR_GEN_RESULT_QUEUE = "backend.queue.vector.gen"
-VECTOR_GEN_REQUEST_ROUTING_KEY = "ai.req.vector.gen"
-VECTOR_GEN_RESULT_ROUTING_KEY = "backend.res.vector.gen"
-
 CONVERSATION_REQUEST_QUEUE = "ai.queue.conversation"
 CONVERSATION_RESULT_QUEUE = "backend.queue.conversation"
 CONVERSATION_REQUEST_ROUTING_KEY = "ai.req.conversation"

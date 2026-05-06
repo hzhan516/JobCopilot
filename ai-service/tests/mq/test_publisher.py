@@ -13,7 +13,6 @@ from app.config import (
     AI_DIRECT_EXCHANGE,
     JOB_PARSE_RESULT_ROUTING_KEY,
     RESUME_PARSE_RESULT_ROUTING_KEY,
-    VECTOR_GEN_RESULT_ROUTING_KEY,
     CONVERSATION_RESULT_ROUTING_KEY,
     JOB_RANK_RESULT_ROUTING_KEY,
 )
@@ -21,7 +20,6 @@ from app.config import (
 def test_get_result_routing_key():
     assert get_result_routing_key("JOB_PARSE") == JOB_PARSE_RESULT_ROUTING_KEY
     assert get_result_routing_key("RESUME_PARSE") == RESUME_PARSE_RESULT_ROUTING_KEY
-    assert get_result_routing_key("VECTOR_GEN") == VECTOR_GEN_RESULT_ROUTING_KEY
     assert get_result_routing_key("CONVERSATION_REPLY") == CONVERSATION_RESULT_ROUTING_KEY
     
     with pytest.raises(ValueError, match="Unsupported event type: UNKNOWN"):
@@ -72,14 +70,24 @@ def test_publish_json_payload():
 
 def test_publish_job_rank_result():
     mock_channel = MagicMock()
-    payload = {"matchId": "match-123", "status": "COMPLETED"}
-    
-    publish_job_rank_result(mock_channel, payload)
-    
+
+    publish_job_rank_result(
+        mock_channel,
+        match_id="match-123",
+        status="COMPLETED",
+        rank_time_ms=150,
+        ranked_results=[{"jobId": "job-1", "title": "Dev"}],
+    )
+
     mock_channel.basic_publish.assert_called_once()
     kwargs = mock_channel.basic_publish.call_args.kwargs
     assert kwargs["exchange"] == AI_DIRECT_EXCHANGE
     assert kwargs["routing_key"] == JOB_RANK_RESULT_ROUTING_KEY
-    
+
     body = json.loads(kwargs["body"].decode("utf-8"))
-    assert body == payload
+    assert body["referenceId"] == "match-123"
+    assert body["type"] == "JOB_RANK"
+    assert body["status"] == "COMPLETED"
+    assert body["data"]["rankTimeMs"] == 150
+    assert body["data"]["rankedResults"] == [{"jobId": "job-1", "title": "Dev"}]
+    assert body["errorMessage"] is None

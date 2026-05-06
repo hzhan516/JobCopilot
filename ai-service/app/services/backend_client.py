@@ -116,31 +116,6 @@ def _build_resume_vector_item(
     }
 
 
-def send_vector_to_backend(
-    reference_id: str,
-    embedding: list[float],
-    entity_type: str,
-    title: str = "",
-    description: str = "",
-    requirements: list[str] | None = None,
-    raw_content: str = "",
-    source_file: str = "",
-    model_version: str = "",
-) -> dict:
-    """将单条向量结果通过 HTTP API 写入后端。
-    Write a single vector result to backend via HTTP API.
-    """
-    if entity_type and entity_type.upper() == "RESUME":
-        item = _build_resume_vector_item(reference_id, embedding)
-        return batch_upsert_resume_vectors([item])
-    else:
-        item = _build_job_vector_item(
-            reference_id, embedding, title, description,
-            requirements, raw_content, source_file, model_version,
-        )
-        return batch_upsert_job_vectors([item])
-
-
 def sync_existing_job_embeddings(
     data_file: Path | str | None = None,
     batch_size: int = BACKEND_BATCH_SIZE,

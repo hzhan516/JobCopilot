@@ -2,7 +2,10 @@ package edu.asu.ser594.resumeassistant.trigger.listener.ai;
 
 import edu.asu.ser594.resumeassistant.api.conversation.facade.ConversationFacade;
 import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
+import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchFactors;
+import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchItem;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
+import edu.asu.ser594.resumeassistant.api.matching.facade.MatchingFacade;
 import edu.asu.ser594.resumeassistant.api.resume.facade.ResumeFacade;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -31,6 +36,7 @@ public class AiResultMessageListener {
     private final ResumeFacade resumeFacade;
     private final ConversationFacade conversationFacade;
     private final VectorFacade vectorFacade;
+    private final MatchingFacade matchingFacade;
 
     /**
      * 监听职位解析结果 / Listen for job parse results
@@ -55,19 +61,6 @@ public class AiResultMessageListener {
             resumeFacade.handleParseResult(event);
         } catch (Exception e) {
             log.error("Error processing AiResultEvent for RESUME_PARSE referenceId: {}", event.referenceId(), e);
-        }
-    }
-
-    /**
-     * 监听向量生成结果 / Listen for vector generation results
-     */
-    @RabbitListener(queues = "${app.rabbitmq.queue.res.vector-gen}")
-    public void onVectorGenResult(AiResultEvent event) {
-        log.info("Received AiResultEvent for VECTOR_GEN, referenceId: {}, status: {}", event.referenceId(), event.status());
-        try {
-            vectorFacade.handleVectorGenResult(event);
-        } catch (Exception e) {
-            log.error("Error processing AiResultEvent for VECTOR_GEN referenceId: {}", event.referenceId(), e);
         }
     }
 
@@ -106,6 +99,76 @@ public class AiResultMessageListener {
             log.error("Error processing AiResultEvent for CONVERSATION_REPLY referenceId: {}", event.referenceId(), e);
             conversationFacade.failAiReply(event.referenceId(), e.getMessage());
         }
+    }
+
+    /**
+     * 监听职位精排结果 / Listen for job rank results
+     */
+    @RabbitListener(queues = "${app.rabbitmq.queue.res.job-rank}")
+    public void onJobRankResult(AiResultEvent event) {
+        log.info("Received AiResultEvent for JOB_RANK, referenceId: {}, status: {}",
+                event.referenceId(), event.status());
+        try {
+            if (!"COMPLETED".equals(event.status())) {
+                log.warn("Job rank failed for matchId: {}, error: {}",
+                        event.referenceId(), event.errorMessage());
+                return;
+            }
+            Map<String, Object> data = event.data();
+            if (data == null) {
+                log.warn("Job rank result has no data for matchId: {}", event.referenceId());
+                return;
+            }
+
+            Long rankTimeMs = data.containsKey("rankTimeMs")
+                    ? ((Number) data.get("rankTimeMs")).longValue() : 0L;
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> rankedData = (List<Map<String, Object>>) data.get("rankedResults");
+            List<MatchItem> matchItems = new ArrayList<>();
+
+            if (rankedData != null) {
+                for (Map<String, Object> item : rankedData) {
+                    MatchFactors factors = extractMatchFactors(item);
+                    matchItems.add(new MatchItem(
+                            (String) item.get("jobId"),
+                            (String) item.get("title"),
+                            (String) item.get("company"),
+                            item.get("matchScore") != null ? ((Number) item.get("matchScore")).doubleValue() : 0.0,
+                            factors,
+                            (String) item.get("description"),
+                            (String) item.get("matchReason")
+                    ));
+                }
+            }
+
+            matchingFacade.saveJobRankResult(event.referenceId(), matchItems, rankTimeMs);
+            log.info("Job rank result saved for matchId: {}", event.referenceId());
+        } catch (Exception e) {
+            log.error("Error processing AiResultEvent for JOB_RANK referenceId: {}",
+                    event.referenceId(), e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private MatchFactors extractMatchFactors(final Map<String, Object> item) {
+        final Object factorsObj = item.get("matchFactors");
+        if (factorsObj instanceof Map) {
+            final Map<String, Object> factorsMap = (Map<String, Object>) factorsObj;
+            return new MatchFactors(
+                    extractDouble(factorsMap.get("skillMatch")),
+                    extractDouble(factorsMap.get("experienceMatch")),
+                    extractDouble(factorsMap.get("locationMatch"))
+            );
+        }
+        return new MatchFactors(0.0, 0.0, 0.0);
+    }
+
+    private Double extractDouble(final Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        return 0.0;
     }
 
     // 提取回复内容 / Extract reply content

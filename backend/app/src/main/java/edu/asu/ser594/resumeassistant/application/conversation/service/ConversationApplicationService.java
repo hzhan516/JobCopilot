@@ -1,6 +1,7 @@
 package edu.asu.ser594.resumeassistant.application.conversation.service;
 
 import edu.asu.ser594.resumeassistant.api.conversation.port.ConversationStreamPort;
+import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
 import edu.asu.ser594.resumeassistant.application.conversation.command.CreateConversationCommand;
 import edu.asu.ser594.resumeassistant.application.conversation.command.SendMessageCommand;
 import edu.asu.ser594.resumeassistant.domain.conversation.entity.Conversation;
@@ -17,7 +18,6 @@ import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeGroupRepository;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ConversationRequestCommand;
-import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import edu.asu.ser594.resumeassistant.domain.shared.service.FileStorageService;
 import edu.asu.ser594.resumeassistant.domain.shared.service.MessageProvider;
@@ -45,6 +45,7 @@ public class ConversationApplicationService {
     private final ResumeVersionRepository resumeVersionRepository;
     private final ResumeGroupRepository resumeGroupRepository;
     private final AiMessagePublisherPort aiMessagePublisherPort;
+    private final VectorFacade vectorFacade;
     private final FileStorageService fileStorageService;
     private final MessageProvider messageProvider;
     private final ConversationStreamPort streamPort;
@@ -363,13 +364,8 @@ public class ConversationApplicationService {
         aiVersion.markParseCompleted(null);
         resumeVersionRepository.save(aiVersion);
 
-        // 触发向量生成 / Trigger vector generation
-        VectorGenCommand vectorCmd = new VectorGenCommand(
-                aiVersion.getId().toString(),
-                "RESUME",
-                markdown
-        );
-        aiMessagePublisherPort.sendTextForVectorGeneration(vectorCmd);
+        // 同步生成向量 / Synchronously generate vector
+        vectorFacade.generateAndSaveVector(aiVersion.getId().toString(), "RESUME", markdown);
         log.info("Saved AI optimized resume version: {} for group: {}", aiVersion.getId(), group.getId());
     }
 }

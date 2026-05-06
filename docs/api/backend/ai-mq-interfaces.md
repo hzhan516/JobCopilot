@@ -14,7 +14,7 @@
 - **No direct HTTP coupling**: Except for health checks, the Java backend does not directly call the AI service via HTTP; all time-consuming operations go through the message queue.
 - **Unified Exchange**: All MQ messages share `ai.direct.exchange` (DirectExchange).
 - **Transactional Outbox**: The backend does **not** send MQ messages directly. Instead, it persists them into the `outbox_message` table within the same local database transaction as the business data. An `OutboxRelayScheduler` polls pending records every 2 seconds and delivers them to RabbitMQ asynchronously.
-- **Dead Letter Queue (DLQ)**: All 10 business queues are configured with `x-dead-letter-exchange: ai.dlx.exchange`. When the Python consumer rejects a message with `nack(requeue=false)`, the message is automatically routed to `ai.dlq.queue` instead of being silently dropped.
+- **Dead Letter Queue (DLQ)**: All 8 business queues are configured with `x-dead-letter-exchange: ai.dlx.exchange`. When the Python consumer rejects a message with `nack(requeue=false)`, the message is automatically routed to `ai.dlq.queue` instead of being silently dropped.
 
 ---
 
@@ -54,8 +54,6 @@ The backend uses the **Transactional Outbox** pattern to guarantee atomicity bet
 | Response ← AI | Job Parse Result | `backend.res.job.parse` | `backend.queue.job.parse` | Python AI | Java Backend |
 | Request → AI | Resume Parse | `ai.req.resume.parse` | `ai.queue.resume.parse` | Java Backend | Python AI |
 | Response ← AI | Resume Parse Result | `backend.res.resume.parse` | `backend.queue.resume.parse` | Python AI | Java Backend |
-| Request → AI | Vector Gen | `ai.req.vector.gen` | `ai.queue.vector.gen` | Java Backend | Python AI |
-| Response ← AI | Vector Gen Result | `backend.res.vector.gen` | `backend.queue.vector.gen` | Python AI | Java Backend |
 | Request → AI | Conversation | `ai.req.conversation` | `ai.queue.conversation` | Java Backend | Python AI |
 | Response ← AI | Conversation Reply | `backend.res.conversation` | `backend.queue.conversation` | Python AI | Java Backend |
 | Request → AI | Job Rank | `ai.req.job.rank` | `ai.queue.job.rank` | Java Backend | Python AI |
@@ -110,27 +108,7 @@ The backend uses the **Transactional Outbox** pattern to guarantee atomicity bet
 
 ---
 
-### 3.3 VectorGenCommand — Vector Generation Request
-
-**Trigger**: Triggered asynchronously after job/resume parsing is completed; written to the Outbox table.
-
-```json
-{
-  "referenceId": "entity-uuid",
-  "entityType": "JOB",
-  "text": "职位或简历的纯文本内容"
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `referenceId` | String | Associated entity ID (jobId or resumeVersionId) |
-| `entityType` | String | `JOB` / `RESUME` |
-| `text` | String | Text to generate vectors from |
-
----
-
-### 3.4 ConversationRequestCommand — Conversation AI Request
+### 3.3 ConversationRequestCommand — Conversation AI Request
 
 **Trigger**: When the user sends a conversation message, `ConversationApplicationService.sendMessage()` writes the command to the Outbox table.
 
@@ -167,7 +145,7 @@ All AI callbacks use the following unified structure, distinguished by the `type
 ```json
 {
   "referenceId": "关联实体ID",
-  "type": "JOB_PARSE | RESUME_PARSE | VECTOR_GEN | CONVERSATION_REPLY",
+  "type": "JOB_PARSE | RESUME_PARSE | CONVERSATION_REPLY | JOB_RANK",
   "status": "COMPLETED | FAILED",
   "data": { ... },
   "errorMessage": null,
@@ -228,27 +206,7 @@ All AI callbacks use the following unified structure, distinguished by the `type
 
 ---
 
-### 4.3 Vector Gen Result (type = VECTOR_GEN)
-
-**Consumer**: `AiResultMessageListener.onVectorGenResult()`
-
-```json
-{
-  "referenceId": "entity-uuid",
-  "type": "VECTOR_GEN",
-  "status": "COMPLETED",
-  "data": {
-    "embedding": [0.1, 0.2, ...],
-    "entityType": "JOB"
-  },
-  "errorMessage": null,
-  "eventType": "JOB"
-}
-```
-
----
-
-### 4.4 Conversation Reply Result (type = CONVERSATION_REPLY)
+### 4.3 Conversation Reply Result (type = CONVERSATION_REPLY)
 
 **Consumer**: `AiResultMessageListener.onConversationReply()` → `ConversationFacade.saveAiReply()`
 

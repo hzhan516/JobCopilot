@@ -201,6 +201,28 @@ Content-Type: application/json
 
 ---
 
+### 1.4 Synchronous Vector Generation (Internal)
+
+**Caller**: `JobApplicationService`, `ResumeApplicationService`, `ConversationApplicationService`, `MatchingApplicationService`
+**Callee**: `VectorFacade.generateAndSaveVector(referenceId, entityType, text)`
+
+This is an internal synchronous REST call chain (no MQ involved):
+
+```
+Application Service -> VectorFacade
+  -> VectorApplicationService
+    -> EmbeddingService.generate(text)
+      -> POST /api/v1/ai/embeddings (AI Service)
+    -> save to job_vectors / resume_vectors
+```
+
+**Behavior:**
+- On success: the embedding vector is saved to `job_vectors` or `resume_vectors` with `status = COMPLETED`
+- On failure (AI service unavailable or dimension mismatch): a record is saved with `status = FAILED` and `error_message` populated
+- The call is synchronous and blocks the caller's transaction, but errors are caught to prevent cascading failures
+
+---
+
 ## 2. Data Synchronization Flow
 
 ### Startup Sync (AI Service → Backend)

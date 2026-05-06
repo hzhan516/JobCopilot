@@ -14,7 +14,7 @@
 - **无直接 HTTP 耦合**：除健康检查外，Java 后端不直接 HTTP 调用 AI 服务；所有耗时操作均走消息队列。
 - **统一 Exchange**：所有 MQ 消息共用 `ai.direct.exchange`（DirectExchange）。
 - **事务发件箱（Outbox）**：后端**不直接**发送 MQ 消息，而是将消息与业务数据在同一个本地数据库事务中持久化到 `outbox_message` 表。`OutboxRelayScheduler` 每 2 秒轮询 PENDING 记录并异步投递到 RabbitMQ。
-- **死信队列（DLQ）**：全部 10 个业务队列均配置了 `x-dead-letter-exchange: ai.dlx.exchange`。当 Python 消费者以 `nack(requeue=false)` 拒绝消息时，消息会自动路由到 `ai.dlq.queue`，避免静默丢失。
+- **死信队列（DLQ）**：全部 8 个业务队列均配置了 `x-dead-letter-exchange: ai.dlx.exchange`。当 Python 消费者以 `nack(requeue=false)` 拒绝消息时，消息会自动路由到 `ai.dlq.queue`，避免静默丢失。
 
 ---
 
@@ -54,8 +54,6 @@
 | Response ← AI | 职位解析结果 | `backend.res.job.parse` | `backend.queue.job.parse` | Python AI | Java Backend |
 | Request → AI | 简历解析 | `ai.req.resume.parse` | `ai.queue.resume.parse` | Java Backend | Python AI |
 | Response ← AI | 简历解析结果 | `backend.res.resume.parse` | `backend.queue.resume.parse` | Python AI | Java Backend |
-| Request → AI | 向量生成 | `ai.req.vector.gen` | `ai.queue.vector.gen` | Java Backend | Python AI |
-| Response ← AI | 向量生成结果 | `backend.res.vector.gen` | `backend.queue.vector.gen` | Python AI | Java Backend |
 | Request → AI | 对话请求 | `ai.req.conversation` | `ai.queue.conversation` | Java Backend | Python AI |
 | Response ← AI | 对话回复结果 | `backend.res.conversation` | `backend.queue.conversation` | Python AI | Java Backend |
 | Request → AI | 职位精排 | `ai.req.job.rank` | `ai.queue.job.rank` | Java Backend | Python AI |
@@ -110,27 +108,7 @@
 
 ---
 
-### 3.3 VectorGenCommand — 向量生成请求
-
-**发送时机**：职位/简历解析完成后，触发异步向量生成；写入 Outbox 表。
-
-```json
-{
-  "referenceId": "entity-uuid",
-  "entityType": "JOB",
-  "text": "职位或简历的纯文本内容"
-}
-```
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `referenceId` | String | 关联实体 ID（jobId 或 resumeVersionId） |
-| `entityType` | String | `JOB` / `RESUME` |
-| `text` | String | 待生成向量的文本 |
-
----
-
-### 3.4 ConversationRequestCommand — 对话 AI 请求
+### 3.3 ConversationRequestCommand — 对话 AI 请求
 
 **发送时机**：用户发送对话消息后，`ConversationApplicationService.sendMessage()` 将命令写入 Outbox 表。
 
@@ -167,7 +145,7 @@
 ```json
 {
   "referenceId": "关联实体ID",
-  "type": "JOB_PARSE | RESUME_PARSE | VECTOR_GEN | CONVERSATION_REPLY",
+  "type": "JOB_PARSE | RESUME_PARSE | CONVERSATION_REPLY | JOB_RANK",
   "status": "COMPLETED | FAILED",
   "data": { ... },
   "errorMessage": null,
@@ -228,27 +206,7 @@
 
 ---
 
-### 4.3 向量生成结果（type = VECTOR_GEN）
-
-**消费端**：`AiResultMessageListener.onVectorGenResult()`
-
-```json
-{
-  "referenceId": "entity-uuid",
-  "type": "VECTOR_GEN",
-  "status": "COMPLETED",
-  "data": {
-    "embedding": [0.1, 0.2, ...],
-    "entityType": "JOB"
-  },
-  "errorMessage": null,
-  "eventType": "JOB"
-}
-```
-
----
-
-### 4.4 对话回复结果（type = CONVERSATION_REPLY）
+### 4.3 对话回复结果（type = CONVERSATION_REPLY）
 
 **消费端**：`AiResultMessageListener.onConversationReply()` → `ConversationFacade.saveAiReply()`
 

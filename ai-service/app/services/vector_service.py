@@ -8,7 +8,7 @@ from app.config import (
     LLM_EMBEDDING_MODEL_DIMENSION,
     LLM_REQUEST_TIMEOUT_SECONDS,
 )
-from app.schemas import AiResultEvent, VectorGenCommand
+from app.schemas import AiResultEvent
 
 
 # Shared retry policy for embedding calls.
@@ -55,18 +55,4 @@ def generate_embedding(text: str) -> list[float]:
     return emb
 
 
-# Generate embeddings and wrap them in an AI result event.
-def process_vector(command: VectorGenCommand) -> AiResultEvent:
-    emb = generate_embedding(command.text)
 
-    return AiResultEvent(
-        referenceId=command.reference_id,
-        type="VECTOR_GEN",
-        status="COMPLETED",
-        data={
-            "embedding": emb,
-            "entityType": command.entity_type,
-        },
-        errorMessage=None,
-        eventType=command.entity_type,
-    )

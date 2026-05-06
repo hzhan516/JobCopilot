@@ -19,9 +19,9 @@ User request -> JobController.matchJobs()
             4. Send JobRankCommand to ai.req.job.rank
             5. Immediately return JobMatchResponse(matchId, status=PROCESSING)
 
-Python AI service -> Consume ai.req.job.rank -> Rank -> Send result to backend.res.job.rank
+Python AI service -> Consume ai.req.job.rank -> Rank -> Send AiResultEvent to backend.res.job.rank
 
-JobRankResultListener -> Consume backend.res.job.rank
+AiResultMessageListener.onJobRankResult() -> Consume backend.res.job.rank
     -> MatchingFacade.saveJobRankResult()
         -> MatchingApplicationService.saveMatchResult()
             -> Update job_match_results to COMPLETED + rankedResults
@@ -150,25 +150,31 @@ Content-Type: application/json
 **Routing Key:** `backend.res.job.rank`  
 **Queue:** `backend.queue.job.rank`
 
+Uses the unified `AiResultEvent` format:
+
 ```json
 {
-  "matchId": "match-uuid-1234",
+  "referenceId": "match-uuid-1234",
+  "type": "JOB_RANK",
   "status": "COMPLETED",
-  "rankTimeMs": 150,
-  "rankedResults": [
-    {
-      "jobId": "job-001",
-      "title": "Senior Java Developer",
-      "company": "Tech Corp",
-      "matchScore": 0.92,
-      "matchFactors": {
-        "skillMatch": 0.95,
-        "experienceMatch": 0.90,
-        "locationMatch": 0.88
-      },
-      "description": "Looking for an experienced Java developer..."
-    }
-  ]
+  "data": {
+    "rankTimeMs": 150,
+    "rankedResults": [
+      {
+        "jobId": "job-001",
+        "title": "Senior Java Developer",
+        "company": "Tech Corp",
+        "matchScore": 0.92,
+        "matchFactors": {
+          "skillMatch": 0.95,
+          "experienceMatch": 0.90,
+          "locationMatch": 0.88
+        },
+        "description": "Looking for an experienced Java developer..."
+      }
+    ]
+  },
+  "errorMessage": null
 }
 ```
 

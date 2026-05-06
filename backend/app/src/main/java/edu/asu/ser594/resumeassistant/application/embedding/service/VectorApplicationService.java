@@ -5,20 +5,20 @@ import edu.asu.ser594.resumeassistant.domain.embedding.entity.JobVector;
 import edu.asu.ser594.resumeassistant.domain.embedding.entity.ResumeVector;
 import edu.asu.ser594.resumeassistant.domain.embedding.repository.JobVectorRepository;
 import edu.asu.ser594.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
-import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
  * 向量应用服务 / Vector application service
  * <p>
- * 负责解析 AI 返回的向量生成结果并持久化到领域仓库。
+ * 负责调用 AI Service REST 端点同步生成嵌入向量并持久化到领域仓库。
  * 所有写操作均在事务边界内执行，遵循 CQRS 原则。
+ * Responsible for calling AI Service REST endpoint to synchronously generate embeddings
+ * and persist them to domain repositories.
  * All write operations are executed within transaction boundaries, following CQRS.
  */
 @Slf4j
@@ -29,58 +29,38 @@ public class VectorApplicationService {
     private final ResumeVectorRepository resumeVectorRepository;
     private final JobVectorRepository jobVectorRepository;
     private final EmbeddingConfig embeddingConfig;
+    private final EmbeddingService embeddingService;
 
     /**
-     * 处理向量生成结果并保存
-     * Process vector generation result and persist.
+     * 同步生成向量并保存
+     * Synchronously generate embedding and persist.
      *
-     * @param event AI 结果事件 / AI result event
+     * @param referenceId 实体 ID / Entity ID
+     * @param entityType  实体类型 ("JOB" or "RESUME") / Entity type
+     * @param text        待嵌入文本 / Text to embed
      */
     @Transactional
-    public void handleVectorGenResult(AiResultEvent event) {
-        String entityType = event.eventType() != null ? event.eventType() : extractEntityType(event);
-        float[] embeddingArray = extractEmbedding(event);
+    public void generateAndSaveVector(String referenceId, String entityType, String text) {
+        try {
+            float[] embedding = embeddingService.generate(text);
 
-        if ("COMPLETED".equals(event.status()) && embeddingArray != null) {
-            if (embeddingArray.length != embeddingConfig.getDimension()) {
+            if (embedding.length != embeddingConfig.getDimension()) {
                 log.error("向量维度不匹配: 期望 {}, 实际 {}。referenceId: {}, entityType: {}",
-                        embeddingConfig.getDimension(), embeddingArray.length,
-                        event.referenceId(), entityType);
-                saveFailedVector(event.referenceId(), entityType,
+                        embeddingConfig.getDimension(), embedding.length,
+                        referenceId, entityType);
+                saveFailedVector(referenceId, entityType,
                         "Embedding dimension mismatch: expected " + embeddingConfig.getDimension()
-                                + ", got " + embeddingArray.length);
+                                + ", got " + embedding.length);
                 return;
             }
-            saveCompletedVector(event.referenceId(), entityType, embeddingArray);
-        } else {
-            saveFailedVector(event.referenceId(), entityType, event.errorMessage());
-        }
-    }
 
-    // 提取实体类型 / Extract entity type
-    private String extractEntityType(AiResultEvent event) {
-        if (event.data() != null && event.data().containsKey("entityType")) {
-            return (String) event.data().get("entityType");
-        }
-        return "JOB";
-    }
+            saveCompletedVector(referenceId, entityType, embedding);
+            log.info("Vector generated and saved for {}: {}", entityType, referenceId);
 
-    // 提取嵌入向量 / Extract embedding vector
-    private float[] extractEmbedding(AiResultEvent event) {
-        if (event.data() != null && event.data().containsKey("embedding")) {
-            Object rawEmbedding = event.data().get("embedding");
-            if (rawEmbedding instanceof List<?> list) {
-                float[] arr = new float[list.size()];
-                for (int i = 0; i < list.size(); i++) {
-                    Object val = list.get(i);
-                    if (val instanceof Number n) {
-                        arr[i] = n.floatValue();
-                    }
-                }
-                return arr;
-            }
+        } catch (Exception e) {
+            log.error("向量生成失败: referenceId={}, entityType={}", referenceId, entityType, e);
+            saveFailedVector(referenceId, entityType, e.getMessage());
         }
-        return null;
     }
 
     // 保存成功的向量 / Save completed vector

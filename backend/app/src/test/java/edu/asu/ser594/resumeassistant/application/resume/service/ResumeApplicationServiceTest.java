@@ -1,6 +1,7 @@
 package edu.asu.ser594.resumeassistant.application.resume.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
 import edu.asu.ser594.resumeassistant.application.resume.command.CreateVersionCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeEditCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeUploadCommand;
@@ -11,7 +12,6 @@ import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepo
 import edu.asu.ser594.resumeassistant.domain.resume.valueobject.ParseStatus;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ResumeParseCommand;
-import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.exception.StorageException;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import edu.asu.ser594.resumeassistant.domain.shared.service.DocumentFormatConverter;
@@ -61,6 +61,9 @@ class ResumeApplicationServiceTest {
     private AiMessagePublisherPort aiMessagePublisherPort;
 
     @Mock
+    private VectorFacade vectorFacade;
+
+    @Mock
     private ObjectMapper objectMapper;
 
     @InjectMocks
@@ -93,7 +96,7 @@ class ResumeApplicationServiceTest {
         doReturn(new ByteArrayInputStream("markdown content".getBytes(StandardCharsets.UTF_8)))
                 .when(documentFormatConverter).convert(any(), eq("pdf"), eq("md"));
         doNothing().when(groupRepository).save(any(ResumeGroup.class));
-        doNothing().when(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
+        doNothing().when(vectorFacade).generateAndSaveVector(anyString(), anyString(), anyString());
 
         // 执行 / When
         ResumeGroup result = resumeService.handleUpload(command, USER_ID);
@@ -106,9 +109,7 @@ class ResumeApplicationServiceTest {
         verify(groupRepository).save(any(ResumeGroup.class));
         verify(aiMessagePublisherPort).sendResumeForParsing(any(ResumeParseCommand.class));
         // 验证 CONVERTED 版本触发了向量生成
-        verify(aiMessagePublisherPort).sendTextForVectorGeneration(argThat(cmd ->
-                cmd.entityType().equals("RESUME") && cmd.text().equals("markdown content")
-        ));
+        verify(vectorFacade).generateAndSaveVector(anyString(), eq("RESUME"), eq("markdown content"));
     }
 
     @Test
@@ -127,7 +128,7 @@ class ResumeApplicationServiceTest {
         when(versionRepository.findById(VERSION_ID)).thenReturn(Optional.of(testVersion));
         when(groupRepository.findById(testVersion.getGroupId())).thenReturn(Optional.of(testGroup));
         doNothing().when(versionRepository).save(any(ResumeVersion.class));
-        doNothing().when(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
+        doNothing().when(vectorFacade).generateAndSaveVector(anyString(), anyString(), anyString());
 
         // 执行 / When
         ResumeVersion result = resumeService.handleEdit(command);
@@ -136,11 +137,7 @@ class ResumeApplicationServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.getContent()).isEqualTo("Updated markdown content");
         verify(versionRepository).save(testVersion);
-        verify(aiMessagePublisherPort).sendTextForVectorGeneration(argThat(cmd ->
-                cmd.referenceId().equals(VERSION_ID.toString())
-                        && cmd.entityType().equals("RESUME")
-                        && cmd.text().equals("Updated markdown content")
-        ));
+        verify(vectorFacade).generateAndSaveVector(eq(VERSION_ID.toString()), eq("RESUME"), eq("Updated markdown content"));
     }
 
     @Test
@@ -159,7 +156,7 @@ class ResumeApplicationServiceTest {
         when(versionRepository.findById(VERSION_ID)).thenReturn(Optional.of(testVersion));
         when(groupRepository.findById(testVersion.getGroupId())).thenReturn(Optional.of(testGroup));
         doNothing().when(versionRepository).save(any(ResumeVersion.class));
-        doNothing().when(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
+        doNothing().when(vectorFacade).generateAndSaveVector(anyString(), anyString(), anyString());
 
         // 执行 / When
         ResumeVersion result = resumeService.handleEdit(command);
@@ -167,11 +164,7 @@ class ResumeApplicationServiceTest {
         // 验证 / Then
         assertThat(result).isNotNull();
         assertThat(result.getContent()).isEqualTo("Updated AI content");
-        verify(aiMessagePublisherPort).sendTextForVectorGeneration(argThat(cmd ->
-                cmd.referenceId().equals(VERSION_ID.toString())
-                        && cmd.entityType().equals("RESUME")
-                        && cmd.text().equals("Updated AI content")
-        ));
+        verify(vectorFacade).generateAndSaveVector(eq(VERSION_ID.toString()), eq("RESUME"), eq("Updated AI content"));
     }
 
     @Test
@@ -190,8 +183,8 @@ class ResumeApplicationServiceTest {
         when(versionRepository.findById(VERSION_ID)).thenReturn(Optional.of(testVersion));
         when(groupRepository.findById(testVersion.getGroupId())).thenReturn(Optional.of(testGroup));
         doNothing().when(versionRepository).save(any(ResumeVersion.class));
-        doThrow(new RuntimeException("MQ unavailable"))
-                .when(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
+        doThrow(new RuntimeException("AI service unavailable"))
+                .when(vectorFacade).generateAndSaveVector(anyString(), anyString(), anyString());
 
         // 执行 / When
         ResumeVersion result = resumeService.handleEdit(command);
@@ -201,7 +194,7 @@ class ResumeApplicationServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.getContent()).isEqualTo("Updated content");
         verify(versionRepository).save(testVersion);
-        verify(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
+        verify(vectorFacade).generateAndSaveVector(anyString(), anyString(), anyString());
     }
 
     @Test
@@ -225,7 +218,7 @@ class ResumeApplicationServiceTest {
 
         // 验证 / Then
         verify(versionRepository, times(1)).save(testVersion);
-        verify(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
+        verify(vectorFacade).generateAndSaveVector(anyString(), eq("RESUME"), any());
     }
 
     // 创建测试简历组 / Create test resume group
@@ -256,7 +249,7 @@ class ResumeApplicationServiceTest {
         when(versionRepository.findAllByGroupIdAndType(GROUP_ID, ResumeVersion.VersionType.CONVERTED))
                 .thenReturn(List.of(activeConverted));
         doNothing().when(groupRepository).save(any(ResumeGroup.class));
-        doNothing().when(aiMessagePublisherPort).sendTextForVectorGeneration(any(VectorGenCommand.class));
+        doNothing().when(vectorFacade).generateAndSaveVector(anyString(), anyString(), anyString());
 
         CreateVersionCommand command = CreateVersionCommand.builder()
                 .groupId(GROUP_ID)
@@ -276,9 +269,7 @@ class ResumeApplicationServiceTest {
         // New version is cascade-saved via groupRepository.save, no direct versionRepository.save call
         verify(groupRepository).save(any(ResumeGroup.class));
         // 验证新 CONVERTED 版本触发了向量生成
-        verify(aiMessagePublisherPort).sendTextForVectorGeneration(argThat(cmd ->
-                cmd.entityType().equals("RESUME") && cmd.text().equals("Existing markdown content")
-        ));
+        verify(vectorFacade).generateAndSaveVector(anyString(), eq("RESUME"), eq("Existing markdown content"));
     }
 
     @Test

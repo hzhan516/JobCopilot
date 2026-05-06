@@ -35,12 +35,6 @@ public class RabbitMqConfig {
     public static final String ROUTING_KEY_RES_RESUME_PARSE = "backend.res.resume.parse";
     public static final String QUEUE_RES_RESUME_PARSE = "backend.queue.resume.parse";
 
-    // 向量生成队列与路由键 / Vector generation queue and routing keys
-    public static final String ROUTING_KEY_REQ_VECTOR_GEN = "ai.req.vector.gen";
-    public static final String QUEUE_REQ_VECTOR_GEN = "ai.queue.vector.gen";
-    public static final String ROUTING_KEY_RES_VECTOR_GEN = "backend.res.vector.gen";
-    public static final String QUEUE_RES_VECTOR_GEN = "backend.queue.vector.gen";
-
     // 对话队列与路由键 / Conversation queue and routing keys
     public static final String ROUTING_KEY_REQ_CONVERSATION = "ai.req.conversation";
     public static final String QUEUE_REQ_CONVERSATION = "ai.queue.conversation";
@@ -159,34 +153,6 @@ public class RabbitMqConfig {
     @Bean
     public Binding resResumeParseBinding(Queue resResumeParseQueue, DirectExchange aiDirectExchange) {
         return BindingBuilder.bind(resResumeParseQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_RESUME_PARSE);
-    }
-
-    // ========== 向量生成队列绑定 / Vector generation queue bindings ==========
-
-    @Bean
-    public Queue reqVectorGenQueue() {
-        return QueueBuilder.durable(QUEUE_REQ_VECTOR_GEN)
-                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
-                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
-                .build();
-    }
-
-    @Bean
-    public Binding reqVectorGenBinding(Queue reqVectorGenQueue, DirectExchange aiDirectExchange) {
-        return BindingBuilder.bind(reqVectorGenQueue).to(aiDirectExchange).with(ROUTING_KEY_REQ_VECTOR_GEN);
-    }
-
-    @Bean
-    public Queue resVectorGenQueue() {
-        return QueueBuilder.durable(QUEUE_RES_VECTOR_GEN)
-                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
-                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
-                .build();
-    }
-
-    @Bean
-    public Binding resVectorGenBinding(Queue resVectorGenQueue, DirectExchange aiDirectExchange) {
-        return BindingBuilder.bind(resVectorGenQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_VECTOR_GEN);
     }
 
     // ========== 对话队列绑定 / Conversation queue bindings ==========

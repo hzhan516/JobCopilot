@@ -14,7 +14,7 @@
 - **無直接 HTTP 耦合**：除健康檢查外，Java 後端不直接 HTTP 呼叫 AI 服務；所有耗時操作均走訊息佇列。
 - **統一 Exchange**：所有 MQ 訊息共用 `ai.direct.exchange`（DirectExchange）。
 - **事務發件箱（Outbox）**：後端**不直接**發送 MQ 訊息，而是將訊息與業務資料在同一個本地資料庫交易中持久化到 `outbox_message` 表。`OutboxRelayScheduler` 每 2 秒輪詢 PENDING 記錄並非同步投遞到 RabbitMQ。
-- **死信佇列（DLQ）**：全部 10 個業務佇列均配置了 `x-dead-letter-exchange: ai.dlx.exchange`。當 Python 消費者以 `nack(requeue=false)` 拒絕訊息時，訊息會自動路由到 `ai.dlq.queue`，避免靜默丟失。
+- **死信佇列（DLQ）**：全部 8 個業務佇列均配置了 `x-dead-letter-exchange: ai.dlx.exchange`。當 Python 消費者以 `nack(requeue=false)` 拒絕訊息時，訊息會自動路由到 `ai.dlq.queue`，避免靜默丟失。
 
 ---
 
@@ -54,8 +54,6 @@
 | Response ← AI | 職位剖析結果 | `backend.res.job.parse` | `backend.queue.job.parse` | Python AI | Java Backend |
 | Request → AI | 履歷剖析 | `ai.req.resume.parse` | `ai.queue.resume.parse` | Java Backend | Python AI |
 | Response ← AI | 履歷剖析結果 | `backend.res.resume.parse` | `backend.queue.resume.parse` | Python AI | Java Backend |
-| Request → AI | 向量生成 | `ai.req.vector.gen` | `ai.queue.vector.gen` | Java Backend | Python AI |
-| Response ← AI | 向量生成結果 | `backend.res.vector.gen` | `backend.queue.vector.gen` | Python AI | Java Backend |
 | Request → AI | 對話請求 | `ai.req.conversation` | `ai.queue.conversation` | Java Backend | Python AI |
 | Response ← AI | 對話回覆結果 | `backend.res.conversation` | `backend.queue.conversation` | Python AI | Java Backend |
 | Request → AI | 職位精排 | `ai.req.job.rank` | `ai.queue.job.rank` | Java Backend | Python AI |
@@ -110,27 +108,7 @@
 
 ---
 
-### 3.3 VectorGenCommand — 向量生成請求
-
-**發送時機**：職位/履歷剖析完成後，觸發非同步向量生成；寫入 Outbox 表。
-
-```json
-{
-  "referenceId": "entity-uuid",
-  "entityType": "JOB",
-  "text": "職位或履歷的純文本內容"
-}
-```
-
-| 欄位 | 類型 | 說明 |
-|------|------|------|
-| `referenceId` | String | 關聯實體 ID（jobId 或 resumeVersionId） |
-| `entityType` | String | `JOB` / `RESUME` |
-| `text` | String | 待生成向量的文本 |
-
----
-
-### 3.4 ConversationRequestCommand — 對話 AI 請求
+### 3.3 ConversationRequestCommand — 對話 AI 請求
 
 **發送時機**：使用者發送對話訊息後，`ConversationApplicationService.sendMessage()` 將命令寫入 Outbox 表。
 
@@ -167,7 +145,7 @@
 ```json
 {
   "referenceId": "關聯實體ID",
-  "type": "JOB_PARSE | RESUME_PARSE | VECTOR_GEN | CONVERSATION_REPLY",
+  "type": "JOB_PARSE | RESUME_PARSE | CONVERSATION_REPLY | JOB_RANK",
   "status": "COMPLETED | FAILED",
   "data": { ... },
   "errorMessage": null,
@@ -228,27 +206,7 @@
 
 ---
 
-### 4.3 向量生成結果（type = VECTOR_GEN）
-
-**消費端**：`AiResultMessageListener.onVectorGenResult()`
-
-```json
-{
-  "referenceId": "entity-uuid",
-  "type": "VECTOR_GEN",
-  "status": "COMPLETED",
-  "data": {
-    "embedding": [0.1, 0.2, ...],
-    "entityType": "JOB"
-  },
-  "errorMessage": null,
-  "eventType": "JOB"
-}
-```
-
----
-
-### 4.4 對話回覆結果（type = CONVERSATION_REPLY）
+### 4.3 對話回覆結果（type = CONVERSATION_REPLY）
 
 **消費端**：`AiResultMessageListener.onConversationReply()` → `ConversationFacade.saveAiReply()`
 

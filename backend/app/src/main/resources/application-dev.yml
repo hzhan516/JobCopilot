@@ -45,7 +45,6 @@ app:
       res:
         job-parse: backend.queue.job.parse
         resume-parse: backend.queue.resume.parse
-        vector-gen: backend.queue.vector.gen
         conversation: backend.queue.conversation
         job-rank: backend.queue.job.rank
 

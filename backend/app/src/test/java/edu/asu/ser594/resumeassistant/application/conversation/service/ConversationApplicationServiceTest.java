@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.application.conversation.service;
 
+import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
 import edu.asu.ser594.resumeassistant.application.conversation.command.CreateConversationCommand;
 import edu.asu.ser594.resumeassistant.application.conversation.command.SendMessageCommand;
 import edu.asu.ser594.resumeassistant.domain.conversation.entity.Conversation;
@@ -50,6 +51,9 @@ class ConversationApplicationServiceTest {
 
     @Mock
     private AiMessagePublisherPort aiMessagePublisherPort;
+
+    @Mock
+    private VectorFacade vectorFacade;
 
     @Mock
     private FileStorageService fileStorageService;
@@ -312,7 +316,7 @@ class ConversationApplicationServiceTest {
         // 验证 / Then
         assertEquals(1, conversation.getMessages().size());
         verify(resumeVersionRepository).save(any(ResumeVersion.class));
-        verify(aiMessagePublisherPort).sendTextForVectorGeneration(any());
+        verify(vectorFacade).generateAndSaveVector(anyString(), eq("RESUME"), anyString());
     }
 
     @Test

@@ -8,20 +8,17 @@ from app.mq.consumer import (
     QUEUE_ARGUMENTS,
     parse_job_command,
     parse_resume_command,
-    parse_vector_command,
     parse_conversation_command,
     parse_job_rank_command,
     build_failed_event,
     handle_job_message,
     handle_resume_message,
-    handle_vector_message,
     handle_conversation_message,
     handle_job_rank_message,
     _async_handler,
     start_all_consumers,
     JOB_PARSE_FAILED_MESSAGE,
     RESUME_PARSE_FAILED_MESSAGE,
-    VECTOR_GEN_FAILED_MESSAGE,
     CONVERSATION_FAILED_MESSAGE,
     JOB_RANK_FAILED_MESSAGE,
 )
@@ -29,7 +26,6 @@ from app.config import AI_DLQ_QUEUE
 from app.schemas import (
     JobParseCommand,
     ResumeParseCommand,
-    VectorGenCommand,
     ConversationRequestCommand,
     JobRankCommand,
     AiResultEvent,
@@ -56,8 +52,8 @@ def test_setup_all_queues():
     setup_all_queues(mock_channel)
     
     assert mock_channel.exchange_declare.call_count == 2
-    assert mock_channel.queue_declare.call_count == 11
-    assert mock_channel.queue_bind.call_count == 11
+    assert mock_channel.queue_declare.call_count == 9
+    assert mock_channel.queue_bind.call_count == 9
 
     dlq_call = mock_channel.queue_declare.call_args_list[0]
     assert dlq_call.kwargs["queue"] == AI_DLQ_QUEUE
@@ -79,11 +75,6 @@ def test_parse_commands():
     res_cmd = parse_resume_command(resume_body)
     assert isinstance(res_cmd, ResumeParseCommand)
     assert res_cmd.resume_id == "res-1"
-    
-    vector_body = json.dumps({"referenceId": "ref-1", "entityType": "JOB", "text": "test"}).encode("utf-8")
-    vec_cmd = parse_vector_command(vector_body)
-    assert isinstance(vec_cmd, VectorGenCommand)
-    assert vec_cmd.reference_id == "ref-1"
     
     conv_body = json.dumps({"conversationId": "conv-1", "userId": "user-1", "currentMessage": "hello", "messageHistory": []}).encode("utf-8")
     conv_cmd = parse_conversation_command(conv_body)
@@ -164,36 +155,6 @@ def test_handle_resume_message_failure(mock_publish, mock_process):
     assert published_event.status == "FAILED"
     assert published_event.error_message == RESUME_PARSE_FAILED_MESSAGE
 
-@patch("app.mq.consumer.process_vector")
-@patch("app.mq.consumer.publish_ai_result")
-def test_handle_vector_message_success(mock_publish, mock_process):
-    mock_channel = MagicMock()
-    body = json.dumps({"referenceId": "ref-1", "entityType": "JOB", "text": "test"}).encode("utf-8")
-    
-    mock_result = AiResultEvent(referenceId="ref-1", type="VECTOR_GEN", status="COMPLETED", data={})
-    mock_process.return_value = mock_result
-    
-    handle_vector_message(mock_channel, body)
-    
-    mock_process.assert_called_once()
-    mock_publish.assert_called_once_with(mock_channel, mock_result)
-
-@patch("app.mq.consumer.process_vector")
-@patch("app.mq.consumer.publish_ai_result")
-def test_handle_vector_message_failure(mock_publish, mock_process):
-    mock_channel = MagicMock()
-    body = json.dumps({"referenceId": "ref-1", "entityType": "JOB", "text": "test"}).encode("utf-8")
-    
-    mock_process.side_effect = Exception("Processing failed")
-    
-    handle_vector_message(mock_channel, body)
-    
-    mock_process.assert_called_once()
-    mock_publish.assert_called_once()
-    published_event = mock_publish.call_args[0][1]
-    assert published_event.status == "FAILED"
-    assert published_event.error_message == VECTOR_GEN_FAILED_MESSAGE
-
 @patch("app.mq.consumer.process_conversation")
 @patch("app.mq.consumer.publish_ai_result")
 def test_handle_conversation_message_success(mock_publish, mock_process):
@@ -232,11 +193,17 @@ def test_handle_job_rank_message_success(mock_publish, mock_rank):
     
     mock_result = JobRankResultPayload(matchId="match-1", status="COMPLETED", rankTimeMs=100, rankedResults=[])
     mock_rank.return_value = mock_result
-    
+
     handle_job_rank_message(mock_channel, body)
-    
+
     mock_rank.assert_called_once()
-    mock_publish.assert_called_once_with(mock_channel, mock_result.model_dump(by_alias=True))
+    mock_publish.assert_called_once_with(
+        mock_channel,
+        match_id="match-1",
+        status="COMPLETED",
+        rank_time_ms=100,
+        ranked_results=[],
+    )
 
 @patch("app.mq.consumer.rank_jobs")
 @patch("app.mq.consumer.publish_job_rank_result")
@@ -245,14 +212,18 @@ def test_handle_job_rank_message_failure(mock_publish, mock_rank):
     body = json.dumps({"matchId": "match-1", "userId": "user-1", "resumeVersionId": "res-1", "query": "test"}).encode("utf-8")
     
     mock_rank.side_effect = Exception("Processing failed")
-    
+
     handle_job_rank_message(mock_channel, body)
-    
+
     mock_rank.assert_called_once()
-    mock_publish.assert_called_once()
-    published_payload = mock_publish.call_args[0][1]
-    assert published_payload["status"] == "FAILED"
-    assert published_payload["errorMessage"] == JOB_RANK_FAILED_MESSAGE
+    mock_publish.assert_called_once_with(
+        mock_channel,
+        match_id="match-1",
+        status="FAILED",
+        rank_time_ms=0,
+        ranked_results=[],
+        error_message=JOB_RANK_FAILED_MESSAGE,
+    )
 
 @patch("app.mq.consumer._executor.submit")
 def test_async_handler_acknowledges_success(mock_submit):
@@ -297,8 +268,8 @@ def test_start_all_consumers():
     mock_channel = MagicMock()
     start_all_consumers(mock_channel)
     
-    mock_channel.basic_qos.assert_called_once_with(prefetch_count=10)
-    assert mock_channel.basic_consume.call_count == 5
+    mock_channel.basic_qos.assert_called_once_with(prefetch_count=1)
+    assert mock_channel.basic_consume.call_count == 4
     for call in mock_channel.basic_consume.call_args_list:
         assert call.kwargs["auto_ack"] is False
         assert callable(call.kwargs["on_message_callback"])

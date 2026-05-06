@@ -2,7 +2,6 @@ package edu.asu.ser594.resumeassistant.application.embedding;
 
 import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
 import edu.asu.ser594.resumeassistant.application.embedding.service.VectorApplicationService;
-import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +18,7 @@ public class VectorFacadeImpl implements VectorFacade {
     private final VectorApplicationService vectorApplicationService;
 
     @Override
-    public void handleVectorGenResult(AiResultEvent event) {
-        vectorApplicationService.handleVectorGenResult(event);
+    public void generateAndSaveVector(String referenceId, String entityType, String text) {
+        vectorApplicationService.generateAndSaveVector(referenceId, entityType, text);
     }
 }

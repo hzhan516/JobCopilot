@@ -201,6 +201,28 @@ Content-Type: application/json
 
 ---
 
+### 1.4 同步向量生成（內部呼叫）
+
+**呼叫方**：`JobApplicationService`、`ResumeApplicationService`、`ConversationApplicationService`、`MatchingApplicationService`
+**被叫方**：`VectorFacade.generateAndSaveVector(referenceId, entityType, text)`
+
+這是內部同步 REST 呼叫鏈（不涉及 MQ）：
+
+```
+應用服務 -> VectorFacade
+  -> VectorApplicationService
+    -> EmbeddingService.generate(text)
+      -> POST /api/v1/ai/embeddings (AI 服務)
+    -> 儲存到 job_vectors / resume_vectors
+```
+
+**行為：**
+- 成功時：嵌入向量儲存到 `job_vectors` 或 `resume_vectors`，狀態為 `COMPLETED`
+- 失敗時（AI 服務不可用或維度不匹配）：儲存狀態為 `FAILED` 的記錄，並填充 `error_message`
+- 呼叫是同步的，會阻塞呼叫方交易，但異常會被捕獲以避免級聯失敗
+
+---
+
 ## 2. 資料同步流程
 
 ### 啟動同步（AI 服務 → 後端）

@@ -1,6 +1,7 @@
 package edu.asu.ser594.resumeassistant.application.job.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
@@ -11,7 +12,6 @@ import edu.asu.ser594.resumeassistant.domain.job.valueobject.ParsedJobContent;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
-import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,6 +46,9 @@ class JobApplicationServiceTest {
 
     @Mock
     private AiMessagePublisherPort aiMessagePublisherPort;
+
+    @Mock
+    private VectorFacade vectorFacade;
 
     @Mock
     private RestTemplate restTemplate;
@@ -115,7 +118,7 @@ class JobApplicationServiceTest {
         assertEquals("Software Engineer", job.getParsedContent().title());
 
         verify(jobRepository, times(1)).save(job);
-        verify(aiMessagePublisherPort, times(1)).sendTextForVectorGeneration(any(VectorGenCommand.class));
+        verify(vectorFacade, times(1)).generateAndSaveVector(anyString(), eq("JOB"), anyString());
     }
 
     @Test

@@ -1,6 +1,7 @@
 package edu.asu.ser594.resumeassistant.application.job.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.JobScoreRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.UpdateJobRequest;
@@ -20,7 +21,6 @@ import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeGroupReposi
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
-import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.exception.AiServiceUnavailableException;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import lombok.RequiredArgsConstructor;
@@ -54,6 +54,7 @@ public class JobApplicationService {
     private final ResumeVersionRepository resumeVersionRepository;
     private final ResumeGroupRepository resumeGroupRepository;
     private final AiMessagePublisherPort aiMessagePublisherPort;
+    private final VectorFacade vectorFacade;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
@@ -129,18 +130,13 @@ public class JobApplicationService {
             }
 
             try {
-                // 触发异步向量生成 / Trigger async vector generation
+                // 同步生成向量并保存 / Synchronously generate and save vector
                 ParsedJobContent pc = job.getParsedContent();
                 String vectorText = pc.title() + "\n" + pc.company() + "\n" + pc.description() + "\n" + String.join("\n", pc.requirements());
-                VectorGenCommand vectorCmd = new VectorGenCommand(
-                        job.getId(),
-                        "JOB",
-                        vectorText
-                );
-                aiMessagePublisherPort.sendTextForVectorGeneration(vectorCmd);
-                log.info("Triggered async vector generation for job: {}", job.getId());
+                vectorFacade.generateAndSaveVector(job.getId(), "JOB", vectorText);
+                log.info("Vector generated and saved for job: {}", job.getId());
             } catch (Exception e) {
-                log.error("Failed to publish job vector gen request: {}", job.getId(), e);
+                log.error("Failed to generate vector for job: {}", job.getId(), e);
             }
         } else {
             job.markFailed(event.errorMessage() != null ? event.errorMessage() : "Unknown AI processing error");

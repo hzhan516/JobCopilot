@@ -2,7 +2,10 @@ package edu.asu.ser594.resumeassistant.infrastructure.messaging.publisher;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.asu.ser594.resumeassistant.domain.shared.entity.OutboxMessage;
-import edu.asu.ser594.resumeassistant.domain.shared.event.ai.*;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ConversationRequestCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobRankCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ResumeParseCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.repository.OutboxMessageRepository;
 import edu.asu.ser594.resumeassistant.infrastructure.messaging.config.RabbitMqConfig;
 import edu.asu.ser594.resumeassistant.types.enums.OutboxStatus;
@@ -53,22 +56,6 @@ class AiMessagePublisherAdapterTest {
         assertThat(saved.getRoutingKey()).isEqualTo(RabbitMqConfig.ROUTING_KEY_REQ_RESUME_PARSE);
         assertThat(saved.getStatus()).isEqualTo(OutboxStatus.PENDING);
         assertThat(saved.getPayload()).isEqualTo("{\"resumeId\":\"resume-1\"}");
-    }
-
-    @Test
-    void sendTextForVectorGeneration_ShouldSaveToOutbox() throws Exception {
-        // 准备 / Given
-        VectorGenCommand command = new VectorGenCommand("ref-1", "JOB", "text");
-        when(objectMapper.writeValueAsString(any())).thenReturn("{\"referenceId\":\"ref-1\"}");
-        when(outboxMessageRepository.save(any(OutboxMessage.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        // 执行 / When
-        publisher.sendTextForVectorGeneration(command);
-
-        // 验证 / Then
-        ArgumentCaptor<OutboxMessage> captor = ArgumentCaptor.forClass(OutboxMessage.class);
-        verify(outboxMessageRepository).save(captor.capture());
-        assertThat(captor.getValue().getRoutingKey()).isEqualTo(RabbitMqConfig.ROUTING_KEY_REQ_VECTOR_GEN);
     }
 
     @Test

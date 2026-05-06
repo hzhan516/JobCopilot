@@ -2,7 +2,10 @@ package edu.asu.ser594.resumeassistant.infrastructure.messaging.publisher;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.asu.ser594.resumeassistant.domain.shared.entity.OutboxMessage;
-import edu.asu.ser594.resumeassistant.domain.shared.event.ai.*;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ConversationRequestCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobRankCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ResumeParseCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import edu.asu.ser594.resumeassistant.domain.shared.repository.OutboxMessageRepository;
 import edu.asu.ser594.resumeassistant.infrastructure.messaging.config.RabbitMqConfig;
@@ -28,15 +31,6 @@ public class AiMessagePublisherAdapter implements AiMessagePublisherPort {
     public void sendResumeForParsing(ResumeParseCommand command) {
         log.info("Saving ResumeParseCommand to outbox for resume: {}", command.resumeId());
         saveToOutbox(RabbitMqConfig.ROUTING_KEY_REQ_RESUME_PARSE, command);
-    }
-
-    /**
-     * 发送文本向量生成请求 / Send text vector generation request
-     */
-    @Override
-    public void sendTextForVectorGeneration(VectorGenCommand command) {
-        log.info("Saving VectorGenCommand to outbox for entity: {}", command.referenceId());
-        saveToOutbox(RabbitMqConfig.ROUTING_KEY_REQ_VECTOR_GEN, command);
     }
 
     /**

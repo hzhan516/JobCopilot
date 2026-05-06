@@ -1,22 +1,22 @@
 package edu.asu.ser594.resumeassistant.api.embedding.facade;
 
-import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
-
 /**
- * 向量生成结果处理的入站门面接口
- * Inbound port facade for handling vector generation results.
+ * 向量生成门面接口
+ * Vector generation facade interface.
  * <p>
- * 将 Trigger 层的 MQ 监听与向量存储领域解耦，确保事务边界由 App 层控制。
- * Decouples trigger-layer MQ listeners from vector storage domain,
+ * 将 Trigger 层的向量生成需求与向量存储领域解耦，确保事务边界由 App 层控制。
+ * Decouples trigger-layer vector generation needs from vector storage domain,
  * ensuring transaction boundaries are controlled by the app layer.
  */
 public interface VectorFacade {
 
     /**
-     * 处理异步向量生成结果
-     * Handles the asynchronous result of a vector generation request.
+     * 同步生成向量并保存
+     * Synchronously generate embedding and persist.
      *
-     * @param event AI 结果事件 / The result event containing embedding vector or error details.
+     * @param referenceId 实体 ID / Entity ID
+     * @param entityType  实体类型 ("JOB" or "RESUME") / Entity type
+     * @param text        待嵌入文本 / Text to embed
      */
-    void handleVectorGenResult(AiResultEvent event);
+    void generateAndSaveVector(String referenceId, String entityType, String text);
 }
