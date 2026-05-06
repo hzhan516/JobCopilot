@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -7,6 +8,9 @@ from urllib.parse import urlparse
 from app.schemas import AiResultEvent, ConversationRequestCommand
 from app.services.file_parser import download_file_bytes, extract_resume_text
 from app.services.llm_client import generate_json_from_text_prompt
+
+
+logger = logging.getLogger(__name__)
 
 
 # Infer supported attachment type from a URL suffix.
@@ -138,14 +142,13 @@ Current Message:
 # Run the conversation workflow and package the response as an AI result event.
 def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
     prompt = _build_conversation_prompt(command)
-    print(
-        "Conversation request:"
-        f" conversation_id={command.conversation_id},"
-        f" history_count={len(command.message_history)},"
-        f" file_url_count={len(command.file_urls)}"
+    logger.info(
+        "Conversation request: conversation_id=%s, history_count=%d, file_url_count=%d",
+        command.conversation_id,
+        len(command.message_history),
+        len(command.file_urls),
     )
     result = generate_json_from_text_prompt(prompt)
-    print(f"Conversation model result: {result}")
 
     content = str(result.get("content", "")).strip()
     file_url = result.get("fileUrl")
@@ -157,6 +160,13 @@ def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
         file_url = str(file_url).strip() or None
         
     resume_modification = result.get("resumeModification")
+    logger.info(
+        "Conversation model result received: conversation_id=%s, content_length=%d, has_file_url=%s, has_resume_modification=%s",
+        command.conversation_id,
+        len(content),
+        file_url is not None,
+        bool(resume_modification),
+    )
 
     return AiResultEvent(
         referenceId=command.conversation_id,

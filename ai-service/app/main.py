@@ -174,11 +174,11 @@ async def batch_embeddings(request: EmbeddingRequest) -> EmbeddingResponse:
         )
 
     embeddings: list[list[float]] = []
-    for text in request.texts:
+    for index, text in enumerate(request.texts):
         try:
             embeddings.append(generate_embedding(text))
         except Exception:
-            logger.exception("Embedding failed for: %s", text[:100])
+            logger.exception("Embedding failed for input index=%d, length=%d", index, len(text))
             embeddings.append([0.0] * LLM_EMBEDDING_MODEL_DIMENSION)
 
     return EmbeddingResponse(

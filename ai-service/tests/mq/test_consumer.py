@@ -225,9 +225,7 @@ def test_handle_job_rank_message_failure(mock_publish, mock_rank):
         error_message=JOB_RANK_FAILED_MESSAGE,
     )
 
-@patch("app.mq.consumer._executor.submit")
-def test_async_handler_acknowledges_success(mock_submit):
-    mock_submit.side_effect = lambda task: task()
+def test_async_handler_acknowledges_success():
     mock_channel = MagicMock()
     mock_connection = MagicMock()
     mock_channel.connection = mock_connection
@@ -245,9 +243,7 @@ def test_async_handler_acknowledges_success(mock_submit):
     mock_channel.basic_ack.assert_called_once_with(delivery_tag=1)
 
 
-@patch("app.mq.consumer._executor.submit")
-def test_async_handler_nacks_failure(mock_submit):
-    mock_submit.side_effect = lambda task: task()
+def test_async_handler_nacks_failure():
     mock_channel = MagicMock()
     mock_connection = MagicMock()
     mock_channel.connection = mock_connection

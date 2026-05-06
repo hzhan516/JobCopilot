@@ -1,3 +1,4 @@
+import logging
 import time
 import litellm
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
@@ -6,6 +7,9 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 
 from app.config import LLM_REQUEST_TIMEOUT_SECONDS, LLM_TEXT_MODEL
 from app.schemas import JobRankCommand, JobRankResultPayload, JobRankResultItem, MatchFactors
+
+
+logger = logging.getLogger(__name__)
 
 
 # Tokenize text into lowercase alphanumeric tokens of length >= 2.
@@ -131,8 +135,8 @@ Details: {job_desc}
 
     try:
         return _safe_llm_call(prompt)
-    except Exception as e:
-        print(f"Failed to generate match reason for job {job.job_id} after retries: {e}", flush=True)
+    except Exception:
+        logger.exception("Failed to generate match reason for job_id=%s after retries", job.job_id)
         return None
 
 # Rank recalled jobs and optionally attach LLM match reasons.
