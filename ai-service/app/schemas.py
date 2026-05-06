@@ -91,6 +91,8 @@ class EmbeddingRequest(AppBaseModel):
 
 
 class EmbeddingResponse(AppBaseModel):
+    model_config = ConfigDict(populate_by_name=True, protected_namespaces=())
+
     embeddings: list[list[float]] = Field(default_factory=list)
     model_used: str = Field(alias="modelUsed")
     count: int
