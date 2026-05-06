@@ -86,10 +86,8 @@ curl http://localhost/health
 | Service          | Address                              | Description          |
 |------------------|--------------------------------------|----------------------|
 | Frontend UI      | http://localhost                     | Job seeker interface |
-| Backend API      | http://localhost:8080/api            | REST API             |
-| AI Service       | http://localhost:8000                | FastAPI docs         |
-| RabbitMQ Admin   | http://localhost:15672               | guest/guest          |
-| H2 Console       | http://localhost:8080/api/h2-console | Dev environment      |
+| Backend API      | http://localhost/api                 | REST API (Proxied)   |
+| System Health    | http://localhost/health              | Global health check  |
 
 ## Common Commands
 

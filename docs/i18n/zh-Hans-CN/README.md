@@ -154,13 +154,12 @@ podman compose up -d
 
 ### 4. 验证服务状态
 
-| 服务         | 地址                                    | 说明                    |
-|------------|---------------------------------------|-----------------------|
-| 前端         | http://localhost                      | Web应用                 |
-| 后端API      | http://localhost:8080/api             | REST API端点            |
-| 后端健康检查     | http://localhost:8080/actuator/health | 健康检查                  |
-| AI服务       | 动态端口                              | FastAPI文档             |
-| RabbitMQ管理 | http://localhost:15672                | 消息队列管理界面（guest/guest） |
+| 服务     | 地址               | 说明                  |
+|--------|------------------|---------------------|
+| 前端界面   | http://localhost | 唯一访问入口 (包含 Web 与 API) |
+| 系统健康   | http://localhost/health | 整体健康状态探测端点          |
+
+*注：本项目采用三层网络隔离架构，仅对外暴露前端 80 端口，底层服务（后端、AI、数据库）均不可从宿主机直接访问。*
 
 *注：要查找 AI 服务的 URL，请运行 `docker compose port ai-service 8000`。*
 

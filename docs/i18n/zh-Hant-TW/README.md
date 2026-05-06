@@ -160,13 +160,12 @@ podman compose up -d
 
 ### 4. 驗證服務
 
-| 服務             | URL                                   | 說明                    |
-|---------------------|---------------------------------------|--------------------------------|
-| 前端            | http://localhost                      | Web 應用                |
-| 後端 API         | http://localhost:8080/api             | REST API 端點             |
-| 後端健康檢查      | http://localhost:8080/actuator/health | 健康檢查                   |
-| AI 服務          | 動態連接埠                            | FastAPI 文件 / 健康檢查 |
-| RabbitMQ 管理 | http://localhost:15672                | 訊息佇列 UI（guest/guest） |
+| 服務     | 地址               | 說明                  |
+|--------|------------------|---------------------|
+| 前端介面   | http://localhost | 唯一存取入口 (包含 Web 與 API) |
+| 系統健康   | http://localhost/health | 整體健康狀態探測端點          |
+
+*註：本專案採用三層網路隔離架構，僅對外暴露前端 80 連接埠，底層服務（後端、AI、資料庫）均不可從宿主機直接存取。*
 
 *註：要尋找 AI 服務的 URL，請執行 `docker compose port ai-service 8000`。*
 

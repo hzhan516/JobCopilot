@@ -164,11 +164,11 @@ If you run the AI service locally instead of in Docker, source the rootÂ `.env`Â
 
 | Service             | URL                                   | Description                    |
 |---------------------|---------------------------------------|--------------------------------|
-| Frontend            | http://localhost                      | Web application                |
-| Backend API         | http://localhost:8080/api             | REST API endpoints             |
-| Backend Health      | http://localhost:8080/actuator/health | Health check                   |
-| AI Service          | Dynamic Port                          | FastAPI documentation / health |
-| RabbitMQ Management | http://localhost:15672                | Message queue UI (guest/guest) |
+| Frontend UI         | http://localhost                      | Main entry point (React App)   |
+| Backend API         | http://localhost/api                  | REST endpoints (Proxied)       |
+| System Health       | http://localhost/health               | Global health check            |
+
+*Note: In the three-tier network architecture, only the Frontend port (80) is exposed to the host. Backend, AI, and DB services are safely isolated.*
 
 *Note: To find the AI Service URL, run `docker compose port ai-service 8000`.*
 

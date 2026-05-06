@@ -84,13 +84,10 @@ curl http://localhost/health
 
 ## 服務存取位址
 
-| 服務          | 位址                                   | 說明          |
-|-------------|--------------------------------------|-------------|
-| 前端介面        | http://localhost                     | 求職者介面       |
-| 後端 API      | http://localhost:8080/api            | REST API    |
-| AI 服務       | http://localhost:8000                | FastAPI 文件  |
-| RabbitMQ 管理 | http://localhost:15672               | guest/guest |
-| H2 控制台      | http://localhost:8080/api/h2-console | 開發環境        |
+| 服務     | 位址               | 說明                      |
+|--------|------------------|-------------------------|
+| 前端介面   | http://localhost | 統一入口 (包含 Web 與 API 代理) |
+| 系統健康   | http://localhost/health | 整體服務狀態                |
 
 ## 常用指令
 

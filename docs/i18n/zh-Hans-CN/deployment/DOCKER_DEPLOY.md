@@ -83,13 +83,10 @@ curl http://localhost/health
 
 ## 服务访问地址
 
-| 服务          | 地址                                   | 说明          |
-|-------------|--------------------------------------|-------------|
-| 前端界面        | http://localhost                     | 求职者界面       |
-| 后端 API      | http://localhost:8080/api            | REST API    |
-| AI 服务       | http://localhost:8000                | FastAPI 文档  |
-| RabbitMQ 管理 | http://localhost:15672               | guest/guest |
-| H2 控制台      | http://localhost:8080/api/h2-console | 开发环境        |
+| 服务     | 地址               | 说明                      |
+|--------|------------------|-------------------------|
+| 前端界面   | http://localhost | 统一入口 (包含 Web 与 API 代理) |
+| 系统健康   | http://localhost/health | 整体服务状态                |
 
 ## 常用命令
 
