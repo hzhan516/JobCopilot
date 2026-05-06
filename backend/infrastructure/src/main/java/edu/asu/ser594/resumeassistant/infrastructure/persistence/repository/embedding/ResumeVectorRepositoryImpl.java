@@ -6,6 +6,8 @@ import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.embeddin
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -26,6 +28,21 @@ public class ResumeVectorRepositoryImpl implements ResumeVectorRepository {
         ResumeVectorJpaEntity entity = toEntity(vector);
         existing.ifPresent(e -> entity.setId(e.getId()));  // 复用已有 id，JPA 就会执行 UPDATE / Reuse existing id for JPA UPDATE
         jpaRepository.save(entity);
+    }
+
+    /**
+     * 批量保存向量（逐条判断存在性后保存） / Save vectors in batch (check existence per item)
+     */
+    @Override
+    public void saveAll(List<ResumeVector> vectors) {
+        List<ResumeVectorJpaEntity> entities = new ArrayList<>(vectors.size());
+        for (ResumeVector vector : vectors) {
+            Optional<ResumeVectorJpaEntity> existing = jpaRepository.findByResumeVersionId(vector.getResumeVersionId());
+            ResumeVectorJpaEntity entity = toEntity(vector);
+            existing.ifPresent(e -> entity.setId(e.getId()));
+            entities.add(entity);
+        }
+        jpaRepository.saveAll(entities);
     }
 
     /**

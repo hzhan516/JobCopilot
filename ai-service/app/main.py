@@ -25,6 +25,7 @@ from app.schemas import (
 from app.services.job_matching_service import find_job_matches
 from app.services.suitability_service import evaluate_suitability_with_vertex
 from app.services.vector_service import generate_embedding
+from app.services.backend_client import sync_existing_job_embeddings
 
 
 logging.basicConfig(
@@ -34,9 +35,23 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+def _start_sync_thread() -> None:
+    """启动后台线程同步已有 embedding 数据到后端 / Start background thread to sync existing embeddings."""
+    def _run_sync() -> None:
+        try:
+            sync_existing_job_embeddings()
+        except Exception:
+            logger.exception("Background embedding sync failed")
+
+    sync_thread = threading.Thread(target=_run_sync, name="embedding-sync-thread", daemon=True)
+    sync_thread.start()
+    logger.info("Embedding sync background thread started.")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _start_mq_consumer_once()
+    _start_sync_thread()
     yield
 
 app = FastAPI(

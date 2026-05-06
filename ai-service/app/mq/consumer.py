@@ -38,6 +38,7 @@ from app.config import (
 )
 
 from app.mq.publisher import publish_ai_result, publish_job_rank_result
+from app.services.backend_client import send_vector_to_backend
 from app.schemas import (
     AiResultEvent,
     ConversationRequestCommand,
@@ -260,7 +261,8 @@ def handle_resume_message(
     publish_ai_result(channel, result)
 
 
-# Handle a vector-generation request and publish the result or failure.
+# Handle a vector-generation request and write the result to backend via HTTP API.
+# 处理向量生成请求并通过 HTTP API 将结果写入后端。
 def handle_vector_message(
     channel: pika.adapters.blocking_connection.BlockingChannel,
     body: bytes,
@@ -270,14 +272,42 @@ def handle_vector_message(
         result = process_vector(command)
     except Exception as exc:
         logger.exception("Vector processing failed: reference_id=%s", command.reference_id)
+        # 失败时仍通过 MQ 回传失败结果（后端暂无接收失败状态的 HTTP 端点）
         result = build_failed_event(
             reference_id=command.reference_id,
             event_type="VECTOR_GEN",
             error_message=VECTOR_GEN_FAILED_MESSAGE,
             event_entity_type=command.entity_type,
         )
+        publish_ai_result(channel, result)
+        return
 
-    publish_ai_result(channel, result)
+    # 成功时通过 HTTP API 写入后端，不再走 MQ 回传
+    embedding = result.data.get("embedding") if result.data else None
+    entity_type = result.data.get("entityType") if result.data else command.entity_type
+
+    if embedding:
+        try:
+            send_vector_to_backend(
+                reference_id=result.referenceId,
+                embedding=embedding,
+                entity_type=entity_type,
+            )
+            logger.info(
+                "Vector saved to backend via HTTP API: reference_id=%s, entity_type=%s",
+                result.referenceId,
+                entity_type,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to save vector to backend via HTTP API: reference_id=%s",
+                result.referenceId,
+            )
+            # HTTP 写入失败时降级为 MQ 回传
+            publish_ai_result(channel, result)
+    else:
+        # embedding 为空时降级为 MQ 回传
+        publish_ai_result(channel, result)
 
 
 # Handle a conversation request and publish the result or failure.
