@@ -32,6 +32,7 @@ Required variables:
 By default the project can use Gemini models via LiteLLM, so local development only needs `GEMINI_API_KEY` unless you choose another provider.
 
 Google Cloud ADC is optional. It is only needed if you actively configure LiteLLM to use Vertex AI models.
+Note: If you change the LLM provider, models, or dimensions in .env while the system is running, you must execute "docker compose up -d" to apply the new environment variables. A simple restart will not take effect.
 
 ### 2. Start Services
 

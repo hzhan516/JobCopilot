@@ -135,6 +135,7 @@ cp .env.example .env
 本地開發時，請將 `.env.example` 複製為 `.env`，並提供一個與所選 LiteLLM 模型前綴匹配的 API key。例如，預設 Gemini 模型使用 `GEMINI_API_KEY`。
 
 只有在您主動將專案設定為使用 Vertex AI 模型時，才需要 Google Cloud ADC。
+註：如果您在系統運行時修改了 .env 中的 LLM 提供商、模型或維度，您必須執行 "docker compose up -d" 以應用新的環境變數。單純的重啟服務將不會生效。
 
 
 ### 3. 啟動核心服務

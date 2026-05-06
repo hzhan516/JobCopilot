@@ -134,6 +134,7 @@ Required environment variables:
 For local development, copy `.env.example` to `.env` and provide one API key that matches the LiteLLM model prefix you choose. For example, the default Gemini models use `GEMINI_API_KEY`.
 
 Google Cloud ADC is only needed if you intentionally configure the project to use Vertex AI-based models.
+Note: If you change the LLM provider, models, or dimensions in .env while the system is running, you must execute "docker compose up -d" to apply the new environment variables. A simple restart will not take effect.
 
 
 ### 3. Start Core Services

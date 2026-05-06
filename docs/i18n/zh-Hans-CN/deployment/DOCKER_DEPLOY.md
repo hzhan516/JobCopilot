@@ -32,6 +32,7 @@ vim .env
 默认情况下，项目可以通过 LiteLLM 使用 Gemini 模型，因此本地开发只需要配置 `GEMINI_API_KEY`，除非您选择其他模型服务。
 
 Google Cloud ADC 是可选项。只有在您主动将 LiteLLM 配置为使用 Vertex AI 模型时才需要。
+注：如果您在系统运行时修改了 .env 中的 LLM 提供商、模型或维度，您必须执行 "docker compose up -d" 以应用新的环境变量。单纯的重启服务将不会生效。
 
 ### 2. 启动服务
 
