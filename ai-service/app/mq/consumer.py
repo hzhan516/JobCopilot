@@ -284,15 +284,15 @@ def handle_job_rank_message(
 
 # Wrap MQ handlers and ACK/NACK from the RabbitMQ thread.
 # 使用同步方式处理任务，并通过 RabbitMQ 线程安全回调确认或拒绝消息。
-def _async_handler(wrapped_handler, log_raw_payload: bool = False):
+def _async_handler(wrapped_handler, log_message_metadata: bool = False):
     def wrapper(ch, method, properties, body) -> None:
         delivery_tag = method.delivery_tag
 
-        if log_raw_payload:
+        if log_message_metadata:
             logger.info(
-                "Received raw conversation MQ message: delivery_tag=%s, body=%s",
+                "Received conversation MQ message: delivery_tag=%s, payload_bytes=%d",
                 delivery_tag,
-                body.decode("utf-8", errors="replace")[:1000],
+                len(body),
             )
 
         try:
@@ -325,7 +325,7 @@ def start_all_consumers(channel: pika.adapters.blocking_connection.BlockingChann
     )
     channel.basic_consume(
         queue=CONVERSATION_REQUEST_QUEUE,
-        on_message_callback=_async_handler(handle_conversation_message, log_raw_payload=True),
+        on_message_callback=_async_handler(handle_conversation_message, log_message_metadata=True),
         auto_ack=False,
     )
     channel.basic_consume(

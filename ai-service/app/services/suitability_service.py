@@ -1,3 +1,6 @@
+import json
+import logging
+import re
 from pathlib import Path
 
 # Suitability scoring utilities for resume and job matching.
@@ -7,6 +10,7 @@ from app.services.llm_client import generate_json_from_text_prompt
 
 
 BASELINE_MODEL_FILE = Path(__file__).resolve().parents[2] / "data_pipeline" / "output" / "baseline_model.json"
+logger = logging.getLogger(__name__)
 
 # Normalize a list of strings into a lowercase unique set.
 def _normalize_items(items: list[str]) -> set[str]:
@@ -206,8 +210,6 @@ def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> Suitability
 
     try:
         result = generate_json_from_text_prompt(prompt)
-        print(f"Vertex suitability raw result: {result}")
-        print(f"Baseline suitability result: {baseline_response.model_dump(by_alias=True)}")
 
         vertex_suitable = bool(result.get("suitable", False))
         summary = str(result.get("summary", "")).strip() or "Vertex AI did not return a summary."
@@ -215,6 +217,19 @@ def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> Suitability
         skill_score = _clamp_score(float(result.get("skillScore", 0.0)))
         experience_score = _clamp_score(float(result.get("experienceScore", 0.0)))
         overall_score = _clamp_score(float(result.get("overallScore", 0.0)))
+        logger.info(
+            "Vertex suitability result received: suitable=%s, skill_score=%.2f, experience_score=%.2f, overall_score=%.2f",
+            vertex_suitable,
+            skill_score,
+            experience_score,
+            overall_score,
+        )
+        logger.info(
+            "Baseline suitability result: suitable=%s, final_score=%.2f",
+            baseline_response.suitable,
+            baseline_response.final_score,
+        )
+
         dataset_score = _calculate_dataset_score(request)
         final_score = round(
             overall_score if dataset_score is None else ((overall_score * 0.7) + (dataset_score * 0.3)),
@@ -223,7 +238,11 @@ def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> Suitability
         suitable = final_score >= 0.6
 
         if vertex_suitable != suitable:
-            print(f"Suitability decision adjusted by final score: vertex={vertex_suitable}, final={suitable}")
+            logger.info(
+                "Suitability decision adjusted by final score: vertex=%s, final=%s",
+                vertex_suitable,
+                suitable,
+            )
 
 
         return SuitabilityResponse(
@@ -239,7 +258,6 @@ def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> Suitability
             finalScore=final_score,
         )
 
-    except Exception as exc:
-        print(f"Vertex suitability evaluation failed: {exc}")
+    except Exception:
+        logger.exception("Vertex suitability evaluation failed; falling back to baseline")
         return evaluate_suitability_baseline(request)
-

@@ -24,6 +24,7 @@ python-dotenv==1.0.1
 httpx==0.28.1
 requests==2.32.3
 playwright==1.55.0
+pytest==8.3.4
 
 # 日志 / Logging
 structlog==24.4.0
