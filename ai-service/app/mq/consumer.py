@@ -1,6 +1,5 @@
 import json
 import logging
-from concurrent.futures import ThreadPoolExecutor
 
 # RabbitMQ consumers for AI workflow requests: declare queues, parse commands, handle messages,
 # and dispatch results or failures back to the appropriate result queues.
@@ -54,7 +53,6 @@ from app.services.resume_orchestrator import process_resume
 from app.services.vector_service import process_vector
 
 logger = logging.getLogger(__name__)
-_executor = ThreadPoolExecutor(max_workers=10, thread_name_prefix="ai-worker-")
 
 JOB_PARSE_FAILED_MESSAGE = "AI service failed while parsing the job posting. Please try again."
 RESUME_PARSE_FAILED_MESSAGE = "AI service failed while parsing the resume. Please try again."
@@ -326,8 +324,8 @@ def handle_job_rank_message(
         )
 
 
-# Wrap MQ handlers in a worker pool and ACK/NACK from the RabbitMQ thread.
-# 使用线程池处理耗时任务，并通过 RabbitMQ 线程安全回调确认或拒绝消息。
+# Wrap MQ handlers and ACK/NACK from the RabbitMQ thread.
+# 使用同步方式处理任务，并通过 RabbitMQ 线程安全回调确认或拒绝消息。
 def _async_handler(wrapped_handler, log_raw_payload: bool = False):
     def wrapper(ch, method, properties, body) -> None:
         delivery_tag = method.delivery_tag
@@ -339,26 +337,23 @@ def _async_handler(wrapped_handler, log_raw_payload: bool = False):
                 body.decode("utf-8", errors="replace")[:1000],
             )
 
-        def task() -> None:
-            try:
-                wrapped_handler(ch, body)
-                ch.connection.add_callback_threadsafe(
-                    lambda: ch.basic_ack(delivery_tag=delivery_tag)
-                )
-            except Exception:
-                logger.exception("Handler failed, tag=%s", delivery_tag)
-                ch.connection.add_callback_threadsafe(
-                    lambda: ch.basic_nack(delivery_tag=delivery_tag, requeue=False)
-                )
-
-        _executor.submit(task)
+        try:
+            wrapped_handler(ch, body)
+            ch.connection.add_callback_threadsafe(
+                lambda: ch.basic_ack(delivery_tag=delivery_tag)
+            )
+        except Exception:
+            logger.exception("Handler failed, tag=%s", delivery_tag)
+            ch.connection.add_callback_threadsafe(
+                lambda: ch.basic_nack(delivery_tag=delivery_tag, requeue=False)
+            )
 
     return wrapper
 
 
 # Start all consumer subscriptions and begin consuming.
 def start_all_consumers(channel: pika.adapters.blocking_connection.BlockingChannel) -> None:
-    channel.basic_qos(prefetch_count=10)
+    channel.basic_qos(prefetch_count=1)
 
     channel.basic_consume(
         queue=JOB_PARSE_REQUEST_QUEUE,
