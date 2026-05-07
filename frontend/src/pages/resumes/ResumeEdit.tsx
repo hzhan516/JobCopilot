@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useResumeStore } from '../../store/resume.store';
+import { useResumeStore } from '@/store/resume.store.ts';
 import { MarkdownEditor } from '../../components/resume/MarkdownEditor';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '../../components/ui/button';
