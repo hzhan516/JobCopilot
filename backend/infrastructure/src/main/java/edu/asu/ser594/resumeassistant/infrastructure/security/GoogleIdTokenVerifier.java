@@ -48,7 +48,7 @@ public class GoogleIdTokenVerifier implements GoogleTokenVerifierPort {
             String providerUserId = (String) response.get("sub");
             String displayName = (String) response.get("name");
             String avatarUrl = (String) response.get("picture");
-            Boolean emailVerified = Boolean.parseBoolean(String.valueOf(response.get("email_verified")));
+            boolean emailVerified = Boolean.parseBoolean(String.valueOf(response.get("email_verified")));
 
             return new GoogleUserInfo(email, providerUserId, displayName, avatarUrl, emailVerified);
 

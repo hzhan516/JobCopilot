@@ -82,13 +82,12 @@ public class MinioFileStorageService implements FileStorageService {
     public Optional<InputStream> download(String objectKey) {
         try {
             String bucketName = storageProperties.getMinio().getBucketName();
-            GetObjectResponse response = minioClient.getObject(
+            return Optional.of(minioClient.getObject(
                     GetObjectArgs.builder()
                             .bucket(bucketName)
                             .object(objectKey)
                             .build()
-            );
-            return Optional.of(response);
+            ));
         } catch (ErrorResponseException e) {
             if (e.response().code() == 404) {
                 return Optional.empty();
@@ -129,8 +128,10 @@ public class MinioFileStorageService implements FileStorageService {
             );
             return true;
         } catch (ErrorResponseException e) {
-            if (e.response().code() == 404) {
-                return false;
+            try (var response = e.response()) {
+                if (response.code() == 404) {
+                    return false;
+                }
             }
             throw new StorageException("storage.check.failed", e);
         } catch (Exception e) {

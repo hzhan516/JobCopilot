@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
 public class JobApplicationService {
 
     private static final long MAX_SCREENSHOT_SIZE_BYTES = 5L * 1024 * 1024;
-    private static final long MAX_BASE64_LENGTH = 3L * 1024 * 1024;
+    private static final long MAX_BASE64_LENGTH = 7L * 1024 * 1024;
 
     private final JobRepository jobRepository;
     private final JobScoreRepository jobScoreRepository;

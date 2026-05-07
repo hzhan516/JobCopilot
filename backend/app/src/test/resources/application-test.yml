@@ -15,6 +15,13 @@ app:
     model-version: ${LLM_EMBEDDING_MODEL:gemini/gemini-embedding-001}
   search:
     max-limit: ${SEARCH_MAX_LIMIT:100}
+  rabbitmq:
+    queue:
+      res:
+        job-parse: backend.queue.job.parse
+        resume-parse: backend.queue.resume.parse
+        conversation: backend.queue.conversation
+        job-rank: backend.queue.job.rank
 
 # JWT Configuration
 jwt:

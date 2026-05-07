@@ -104,10 +104,8 @@ public class ResumeApplicationService {
                     }
                 }
             } catch (IOException e) {
-                if (converted != null) {
-                    converted.markParseFailed("Auto-conversion failed: " + e.getMessage());
-                    versionRepository.save(converted);
-                }
+                converted.markParseFailed("Auto-conversion failed: " + e.getMessage());
+                versionRepository.save(converted);
                 log.warn("Failed to auto-convert uploaded file to markdown, leaving CONVERTED blank for groupId={}", group.getId(), e);
             }
         }
@@ -164,7 +162,7 @@ public class ResumeApplicationService {
                 || version.getVersionType() == ResumeVersion.VersionType.AI_OPTIMIZED) {
             try {
                 vectorFacade.generateAndSaveVector(version.getId().toString(), "RESUME", version.getContent());
-                log.info("Vector generated and saved for resume versionId={}", version.getId());
+                log.info("Vector generated and saved for edited resume versionId={}", version.getId());
             } catch (Exception e) {
                 log.error("Failed to generate vector for versionId={}", version.getId(), e);
                 // Vector generation failure is non-blocking: the edit is already persisted
@@ -221,7 +219,7 @@ public class ResumeApplicationService {
             newVersion.markParseCompleted(original.getParsedContent());
         }
 
-        if (sourceContent != null && !sourceContent.isEmpty()) {
+        if (!sourceContent.isEmpty()) {
             try {
                 vectorFacade.generateAndSaveVector(newVersion.getId().toString(), "RESUME", sourceContent);
                 log.info("Vector generated and saved for new converted versionId={}", newVersion.getId());
@@ -355,7 +353,7 @@ public class ResumeApplicationService {
             }
 
             vectorFacade.generateAndSaveVector(originalVersion.getId().toString(), "RESUME", parsedJsonStr);
-            log.info("Vector generated and saved for resume versionId={}", originalVersion.getId());
+            log.info("Vector generated and saved for parsed resume versionId={}", originalVersion.getId());
 
         } catch (Exception e) {
             log.error("Failed to process parsed data or trigger vector gen for versionId={}", originalVersion.getId(), e);

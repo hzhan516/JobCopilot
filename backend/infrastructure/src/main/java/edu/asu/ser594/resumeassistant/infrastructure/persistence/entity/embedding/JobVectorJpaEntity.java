@@ -43,7 +43,7 @@ public class JobVectorJpaEntity {
      * not hard-coded here, to allow dynamic adjustment via LLM_EMBEDDING_MODEL_DIMENSION.
      */
     @JdbcTypeCode(SqlTypes.VECTOR)
-    @Column(name = "embedding")
+    @Column(name = "embedding", length = 1536)
     private float[] embedding;
 
     @Enumerated(EnumType.STRING)
