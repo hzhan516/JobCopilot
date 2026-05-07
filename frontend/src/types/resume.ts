@@ -35,4 +35,4 @@ export interface UploadResponse {
   };
 }
 
-export type DownloadFormat = 'original' | 'pdf' | 'docx' | 'md' | 'html' | 'txt';
+export type DownloadFormat = 'pdf' | 'docx' | 'md' | 'html' | 'txt';

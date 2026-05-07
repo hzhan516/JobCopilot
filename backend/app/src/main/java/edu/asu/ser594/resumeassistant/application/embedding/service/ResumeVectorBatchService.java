@@ -48,10 +48,12 @@ public class ResumeVectorBatchService {
         List<String> failedResumeVersionIds = new ArrayList<>();
         int skipped = 0;
 
+        int index = 0;
         for (ResumeVectorItem item : items) {
+            index++;
             try {
                 if (item.resumeVersionId() == null || item.resumeVersionId().isBlank()) {
-                    log.warn("Skipping item with blank resumeVersionId");
+                    log.warn("Skipping item with blank resumeVersionId at index {}", index);
                     continue;
                 }
 

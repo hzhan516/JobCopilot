@@ -94,8 +94,9 @@ public class ResumeApplicationService {
                 } else {
                     String markdown;
                     if (!"md".equals(sourceFormat.getFormat())) {
-                        InputStream mdStream = documentFormatConverter.convert(rawStream, sourceFormat.getFormat(), "md");
-                        markdown = new String(mdStream.readAllBytes(), StandardCharsets.UTF_8);
+                        try (InputStream mdStream = documentFormatConverter.convert(rawStream, sourceFormat.getFormat(), "md")) {
+                            markdown = new String(mdStream.readAllBytes(), StandardCharsets.UTF_8);
+                        }
                     } else {
                         markdown = new String(rawStream.readAllBytes(), StandardCharsets.UTF_8);
                     }

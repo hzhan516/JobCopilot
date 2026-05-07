@@ -157,8 +157,9 @@ public class CompositeDocumentConverter implements DocumentFormatConverter {
             return null;
         }
 
-        InputStream intermediateStream = step1Converter.convert(new ByteArrayInputStream(sourceBytes), sf, intermediate);
-        return step2Converter.convert(intermediateStream, intermediate, tf);
+        try (InputStream intermediateStream = step1Converter.convert(new ByteArrayInputStream(sourceBytes), sf, intermediate)) {
+            return step2Converter.convert(intermediateStream, intermediate, tf);
+        }
     }
 
     /**

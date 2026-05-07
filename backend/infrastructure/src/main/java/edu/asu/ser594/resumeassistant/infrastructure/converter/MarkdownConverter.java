@@ -96,8 +96,8 @@ public class MarkdownConverter extends AbstractDocumentConverter {
         // 简单的 HTML 转 MD 转换（可以改进）
         // Simple HTML to MD conversion (can be enhanced)
         return html.replaceAll("<br\\s*/?>", "\n")
-                .replaceAll("<p>", "\n\n")
-                .replaceAll("</p>", "")
+                .replace("<p>", "\n\n")
+                .replace("</p>", "")
                 .replaceAll("<strong>|</strong>", "**")
                 .replaceAll("<em>|</em>", "*")
                 .replaceAll("<[^>]+>", "") // Remove remaining tags
@@ -107,7 +107,7 @@ public class MarkdownConverter extends AbstractDocumentConverter {
 
     private String htmlToText(String html) {
         return html.replaceAll("<br\\s*/?>", "\n")
-                .replaceAll("</p>", "\n\n")
+                .replace("</p>", "\n\n")
                 .replaceAll("<[^>]+>", "") // Remove all tags
                 // 移除所有标签
                 .trim();

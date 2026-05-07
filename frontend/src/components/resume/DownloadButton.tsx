@@ -32,7 +32,6 @@ export function DownloadButton({ versionId, filename = 'resume' }: DownloadButto
   };
 
   const formats: { labelKey: string; value: DownloadFormat }[] = [
-    { labelKey: 'resume.download.original', value: 'original' },
     { labelKey: 'resume.download.pdf', value: 'pdf' },
     { labelKey: 'resume.download.docx', value: 'docx' },
     { labelKey: 'resume.download.md', value: 'md' },

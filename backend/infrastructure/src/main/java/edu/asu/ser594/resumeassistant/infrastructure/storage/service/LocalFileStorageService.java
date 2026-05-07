@@ -127,7 +127,7 @@ public class LocalFileStorageService implements FileStorageService {
     private Path resolvePath(String objectKey) {
         // 清理 objectKey 以防止目录遍历
         // Sanitize objectKey to prevent directory traversal
-        String sanitizedKey = objectKey.replaceAll("\\.\\.", "")
+        String sanitizedKey = objectKey.replace("..", "")
                 .replaceAll("[:*?\"<>|]", "_");
 
         StorageProperties.Local local = storageProperties.getLocal();

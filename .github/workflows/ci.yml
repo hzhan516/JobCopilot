@@ -5,35 +5,40 @@ on:
     branches: [ main, develop ]
     paths:
       - 'backend/**'
+      - 'frontend/**'
+      - 'ai-service/**'
       - '.github/workflows/**'
   pull_request:
     branches: [ main, develop ]
     paths:
       - 'backend/**'
+      - 'frontend/**'
+      - 'ai-service/**'
+      - '.github/workflows/**'
 
 jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    
+
     defaults:
       run:
         working-directory: ./backend
-    
+
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
-    
+
     - name: Set up JDK 21
       uses: actions/setup-java@v4
       with:
         java-version: '21'
         distribution: 'temurin'
         cache: maven
-    
+
     - name: Run Unit Tests
       run: mvn clean test -B --file pom.xml
-    
+
     - name: Generate Test Report
       uses: dorny/test-reporter@v1
       if: success() || failure()
@@ -42,10 +47,11 @@ jobs:
         path: backend/**/target/surefire-reports/*.xml
         reporter: java-junit
         fail-on-error: true
-    
+
     - name: Upload Coverage Report
       uses: codecov/codecov-action@v4
       if: success()
+      continue-on-error: true
       with:
         files: backend/**/target/site/jacoco/jacoco.xml
         flags: unittests
@@ -126,6 +132,73 @@ jobs:
         name: application-jar
         path: backend/app/target/*.jar
         retention-days: 7
+
+  frontend-test:
+    name: Frontend Lint & Test & Build
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Node 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: npm
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install Dependencies
+      run: npm ci
+
+    - name: Run Lint
+      run: npm run lint
+
+    - name: Run Tests
+      run: npm run test:coverage
+
+    - name: Upload Frontend Coverage Report
+      uses: codecov/codecov-action@v4
+      if: success()
+      continue-on-error: true
+      with:
+        files: frontend/coverage/coverage-final.json
+        flags: frontend
+        name: codecov-frontend
+
+    - name: Build
+      run: npm run build
+      env:
+        VITE_GOOGLE_CLIENT_ID: dummy-ci-client-id.apps.googleusercontent.com
+
+  ai-service-test:
+    name: AI Service Tests
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./ai-service
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: pip
+        cache-dependency-path: ai-service/requirements.txt
+
+    - name: Install Dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run Tests
+      run: pytest
 
   code-quality:
     name: Code Quality Check

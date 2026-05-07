@@ -381,7 +381,7 @@
       "versionHistory": "版本歷史",
       "selectVersion": "選擇一個版本查看詳情",
       "versionDetail": "版本詳情",
-      "manualEdit": "手動修改",
+      "manualEdit": "複製並編輯",
       "manualEditDesc": "建立副本並手動編輯",
       "createCopySuccess": "副本建立成功",
       "createCopyError": "建立副本失敗",
@@ -440,7 +440,6 @@
     },
     "download": {
       "button": "下載",
-      "original": "原始檔案",
       "pdf": "PDF 文件",
       "docx": "Word 文件",
       "md": "Markdown",

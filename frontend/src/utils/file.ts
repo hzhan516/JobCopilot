@@ -13,7 +13,7 @@ export const formatFileSize = (bytes: number): string => {
 export const downloadResume = async (versionId: string, format: DownloadFormat, filename: string) => {
   try {
     const blob = await resumeApi.downloadVersion(versionId, format);
-    const extension = format === 'original' ? '' : `.${format}`;
+    const extension = `.${format}`;
     saveAs(blob, `${filename}${extension}`);
   } catch (error) {
     console.error('Download failed:', error);

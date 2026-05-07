@@ -55,7 +55,7 @@ public class PgVectorSearchService implements VectorSearchPort {
         final List<RecallResult> recallResults = new ArrayList<>(results.size());
         for (Object[] row : results) {
             final String jobId = (String) row[0];
-            final Double distance = ((Number) row[1]).doubleValue();
+            final double distance = ((Number) row[1]).doubleValue();
             recallResults.add(new RecallResult(jobId, distance));
         }
 
