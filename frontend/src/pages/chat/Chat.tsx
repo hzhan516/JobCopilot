@@ -8,7 +8,7 @@ import { jobService } from '@/services/jobService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import {
   Select,
   SelectContent,
@@ -490,7 +490,7 @@ export default function Chat() {
             </DialogContent>
           </Dialog>
         </div>
-        <ScrollArea className="flex-1">
+        <div className="flex-1 overflow-y-auto">
           <div className="p-2 space-y-1">
             {conversations.map((conversation) => (
               <div
@@ -530,7 +530,7 @@ export default function Chat() {
               </div>
             ))}
           </div>
-        </ScrollArea>
+        </div>
       </div>
 
       {/* 主聊天区域 */}
@@ -571,7 +571,7 @@ export default function Chat() {
             </div>
 
             {/* 消息列表 */}
-            <ScrollArea className="flex-1 p-4">
+            <div className="flex-1 overflow-y-auto p-4">
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-gray-500">
                   <Bot className="w-16 h-16 mb-4 text-gray-300" />
@@ -591,7 +591,7 @@ export default function Chat() {
                   <div ref={messagesEndRef} />
                 </>
               )}
-            </ScrollArea>
+            </div>
 
             {/* 输入框 */}
             <div className="border-t p-4">

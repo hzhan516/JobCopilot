@@ -182,35 +182,37 @@ export default function JobList() {
         onMatchFilterChange={setMatchFilter}
       />
 
-      <div className="grid gap-4">
-        {displayJobs.length === 0 ? (
-          <JobEmptyState
-            title={t('jobList.emptyTitle')}
-            description={t('jobList.emptyDesc')}
-          />
-        ) : (
-          displayJobs.map((job) => {
-            const currentResumeId = selectedResumes[job.id] ?? '';
-            const scoreKey = `${job.id}_${currentResumeId}`;
-            const isScoring = scoringState[scoreKey] ?? false;
-            const scoreResult = scoreResults[scoreKey];
+      <div className="max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
+        <div className="grid gap-4">
+          {displayJobs.length === 0 ? (
+            <JobEmptyState
+              title={t('jobList.emptyTitle')}
+              description={t('jobList.emptyDesc')}
+            />
+          ) : (
+            displayJobs.map((job) => {
+              const currentResumeId = selectedResumes[job.id] ?? '';
+              const scoreKey = `${job.id}_${currentResumeId}`;
+              const isScoring = scoringState[scoreKey] ?? false;
+              const scoreResult = scoreResults[scoreKey];
 
-            return (
-              <JobCard
-                key={job.id}
-                job={job}
-                availableResumeVersions={availableResumeVersions}
-                selectedResumeId={currentResumeId}
-                scoreResult={scoreResult}
-                isScoring={isScoring}
-                resumes={resumes}
-                onSelectResume={(versionId) => setSelectedResume(job.id, versionId)}
-                onScore={() => handleScoreJob(job.id)}
-                onViewDetail={() => navigate(`/jobs/${job.id}`)}
-              />
-            );
-          })
-        )}
+              return (
+                <JobCard
+                  key={job.id}
+                  job={job}
+                  availableResumeVersions={availableResumeVersions}
+                  selectedResumeId={currentResumeId}
+                  scoreResult={scoreResult}
+                  isScoring={isScoring}
+                  resumes={resumes}
+                  onSelectResume={(versionId) => setSelectedResume(job.id, versionId)}
+                  onScore={() => handleScoreJob(job.id)}
+                  onViewDetail={() => navigate(`/jobs/${job.id}`)}
+                />
+              );
+            })
+          )}
+        </div>
       </div>
 
       <JobCreateModal

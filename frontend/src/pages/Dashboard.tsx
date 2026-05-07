@@ -375,11 +375,10 @@ export default function Dashboard() {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                 {trackings
                   .slice()
                   .sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime())
-                  .slice(0, 3)
                   .map((tracking) => {
                     const config = statusConfig[tracking.status] || {
                       labelKey: 'tracking.status.UNKNOWN',

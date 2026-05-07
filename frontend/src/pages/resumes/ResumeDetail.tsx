@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '@/utils/i18n';
-import { useResumeStore } from '../../store/resume.store';
+import { useResumeStore } from '@/store/resume.store.ts';
 import { VersionTimeline } from '../../components/resume/VersionTimeline';
 import { VersionDetail } from '../../components/resume/VersionDetail';
 import { AIOptimizeCompare } from '../../components/resume/AIOptimizeCompare';
@@ -112,22 +112,24 @@ export default function ResumeDetail() {
         <div className="w-full md:w-1/4">
           <div className="sticky top-6 space-y-4">
             <h3 className="text-lg font-semibold">{t('resume.detail.versionHistory')}</h3>
-            <VersionTimeline
-              versions={currentGroup.versions}
-              selectedVersionId={selectedVersionId || ''}
-              onSelectVersion={(id) => {
-                setSelectedVersionId(id);
-                setActiveTab('detail');
-              }}
-              onActivateVersion={async (versionId) => {
-                try {
-                  await activateVersion(versionId);
-                  toast.success(t('resume.detail.activateSuccess'));
-                } catch {
-                  toast.error(t('resume.detail.activateError'));
-                }
-              }}
-            />
+            <div className="max-h-[480px] overflow-y-auto pr-1">
+              <VersionTimeline
+                versions={currentGroup.versions}
+                selectedVersionId={selectedVersionId || ''}
+                onSelectVersion={(id) => {
+                  setSelectedVersionId(id);
+                  setActiveTab('detail');
+                }}
+                onActivateVersion={async (versionId) => {
+                  try {
+                    await activateVersion(versionId);
+                    toast.success(t('resume.detail.activateSuccess'));
+                  } catch {
+                    toast.error(t('resume.detail.activateError'));
+                  }
+                }}
+              />
+            </div>
           </div>
         </div>
 
