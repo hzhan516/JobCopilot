@@ -411,6 +411,7 @@ CREATE TABLE IF NOT EXISTS conversations
 (
     64
 ),
+    ai_optimized_version_id VARCHAR(64),  -- AI 工作副本版本 ID / AI working copy version ID
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
@@ -718,6 +719,7 @@ ALTER TABLE conversations
     ADD COLUMN IF NOT EXISTS job_id VARCHAR (64);
 
 CREATE INDEX IF NOT EXISTS idx_conversations_job_id ON conversations(job_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_ai_optimized_version_id ON conversations(ai_optimized_version_id);
 
 -- ==========================================
 -- V13: Outbox Message / 事务发件箱消息表

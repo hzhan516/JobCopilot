@@ -374,7 +374,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
-    void saveAiReply_WithAiOptimizedMarkdown_SavesOptimizedResume() {
+    void saveAiReply_FirstModification_CreatesAiOptimizedVersion() {
         // 准备 / Given
         UUID conversationId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
@@ -382,15 +382,15 @@ class ConversationApplicationServiceTest {
         UUID groupId = UUID.randomUUID();
 
         Conversation conversation = Conversation.create(userId, "Title", resumeVersionId, null);
-        ResumeVersion version = mock(ResumeVersion.class);
+        ResumeVersion originalVersion = mock(ResumeVersion.class);
         ResumeGroup group = mock(ResumeGroup.class);
 
-        when(version.getGroupId()).thenReturn(groupId);
+        when(originalVersion.getGroupId()).thenReturn(groupId);
         when(group.getId()).thenReturn(groupId);
         when(conversationRepository.findById(conversationId)).thenReturn(Optional.of(conversation));
         when(conversationRepository.save(any(Conversation.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
-        when(resumeVersionRepository.findById(resumeVersionId)).thenReturn(Optional.of(version));
+        when(resumeVersionRepository.findById(resumeVersionId)).thenReturn(Optional.of(originalVersion));
         when(resumeGroupRepository.findById(groupId)).thenReturn(Optional.of(group));
 
         // 执行 / When
@@ -398,8 +398,136 @@ class ConversationApplicationServiceTest {
 
         // 验证 / Then
         assertEquals(1, conversation.getMessages().size());
-        verify(resumeVersionRepository).save(any(ResumeVersion.class));
+        // 验证使用了 group.addVersion（而不是直接 repository.save）
+        verify(group).addVersion(any(ResumeVersion.class));
+        verify(resumeGroupRepository).save(any(ResumeGroup.class));
         verify(vectorFacade).generateAndSaveVector(anyString(), eq("RESUME"), anyString());
+        // 验证 conversation 的 aiOptimizedVersionId 被设置
+        assertNotNull(conversation.getAiOptimizedVersionId());
+    }
+
+    @Test
+    void saveAiReply_SubsequentModification_UpdatesExistingVersion() {
+        // 准备 / Given
+        UUID conversationId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID resumeVersionId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
+        UUID workingVersionId = UUID.randomUUID();
+
+        Conversation conversation = Conversation.create(userId, "Title", resumeVersionId, null);
+        conversation.setAiOptimizedVersionId(workingVersionId);
+
+        ResumeVersion originalVersion = mock(ResumeVersion.class);
+        ResumeVersion workingVersion = mock(ResumeVersion.class);
+        ResumeGroup group = mock(ResumeGroup.class);
+
+        when(originalVersion.getGroupId()).thenReturn(groupId);
+        when(workingVersion.getId()).thenReturn(workingVersionId);
+        when(workingVersion.getStatus()).thenReturn(ResumeVersion.Status.ACTIVE);
+        when(conversationRepository.findById(conversationId)).thenReturn(Optional.of(conversation));
+        when(conversationRepository.save(any(Conversation.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(resumeVersionRepository.findById(resumeVersionId)).thenReturn(Optional.of(originalVersion));
+        when(resumeVersionRepository.findById(workingVersionId)).thenReturn(Optional.of(workingVersion));
+        when(resumeGroupRepository.findById(groupId)).thenReturn(Optional.of(group));
+
+        // 执行 / When
+        applicationService.saveAiReply(conversationId, "AI reply", null, "# Updated Resume");
+
+        // 验证 / Then
+        assertEquals(1, conversation.getMessages().size());
+        // 验证直接编辑了现有版本（没有创建新的）
+        verify(workingVersion).editContent("# Updated Resume");
+        verify(resumeVersionRepository).save(workingVersion);
+        verify(vectorFacade).generateAndSaveVector(workingVersionId.toString(), "RESUME", "# Updated Resume");
+        // 验证没有走 group.addVersion 路径
+        verify(group, never()).addVersion(any(ResumeVersion.class));
+    }
+
+    @Test
+    void saveAiReply_WhenVersionArchived_RecreatesAiOptimized() {
+        // 准备 / Given
+        UUID conversationId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID resumeVersionId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
+        UUID workingVersionId = UUID.randomUUID();
+
+        Conversation conversation = Conversation.create(userId, "Title", resumeVersionId, null);
+        conversation.setAiOptimizedVersionId(workingVersionId);
+
+        ResumeVersion originalVersion = mock(ResumeVersion.class);
+        ResumeVersion archivedVersion = mock(ResumeVersion.class);
+        ResumeGroup group = mock(ResumeGroup.class);
+
+        when(originalVersion.getGroupId()).thenReturn(groupId);
+        when(archivedVersion.getStatus()).thenReturn(ResumeVersion.Status.ARCHIVED);
+        when(conversationRepository.findById(conversationId)).thenReturn(Optional.of(conversation));
+        when(conversationRepository.save(any(Conversation.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(resumeVersionRepository.findById(resumeVersionId)).thenReturn(Optional.of(originalVersion));
+        when(resumeVersionRepository.findById(workingVersionId)).thenReturn(Optional.of(archivedVersion));
+        when(resumeGroupRepository.findById(groupId)).thenReturn(Optional.of(group));
+
+        // 执行 / When
+        applicationService.saveAiReply(conversationId, "AI reply", null, "# Re-created Resume");
+
+        // 验证 / Then
+        assertEquals(1, conversation.getMessages().size());
+        // 验证重新创建了 AI_OPTIMIZED（因为旧的被归档了）
+        verify(group).addVersion(any(ResumeVersion.class));
+        verify(resumeGroupRepository).save(any(ResumeGroup.class));
+        // 验证 conversation 的 aiOptimizedVersionId 被更新
+        assertNotNull(conversation.getAiOptimizedVersionId());
+    }
+
+    @Test
+    void sendConversationRequestWithContext_PrefersAiOptimizedVersion() {
+        // 准备 / Given
+        UUID userId = UUID.randomUUID();
+        UUID conversationId = UUID.randomUUID();
+        UUID resumeVersionId = UUID.randomUUID();
+        UUID aiOptimizedVersionId = UUID.randomUUID();
+        UUID jobId = UUID.randomUUID();
+
+        Conversation conversation = Conversation.create(userId, "Title", resumeVersionId, jobId);
+        conversation.setAiOptimizedVersionId(aiOptimizedVersionId);
+        // 注意：需要保存 conversation 以使其可被 repository 返回
+
+        ResumeVersion aiVersion = mock(ResumeVersion.class);
+        when(aiVersion.getContent()).thenReturn("# AI Optimized Content");
+
+        Job job = Job.create(userId, "https://example.com/job", false);
+        job.markScraping();
+        job.markParsing();
+        job.markCompleted(new ParsedJobContent("Engineer", "Company", "100K", "Remote", "Description", List.of("Req1")));
+
+        when(conversationRepository.findById(conversationId)).thenReturn(Optional.of(conversation));
+        when(conversationRepository.save(any(Conversation.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(resumeVersionRepository.findById(aiOptimizedVersionId)).thenReturn(Optional.of(aiVersion));
+        when(jobRepository.findById(jobId.toString())).thenReturn(Optional.of(job));
+        when(jobRepository.findAllByUserId(userId)).thenReturn(Collections.emptyList());
+
+        SendMessageCommand command = SendMessageCommand.builder()
+                .conversationId(conversationId)
+                .userId(userId)
+                .role(MessageRole.USER)
+                .content("Hello AI")
+                .fileUrls(new ArrayList<>())
+                .build();
+
+        // 执行 / When
+        applicationService.sendMessage(command);
+
+        // 验证 / Then
+        ArgumentCaptor<ConversationRequestCommand> captor = ArgumentCaptor.forClass(ConversationRequestCommand.class);
+        verify(aiMessagePublisherPort, times(1)).sendConversationRequest(captor.capture());
+        // 验证优先使用了 AI_OPTIMIZED 版本的内容
+        assertEquals("# AI Optimized Content", captor.getValue().resumeText());
+        // 验证没有查询原始版本
+        verify(resumeVersionRepository, never()).findById(resumeVersionId);
     }
 
     @Test

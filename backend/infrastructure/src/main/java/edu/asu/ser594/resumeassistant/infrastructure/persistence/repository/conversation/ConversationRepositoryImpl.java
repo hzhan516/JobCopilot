@@ -56,6 +56,7 @@ public class ConversationRepositoryImpl implements ConversationRepository {
                 .status(conversation.getStatus())
                 .resumeVersionId(conversation.getResumeVersionId() != null ? conversation.getResumeVersionId().toString() : null)
                 .jobId(conversation.getJobId() != null ? conversation.getJobId().toString() : null)
+                .aiOptimizedVersionId(conversation.getAiOptimizedVersionId() != null ? conversation.getAiOptimizedVersionId().toString() : null)
                 .createdAt(conversation.getCreatedAt())
                 .updatedAt(conversation.getUpdatedAt())
                 .build();
@@ -101,6 +102,7 @@ public class ConversationRepositoryImpl implements ConversationRepository {
                 entity.getStatus(),
                 entity.getResumeVersionId() != null ? java.util.UUID.fromString(entity.getResumeVersionId()) : null,
                 entity.getJobId() != null ? java.util.UUID.fromString(entity.getJobId()) : null,
+                entity.getAiOptimizedVersionId() != null ? java.util.UUID.fromString(entity.getAiOptimizedVersionId()) : null,
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
                 new ArrayList<>(messages)

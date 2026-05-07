@@ -149,7 +149,7 @@ class ConversationTest {
 
         Conversation conversation = Conversation.reconstruct(
                 id, userId, "Reconstructed", ConversationStatus.ACTIVE,
-                resumeVersionId, null, LocalDateTime.now(), LocalDateTime.now(),
+                resumeVersionId, null, null, LocalDateTime.now(), LocalDateTime.now(),
                 Collections.emptyList()
         );
 

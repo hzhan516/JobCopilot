@@ -21,6 +21,7 @@ public class Conversation extends AggregateRoot<UUID> {
     private final UUID userId;
     private final UUID resumeVersionId;
     private final UUID jobId;
+    private UUID aiOptimizedVersionId;
     private final LocalDateTime createdAt;
     private final List<Message> messages;
     private String title;
@@ -32,7 +33,8 @@ public class Conversation extends AggregateRoot<UUID> {
      * Protected native constructor
      */
     protected Conversation(UUID id, UUID userId, String title, ConversationStatus status,
-                           UUID resumeVersionId, UUID jobId, LocalDateTime createdAt, LocalDateTime updatedAt,
+                           UUID resumeVersionId, UUID jobId, UUID aiOptimizedVersionId,
+                           LocalDateTime createdAt, LocalDateTime updatedAt,
                            List<Message> messages) {
         this.id = id;
         this.userId = userId;
@@ -40,6 +42,7 @@ public class Conversation extends AggregateRoot<UUID> {
         this.status = status;
         this.resumeVersionId = resumeVersionId;
         this.jobId = jobId;
+        this.aiOptimizedVersionId = aiOptimizedVersionId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.messages = messages != null ? messages : new ArrayList<>();
@@ -59,6 +62,7 @@ public class Conversation extends AggregateRoot<UUID> {
                 ConversationStatus.ACTIVE,
                 resumeVersionId,
                 jobId,
+                null,  // aiOptimizedVersionId initially null
                 now,
                 now,
                 new ArrayList<>()
@@ -70,9 +74,10 @@ public class Conversation extends AggregateRoot<UUID> {
      * Reconstruct aggregate root from repository
      */
     public static Conversation reconstruct(UUID id, UUID userId, String title, ConversationStatus status,
-                                           UUID resumeVersionId, UUID jobId, LocalDateTime createdAt, LocalDateTime updatedAt,
+                                           UUID resumeVersionId, UUID jobId, UUID aiOptimizedVersionId,
+                                           LocalDateTime createdAt, LocalDateTime updatedAt,
                                            List<Message> messages) {
-        return new Conversation(id, userId, title, status, resumeVersionId, jobId, createdAt, updatedAt, messages);
+        return new Conversation(id, userId, title, status, resumeVersionId, jobId, aiOptimizedVersionId, createdAt, updatedAt, messages);
     }
 
     /**
@@ -171,6 +176,15 @@ public class Conversation extends AggregateRoot<UUID> {
 
     public UUID getJobId() {
         return jobId;
+    }
+
+    public UUID getAiOptimizedVersionId() {
+        return aiOptimizedVersionId;
+    }
+
+    public void setAiOptimizedVersionId(UUID aiOptimizedVersionId) {
+        this.aiOptimizedVersionId = aiOptimizedVersionId;
+        this.updatedAt = LocalDateTime.now();
     }
 
     public LocalDateTime getCreatedAt() {

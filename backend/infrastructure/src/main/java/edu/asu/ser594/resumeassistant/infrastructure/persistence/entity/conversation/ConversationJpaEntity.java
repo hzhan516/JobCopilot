@@ -40,6 +40,9 @@ public class ConversationJpaEntity {
     @Column(name = "job_id")
     private String jobId;
 
+    @Column(name = "ai_optimized_version_id")
+    private String aiOptimizedVersionId;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
