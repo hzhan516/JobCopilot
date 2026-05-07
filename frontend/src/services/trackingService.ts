@@ -7,6 +7,17 @@ import type {
   TrackingStatsResponse,
 } from '@/types';
 
+type BackendTrackingStatsResponse = {
+  totalApplications?: number;
+  pendingCount?: number;
+  appliedCount?: number;
+  interviewingCount?: number;
+  offerCount?: number;
+  rejectedCount?: number;
+  withdrawnCount?: number;
+  successRate?: number;
+};
+
 // 求职跟踪服务
 export const trackingService = {
   // 获取所有投递记录
@@ -68,11 +79,23 @@ export const trackingService = {
 
   // 获取投递统计
   getTrackingStats: async (): Promise<TrackingStatsResponse> => {
-    const response = await apiClient.get<ApiResponse<TrackingStatsResponse>>(
+    const response = await apiClient.get<ApiResponse<BackendTrackingStatsResponse>>(
       '/v1/trackings/stats'
     );
     if (response.data.code === 200) {
-      return response.data.data;
+      const data = response.data.data;
+      const successRate = data.successRate ?? 0;
+      return {
+        total: data.totalApplications ?? 0,
+        pending: data.pendingCount ?? 0,
+        applied: data.appliedCount ?? 0,
+        screening: 0,
+        interview: data.interviewingCount ?? 0,
+        offer: data.offerCount ?? 0,
+        rejected: data.rejectedCount ?? 0,
+        withdrawn: data.withdrawnCount ?? 0,
+        successRate: Number.isFinite(successRate) ? successRate : 0,
+      };
     }
     throw new Error(response.data.message);
   },

@@ -41,10 +41,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
-type TrackingStatsWithAccepted = TrackingStatsResponse & {
-  accepted?: number;
-};
-
 const STATUS_DISTRIBUTION: Array<{
   key: keyof TrackingStatsResponse;
   labelKey: string;
@@ -128,7 +124,7 @@ export default function TrackingPage() {
         status: newTracking.status,
         notes: newTracking.notes || undefined,
       });
-      await loadTrackings();
+      await Promise.all([loadTrackings(), loadStats()]);
       setNewTracking({ jobTitle: '', companyName: '', status: 'APPLIED', notes: '' });
       setAddDialogOpen(false);
       toast.success(t('tracking.addSuccess'));
@@ -141,7 +137,7 @@ export default function TrackingPage() {
   const handleUpdateStatus = async (trackingId: string, status: Tracking['status']) => {
     try {
       await trackingService.updateTracking(trackingId, { status });
-      await loadTrackings();
+      await Promise.all([loadTrackings(), loadStats()]);
       toast.success(t('tracking.updateSuccess'));
     } catch {
       toast.error(t('tracking.updateFailed'));
@@ -152,7 +148,7 @@ export default function TrackingPage() {
   const handleDeleteTracking = async (trackingId: string) => {
     try {
       await trackingService.deleteTracking(trackingId);
-      await loadTrackings();
+      await Promise.all([loadTrackings(), loadStats()]);
       toast.success(t('tracking.deleteSuccess'));
     } catch {
       toast.error(t('tracking.deleteFailed'));
@@ -169,11 +165,8 @@ export default function TrackingPage() {
   // 计算成功率
   // Calculate success rate
   const successRate = useMemo(() => {
-    if (!stats || stats.total === 0) return 0;
-    // 后端接口目前无 accepted 字段，用类型断言兼容未来扩展
-    // Backend currently has no accepted field; use type assertion for future compatibility
-    const accepted = (stats as TrackingStatsWithAccepted).accepted ?? 0;
-    return ((stats.offer + accepted) / stats.total) * 100;
+    const value = stats?.successRate ?? 0;
+    return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
   }, [stats]);
 
   // 渲染加载状态
