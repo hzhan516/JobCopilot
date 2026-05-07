@@ -536,11 +536,6 @@ CREATE INDEX IF NOT EXISTS idx_job_vectors_status ON job_vectors (status);
 CREATE INDEX IF NOT EXISTS idx_job_vectors_fts ON job_vectors
     USING GIN (to_tsvector('english', COALESCE(raw_content, '')));
 
--- HNSW 近似最近邻索引 / HNSW ANN index
-CREATE INDEX IF NOT EXISTS idx_job_vectors_embedding_hnsw ON job_vectors
-    USING hnsw (embedding vector_cosine_ops)
-    WITH (m = 16, ef_construction = 64);
-
 -- ==========================================
 -- V7: Drop unused table / 删除废弃表
 -- ==========================================
