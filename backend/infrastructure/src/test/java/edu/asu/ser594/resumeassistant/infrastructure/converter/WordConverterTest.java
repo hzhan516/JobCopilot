@@ -92,8 +92,6 @@ class WordConverterTest {
         InputStream input = new ByteArrayInputStream("test".getBytes());
 
         // 执行与验证 / When & Then
-        assertThrows(IOException.class, () -> {
-            converter.convert(input, "txt", "docx");
-        });
+        assertThrows(IOException.class, () -> converter.convert(input, "txt", "md"));
     }
 }
