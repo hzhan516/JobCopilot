@@ -65,7 +65,6 @@ export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit, o
         <div className="flex items-center space-x-2">
           <DownloadButton
             versionId={version.versionId}
-            versionType={versionType}
             filename={`resume-${versionType.toLowerCase()}`}
           />
           {onCreateCopy && (
