@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,49 +21,47 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 interface NavItem {
   path: string;
-  label: string;
+  labelKey: string;
   icon: React.ElementType;
 }
 
-const navItems: NavItem[] = [
-  { path: '/resumes', label: '我的简历', icon: FileText },
-  { path: '/jobs', label: '职位推荐', icon: Briefcase },
-  { path: '/chat', label: 'AI对话', icon: MessageSquare },
-  { path: '/tracking', label: '求职跟踪', icon: ClipboardList },
-];
-
 export default function MainLayout({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation();
   const { user, logout, isAuthenticated } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const navItems: NavItem[] = [
+    { path: '/resumes', labelKey: 'layout.nav.resumes', icon: FileText },
+    { path: '/jobs', labelKey: 'layout.nav.jobs', icon: Briefcase },
+    { path: '/chat', labelKey: 'layout.nav.chat', icon: MessageSquare },
+    { path: '/applications', labelKey: 'layout.nav.tracking', icon: ClipboardList },
+  ];
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  // 如果未认证，不渲染布局
   if (!isAuthenticated) {
     return <>{children}</>;
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 顶部导航栏 */}
       <header className="sticky top-0 z-50 w-full border-b bg-white shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <FileText className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">智能求职助手</span>
+            <span className="text-xl font-bold text-gray-900">{t('common.appName')}</span>
           </Link>
 
-          {/* 桌面端导航 */}
           <nav className="hidden md:flex items-center space-x-1">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -78,15 +77,15 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                   }`}
                 >
                   <Icon className="w-4 h-4" />
-                  <span className="text-sm font-medium">{item.label}</span>
+                  <span className="text-sm font-medium">{t(item.labelKey)}</span>
                 </Link>
               );
             })}
           </nav>
 
-          {/* 用户菜单 */}
-          <div className="flex items-center space-x-4">
-            {/* 移动端菜单 */}
+          <div className="flex items-center space-x-2">
+            <LanguageSwitcher />
+
             <Sheet>
               <SheetTrigger asChild className="md:hidden">
                 <Button variant="ghost" size="icon">
@@ -104,7 +103,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                         className="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100"
                       >
                         <Icon className="w-5 h-5 text-gray-600" />
-                        <span className="text-gray-900">{item.label}</span>
+                        <span className="text-gray-900">{t(item.labelKey)}</span>
                       </Link>
                     );
                   })}
@@ -112,7 +111,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               </SheetContent>
             </Sheet>
 
-            {/* 用户下拉菜单 */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center space-x-2">
@@ -128,12 +126,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/profile')}>
                   <User className="w-4 h-4 mr-2" />
-                  个人中心
+                  {t('layout.userMenu.profile')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="cursor-pointer text-red-600" onClick={handleLogout}>
                   <LogOut className="w-4 h-4 mr-2" />
-                  退出登录
+                  {t('layout.userMenu.logout')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -141,7 +139,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         </div>
       </header>
 
-      {/* 主内容区 */}
       <main className="container mx-auto px-4 py-6">{children}</main>
     </div>
   );

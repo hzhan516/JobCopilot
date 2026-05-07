@@ -12,7 +12,7 @@ import java.util.UUID;
 /**
  * 简历组 JPA 实体
  * Resume Group JPA Entity
- *
+ * <p>
  * 注意：
  * - 不使用 @Data 注解
  * - 使用 @EqualsAndHashCode(onlyExplicitlyIncluded = true) 仅基于 ID

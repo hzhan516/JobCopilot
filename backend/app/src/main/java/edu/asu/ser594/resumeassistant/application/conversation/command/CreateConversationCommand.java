@@ -10,8 +10,9 @@ import java.util.UUID;
  */
 @Builder
 public record CreateConversationCommand(
-    UUID userId,
-    String title,
-    UUID resumeVersionId
+        UUID userId,
+        String title,
+        UUID resumeVersionId,
+        UUID jobId
 ) {
 }

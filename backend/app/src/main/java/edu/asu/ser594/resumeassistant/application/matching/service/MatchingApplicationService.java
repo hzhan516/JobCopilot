@@ -1,7 +1,6 @@
 package edu.asu.ser594.resumeassistant.application.matching.service;
 
-import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchFactors;
-import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchItem;
+import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
 import edu.asu.ser594.resumeassistant.application.matching.command.SaveMatchResultCommand;
 import edu.asu.ser594.resumeassistant.application.matching.command.StartJobMatchCommand;
 import edu.asu.ser594.resumeassistant.application.matching.query.GetMatchResultQuery;
@@ -11,32 +10,28 @@ import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
 import edu.asu.ser594.resumeassistant.domain.matching.entity.JobMatchResult;
 import edu.asu.ser594.resumeassistant.domain.matching.entity.MatchingModel;
+import edu.asu.ser594.resumeassistant.domain.matching.exception.ResumeVectorNotReadyException;
+import edu.asu.ser594.resumeassistant.domain.matching.port.VectorSearchPort;
 import edu.asu.ser594.resumeassistant.domain.matching.repository.JobMatchResultRepository;
 import edu.asu.ser594.resumeassistant.domain.matching.repository.MatchingModelRepository;
-import edu.asu.ser594.resumeassistant.domain.matching.valueobject.MatchStatus;
 import edu.asu.ser594.resumeassistant.domain.matching.valueobject.RankedJob;
 import edu.asu.ser594.resumeassistant.domain.matching.valueobject.RecallResult;
+import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
+import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobRankCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
-import edu.asu.ser594.resumeassistant.infrastructure.search.PgVectorSearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 职位匹配应用服务
- * Job matching application service
- *
- * 协调召回、MQ发送、结果保存 / Coordinates recall, MQ sending, and result persistence
+ * Orchestrates the two-stage job-matching pipeline: vector-based recall followed by AI-driven ranking.
+ * Persists intermediate and final results so clients can poll for asynchronous completion.
+ * 编排两阶段职位匹配流水线：基于向量的召回后接 AI 精排。持久化中间及最终结果，使客户端可轮询异步完成状态
  */
 @Slf4j
 @Service
@@ -44,18 +39,21 @@ import java.util.stream.Collectors;
 public class MatchingApplicationService {
 
     private final ResumeVectorRepository resumeVectorRepository;
+    private final ResumeVersionRepository resumeVersionRepository;
     private final JobRepository jobRepository;
     private final JobMatchResultRepository jobMatchResultRepository;
     private final MatchingModelRepository matchingModelRepository;
     private final AiMessagePublisherPort aiMessagePublisherPort;
-    private final PgVectorSearchService pgVectorSearchService;
+    private final VectorFacade vectorFacade;
+    private final VectorSearchPort vectorSearchPort;
 
     /**
-     * 启动异步职位匹配流程
-     * Start async job matching process
+     * Initiates the async matching workflow: recalls top-K similar jobs via pgvector cosine distance,
+     * persists the recall stage, then dispatches a ranking request to the AI service via MQ.
+     * 启动异步匹配工作流：通过 pgvector 余弦距离召回 Top-K 相似职位，持久化召回阶段，然后通过 MQ 向 AI 服务分发精排请求
      *
-     * @param command 启动命令 / Start command
-     * @return 匹配任务ID / Match task ID
+     * @param command Start match command / 启动匹配命令
+     * @return Match task ID / 匹配任务 ID
      */
     @Transactional
     public String startJobMatch(final StartJobMatchCommand command) {
@@ -71,35 +69,65 @@ public class MatchingApplicationService {
                 matchId, command.userId(), command.resumeVersionId(), command.query(), modelVersion);
         jobMatchResultRepository.save(result);
 
-        final var resumeVector = resumeVectorRepository.findByResumeVersionId(command.resumeVersionId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Resume vector not found for version: " + command.resumeVersionId()));
+        final var resumeVectorOpt = resumeVectorRepository.findByResumeVersionId(command.resumeVersionId());
 
-        if (resumeVector.getEmbedding() == null) {
-            throw new IllegalStateException("Resume vector embedding is null for version: " + command.resumeVersionId());
+        if (resumeVectorOpt.isEmpty() || resumeVectorOpt.get().getEmbedding() == null) {
+            // On-demand vector regeneration: if the vector is missing (e.g., after a resume edit), try to rebuild it before failing
+            // 按需向量再生：若向量缺失（例如简历编辑后），在报错前尝试重建
+            final ResumeVersion resumeVersion = resumeVersionRepository.findById(UUID.fromString(command.resumeVersionId()))
+                    .orElseThrow(() -> new IllegalArgumentException("Resume version not found: " + command.resumeVersionId()));
+
+            final String vectorText = resumeVersion.getParsedContent() != null && !resumeVersion.getParsedContent().isEmpty()
+                    ? resumeVersion.getParsedContent()
+                    : (resumeVersion.getContent() != null ? resumeVersion.getContent() : "");
+
+            if (!vectorText.isEmpty()) {
+                try {
+                    vectorFacade.generateAndSaveVector(command.resumeVersionId(), "RESUME", vectorText);
+                    log.info("Synchronously generated vector for missing resume vector, versionId={}", command.resumeVersionId());
+                } catch (Exception e) {
+                    log.error("Failed to generate vector for versionId={}", command.resumeVersionId(), e);
+                }
+            }
+
+            throw new ResumeVectorNotReadyException(command.resumeVersionId());
         }
+
+        final var resumeVector = resumeVectorOpt.get();
 
         final int topK = command.topK() != null && command.topK() > 0 ? command.topK() : 10;
         final long recallStart = System.currentTimeMillis();
-        final List<RecallResult> recallResults = pgVectorSearchService.findSimilarJobs(
+        final List<RecallResult> recallResults = vectorSearchPort.findSimilarJobs(
                 resumeVector.getEmbedding(), topK, modelVersion);
         final long recallTimeMs = System.currentTimeMillis() - recallStart;
 
-        result.setRecallResults(recallResults, recallTimeMs);
+        final Map<String, Object> jobDetails = buildJobDetailsMap(recallResults);
+        final List<RecallResult> visibleRecallResults = recallResults.stream()
+                .filter(recall -> jobDetails.containsKey(recall.jobId()))
+                .collect(Collectors.toList());
+
+        result.setRecallResults(visibleRecallResults, recallTimeMs);
         jobMatchResultRepository.save(result);
 
-        final List<String> recalledJobIds = recallResults.stream()
+        final List<String> recalledJobIds = visibleRecallResults.stream()
                 .map(RecallResult::jobId)
                 .collect(Collectors.toList());
 
-        final Map<String, Object> jobDetails = buildJobDetailsMap(recalledJobIds);
+        final ResumeVersion resumeVersion = resumeVersionRepository.findById(UUID.fromString(command.resumeVersionId()))
+                .orElseThrow(() -> new IllegalArgumentException("Resume version not found: " + command.resumeVersionId()));
+
+        final String resumeText = resumeVersion.getParsedContent() != null && !resumeVersion.getParsedContent().isEmpty() ?
+                resumeVersion.getParsedContent() :
+                (resumeVersion.getContent() != null ? resumeVersion.getContent() : "");
+
+        final String query = command.query() != null ? command.query() : "";
 
         final JobRankCommand rankCommand = new JobRankCommand(
                 matchId,
                 command.userId().toString(),
                 command.resumeVersionId(),
-                "", // resumeText 可由 Python 端自行从简历版本获取，此处留空
-                command.query(),
+                resumeText,
+                query,
                 recalledJobIds,
                 jobDetails
         );
@@ -112,10 +140,11 @@ public class MatchingApplicationService {
     }
 
     /**
-     * 保存精排结果
-     * Save ranking result
+     * Persists the final ranked list produced by the AI service, transitioning the match result
+     * from PROCESSING to COMPLETED.
+     * 持久化 AI 服务产出的最终排序列表，将匹配结果从 PROCESSING 状态转为 COMPLETED
      *
-     * @param command 保存命令 / Save command
+     * @param command Save match result command / 保存匹配结果命令
      */
     @Transactional
     public void saveMatchResult(final SaveMatchResultCommand command) {
@@ -130,7 +159,8 @@ public class MatchingApplicationService {
                         item.title(),
                         item.company(),
                         item.matchScore(),
-                        item.description()
+                        item.description(),
+                        item.matchReason()
                 ))
                 .collect(Collectors.toList());
 
@@ -139,45 +169,47 @@ public class MatchingApplicationService {
         log.info("Match result saved successfully for matchId: {}, ranked {} jobs", command.matchId(), rankedJobs.size());
     }
 
-    /**
-     * 查询匹配结果
-     * Get match result
-     *
-     * @param query 查询对象 / Query object
-     * @return 匹配结果实体(可选) / Optional match result entity
-     */
     @Transactional(readOnly = true)
     public Optional<JobMatchResult> getMatchResult(final GetMatchResultQuery query) {
         return jobMatchResultRepository.findById(query.matchId());
     }
 
-    /**
-     * 查询用户匹配历史
-     * List match history
-     *
-     * @param query 查询对象 / Query object
-     * @return 匹配历史列表 / Match history list
-     */
     @Transactional(readOnly = true)
     public List<JobMatchResult> listMatchHistory(final ListMatchHistoryQuery query) {
         return jobMatchResultRepository.findAllByUserIdOrderByCreatedAtDesc(query.userId());
     }
 
-    private Map<String, Object> buildJobDetailsMap(final List<String> jobIds) {
-        if (jobIds.isEmpty()) {
+    private Map<String, Object> buildJobDetailsMap(final List<RecallResult> recallResults) {
+        if (recallResults.isEmpty()) {
             return Collections.emptyMap();
         }
-        return jobIds.stream()
-                .map(jobRepository::findById)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toMap(
-                        Job::getId,
-                        job -> Map.of(
-                                "title", Optional.ofNullable(job.getParsedContent()).map(pc -> pc.title()).orElse(""),
-                                "company", Optional.ofNullable(job.getParsedContent()).map(pc -> pc.company()).orElse(""),
-                                "description", Optional.ofNullable(job.getParsedContent()).map(pc -> pc.description()).orElse("")
-                        )
-                ));
+        return recallResults.stream()
+                .map(recall -> {
+                    Optional<Job> jobOpt = jobRepository.findById(recall.jobId());
+                    if (jobOpt.isEmpty()) {
+                        return null;
+                    }
+                    Job job = jobOpt.get();
+                    if (job.isHidden()) {
+                        return null;
+                    }
+                    // PGVector distance is Cosine Distance (1 - Cosine Similarity)
+                    // We map distance to a semantic match score [0, 1]
+                    // Cosine Similarity = 1 - distance
+                    // Normalized Semantic Match = (Cosine Similarity + 1) / 2 = 1 - distance / 2
+                    double semanticMatch = Math.max(0.0, Math.min(1.0, 1.0 - (recall.distance() / 2.0)));
+
+                    return Map.entry(
+                            job.getId(),
+                            Map.of(
+                                    "title", Optional.ofNullable(job.getParsedContent()).map(pc -> pc.title()).orElse(""),
+                                    "company", Optional.ofNullable(job.getParsedContent()).map(pc -> pc.company()).orElse(""),
+                                    "description", Optional.ofNullable(job.getParsedContent()).map(pc -> pc.description()).orElse(""),
+                                    "semanticMatch", semanticMatch
+                            )
+                    );
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 }

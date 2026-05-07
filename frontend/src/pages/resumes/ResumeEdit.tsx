@@ -1,11 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useResumeStore } from '../../store/resume.store';
+import { useTranslation } from 'react-i18next';
+import { useResumeStore } from '@/store/resume.store.ts';
 import { MarkdownEditor } from '../../components/resume/MarkdownEditor';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '../../components/ui/button';
+import { toast } from 'sonner';
 
 export default function ResumeEdit() {
+  const { t } = useTranslation();
   const { groupId, versionId } = useParams<{ groupId: string; versionId: string }>();
   const navigate = useNavigate();
   const { currentGroup, loading, fetchGroupDetail, saveVersion } = useResumeStore();
@@ -15,6 +18,26 @@ export default function ResumeEdit() {
       fetchGroupDetail(groupId);
     }
   }, [groupId, currentGroup, fetchGroupDetail]);
+
+  const version = currentGroup?.versions.find((v) => v.versionId === versionId);
+
+  const handleSave = async (content: string) => {
+    if (versionId) {
+      await saveVersion(versionId, content);
+      toast.success(t('resume.markdownEditor.autoSaveSuccess'));
+      navigate(`/resumes/${groupId}`);
+    }
+  };
+
+  const handleAutoSave = useCallback(async (content: string) => {
+    if (versionId) {
+      await saveVersion(versionId, content);
+    }
+  }, [versionId, saveVersion]);
+
+  const handleCancel = () => {
+    navigate(`/resumes/${groupId}`);
+  };
 
   if (loading && !currentGroup) {
     return (
@@ -27,33 +50,20 @@ export default function ResumeEdit() {
   if (!currentGroup) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-2xl font-semibold mb-4">Resume not found</h2>
-        <Button onClick={() => navigate('/resumes')}>Back to Resumes</Button>
+        <h2 className="text-2xl font-semibold mb-4">{t('resume.detail.notFound')}</h2>
+        <Button onClick={() => navigate('/resumes')}>{t('resume.edit.back')}</Button>
       </div>
     );
   }
-
-  const version = currentGroup.versions.find(v => v.versionId === versionId);
 
   if (!version) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-2xl font-semibold mb-4">Version not found</h2>
-        <Button onClick={() => navigate(`/resumes/${groupId}`)}>Back to Resume Details</Button>
+        <h2 className="text-2xl font-semibold mb-4">{t('resume.detail.versionNotFound')}</h2>
+        <Button onClick={() => navigate(`/resumes/${groupId}`)}>{t('resume.edit.backToDetail')}</Button>
       </div>
     );
   }
-
-  const handleSave = async (content: string) => {
-    if (versionId) {
-      await saveVersion(versionId, content);
-      navigate(`/resumes/${groupId}`);
-    }
-  };
-
-  const handleCancel = () => {
-    navigate(`/resumes/${groupId}`);
-  };
 
   return (
     <div className="container mx-auto py-6 space-y-6 h-[calc(100vh-4rem)] flex flex-col">
@@ -62,7 +72,7 @@ export default function ResumeEdit() {
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Edit Version</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t('resume.edit.title')}</h1>
           <p className="text-muted-foreground text-sm">
             {currentGroup.title} - {version.versionType}
           </p>
@@ -75,6 +85,8 @@ export default function ResumeEdit() {
           versionId={version.versionId}
           onSave={handleSave}
           onCancel={handleCancel}
+          onAutoSave={version.status === 'ACTIVE' ? handleAutoSave : undefined}
+          readOnly={version.status !== 'ACTIVE'}
         />
       </div>
     </div>

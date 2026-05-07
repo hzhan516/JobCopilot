@@ -31,6 +31,16 @@ public class MinioFileStorageService implements FileStorageService {
 
     @PostConstruct
     public void init() {
+        String accessKey = storageProperties.getMinio().getAccessKey();
+        String secretKey = storageProperties.getMinio().getSecretKey();
+        if (accessKey == null || accessKey.isBlank() || secretKey == null || secretKey.isBlank()) {
+            throw new IllegalStateException(
+                    "MinIO credentials are not configured. "
+                            + "Please set 'storage.minio.access-key' and 'storage.minio.secret-key'. / "
+                            + "MinIO 凭证未配置。请设置 'storage.minio.access-key' 和 'storage.minio.secret-key'。"
+            );
+        }
+
         String bucketName = storageProperties.getMinio().getBucketName();
         try {
             boolean bucketExists = minioClient.bucketExists(
@@ -72,13 +82,12 @@ public class MinioFileStorageService implements FileStorageService {
     public Optional<InputStream> download(String objectKey) {
         try {
             String bucketName = storageProperties.getMinio().getBucketName();
-            GetObjectResponse response = minioClient.getObject(
+            return Optional.of(minioClient.getObject(
                     GetObjectArgs.builder()
                             .bucket(bucketName)
                             .object(objectKey)
                             .build()
-            );
-            return Optional.of(response);
+            ));
         } catch (ErrorResponseException e) {
             if (e.response().code() == 404) {
                 return Optional.empty();
@@ -119,8 +128,10 @@ public class MinioFileStorageService implements FileStorageService {
             );
             return true;
         } catch (ErrorResponseException e) {
-            if (e.response().code() == 404) {
-                return false;
+            try (var response = e.response()) {
+                if (response.code() == 404) {
+                    return false;
+                }
             }
             throw new StorageException("storage.check.failed", e);
         } catch (Exception e) {

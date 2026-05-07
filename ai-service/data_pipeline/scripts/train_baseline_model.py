@@ -51,6 +51,9 @@ def compute_average_scores(rows: list[dict]) -> dict[str, float]:
 
 
 def build_model_artifact(rows: list[dict]) -> dict:
+    """Build a weighted-feature baseline model by comparing positive vs. negative class averages.
+    构建加权特征基线模型：通过正负样本在各特征上的均值差异推导权重，
+    并对特征做归一化处理，使模型输出与 LLM 评分可比，用于线上 ensemble 兜底。"""
     positive_rows = [row for row in rows if row.get("label_suitable") is True]
     negative_rows = [row for row in rows if row.get("label_suitable") is False]
 

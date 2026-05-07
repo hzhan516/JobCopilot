@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '@/hooks/useAuth';
 import { z } from 'zod';
 import { useForm, useWatch } from 'react-hook-form';
@@ -12,22 +14,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FileText, Loader2, Eye, EyeOff } from 'lucide-react';
 import type { AxiosError } from 'axios';
-
-const registerSchema = z
-  .object({
-    email: z.string().min(1, '请输入邮箱地址').email('请输入有效的邮箱地址'),
-    password: z.string().min(1, '请输入密码').min(6, '密码长度至少为6位').max(32, '密码长度最多为32位'),
-    confirmPassword: z.string().min(1, '请确认密码'),
-    agreeTerms: z.boolean().refine((val) => val === true, {
-      message: '请阅读并同意服务条款',
-    }),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: '两次输入的密码不一致',
-    path: ['confirmPassword'],
-  });
-
-type RegisterFormValues = z.infer<typeof registerSchema>;
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 type Strength = 'weak' | 'medium' | 'strong';
 
@@ -46,21 +33,43 @@ function getPasswordStrength(password: string): Strength {
   return 'strong';
 }
 
-const strengthConfig: Record<
-  Strength,
-  { label: string; color: string; barColor: string }
-> = {
-  weak: { label: '弱', color: 'text-red-600', barColor: 'bg-red-500' },
-  medium: { label: '中', color: 'text-yellow-600', barColor: 'bg-yellow-500' },
-  strong: { label: '强', color: 'text-green-600', barColor: 'bg-green-500' },
-};
+function useRegisterSchema() {
+  const { t } = useTranslation();
+  return useMemo(
+    () =>
+      z
+        .object({
+          email: z.string().min(1, t('auth.register.errors.emailRequired')).email(t('auth.register.errors.emailInvalid')),
+          password: z
+            .string()
+            .min(1, t('auth.register.errors.passwordRequired'))
+            .min(6, t('auth.register.errors.passwordMin'))
+            .max(32, t('auth.register.errors.passwordMax')),
+          confirmPassword: z.string().min(1, t('auth.register.errors.confirmPasswordRequired')),
+          agreeTerms: z.boolean().refine((val) => val === true, {
+            message: t('auth.register.errors.agreeTermsRequired'),
+          }),
+        })
+        .refine((data) => data.password === data.confirmPassword, {
+          message: t('auth.register.errors.passwordMismatch'),
+          path: ['confirmPassword'],
+        }),
+    [t]
+  );
+}
+
+type RegisterFormValues = z.infer<ReturnType<typeof useRegisterSchema>>;
 
 export default function Register() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register, loginByGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const registerSchema = useRegisterSchema();
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -75,6 +84,16 @@ export default function Register() {
   const { isSubmitting } = form.formState;
   const passwordValue = useWatch({ control: form.control, name: 'password' });
   const strength = useMemo(() => getPasswordStrength(passwordValue || ''), [passwordValue]);
+
+  const strengthConfig: Record<
+    Strength,
+    { labelKey: string; color: string; barColor: string }
+  > = {
+    weak: { labelKey: 'auth.register.passwordStrength.weak', color: 'text-red-600', barColor: 'bg-red-500' },
+    medium: { labelKey: 'auth.register.passwordStrength.medium', color: 'text-yellow-600', barColor: 'bg-yellow-500' },
+    strong: { labelKey: 'auth.register.passwordStrength.strong', color: 'text-green-600', barColor: 'bg-green-500' },
+  };
+
   const strengthInfo = strengthConfig[strength];
 
   const onSubmit = async (values: RegisterFormValues) => {
@@ -88,32 +107,51 @@ export default function Register() {
       const message = axiosErr.response?.data?.message || axiosErr.message;
 
       if (status === 409) {
-        setError('邮箱已被注册');
+        setError(t('auth.register.errorEmailExists'));
       } else if (status === 400) {
-        setError(message || '参数校验失败，请检查输入内容');
+        setError(message || t('auth.register.errorValidation'));
       } else {
-        setError(message || '注册失败，请稍后重试');
+        setError(message || t('auth.register.errorGeneric'));
       }
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse: { credential?: string }) => {
+    if (!credentialResponse.credential) {
+      setError(t('auth.login.googleLoginFailed'));
+      return;
+    }
+    setError('');
+    setGoogleLoading(true);
+    try {
+      await loginByGoogle(credentialResponse.credential, false);
+      navigate('/resumes', { replace: true });
+    } catch {
+      setError(t('auth.login.googleLoginFailed'));
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4 relative">
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher />
+      </div>
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="flex justify-center mb-8">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
               <FileText className="w-7 h-7 text-white" />
             </div>
-            <span className="text-2xl font-bold text-gray-900">智能求职助手</span>
+            <span className="text-2xl font-bold text-gray-900">{t('common.appName')}</span>
           </div>
         </div>
 
         <Card className="shadow-xl border-0">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">创建账户</CardTitle>
-            <CardDescription className="text-center">开始您的智能求职之旅</CardDescription>
+            <CardTitle className="text-2xl font-bold text-center">{t('auth.register.title')}</CardTitle>
+            <CardDescription className="text-center">{t('auth.register.subtitle')}</CardDescription>
           </CardHeader>
 
           <CardContent>
@@ -130,11 +168,11 @@ export default function Register() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>邮箱地址</FormLabel>
+                      <FormLabel>{t('auth.register.emailLabel')}</FormLabel>
                       <FormControl>
                         <Input
                           type="email"
-                          placeholder="your@email.com"
+                          placeholder={t('auth.register.emailPlaceholder')}
                           disabled={isSubmitting}
                           className="h-11"
                           {...field}
@@ -150,12 +188,12 @@ export default function Register() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>密码</FormLabel>
+                      <FormLabel>{t('auth.register.passwordLabel')}</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
                             type={showPassword ? 'text' : 'password'}
-                            placeholder="6-32位字符"
+                            placeholder={t('auth.register.passwordPlaceholder')}
                             disabled={isSubmitting}
                             className="h-11 pr-10"
                             {...field}
@@ -183,12 +221,10 @@ export default function Register() {
                               />
                             </div>
                             <span className={`text-xs font-medium ${strengthInfo.color}`}>
-                              {strengthInfo.label}
+                              {t(strengthInfo.labelKey)}
                             </span>
                           </div>
-                          <p className="text-xs text-gray-500">
-                            建议包含大小写字母、数字和特殊符号，长度 8 位以上
-                          </p>
+                          <p className="text-xs text-gray-500">{t('auth.register.passwordStrength.hint')}</p>
                         </div>
                       )}
                       <FormMessage />
@@ -201,12 +237,12 @@ export default function Register() {
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>确认密码</FormLabel>
+                      <FormLabel>{t('auth.register.confirmPasswordLabel')}</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
                             type={showConfirmPassword ? 'text' : 'password'}
-                            placeholder="再次输入密码"
+                            placeholder={t('auth.register.confirmPasswordPlaceholder')}
                             disabled={isSubmitting}
                             className="h-11 pr-10"
                             {...field}
@@ -236,13 +272,13 @@ export default function Register() {
                       </FormControl>
                       <div className="space-y-1 leading-none">
                         <FormLabel className="font-normal cursor-pointer">
-                          我已阅读并同意
+                          {t('auth.register.agreeTerms')}
                           <Link to="#" className="text-blue-600 hover:underline ml-1">
-                            服务条款
+                            {t('auth.register.termsOfService')}
                           </Link>
-                          和
+                          {t('auth.register.and')}
                           <Link to="#" className="text-blue-600 hover:underline ml-1">
-                            隐私政策
+                            {t('auth.register.privacyPolicy')}
                           </Link>
                         </FormLabel>
                         <FormMessage />
@@ -255,29 +291,49 @@ export default function Register() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      注册中...
+                      {t('auth.register.registering')}
                     </>
                   ) : (
-                    '注册'
+                    t('auth.register.registerButton')
                   )}
                 </Button>
               </form>
             </Form>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-muted-foreground">{t('auth.login.or')}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-center">
+              {googleLoading ? (
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              ) : (
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => setError(t('auth.login.googleLoginFailed'))}
+                  useOneTap
+                />
+              )}
+            </div>
           </CardContent>
 
           <CardFooter className="flex justify-center">
             <p className="text-sm text-gray-600">
-              已有账户？{' '}
+              {t('auth.register.hasAccount')}{' '}
               <Link to="/login" className="text-blue-600 hover:underline font-medium">
-                立即登录
+                {t('auth.register.loginNow')}
               </Link>
             </p>
           </CardFooter>
         </Card>
 
-        {/* 页脚 */}
         <p className="text-center text-sm text-gray-500 mt-8">
-          © 2024 智能求职助手. All rights reserved.
+          © 2024 {t('common.appName')}. All rights reserved.
         </p>
       </div>
     </div>

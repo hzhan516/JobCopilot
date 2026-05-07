@@ -1,13 +1,15 @@
 import json
+import logging
 import re
 from pathlib import Path
 
-
 from app.schemas import SuitabilityBreakdown, SuitabilityRequest, SuitabilityResponse
-from app.services.gemini_client import generate_json_from_text_prompt
+from app.services.llm_client import generate_json_from_text_prompt
 
 
 BASELINE_MODEL_FILE = Path(__file__).resolve().parents[2] / "data_pipeline" / "output" / "baseline_model.json"
+logger = logging.getLogger(__name__)
+
 
 def _normalize_items(items: list[str]) -> set[str]:
     normalized: set[str] = set()
@@ -21,6 +23,9 @@ def _normalize_items(items: list[str]) -> set[str]:
 
 
 def _calculate_experience_score(experience_items: list[dict]) -> float:
+    """Map experience item count to a coarse score using piecewise thresholds.
+    经验粗打分：按条目数量分段映射，0 条给 0.2 避免完全归零，4 条及以上封顶 1.0，
+    作为基线模型中快速评估候选人资历的启发式规则。"""
     experience_count = len(experience_items)
 
     if experience_count == 0:
@@ -66,6 +71,10 @@ def _build_experience_text(experience_items: list[dict]) -> str:
 
 
 def _calculate_dataset_score(request: SuitabilityRequest) -> float | None:
+    """Compute a data-driven suitability score if an offline baseline model artifact exists.
+    数据集模型评分：加载离线训练产出的加权特征基线模型，
+    对技能重叠率、标题关键词重叠、经验描述重叠三个维度做归一化加权求和，
+    在 LLM 不可用时提供可解释的降级评分。"""
     artifact = _load_dataset_model_artifact()
     if not artifact:
         return None
@@ -113,6 +122,9 @@ def _calculate_dataset_score(request: SuitabilityRequest) -> float | None:
 
 
 def evaluate_suitability_baseline(request: SuitabilityRequest) -> SuitabilityResponse:
+    """Compute a heuristic suitability score without any LLM call.
+    基线规则评分：无需 LLM，仅通过技能集合交集与经验条目数快速估算匹配度，
+    作为 LLM 失败或超时的兜底策略，保证服务可用性。"""
     resume_skills = _normalize_items(request.resume.skills)
     job_requirements = _normalize_items(request.job.requirements)
 
@@ -151,6 +163,7 @@ def evaluate_suitability_baseline(request: SuitabilityRequest) -> SuitabilityRes
         datasetScore=None,
         finalScore=overall_score,
     )
+
 
 def _clamp_score(value: float) -> float:
     return max(0.0, min(1.0, value))
@@ -192,13 +205,14 @@ Job:
 
 
 def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> SuitabilityResponse:
+    """Evaluate suitability using Vertex AI LLM and ensemble with baseline/dataset scores.
+    人岗匹配度评估主入口：优先使用 LLM 做深度语义评估；若 LLM 异常则降级到基线规则；
+    最终得分融合 LLM 评分（70%）与离线数据集模型评分（30%），兼顾准确性与可解释性。"""
     baseline_response = evaluate_suitability_baseline(request)
     prompt = _build_vertex_suitability_prompt(request)
 
     try:
         result = generate_json_from_text_prompt(prompt)
-        print(f"Vertex suitability raw result: {result}")
-        print(f"Baseline suitability result: {baseline_response.model_dump(by_alias=True)}")
 
         vertex_suitable = bool(result.get("suitable", False))
         summary = str(result.get("summary", "")).strip() or "Vertex AI did not return a summary."
@@ -206,6 +220,19 @@ def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> Suitability
         skill_score = _clamp_score(float(result.get("skillScore", 0.0)))
         experience_score = _clamp_score(float(result.get("experienceScore", 0.0)))
         overall_score = _clamp_score(float(result.get("overallScore", 0.0)))
+        logger.info(
+            "Vertex suitability result received: suitable=%s, skill_score=%.2f, experience_score=%.2f, overall_score=%.2f",
+            vertex_suitable,
+            skill_score,
+            experience_score,
+            overall_score,
+        )
+        logger.info(
+            "Baseline suitability result: suitable=%s, final_score=%.2f",
+            baseline_response.suitable,
+            baseline_response.final_score,
+        )
+
         dataset_score = _calculate_dataset_score(request)
         final_score = round(
             overall_score if dataset_score is None else ((overall_score * 0.7) + (dataset_score * 0.3)),
@@ -214,7 +241,11 @@ def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> Suitability
         suitable = final_score >= 0.6
 
         if vertex_suitable != suitable:
-            print(f"Suitability decision adjusted by final score: vertex={vertex_suitable}, final={suitable}")
+            logger.info(
+                "Suitability decision adjusted by final score: vertex=%s, final=%s",
+                vertex_suitable,
+                suitable,
+            )
 
 
         return SuitabilityResponse(
@@ -230,8 +261,6 @@ def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> Suitability
             finalScore=final_score,
         )
 
-    except Exception as exc:
-        print(f"Vertex suitability evaluation failed: {exc}")
+    except Exception:
+        logger.exception("Vertex suitability evaluation failed; falling back to baseline")
         return evaluate_suitability_baseline(request)
-
-

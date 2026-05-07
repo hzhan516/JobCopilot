@@ -1,13 +1,17 @@
 import apiClient from './api';
+import tokenStorage from './tokenStorage';
 import type { ApiResponse, Conversation, Message, PaginatedResponse } from '@/types';
 
-// 对话服务
 export const chatService = {
-  // 创建对话
-  createConversation: async (title: string, resumeId?: string): Promise<Conversation> => {
+  createConversation: async (
+    title: string,
+    resumeVersionId: string,
+    jobId: string
+  ): Promise<Conversation> => {
     const response = await apiClient.post<ApiResponse<Conversation>>('/v1/conversations', {
       title,
-      resumeId,
+      resumeVersionId,
+      jobId,
     });
     if (response.data.code === 200) {
       return response.data.data;
@@ -15,7 +19,6 @@ export const chatService = {
     throw new Error(response.data.message);
   },
 
-  // 获取用户的所有对话
   getConversations: async (): Promise<Conversation[]> => {
     const response = await apiClient.get<ApiResponse<Conversation[]>>('/v1/conversations');
     if (response.data.code === 200) {
@@ -24,7 +27,6 @@ export const chatService = {
     throw new Error(response.data.message);
   },
 
-  // 获取对话详情
   getConversation: async (conversationId: string): Promise<Conversation> => {
     const response = await apiClient.get<ApiResponse<Conversation>>(
       `/v1/conversations/${conversationId}`
@@ -35,7 +37,6 @@ export const chatService = {
     throw new Error(response.data.message);
   },
 
-  // 删除对话
   deleteConversation: async (conversationId: string): Promise<void> => {
     const response = await apiClient.delete<ApiResponse<null>>(
       `/v1/conversations/${conversationId}`
@@ -45,27 +46,30 @@ export const chatService = {
     }
   },
 
-  // 获取对话消息
   getMessages: async (
     conversationId: string,
     page = 1,
     size = 50
   ): Promise<PaginatedResponse<Message>> => {
-    const response = await apiClient.get<ApiResponse<PaginatedResponse<Message>>>(
-      `/v1/conversations/${conversationId}/messages`,
-      {
-        params: { page, size },
-      }
+    const response = await apiClient.get<ApiResponse<Conversation>>(
+      `/v1/conversations/${conversationId}`,
+      { params: { page, size } }
     );
     if (response.data.code === 200) {
-      return response.data.data;
+      const list = response.data.data.messages ?? [];
+      return {
+        list,
+        page,
+        size,
+        total: list.length,
+        totalPages: 1,
+      };
     }
     throw new Error(response.data.message);
   },
 
-  // 发送消息
-  sendMessage: async (conversationId: string, content: string): Promise<Message> => {
-    const response = await apiClient.post<ApiResponse<Message>>(
+  sendMessage: async (conversationId: string, content: string): Promise<Conversation> => {
+    const response = await apiClient.post<ApiResponse<Conversation>>(
       `/v1/conversations/${conversationId}/messages`,
       { content }
     );
@@ -75,7 +79,13 @@ export const chatService = {
     throw new Error(response.data.message);
   },
 
-  // AI 回复（流式）
+  /**
+   * Streams AI response chunks via raw fetch to handle Server-Sent Events.
+   * Bypasses axios because streaming responses require manual reader control.
+   *
+   * 通过原生 fetch 流式读取 AI 回复片段，处理 Server-Sent Events。
+   * 绕过 axios，因为流式响应需要手动控制 reader。
+   */
   streamAIResponse: async (
     conversationId: string,
     onMessage: (chunk: string) => void,
@@ -88,7 +98,7 @@ export const chatService = {
         {
           method: 'GET',
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+            Authorization: `Bearer ${tokenStorage.getAccessToken()}`,
           },
         }
       );

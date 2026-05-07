@@ -15,7 +15,6 @@ import java.util.Locale;
 @Configuration
 public class I18nConfig implements WebMvcConfigurer {
 
-    // Default locate: English
     @Bean
     public LocaleResolver localeResolver() {
         AcceptHeaderLocaleResolver localeResolver = new AcceptHeaderLocaleResolver();
@@ -28,7 +27,6 @@ public class I18nConfig implements WebMvcConfigurer {
         return localeResolver;
     }
 
-    // Message source for i18n
     @Bean
     public MessageSource messageSource() {
         ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
@@ -38,7 +36,6 @@ public class I18nConfig implements WebMvcConfigurer {
         return messageSource;
     }
 
-    // Locale change interceptor
     @Bean
     public LocaleChangeInterceptor localeChangeInterceptor() {
         LocaleChangeInterceptor localeChangeInterceptor = new LocaleChangeInterceptor();

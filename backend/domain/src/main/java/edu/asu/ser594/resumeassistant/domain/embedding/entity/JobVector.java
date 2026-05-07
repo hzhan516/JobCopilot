@@ -1,15 +1,14 @@
 package edu.asu.ser594.resumeassistant.domain.embedding.entity;
 
 import edu.asu.ser594.resumeassistant.domain.embedding.valueobject.VectorStatus;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
- * 职位向量实体
- * Job vector domain entity
+ * Domain entity representing a job posting's embedding vector and its generation lifecycle.
+ * 表示职位嵌入向量及其生成生命周期的领域实体。
  */
 @Getter
 public class JobVector {
@@ -22,7 +21,18 @@ public class JobVector {
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
-    public JobVector(String id, String jobId, float[] embedding, VectorStatus status, String errorMessage, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    // Extended fields captured at generation time for traceability | 生成时捕获的扩展字段，用于可追溯性
+    private final String title;
+    private final String description;
+    private final List<String> requirements;
+    private final String rawContent;
+    private final String sourceFile;
+    private final String modelVersion;
+
+    public JobVector(String id, String jobId, float[] embedding, VectorStatus status, String errorMessage,
+                     LocalDateTime createdAt, LocalDateTime updatedAt,
+                     String title, String description, List<String> requirements,
+                     String rawContent, String sourceFile, String modelVersion) {
         this.id = id;
         this.jobId = jobId;
         this.embedding = embedding;
@@ -30,23 +40,29 @@ public class JobVector {
         this.errorMessage = errorMessage;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.title = title;
+        this.description = description;
+        this.requirements = requirements;
+        this.rawContent = rawContent;
+        this.sourceFile = sourceFile;
+        this.modelVersion = modelVersion;
     }
 
-    /**
-     * 静态工厂方法创建完成的职位向量
-     * Static factory method to create completed job vector
-     */
     public static JobVector createCompleted(String id, String jobId, float[] embedding) {
-        LocalDateTime now = LocalDateTime.now();
-        return new JobVector(id, jobId, embedding, VectorStatus.COMPLETED, null, now, now);
+        return createCompleted(id, jobId, embedding, null, null, null, null, null, null);
     }
 
-    /**
-     * 静态工厂方法创建失败的职位向量
-     * Static factory method to create failed job vector
-     */
+    public static JobVector createCompleted(String id, String jobId, float[] embedding,
+                                            String title, String description, List<String> requirements,
+                                            String rawContent, String sourceFile, String modelVersion) {
+        LocalDateTime now = LocalDateTime.now();
+        return new JobVector(id, jobId, embedding, VectorStatus.COMPLETED, null, now, now,
+                title, description, requirements, rawContent, sourceFile, modelVersion);
+    }
+
     public static JobVector createFailed(String id, String jobId, String errorMessage) {
         LocalDateTime now = LocalDateTime.now();
-        return new JobVector(id, jobId, null, VectorStatus.FAILED, errorMessage, now, now);
+        return new JobVector(id, jobId, null, VectorStatus.FAILED, errorMessage, now, now,
+                null, null, null, null, null, null);
     }
 }

@@ -1,11 +1,14 @@
 package edu.asu.ser594.resumeassistant.infrastructure.security;
 
 import edu.asu.ser594.resumeassistant.api.user.dto.TokenPair;
+import edu.asu.ser594.resumeassistant.api.user.dto.TokenValidationResult;
 import edu.asu.ser594.resumeassistant.api.user.service.TokenService;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +16,13 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
+/**
+ * JWT token generation and validation using JJWT with HMAC-SHA.
+ * Token pairs support sliding-session refresh: short-lived access tokens minimize
+ * exposure window, while refresh tokens allow seamless re-authentication.
+ * 基于 JJWT HMAC-SHA 的令牌生成与校验；采用双令牌滑动会话机制，短期访问令牌降低暴露风险，刷新令牌实现无感续登
+ */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtTokenServiceImpl implements TokenService {
@@ -46,8 +56,8 @@ public class JwtTokenServiceImpl implements TokenService {
     }
 
     private String generateToken(String userId, long expiration) {
-        Date now = new Date();
-        Date expiry = new Date(now.getTime() + expiration);
+        final Date now = new Date();
+        final Date expiry = new Date(now.getTime() + expiration);
 
         return Jwts.builder()
                 .subject(userId)
@@ -73,7 +83,22 @@ public class JwtTokenServiceImpl implements TokenService {
             Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token);
             return true;
         } catch (Exception e) {
+            log.warn("Invalid JWT token format: {}", e.getMessage());
             return false;
+        }
+    }
+
+    @Override
+    public TokenValidationResult validateTokenDetailed(String token) {
+        try {
+            Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token);
+            return TokenValidationResult.VALID;
+        } catch (ExpiredJwtException e) {
+            log.warn("JWT token expired: {}", e.getMessage());
+            return TokenValidationResult.EXPIRED;
+        } catch (Exception e) {
+            log.warn("Invalid JWT token signature or claims: {}", e.getMessage());
+            return TokenValidationResult.INVALID;
         }
     }
 }

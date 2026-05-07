@@ -32,16 +32,17 @@
 /backend/trigger/.factorypath
 /backend/trigger/.project
 /backend/trigger/.settings/
-/backend/domain/.classpath
-/backend/domain/.factorypath
-/backend/domain/.project
 /backend/domain/.settings/
 /ProjectFiles/
+/ai-service/.coverage
+*.sisyphus
 
 # Python
 **/.venv/
 **/__pycache__/
 *.pyc
+*.env
+.gitattributes
 
 # macOS
 .DS_Store
@@ -86,6 +87,8 @@
 **/.venv/
 **/__pycache__/
 *.pyc
+*.env
+.env
 
 # macOS
 .DS_Store
@@ -130,6 +133,8 @@
 **/.venv/
 **/__pycache__/
 *.pyc
+*.env
+.env
 
 # macOS
 .DS_Store
@@ -170,10 +175,13 @@
 /backend/domain/.factorypath
 /backend/domain/.project
 /backend/domain/.settings/
+
 # Python
 **/.venv/
 **/__pycache__/
 *.pyc
+*.env
+.env
 
 # macOS
 .DS_Store
@@ -184,3 +192,10 @@
 /frontend/dist/
 /frontend/.vite/
 /frontend/.tmp/
+/frontend/coverage/
+/AGENTS.md
+/frontend/.env
+/backend/logs/*
+!/backend/logs/README.md
+/.env
+/vertex.json

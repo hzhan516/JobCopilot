@@ -60,4 +60,12 @@ public class ResumeVersionRepositoryImpl implements ResumeVersionRepository {
     public void deleteAllByGroupId(UUID groupId) {
         jpaRepo.deleteAllByGroupId(groupId);
     }
+
+    @Override
+    public List<ResumeVersion> findAllByGroupIdAndType(UUID groupId, ResumeVersion.VersionType type) {
+        return jpaRepo.findAllByGroupIdAndVersionTypeOrderByCreatedAtAsc(groupId, type.name())
+                .stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
 }

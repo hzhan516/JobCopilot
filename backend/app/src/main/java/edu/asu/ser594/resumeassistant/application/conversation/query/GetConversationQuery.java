@@ -7,10 +7,10 @@ import java.util.UUID;
  * Get conversation query
  */
 public record GetConversationQuery(
-    UUID conversationId,
-    UUID userId,
-    Integer page,
-    Integer size
+        UUID conversationId,
+        UUID userId,
+        Integer page,
+        Integer size
 ) {
     public GetConversationQuery(UUID conversationId, UUID userId) {
         this(conversationId, userId, null, null);

@@ -1,10 +1,12 @@
-[中文文档](./docs/README.zh.md) | [English Document](./README.md)
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](README.md) | [简体中文](docs/i18n/zh-Hans-CN/README.md) | [繁體中文](docs/i18n/zh-Hant-TW/README.md)
 
 # Resume Assistant
 
 The **Resume Assistant** is an AI-powered platform designed to streamline the job hunting process for new graduates and career changers. It automatically parses user-uploaded resumes, evaluates them against job market data using semantic vector matching, and provides an interactive AI copilot to iteratively optimize resume content. By combining secure document management, asynchronous AI processing, and personalized recommendations, the system saves users hours of manual tailoring while increasing their interview chances.
 
-**Deployment URL:** [TBD - Will be updated upon implementation completion]
+**Deployment:** The system is verified through Docker Compose. Copy `.env.example` to `.env`, configure the required values, then run `docker compose --env-file .env up -d --build`. The frontend is available at `http://localhost` by default, or `http://localhost:${FRONTEND_HOST_PORT}` if a custom port is configured.
+
 
 ## Team Roster
 
@@ -14,11 +16,13 @@ The **Resume Assistant** is an AI-powered platform designed to streamline the jo
 
 ## Features
 
-- **Resume Management**: Upload, parse, and manage your resumes in multiple formats
-- **AI-Powered Parsing**: Extract structured information from resumes and job posts using Vertex AI Gemini
+- **Authentication**: Email/password registration plus Google OAuth 2.0 login
+- **Resume Management**: Upload, parse, version, and export resumes in multiple formats
+- **AI-Powered Parsing**: Extract structured information from resumes and job posts using LiteLLM-compatible models
 - **Job Matching**: Intelligent job recommendations based on resume content and vector similarity
 - **Application Tracking**: Track job application status and manage your job search pipeline
 - **AI Conversation**: Interactive chat assistant for job search advice and resume optimization
+- **Internationalization**: English, Simplified Chinese, and Traditional Chinese UI support
 - **Vector Search**: Semantic search powered by PostgreSQL pgvector extension
 
 ## Architecture
@@ -27,55 +31,56 @@ This project adopts a microservices architecture with the following components:
 
 ```text
 ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-│   Frontend  │──────▶│   Backend   │◀─────▶│    AI       │
-│   (React)   │      │  (Spring    │      │  (FastAPI)  │
-│             │      │   Boot)     │      │             │
-└─────────────┘      └──────┬──────┘      └──────▲──────┘
-                            │                      │
-                            ▼                      │
-                     ┌─────────────┐               │
-                     │  PostgreSQL │               │
-                     │  + pgvector │───────────────┘
-                     └─────────────┘     (Message Queue)
-                            ▲
-                            │
-                     ┌─────────────┐
-                     │   RabbitMQ  │
-                     └─────────────┘
+│   Frontend  │──────▶│   Backend   │──────▶│  RabbitMQ   │
+│   (React)   │      │  (Spring    │      │             │
+│             │      │   Boot)     │      └──────┬──────┘
+└─────────────┘      └──────┬──────┘             │
+                            │                    ▼
+                            │             ┌─────────────┐
+                            │             │    AI       │
+                            │             │  (FastAPI)  │
+                            │             └──────┬──────┘
+                            ▼                    ▼
+                     ┌─────────────────────────────┐
+                     │ PostgreSQL 15 + pgvector    │
+                     │ business data + embeddings  │
+                     └─────────────────────────────┘
 ```
 
 | Service       | Technology                | Port         | Description                          |
 |---------------|---------------------------|--------------|--------------------------------------|
-| Frontend      | React 18 + Vite           | 80           | Web user interface served by Nginx   |
-| Backend       | Java 21 + Spring Boot 3.5 | 8080         | REST API and business logic          |
-| AI Service    | Python 3 + FastAPI        | 8000         | AI processing with Vertex AI Gemini  |
-| Database      | PostgreSQL 15 + pgvector  | 5432         | Business data and vector storage     |
-| Message Queue | RabbitMQ 3                | 5672 / 15672 | Async message processing             |
+| Frontend      | React 19 + Vite 7         | `${FRONTEND_HOST_PORT:-80}` -> 80 | Web user interface and Nginx reverse proxy |
+| Backend       | Java 21 + Spring Boot 3.5 | 8080 internal | REST API and business logic          |
+| AI Service    | Python 3 + FastAPI + LiteLLM | 8000 internal | AI processing through configured providers |
+| Database      | PostgreSQL 15 + pgvector  | 5432 internal | Business data and vector storage     |
+| Message Queue | RabbitMQ 3                | 5672 internal | Async message processing             |
 
 ## Project Structure
 
 ```text
 .
-├── frontend/              # React frontend application
-│   ├── src/              # Source code
-│   ├── package.json      # Node.js dependencies
-│   └── Dockerfile        # Frontend Docker image
-├── backend/              # Java Spring Boot backend
-│   ├── app/              # Application entry point
-│   ├── api/              # API layer (DTOs, Facades)
-│   ├── domain/           # Domain layer (business logic)
-│   ├── infrastructure/   # Infrastructure (DB, cache, messaging)
-│   ├── trigger/          # Controllers, schedulers, listeners
-│   └── types/            # Shared types and constants
-├── ai-service/           # Python AI service
-│   ├── app/              # FastAPI application
-│   ├── requirements.txt  # Python dependencies
-│   └── Dockerfile        # AI service Docker image
-├── docs/                 # Documentation
-├── eval/                 # Evaluation scripts
-├── tests/                # Test scripts
-├── docker-compose.yml    # Docker Compose configuration
-└── .env.example          # Environment variables template
+├── frontend/                  # React frontend application
+│   ├── src/                   # Source code
+│   ├── package.json           # Node.js dependencies and scripts
+│   └── Dockerfile             # Frontend Docker image
+├── backend/                   # Java Spring Boot backend
+│   ├── app/                   # Application entry point, config, DB init, app tests
+│   ├── api/                   # API DTOs and facade interfaces
+│   ├── domain/                # Domain entities, value objects, domain tests
+│   ├── infrastructure/        # Persistence, storage, messaging, security, converters
+│   ├── trigger/               # HTTP controllers, MQ listeners, controller tests
+│   └── types/                 # Shared types and constants
+├── ai-service/                # Python FastAPI AI service
+│   ├── app/                   # AI service source code
+│   ├── tests/                 # Pytest test suite
+│   ├── requirements.txt       # Python dependencies
+│   └── Dockerfile             # AI service Docker image
+├── docs/                      # Architecture, API, deployment, and i18n documentation
+├── eval/                      # AI evaluation scripts, benchmark cases, and results
+├── docker-compose.yml         # Docker Compose configuration
+├── docker-compose.yml.example # Docker Compose template/reference
+├── empty-vertex.json          # Placeholder credentials file for non-Vertex local runs
+└── .env.example               # Environment variables template
 ```
 
 ## Backend Architecture
@@ -97,8 +102,8 @@ The backend adopts **Hexagonal Architecture / Domain-Driven Design (DDD)** with 
 
 - Docker 20.10+ and Docker Compose 2.0+
 - Or Podman with podman-compose
-- Google Cloud project with Vertex AI enabled
-- Google Cloud CLI authenticated via Application Default Credentials (ADC)
+- One LiteLLM-compatible AI provider key for local AI features, such as Gemini, OpenAI, Anthropic, or Groq
+- Google Cloud / Vertex AI is optional and is not required for local development
 
 ### 1. Clone the Repository
 
@@ -114,65 +119,79 @@ cp .env.example .env
 # Edit .env and fill in the required values
 ```
 
-Required environment variables:
+Key environment variables:
 
-| Variable                 | Required | Description                                        |
-|--------------------------|----------|----------------------------------------------------|
-| `GOOGLE_CLOUD_PROJECT`   | Yes      | Google Cloud project used by Vertex AI             |
-| `VERTEX_AI_LOCATION`     | Yes      | Vertex AI region, e.g. `us-central1`               |
+| Variable                 | Required | Description |
+|--------------------------|----------|-------------|
 | `JWT_SECRET`             | Yes      | Secret key for JWT token generation (min 32 chars) |
-| `SPRING_PROFILES_ACTIVE` | No       | Spring profile: `dev` (default) or `prod`          |
-| `LOG_LEVEL`              | No       | AI service log level: `INFO` (default) or `DEBUG`  |
+| `VITE_GOOGLE_CLIENT_ID`  | Yes      | Google OAuth 2.0 Client ID used by the frontend login flow |
+| `INTERNAL_API_KEY`       | Recommended | Shared key for backend-to-AI service calls |
+| `GEMINI_API_KEY`         | Conditional | Gemini API key used when `LLM_*_MODEL` uses the `gemini/` prefix |
+| `OPENAI_API_KEY`         | Conditional | OpenAI API key used when `LLM_*_MODEL` uses the `openai/` prefix |
+| `ANTHROPIC_API_KEY`      | Conditional | Anthropic API key used when `LLM_*_MODEL` uses the `anthropic/` prefix |
+| `GROQ_API_KEY`           | Conditional | Groq API key used when `LLM_*_MODEL` uses the `groq/` prefix |
+| `LLM_TEXT_MODEL`         | No       | LiteLLM text model name; defaults to a Gemini model in Compose |
+| `LLM_VISION_MODEL`       | No       | LiteLLM vision model name |
+| `LLM_EMBEDDING_MODEL`           | No       | LiteLLM embedding model name |
+| `LLM_EMBEDDING_MODEL_DIMENSION` | No       | Embedding output dimension (must match the model) |
+| `SPRING_PROFILES_ACTIVE`        | No       | Spring profile: `dev` (default) or `prod` |
+| `LOG_LEVEL`              | No       | AI service log level: `INFO` (default) or `DEBUG` |
 
-Before starting the AI service locally, authenticate ADC:
+For local development, copy `.env.example` to `.env` and provide one API key that matches the LiteLLM model prefix you choose. For example, the default Gemini models use `GEMINI_API_KEY`.
 
-```bash
-gcloud auth application-default login
-gcloud config set project "$GOOGLE_CLOUD_PROJECT"
-```
+Google Cloud ADC is only needed if you intentionally configure the project to use Vertex AI-based models.
+Note: The provided `docker-compose.yml` runs backend resume storage in local-file mode by default. MinIO, S3, and OSS settings in `.env.example` are for customized deployments.
+Note: If you change the LLM provider, models, dimensions, or frontend build-time variables in `.env` while the system is running, run `docker compose --env-file .env up -d --build` to rebuild/recreate the affected containers. A simple restart will not apply all changes.
+
 
 ### 3. Start Core Services
 
 Using Docker Compose:
-
 ```bash
-docker-compose up -d
+docker compose --env-file .env up -d --build
+```
+
+If your environment still uses the legacy Compose CLI, use:
+```bash
+docker-compose --env-file .env up -d --build
 ```
 
 Using Podman:
-
 ```bash
 podman-compose up -d
 # or
 podman compose up -d
 ```
 
-For local development, we usually start PostgreSQL, RabbitMQ, backend, and frontend with Docker Compose, then run the
-AI service locally so it can reuse local ADC credentials. The `ai-service` container needs ADC credentials mounted
-separately if you want to run it fully inside Docker.
+For local development, `.env` is loaded by Docker Compose and by the local AI service process. The AI service uses LiteLLM, so provide an API key that matches the configured model provider, such as `GEMINI_API_KEY` for the default Gemini models.
+
+If you run the AI service locally instead of in Docker, source the root `.env` before starting Uvicorn so RabbitMQ and LLM settings match the Compose environment.
+
 
 ### 4. Verify Services
 
 | Service             | URL                                   | Description                    |
 |---------------------|---------------------------------------|--------------------------------|
-| Frontend            | http://localhost                      | Web application                |
-| Backend API         | http://localhost:8080/api             | REST API endpoints             |
-| Backend Health      | http://localhost:8080/actuator/health | Health check                   |
-| AI Service          | http://localhost:8000                 | FastAPI documentation / health |
-| RabbitMQ Management | http://localhost:15672                | Message queue UI (guest/guest) |
+| Frontend UI         | http://localhost                      | Main entry point (React App)   |
+| Backend API         | http://localhost/api                  | REST endpoints through Nginx   |
+| System Health       | http://localhost/health               | Global health check            |
+
+*Note: In the three-tier network architecture, only the configured Frontend port is exposed to the host. Backend, AI, RabbitMQ, and DB services are safely isolated by Docker networks.*
+
+*Note: If `FRONTEND_HOST_PORT` is changed in `.env`, replace `http://localhost` with `http://localhost:${FRONTEND_HOST_PORT}`.*
 
 ### 5. Stop Services
 
 ```bash
-docker-compose down
+docker compose --env-file .env down
 
 # To remove volumes (WARNING: data will be lost)
-docker-compose down -v
+docker compose --env-file .env down -v
 ```
 
 ## Testing
 
-The project maintains a rigorous test suite (`> 80%` coverage) across all modules to ensure system reliability.
+The project includes backend JUnit tests, frontend Vitest tests, and AI-service pytest tests covering API, domain, persistence, authentication, UI utilities, AI service, and message queue logic.
 
 ### Backend Tests (Java)
 
@@ -181,6 +200,21 @@ Run unit and integration tests for the Spring Boot backend:
 ```bash
 cd backend
 mvn test
+```
+
+Some backend integration tests use Testcontainers and require a working Docker environment.
+
+### Frontend Tests (TypeScript)
+
+Run linting, unit tests, coverage, and production build checks:
+
+```bash
+cd frontend
+npm install
+npm run lint
+npm run test:run
+npm run test:coverage
+npm run build
 ```
 
 ### AI Service Tests (Python)
@@ -195,14 +229,19 @@ pytest
 
 ## AI Evaluation Suite
 
-To evaluate the AI components (Extraction F1 Score and Recommendation NDCG@5) against baselines:
+To evaluate the AI components against fixed benchmark cases:
 
 ```bash
 cd eval
 # Install evaluation dependencies
 pip install -r requirements.txt
-# Run the evaluation pipeline
+# Load the root .env first so LiteLLM provider settings are available
+# Run the current evaluation pipeline:
+# resume parsing, job parsing, and single-job suitability scoring
 python run_eval.py
+
+# Optional: also run the legacy job-ranking NDCG@5 evaluation
+python run_eval.py --include-legacy-ranking
 ```
 
 *Evaluation results will be exported to `eval/results/`.*
@@ -245,29 +284,32 @@ Requirements:
 
 - Python 3.11+
 - pip or poetry
-- Google Cloud CLI with ADC configured
+- A LiteLLM-compatible provider key configured in the root `.env` file
 
 ```bash
 cd ai-service
 
 # Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Authenticate Vertex AI locally
-gcloud auth application-default login
-gcloud config set project "$GOOGLE_CLOUD_PROJECT"
+# Load root environment variables
+set -a
+source ../.env
+set +a
 
 # Run development server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+Google Cloud ADC is not required for local development unless you intentionally configure LiteLLM to use a Vertex AI-based model.
+
 
 ## Deployment
 
-See [DOCKER_DEPLOY.md](./DOCKER_DEPLOY.md) for detailed deployment instructions including:
+See [docs/deployment/DOCKER_DEPLOY.md](docs/deployment/DOCKER_DEPLOY.md) for detailed deployment instructions including:
 
 - Production deployment checklist
 - Environment configuration
@@ -279,10 +321,12 @@ See [DOCKER_DEPLOY.md](./DOCKER_DEPLOY.md) for detailed deployment instructions 
 
 ### Frontend
 
-- React 18.2
-- Vite 5.0
-- React Router 6
+- React 19
+- Vite 7
+- TypeScript 5.9
+- React Router 7
 - Axios
+- Zustand
 
 ### Backend
 
@@ -295,10 +339,10 @@ See [DOCKER_DEPLOY.md](./DOCKER_DEPLOY.md) for detailed deployment instructions 
 ### AI Service
 
 - Python 3.11
-- FastAPI
-- Google Vertex AI Gemini
-- Google Vertex AI embeddings
-- Uvicorn
+- FastAPI 0.115
+- LiteLLM 1.61.11-compatible text, vision, and embedding models
+- Gemini via Google AI Studio by default; Vertex AI is optional
+- Uvicorn 0.32
 
 ### DevOps
 

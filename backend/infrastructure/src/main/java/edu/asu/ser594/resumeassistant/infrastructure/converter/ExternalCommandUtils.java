@@ -1,14 +1,13 @@
 package edu.asu.ser594.resumeassistant.infrastructure.converter;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.PumpStreamHandler;
+import org.apache.commons.io.FileUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.UUID;
@@ -16,9 +15,6 @@ import java.util.UUID;
 @Slf4j
 public class ExternalCommandUtils {
 
-    /**
-     * Run Pandoc conversion using temp files
-     */
     public static InputStream runPandoc(InputStream source, String sourceExt, String targetExt, String extraArgs) throws IOException {
         File inputFile = File.createTempFile("resume-in-" + UUID.randomUUID(), "." + sourceExt);
         File outputFile = File.createTempFile("resume-out-" + UUID.randomUUID(), "." + targetExt);
@@ -28,15 +24,15 @@ public class ExternalCommandUtils {
 
             String commandStr = String.format("pandoc %s -o %s %s", inputFile.getAbsolutePath(), outputFile.getAbsolutePath(), extraArgs != null ? extraArgs : "");
             log.info("Executing pandoc: {}", commandStr);
-            
+
             CommandLine cmdLine = CommandLine.parse(commandStr);
-            DefaultExecutor executor = new DefaultExecutor();
-            
+            DefaultExecutor executor = DefaultExecutor.builder().get();
+
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
             PumpStreamHandler streamHandler = new PumpStreamHandler(outputStream, errorStream);
             executor.setStreamHandler(streamHandler);
-            
+
             try {
                 executor.execute(cmdLine);
             } catch (Exception e) {
@@ -57,12 +53,9 @@ public class ExternalCommandUtils {
         }
     }
 
-    /**
-     * Run LibreOffice conversion using temp files
-     */
     public static InputStream runLibreOffice(InputStream source, String sourceExt, String targetFormat) throws IOException {
         File inputFile = File.createTempFile("resume-in-" + UUID.randomUUID(), "." + sourceExt);
-        // soffice creates an output file automatically based on the input name
+        // soffice derives the output filename from the input filename automatically | soffice 根据输入文件名自动推导输出文件名
         File outDir = new File(System.getProperty("java.io.tmpdir"));
         String expectedOutName = inputFile.getName().replaceAll("\\." + sourceExt + "$", "") + "." + targetFormat;
         File outputFile = new File(outDir, expectedOutName);
@@ -70,19 +63,18 @@ public class ExternalCommandUtils {
         try {
             FileUtils.copyInputStreamToFile(source, inputFile);
 
-            // Using unoconv or soffice headless
-            String commandStr = String.format("soffice --headless --convert-to %s --outdir %s %s", 
+            String commandStr = String.format("soffice --headless --convert-to %s --outdir %s %s",
                     targetFormat, outDir.getAbsolutePath(), inputFile.getAbsolutePath());
             log.info("Executing LibreOffice: {}", commandStr);
-            
+
             CommandLine cmdLine = CommandLine.parse(commandStr);
-            DefaultExecutor executor = new DefaultExecutor();
-            
+            DefaultExecutor executor = DefaultExecutor.builder().get();
+
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
             PumpStreamHandler streamHandler = new PumpStreamHandler(outputStream, errorStream);
             executor.setStreamHandler(streamHandler);
-            
+
             try {
                 executor.execute(cmdLine);
             } catch (Exception e) {

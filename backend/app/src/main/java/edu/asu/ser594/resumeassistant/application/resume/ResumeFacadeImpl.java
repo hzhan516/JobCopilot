@@ -7,6 +7,7 @@ import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeGroupRespons
 import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeUploadResponse;
 import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeVersionResponse;
 import edu.asu.ser594.resumeassistant.api.resume.facade.ResumeFacade;
+import edu.asu.ser594.resumeassistant.application.resume.command.CreateVersionCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeEditCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeUploadCommand;
 import edu.asu.ser594.resumeassistant.application.resume.dto.ResumeDownloadResult;
@@ -28,20 +29,20 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * 简历门面实现
- * Resume Facade Implementation
+ * Anti-corruption layer implementation that bridges REST API contracts with application commands,
+ * handling file validation, DTO mapping, and HTTP response assembly for the resume domain.
+ * 防腐层实现，衔接 REST API 契约与应用命令，处理简历领域的文件校验、DTO 映射及 HTTP 响应组装
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ResumeFacadeImpl implements ResumeFacade {
-
-    private final ResumeApplicationService applicationService;
 
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
     private static final String[] ALLOWED_TYPES = {
@@ -50,6 +51,7 @@ public class ResumeFacadeImpl implements ResumeFacade {
             "text/markdown",
             "text/plain"
     };
+    private final ResumeApplicationService applicationService;
 
     @Override
     public ResumeUploadResponse uploadResume(ResumeUploadRequest request, UUID userId) {
@@ -66,7 +68,6 @@ public class ResumeFacadeImpl implements ResumeFacade {
 
             ResumeGroup group = applicationService.handleUpload(command, userId);
 
-            // 获取原始版本ID
             ResumeVersion originalVersion = group.getActiveVersionByType(ResumeVersion.VersionType.ORIGINAL);
             UUID originalVersionId = originalVersion != null ? originalVersion.getId() : null;
 
@@ -74,7 +75,7 @@ public class ResumeFacadeImpl implements ResumeFacade {
                     .groupId(group.getId())
                     .originalVersionId(originalVersionId)
                     .title(group.getTitle())
-                    .createdAt(group.getCreatedAt())
+                    .createdAt(group.getCreatedAt().atOffset(ZoneOffset.UTC))
                     .build();
 
         } catch (IOException e) {
@@ -171,12 +172,33 @@ public class ResumeFacadeImpl implements ResumeFacade {
     }
 
     @Override
+    public ApiResponse<ResumeVersionResponse> createVersion(UUID groupId,
+                                                            edu.asu.ser594.resumeassistant.api.resume.dto.request.CreateVersionRequest request,
+                                                            UUID userId) {
+        CreateVersionCommand command = CreateVersionCommand.builder()
+                .groupId(groupId)
+                .sourceVersionId(request.sourceVersionId())
+                .userId(userId)
+                .build();
+
+        ResumeVersion newVersion = applicationService.handleCreateVersion(command);
+        return ApiResponse.success(toVersionResponse(newVersion));
+    }
+
+    @Override
+    public ApiResponse<ResumeVersionResponse> activateVersion(UUID versionId, UUID userId) {
+        ResumeVersion activated = applicationService.handleActivateVersion(versionId, userId);
+        return ApiResponse.success(toVersionResponse(activated));
+    }
+
+    @Override
     public void handleParseResult(AiResultEvent event) {
         log.info("Handling parse result for ResumeVersion: {}", event.referenceId());
         applicationService.handleParseResult(event);
     }
 
     // ==================== 映射方法 ====================
+    // ==================== Mapping method ====================
 
     private ResumeGroupResponse toGroupResponse(ResumeGroup group) {
         ResumeVersion original = group.getActiveVersionByType(ResumeVersion.VersionType.ORIGINAL);
@@ -187,8 +209,8 @@ public class ResumeFacadeImpl implements ResumeFacade {
                 .groupId(group.getId())
                 .title(group.getTitle())
                 .isDefault(group.isDefault())
-                .createdAt(group.getCreatedAt())
-                .updatedAt(group.getUpdatedAt())
+                .createdAt(group.getCreatedAt().atOffset(ZoneOffset.UTC))
+                .updatedAt(group.getUpdatedAt().atOffset(ZoneOffset.UTC))
                 .originalVersion(toVersionSummary(original))
                 .convertedVersion(toVersionSummary(converted))
                 .aiOptimizedVersion(toVersionSummary(ai))
@@ -200,7 +222,8 @@ public class ResumeFacadeImpl implements ResumeFacade {
         return ResumeGroupResponse.VersionSummary.builder()
                 .versionId(v.getId())
                 .status(v.getStatus().name())
-                .createdAt(v.getCreatedAt())
+                .parseStatus(v.getParseStatus().name())
+                .createdAt(v.getCreatedAt().atOffset(ZoneOffset.UTC))
                 .exists(true)
                 .build();
     }
@@ -215,9 +238,10 @@ public class ResumeFacadeImpl implements ResumeFacade {
                 .fileType(v.getFileType())
                 .fileSize(v.getFileSize())
                 .content(v.getContent())
+                .parseStatus(v.getParseStatus().name())
                 .editable(v.isEditable())
-                .createdAt(v.getCreatedAt())
-                .updatedAt(v.getUpdatedAt())
+                .createdAt(v.getCreatedAt().atOffset(ZoneOffset.UTC))
+                .updatedAt(v.getUpdatedAt().atOffset(ZoneOffset.UTC))
                 .build();
     }
 

@@ -5,7 +5,6 @@ import edu.asu.ser594.resumeassistant.application.tracking.command.CreateTrackin
 import edu.asu.ser594.resumeassistant.application.tracking.command.DeleteTrackingCommand;
 import edu.asu.ser594.resumeassistant.application.tracking.command.UpdateTrackingCommand;
 import edu.asu.ser594.resumeassistant.domain.tracking.entity.ApplicationTracking;
-import edu.asu.ser594.resumeassistant.domain.tracking.exception.TrackingException;
 import edu.asu.ser594.resumeassistant.domain.tracking.repository.ApplicationTrackingRepository;
 import edu.asu.ser594.resumeassistant.domain.tracking.valueobject.ApplicationStatus;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,12 +30,17 @@ public class TrackingApplicationService {
     @Transactional
     public ApplicationTracking createTracking(final CreateTrackingCommand command) {
         log.info("Creating tracking for user: {}, company: {}", command.userId(), command.companyName());
+        final ApplicationStatus initialStatus = command.status() != null
+                ? ApplicationStatus.valueOf(command.status())
+                : null;
+        final LocalDate appliedAt = normalizeAppliedAt(initialStatus, command.appliedAt());
         final ApplicationTracking tracking = ApplicationTracking.create(
                 command.userId(),
                 command.jobId(),
                 command.companyName(),
                 command.jobTitle(),
-                command.appliedAt(),
+                initialStatus,
+                appliedAt,
                 command.notes()
         );
         return trackingRepository.save(tracking);
@@ -52,11 +57,20 @@ public class TrackingApplicationService {
 
         if (updateCmd != null) {
             tracking.updateInfo(updateCmd.companyName(), updateCmd.jobTitle(), updateCmd.notes());
+            if (updateCmd.appliedAt() != null) {
+                validateAppliedAt(updateCmd.appliedAt());
+                tracking.setAppliedAt(updateCmd.appliedAt());
+            }
         }
 
         if (statusCmd != null && statusCmd.status() != null) {
             final ApplicationStatus newStatus = ApplicationStatus.valueOf(statusCmd.status());
-            tracking.changeStatus(newStatus, statusCmd.note());
+            if (newStatus != tracking.getStatus()) {
+                tracking.changeStatus(newStatus, statusCmd.note());
+            }
+            if (newStatus == ApplicationStatus.APPLIED && tracking.getAppliedAt() == null) {
+                tracking.setAppliedAt(LocalDate.now());
+            }
         }
 
         return trackingRepository.save(tracking);
@@ -83,5 +97,19 @@ public class TrackingApplicationService {
         final ApplicationTracking tracking = trackingRepository.findByIdAndUserId(command.trackingId(), command.userId())
                 .orElseThrow(() -> new IllegalArgumentException("Tracking not found: " + command.trackingId()));
         trackingRepository.deleteById(tracking.getId());
+    }
+
+    private LocalDate normalizeAppliedAt(final ApplicationStatus status, final LocalDate appliedAt) {
+        if (appliedAt != null) {
+            validateAppliedAt(appliedAt);
+            return appliedAt;
+        }
+        return status == ApplicationStatus.APPLIED ? LocalDate.now() : null;
+    }
+
+    private void validateAppliedAt(final LocalDate appliedAt) {
+        if (appliedAt.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("Applied date cannot be in the future");
+        }
     }
 }

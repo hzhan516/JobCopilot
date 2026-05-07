@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { UploadCloud, FileText, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { Progress } from '../ui/progress';
@@ -17,6 +18,7 @@ const ACCEPTED_TYPES = [
 ];
 
 export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUpload }) => {
+  const { t } = useTranslation();
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { uploadProgress, loading } = useResumeStore();
@@ -35,21 +37,21 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUpload }) => {
     setError(null);
     
     if (!ACCEPTED_TYPES.includes(file.type) && !file.name.endsWith('.md')) {
-      setError('Invalid file type. Please upload PDF, DOCX, MD, or TXT.');
+      setError(t('resume.upload.invalidType'));
       return;
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      setError('File size exceeds 10MB limit.');
+      setError(t('resume.upload.sizeExceeded'));
       return;
     }
 
     try {
       await onUpload(file);
     } catch {
-      setError('Failed to upload file. Please try again.');
+      setError(t('resume.upload.uploadError'));
     }
-  }, [onUpload]);
+  }, [onUpload, t]);
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -96,13 +98,13 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUpload }) => {
             
             <div className="space-y-1">
               <h3 className="text-lg font-semibold">
-                Click or drag file to this area to upload
+                {t('resume.upload.dragText')}
               </h3>
               <p className="text-sm text-muted-foreground">
-                Support for a single upload. Maximum file size 10MB.
+                {t('resume.upload.singleUpload')}
               </p>
               <p className="text-xs text-muted-foreground">
-                Accepted formats: PDF, DOCX, MD, TXT
+                {t('resume.upload.formats')}
               </p>
             </div>
           </div>
@@ -120,7 +122,7 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUpload }) => {
             <div className="flex justify-between text-sm">
               <span className="flex items-center text-muted-foreground">
                 <FileText className="w-4 h-4 mr-2" />
-                Uploading...
+                {t('resume.upload.uploading')}
               </span>
               <span className="font-medium">{uploadProgress}%</span>
             </div>

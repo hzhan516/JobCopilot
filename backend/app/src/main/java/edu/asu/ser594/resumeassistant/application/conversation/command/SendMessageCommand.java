@@ -12,10 +12,10 @@ import java.util.UUID;
  */
 @Builder
 public record SendMessageCommand(
-    UUID conversationId,
-    UUID userId,
-    MessageRole role,
-    String content,
-    List<String> fileUrls
+        UUID conversationId,
+        UUID userId,
+        MessageRole role,
+        String content,
+        List<String> fileUrls
 ) {
 }

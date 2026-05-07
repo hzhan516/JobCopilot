@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.infrastructure.search;
 
+import edu.asu.ser594.resumeassistant.domain.matching.port.VectorSearchPort;
 import edu.asu.ser594.resumeassistant.domain.matching.valueobject.RecallResult;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -13,13 +14,13 @@ import java.util.List;
 /**
  * PGVector 向量搜索服务
  * PGVector search service
- *
+ * <p>
  * 使用 JPA + 原生 SQL 进行向量相似度搜索
  * Uses JPA + native SQL for vector similarity search
  */
 @Slf4j
 @Service
-public class PgVectorSearchService {
+public class PgVectorSearchService implements VectorSearchPort {
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -29,7 +30,7 @@ public class PgVectorSearchService {
      * Find similar jobs based on resume vector
      *
      * @param resumeVector 简历向量 / Resume vector
-     * @param topK 返回最大数量 / Maximum results to return
+     * @param topK         返回最大数量 / Maximum results to return
      * @param modelVersion 模型版本（当前保留用于扩展） / Model version (reserved for extension)
      * @return 召回结果列表 / List of recall results
      */
@@ -38,10 +39,10 @@ public class PgVectorSearchService {
 
         final String vectorLiteral = buildPgVectorLiteral(resumeVector);
         final String sql = """
-                SELECT job_id, embedding <=> :queryVector::vector AS distance
+                SELECT job_id, embedding <=> CAST(:queryVector AS vector) AS distance
                 FROM job_vectors
                 WHERE status = 'COMPLETED'
-                ORDER BY embedding <=> :queryVector::vector
+                ORDER BY embedding <=> CAST(:queryVector AS vector)
                 LIMIT :topK
                 """;
 
@@ -49,13 +50,12 @@ public class PgVectorSearchService {
         query.setParameter("queryVector", vectorLiteral);
         query.setParameter("topK", topK);
 
-        @SuppressWarnings("unchecked")
-        final List<Object[]> results = query.getResultList();
+        @SuppressWarnings("unchecked") final List<Object[]> results = query.getResultList();
 
         final List<RecallResult> recallResults = new ArrayList<>(results.size());
         for (Object[] row : results) {
             final String jobId = (String) row[0];
-            final Double distance = ((Number) row[1]).doubleValue();
+            final double distance = ((Number) row[1]).doubleValue();
             recallResults.add(new RecallResult(jobId, distance));
         }
 

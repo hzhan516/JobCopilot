@@ -10,8 +10,9 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * Markdown converter: MD ↔ HTML ↔ TXT
- * Markdown转换器
+ * Built-in converter for lightweight markup formats (MD, HTML, TXT).
+ * Provides a fallback path when external tools like Pandoc are unavailable.
+ * 内置轻量标记格式转换器（MD/HTML/TXT），作为 Pandoc 等外部工具不可用时的降级方案
  */
 @Slf4j
 @Component
@@ -25,8 +26,8 @@ public class MarkdownConverter extends AbstractDocumentConverter {
         parser = Parser.builder(options).build();
         renderer = HtmlRenderer.builder(options).build();
 
-        // Register supported conversions
-        // Note: MD to PDF is handled via chain conversion (MD -> TXT -> PDF) in ResumeApplicationService
+        // PDF conversion from MD is handled via chain conversion (MD -> TXT -> PDF) in ResumeApplicationService
+        // MD 转 PDF 通过链式转换在 ResumeApplicationService 中处理
         register("md", "html", "txt");
         register("markdown", "html", "txt");
         register("html", "md", "txt");
@@ -45,31 +46,19 @@ public class MarkdownConverter extends AbstractDocumentConverter {
             return toStream(content);
         }
 
-        // MD to HTML
         if ((sf.equals("md") || sf.equals("markdown")) && tf.equals("html")) {
             result = markdownToHtml(content);
-        }
-        // MD to TXT
-        else if ((sf.equals("md") || sf.equals("markdown")) && tf.equals("txt")) {
+        } else if ((sf.equals("md") || sf.equals("markdown")) && tf.equals("txt")) {
             result = markdownToText(content);
-        }
-        // HTML to MD
-        else if (sf.equals("html") && (tf.equals("md") || tf.equals("markdown"))) {
+        } else if (sf.equals("html") && (tf.equals("md") || tf.equals("markdown"))) {
             result = htmlToMarkdown(content);
-        }
-        // TXT to MD (wrap as code block or plain)
-        else if (sf.equals("txt") && (tf.equals("md") || tf.equals("markdown"))) {
+        } else if (sf.equals("txt") && (tf.equals("md") || tf.equals("markdown"))) {
             result = "```\n" + content + "\n```";
-        }
-        // HTML to TXT
-        else if (sf.equals("html") && tf.equals("txt")) {
+        } else if (sf.equals("html") && tf.equals("txt")) {
             result = htmlToText(content);
-        }
-        // TXT to HTML
-        else if (sf.equals("txt") && tf.equals("html")) {
+        } else if (sf.equals("txt") && tf.equals("html")) {
             result = "<pre>" + escapeHtml(content) + "</pre>";
-        }
-        else {
+        } else {
             throw new IOException("Unsupported conversion: " + sourceFormat + " -> " + targetFormat);
         }
 
@@ -86,20 +75,21 @@ public class MarkdownConverter extends AbstractDocumentConverter {
     }
 
     private String htmlToMarkdown(String html) {
-        // Simple HTML to MD conversion (can be enhanced)
+        // Best-effort regex-based conversion; sufficient for simple resume HTML fragments
+        // 基于正则的简化转换，适用于简历片段等简单 HTML
         return html.replaceAll("<br\\s*/?>", "\n")
-                .replaceAll("<p>", "\n\n")
-                .replaceAll("</p>", "")
+                .replace("<p>", "\n\n")
+                .replace("</p>", "")
                 .replaceAll("<strong>|</strong>", "**")
                 .replaceAll("<em>|</em>", "*")
-                .replaceAll("<[^>]+>", "") // Remove remaining tags
+                .replaceAll("<[^>]+>", "") // Strip remaining tags | 移除剩余标签
                 .trim();
     }
 
     private String htmlToText(String html) {
         return html.replaceAll("<br\\s*/?>", "\n")
-                .replaceAll("</p>", "\n\n")
-                .replaceAll("<[^>]+>", "") // Remove all tags
+                .replace("</p>", "\n\n")
+                .replaceAll("<[^>]+>", "") // Strip all tags | 移除所有标签
                 .trim();
     }
 

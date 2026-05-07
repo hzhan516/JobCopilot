@@ -1,23 +1,33 @@
 package edu.asu.ser594.resumeassistant.application.user.service;
 
-import edu.asu.ser594.resumeassistant.application.user.command.LoginByEmailCommand;
-import edu.asu.ser594.resumeassistant.application.user.command.RegisterByEmailCommand;
 import edu.asu.ser594.resumeassistant.api.user.dto.TokenPair;
+import edu.asu.ser594.resumeassistant.api.user.dto.response.AuthResponse;
 import edu.asu.ser594.resumeassistant.api.user.service.TokenService;
+import edu.asu.ser594.resumeassistant.application.user.command.LoginByEmailCommand;
+import edu.asu.ser594.resumeassistant.application.user.command.LoginByGoogleCommand;
+import edu.asu.ser594.resumeassistant.application.user.command.RegisterByEmailCommand;
 import edu.asu.ser594.resumeassistant.domain.user.entity.User;
 import edu.asu.ser594.resumeassistant.domain.user.entity.UserCredential;
+import edu.asu.ser594.resumeassistant.domain.user.entity.UserOAuthBinding;
 import edu.asu.ser594.resumeassistant.domain.user.entity.UserProfile;
 import edu.asu.ser594.resumeassistant.domain.user.exception.AuthException;
+import edu.asu.ser594.resumeassistant.domain.user.port.GoogleTokenVerifierPort;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserCredentialRepository;
+import edu.asu.ser594.resumeassistant.domain.user.repository.UserOAuthBindingRepository;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserProfileRepository;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserRepository;
 import edu.asu.ser594.resumeassistant.domain.user.service.PasswordEncoder;
 import edu.asu.ser594.resumeassistant.types.enums.CredentialType;
+import edu.asu.ser594.resumeassistant.types.enums.OAuthProvider;
+import edu.asu.ser594.resumeassistant.types.enums.UserStatus;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// Authentication application service
+import java.util.UUID;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -25,8 +35,10 @@ public class AuthApplicationService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final UserCredentialRepository userCredentialRepository;
+    private final UserOAuthBindingRepository userOAuthBindingRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
+    private final GoogleTokenVerifierPort googleTokenVerifierPort;
 
     @Transactional
     public User registerByEmail(RegisterByEmailCommand command) {
@@ -34,7 +46,7 @@ public class AuthApplicationService {
             throw new AuthException(AuthException.ErrorType.EMAIL_EXISTS);
         }
 
-        User user = User.create(command.email());
+        User user = User.create(command.email(), OAuthProvider.EMAIL);
         User savedUser = userRepository.save(user);
 
         UserProfile profile = UserProfile.create(savedUser.getId());
@@ -64,7 +76,123 @@ public class AuthApplicationService {
         return user;
     }
 
+    @Transactional
+    public User loginByGoogle(LoginByGoogleCommand command) {
+        GoogleTokenVerifierPort.GoogleUserInfo googleUserInfo = googleTokenVerifierPort.verify(command.idToken());
+
+        var existingUser = userRepository.findByEmail(googleUserInfo.email());
+
+        if (existingUser.isPresent()) {
+            User user = existingUser.get();
+
+            // Reject Google login for accounts created via email to prevent credential confusion
+            // 拒绝通过邮箱注册的账号使用 Google 登录，防止凭据混淆
+            if (user.getAuthProvider() == OAuthProvider.EMAIL) {
+                throw new AuthException(AuthException.ErrorType.EMAIL_REGISTERED_WITH_PASSWORD);
+            }
+
+            if (user.getAuthProvider() == OAuthProvider.GOOGLE) {
+                updateOAuthBindingIfNeeded(user.getId(), googleUserInfo);
+                return user;
+            }
+        }
+
+        User user = User.create(googleUserInfo.email(), OAuthProvider.GOOGLE);
+        User savedUser = userRepository.save(user);
+
+        UserProfile profile = UserProfile.create(savedUser.getId());
+        if (googleUserInfo.displayName() != null) {
+            profile.updateProfile(googleUserInfo.displayName(), null, null, null);
+        }
+        if (googleUserInfo.avatarUrl() != null) {
+            profile.updateAvatar(googleUserInfo.avatarUrl());
+        }
+        userProfileRepository.save(profile);
+
+        UserOAuthBinding binding = UserOAuthBinding.create(
+                savedUser.getId(),
+                OAuthProvider.GOOGLE,
+                googleUserInfo.providerUserId(),
+                googleUserInfo.email(),
+                googleUserInfo.displayName(),
+                googleUserInfo.avatarUrl()
+        );
+        userOAuthBindingRepository.save(binding);
+
+        return savedUser;
+    }
+
+    private void updateOAuthBindingIfNeeded(UUID userId, GoogleTokenVerifierPort.GoogleUserInfo googleUserInfo) {
+        var bindingOpt = userOAuthBindingRepository.findByProviderAndProviderUserId(
+                OAuthProvider.GOOGLE, googleUserInfo.providerUserId());
+
+        if (bindingOpt.isPresent()) {
+            UserOAuthBinding binding = bindingOpt.get();
+            boolean shouldUpdate = false;
+
+            if (googleUserInfo.displayName() != null && !googleUserInfo.displayName().equals(binding.getDisplayName())) {
+                shouldUpdate = true;
+            }
+            if (googleUserInfo.avatarUrl() != null && !googleUserInfo.avatarUrl().equals(binding.getAvatarUrl())) {
+                shouldUpdate = true;
+            }
+
+            if (shouldUpdate) {
+                binding.updateDisplayInfo(googleUserInfo.displayName(), googleUserInfo.avatarUrl());
+                userOAuthBindingRepository.save(binding);
+            }
+        }
+    }
+
     public TokenPair generateTokenPair(User user) {
         return tokenService.generateTokenPair(user.getId().toString());
+    }
+
+    /**
+     * Refreshes the access token using a valid refresh token, enabling seamless session continuation
+     * without forcing the user to re-authenticate.
+     * 使用有效的刷新令牌重新签发访问令牌，实现无感会话续期
+     *
+     * @param refreshToken Refresh token / 刷新令牌
+     * @return New authentication response / 新认证响应
+     */
+    public AuthResponse refreshToken(String refreshToken) {
+        var validationResult = tokenService.validateTokenDetailed(refreshToken);
+
+        switch (validationResult) {
+            case EXPIRED -> throw new AuthException(AuthException.ErrorType.TOKEN_EXPIRED);
+            case INVALID -> throw new AuthException(AuthException.ErrorType.TOKEN_INVALID);
+        }
+
+        String userId = tokenService.getUserIdFromToken(refreshToken);
+
+        User user = userRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new AuthException(AuthException.ErrorType.INVALID_CREDENTIALS));
+
+        if (user.getStatus() == UserStatus.DELETED) {
+            throw new AuthException(AuthException.ErrorType.INVALID_CREDENTIALS);
+        }
+
+        TokenPair tokens = tokenService.generateTokenPair(userId);
+
+        return AuthResponse.builder()
+                .userId(user.getId())
+                .email(user.getEmail())
+                .accessToken(tokens.getAccessToken())
+                .refreshToken(tokens.getRefreshToken())
+                .expiresIn(tokens.getExpiresIn())
+                .build();
+    }
+
+    /**
+     * Logs out the user. In the current MVP stage, JWT tokens are stateless, so logout is handled
+     * by the frontend clearing cached tokens. A persistent token blacklist (e.g., Redis) could be
+     * introduced here in future iterations.
+     * 用户注销。当前 MVP 阶段 JWT 为无状态令牌，注销由前端清理缓存完成；后续可在此引入 Redis 黑名单等持久化失效机制
+     *
+     * @param accessToken Current access token / 当前访问令牌
+     */
+    public void logout(String accessToken) {
+        log.info("User logout / 用户注销: token={}", accessToken);
     }
 }

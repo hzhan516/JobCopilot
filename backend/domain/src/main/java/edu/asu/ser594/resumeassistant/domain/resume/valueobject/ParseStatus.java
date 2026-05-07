@@ -4,5 +4,6 @@ public enum ParseStatus {
     PENDING,
     PARSING,
     COMPLETED,
-    FAILED
+    FAILED,
+    NOT_APPLICABLE
 }

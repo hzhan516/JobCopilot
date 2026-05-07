@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useResumeStore } from '@/store/resume.store';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,6 +17,7 @@ import { ResumeCard } from '@/components/resume/ResumeCard';
 import { ResumeUpload } from '@/components/resume/ResumeUpload';
 
 export default function ResumeList() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { groups, loading, fetchGroups, uploadResume, pollParseStatus, deleteGroup } = useResumeStore();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -27,36 +29,36 @@ export default function ResumeList() {
   const handleUpload = async (file: File) => {
     try {
       const data = await uploadResume(file, file.name.replace(/\.[^/.]+$/, ''));
-      toast.success('Resume uploaded successfully. Parsing started...');
+      toast.success(t('resume.list.uploadSuccess'));
       setIsUploadOpen(false);
       
       const status = await pollParseStatus(data.groupId);
       if (status === 'COMPLETED') {
-        toast.success('Resume parsed successfully!');
+        toast.success(t('resume.list.parseSuccess'));
       } else if (status === 'FAILED') {
-        toast.error('Failed to parse resume.');
+        toast.error(t('resume.list.parseFailed'));
       } else {
-        toast.warning('Parsing is taking longer than expected.');
+        toast.warning(t('resume.list.parseTimeout'));
       }
       
       await fetchGroups();
     } catch (error) {
-      toast.error('Failed to upload resume.');
+      toast.error(t('resume.list.uploadFailed'));
       console.error(error);
     }
   };
 
   const handleView = (groupId: string) => {
-    navigate(`/resumes/${groupId}/edit`);
+    navigate(`/resumes/${groupId}`);
   };
 
   const handleDelete = async (groupId: string) => {
-    if (window.confirm('Are you sure you want to delete this resume?')) {
+    if (window.confirm(t('resume.list.deleteConfirm'))) {
       try {
         await deleteGroup(groupId);
-        toast.success('Resume deleted successfully.');
+        toast.success(t('resume.list.deleteSuccess'));
       } catch (error) {
-        toast.error('Failed to delete resume.');
+        toast.error(t('resume.list.deleteFailed'));
         console.error(error);
       }
     }
@@ -74,14 +76,14 @@ export default function ResumeList() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Resumes</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('resume.list.title')}</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your resumes and track their parsing status.
+            {t('resume.list.subtitle')}
           </p>
         </div>
         <Button onClick={() => setIsUploadOpen(true)} className="w-full sm:w-auto">
           <Upload className="w-4 h-4 mr-2" />
-          Upload Resume
+          {t('resume.list.upload')}
         </Button>
       </div>
 
@@ -90,13 +92,13 @@ export default function ResumeList() {
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
             <FileText className="w-8 h-8 text-primary" />
           </div>
-          <h3 className="text-lg font-medium mb-2">No resumes yet</h3>
+          <h3 className="text-lg font-medium mb-2">{t('resume.list.noResumes')}</h3>
           <p className="text-muted-foreground mb-6 text-center max-w-sm">
-            Upload your first resume to get started. We'll automatically parse it and extract your information.
+            {t('resume.list.noResumesDesc')}
           </p>
           <Button onClick={() => setIsUploadOpen(true)}>
             <Upload className="w-4 h-4 mr-2" />
-            Upload Resume
+            {t('resume.list.upload')}
           </Button>
         </div>
       ) : (
@@ -115,9 +117,9 @@ export default function ResumeList() {
       <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Upload Resume</DialogTitle>
+            <DialogTitle>{t('resume.list.uploadDialogTitle')}</DialogTitle>
             <DialogDescription>
-              Upload your resume in PDF, DOCX, MD, or TXT format. Maximum file size is 10MB.
+              {t('resume.list.uploadDialogDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4">

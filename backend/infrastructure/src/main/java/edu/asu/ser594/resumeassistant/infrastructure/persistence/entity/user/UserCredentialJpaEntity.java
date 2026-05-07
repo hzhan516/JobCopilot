@@ -8,12 +8,18 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * 用户凭证 JPA 实体
- * User credential JPA entity
- *
- * 注意：
- * - 不使用 @Data 注解，避免 toString 暴露敏感信息
- * - @ToString 排除 credentialValue 字段
+ * JPA entity for user authentication credentials.
+ * <p>Design notes:</p>
+ * <ul>
+ *   <li>Avoids @Data to prevent accidental exposure of sensitive fields in logs</li>
+ *   <li>credentialValue is explicitly excluded from @ToString</li>
+ * </ul>
+ * 用户认证凭证的 JPA 实体
+ * <p>设计注意：</p>
+ * <ul>
+ *   <li>不使用 @Data，防止敏感字段在日志中意外暴露</li>
+ *   <li>credentialValue 显式排除在 @ToString 之外</li>
+ * </ul>
  */
 @Entity
 @Table(name = "user_credentials")
@@ -42,7 +48,6 @@ public class UserCredentialJpaEntity {
     private CredentialType credentialType;
 
     @Column(name = "credential_value", nullable = false)
-    // 注意：不在 toString 中包含敏感信息
     private String credentialValue;
 
     @Column(name = "last_changed_at")

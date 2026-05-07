@@ -1,39 +1,46 @@
 import React from 'react';
-import type { ResumeVersion } from '../../types/resume';
+import { useTranslation } from 'react-i18next';
+import type { ResumeVersion } from '@/types/resume.ts';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { Edit3, FileText, Briefcase, List } from 'lucide-react';
+import { Edit3, FileText, Briefcase, List, Copy, Play } from 'lucide-react';
+import { DownloadButton } from './DownloadButton';
 
 interface VersionDetailProps {
   version: ResumeVersion;
   onEdit: () => void;
+  onCreateCopy?: () => void;
+  onActivate?: () => void;
 }
 
-export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit }) => {
+export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit, onCreateCopy, onActivate }) => {
+  const { t } = useTranslation();
   const { parsedContent, content, versionType, status, parseStatus } = version;
 
   const getStatusBadge = () => {
     switch (parseStatus) {
       case 'COMPLETED':
-        return <Badge variant="default" className="bg-green-500">Parsed</Badge>;
-      case 'PROCESSING':
-        return <Badge variant="secondary" className="bg-blue-500 text-white">Processing</Badge>;
+        return <Badge variant="default" className="bg-green-500">{t('resume.versionDetail.parsed')}</Badge>;
+      case 'PARSING':
+        return <Badge variant="secondary" className="bg-blue-500 text-white">{t('resume.parseStatus.parsing')}</Badge>;
       case 'FAILED':
-        return <Badge variant="destructive">Failed</Badge>;
+        return <Badge variant="destructive">{t('resume.parseStatus.failed')}</Badge>;
+      case 'NOT_APPLICABLE':
+        return null;
       default:
-        return <Badge variant="outline">Pending</Badge>;
+        return <Badge variant="outline">{t('resume.parseStatus.pending')}</Badge>;
     }
   };
 
   const getTypeBadge = () => {
     switch (versionType) {
       case 'ORIGINAL':
-        return <Badge variant="outline" className="border-blue-200 text-blue-700 bg-blue-50">Original</Badge>;
+        return <Badge variant="outline" className="border-blue-200 text-blue-700 bg-blue-50">{t('resume.versionDetail.original')}</Badge>;
       case 'CONVERTED':
-        return <Badge variant="outline" className="border-purple-200 text-purple-700 bg-purple-50">Converted</Badge>;
+        return <Badge variant="outline" className="border-purple-200 text-purple-700 bg-purple-50">{t('resume.versionDetail.converted')}</Badge>;
       case 'AI_OPTIMIZED':
-        return <Badge variant="outline" className="border-amber-200 text-amber-700 bg-amber-50">AI Optimized</Badge>;
+        return <Badge variant="outline" className="border-amber-200 text-amber-700 bg-amber-50">{t('resume.versionDetail.aiOptimized')}</Badge>;
       default:
         return null;
     }
@@ -43,18 +50,36 @@ export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit })
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-3">
-          <h2 className="text-2xl font-bold tracking-tight">Version Details</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{t('resume.versionDetail.title')}</h2>
           {getTypeBadge()}
           {getStatusBadge()}
-          {status === 'ARCHIVED' && <Badge variant="secondary">Archived</Badge>}
+          {status === 'ARCHIVED' && <Badge variant="secondary">{t('resume.timeline.archived')}</Badge>}
         </div>
         
-        {versionType !== 'ORIGINAL' && (
-          <Button onClick={onEdit} variant="outline" size="sm">
-            <Edit3 className="w-4 h-4 mr-2" />
-            Edit Content
-          </Button>
-        )}
+        <div className="flex items-center space-x-2">
+          <DownloadButton
+            versionId={version.versionId}
+            filename={`resume-${versionType.toLowerCase()}`}
+          />
+          {onCreateCopy && (
+            <Button onClick={onCreateCopy} variant="ghost" size="sm">
+              <Copy className="w-4 h-4 mr-2" />
+              {t('resume.versionDetail.createCopy')}
+            </Button>
+          )}
+          {onActivate && versionType !== 'ORIGINAL' && status === 'ARCHIVED' && (
+            <Button onClick={onActivate} variant="ghost" size="sm" className="text-green-600 hover:text-green-700 hover:bg-green-50">
+              <Play className="w-4 h-4 mr-2" />
+              {t('resume.versionDetail.setActive')}
+            </Button>
+          )}
+          {versionType !== 'ORIGINAL' && status === 'ACTIVE' && (
+            <Button onClick={onEdit} variant="outline" size="sm">
+              <Edit3 className="w-4 h-4 mr-2" />
+              {t('resume.versionDetail.editContent')}
+            </Button>
+          )}
+        </div>
       </div>
 
       {parsedContent && (
@@ -63,17 +88,17 @@ export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit })
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center">
                 <Briefcase className="w-5 h-5 mr-2 text-muted-foreground" />
-                Basic Information
+                {t('resume.versionDetail.basicInfo')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">Title</h4>
-                <p className="text-base font-medium">{parsedContent.title || 'Not specified'}</p>
+                <h4 className="text-sm font-medium text-muted-foreground mb-1">{t('resume.versionDetail.jobTitle')}</h4>
+                <p className="text-base font-medium">{parsedContent.title || t('common.notSpecified')}</p>
               </div>
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">Company</h4>
-                <p className="text-base">{parsedContent.company || 'Not specified'}</p>
+                <h4 className="text-sm font-medium text-muted-foreground mb-1">{t('resume.versionDetail.company')}</h4>
+                <p className="text-base">{parsedContent.company || t('common.notSpecified')}</p>
               </div>
             </CardContent>
           </Card>
@@ -82,7 +107,7 @@ export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit })
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center">
                 <List className="w-5 h-5 mr-2 text-muted-foreground" />
-                Requirements
+                {t('resume.versionDetail.requirements')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -93,7 +118,7 @@ export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit })
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-muted-foreground italic">No requirements extracted.</p>
+                <p className="text-sm text-muted-foreground italic">{t('resume.versionDetail.noRequirements')}</p>
               )}
             </CardContent>
           </Card>
@@ -102,12 +127,12 @@ export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit })
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center">
                 <FileText className="w-5 h-5 mr-2 text-muted-foreground" />
-                Description
+                {t('resume.versionDetail.description')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm whitespace-pre-wrap">
-                {parsedContent.description || 'No description available.'}
+                {parsedContent.description || t('resume.versionDetail.noDescription')}
               </p>
             </CardContent>
           </Card>
@@ -118,7 +143,7 @@ export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit })
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center">
             <FileText className="w-5 h-5 mr-2 text-muted-foreground" />
-            Raw Content
+            {t('resume.versionDetail.rawContent')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -128,7 +153,7 @@ export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit })
             </div>
           ) : (
             <p className="text-sm text-muted-foreground italic text-center py-8">
-              Content is not available for this version.
+              {t('resume.versionDetail.contentNotAvailable')}
             </p>
           )}
         </CardContent>

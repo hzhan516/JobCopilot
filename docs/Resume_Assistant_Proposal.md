@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](Resume_Assistant_Proposal.md) | [简体中文](i18n/zh-Hans-CN/Resume_Assistant_Proposal.md) | [繁體中文](i18n/zh-Hant-TW/Resume_Assistant_Proposal.md)
+
 # Course Project Proposal: Resume Assistant
 
 **Course:** SER 594: AI for Software Engineers  
@@ -42,7 +45,7 @@ The system will deeply integrate the following AI techniques into its core busin
 
 2. **Vector Search / Embeddings**
     * **(a) What it does:** Converts parsed resume summaries and job descriptions into high-dimensional vectors to calculate semantic similarity for intelligent job matching.
-    * **(b) Integration:** The `ai-service` generates embeddings (e.g., via `text-embedding-3-small`) and stores them in PostgreSQL using the `pgvector` extension. The Java backend queries this data via Cosine Similarity ranking.
+    * **(b) Integration:** The `ai-service` generates embeddings (e.g., via the configured LiteLLM embedding model, defaulting to `gemini/gemini-embedding-001`) and stores them in PostgreSQL using the `pgvector` extension. The Java backend queries this data via Cosine Similarity ranking.
     * **(c) Evaluation:** **NDCG@5 (Normalized Discounted Cumulative Gain)** to measure the ranking quality of recommended jobs compared to a baseline keyword-search algorithm (BM25).
 
 3. **Memory & RAG (Retrieval-Augmented Generation)**
@@ -51,29 +54,29 @@ The system will deeply integrate the following AI techniques into its core busin
     * **(c) Evaluation:** **Context Relevance Score** (using a custom LLM-as-a-judge rubric) measuring whether the AI's suggestions accurately reflect the specific resume version selected, compared to a zero-shot/no-RAG baseline.
 
 4. **LLM API Integration (Resilient Wrapper)**
-    * **(a) What it does:** A production-grade API wrapper abstracting the OpenAI client within `ai-service`.
-    * **(b) Integration:** Implements exponential backoff retries, token/cost tracking sent back to the database, and graceful degradation if the API is rate-limited or fails.
+    * **(a) What it does:** A production-grade API wrapper abstracting the LiteLLM-compatible client within `ai-service`.
+    * **(b) Integration:** Implements exponential backoff retries, JSON response validation, logging, and graceful degradation if the API is rate-limited or fails.
 
 ## 7. System Architecture
 
-The Resume Assistant utilizes a strictly structured Monorepo containing decoupled Microservices, separating business logic from heavy AI workloads, along with dedicated root-level evaluation and testing directories.
+The Resume Assistant utilizes a strictly structured Monorepo containing decoupled Microservices, separating business logic from heavy AI workloads, along with dedicated evaluation and component test suites.
 
-* **Frontend (`frontend/`):** React 18 / Vite UI for document management, chat interaction, and application tracking.
+* **Frontend (`frontend/`):** React 19 / Vite 7 UI for document management, chat interaction, and application tracking.
 * **Backend (`backend/`):** Java Spring Boot 3.x using a Domain-Driven Design (DDD) architecture (separated into `api`, `app`, `domain`, `infrastructure`, `trigger`, and `types` layers) to handle JWT Auth, CRUD, and multi-version document state.
 * **AI Pipeline (`ai-service/`):** A stateless Python FastAPI application managing all LLM interactions, structured parsing, and vector computations.
 * **Evaluation (`eval/`):** Dedicated root directory containing Python scripts for computing AI metrics and baseline comparisons.
-* **Test Suite (`tests/`):** Root directory orchestrating 15+ end-to-end integration tests across the system components.
-* **Data Layer:** PostgreSQL (relational data) + `pgvector` (embeddings). MinIO (S3-compatible) is used for raw PDF/Word file storage.
-* **Data Flow:** When a user uploads a PDF, the backend saves it to MinIO and publishes an event to **RabbitMQ**. The `ai-service` consumes the event, fetches the file, extracts/embeds the data via OpenAI, and returns the result via the MQ back to the backend.
+* **Test Suite:** Backend JUnit tests live under the backend modules, and AI-service pytest tests live under `ai-service/tests`.
+* **Data Layer:** PostgreSQL stores relational data and `pgvector` embeddings. In the Docker Compose deployment, uploaded PDF/Word files are stored in a Docker named volume (`shared-storage`) mounted by both the backend and the AI service. The backend also includes configurable MinIO/S3-compatible storage support, but the default Compose setup uses local volume storage.
+* **Data Flow:** When a user uploads a PDF, the backend stores it through the configured storage backend and publishes an event to **RabbitMQ**. The `ai-service` consumes the event, reads the file through the generated storage URL, extracts/embeds the data via the configured LiteLLM provider, and returns the result via MQ back to the backend.
 
 ```mermaid
 graph TD
     A[frontend: React UI] <-->|REST API / JWT| B(backend: Java Spring Boot)
-    B -->|Save Raw File| C[(MinIO Object Storage)]
+    B -->|Save Raw File| C[(Storage Backend / shared-storage)]
     B -->|SQL / pgvector| D[(PostgreSQL DB)]
     B -->|Publish Task| E[[RabbitMQ Queue]]
     E -->|Consume Task| F{ai-service: Python FastAPI}
-    F <-->|API Calls| G((OpenAI LLM & Embeddings))
+    F <-->|API Calls| G((LiteLLM Provider))
     F -->|Return Results| E
 ```
 
@@ -85,11 +88,11 @@ The evaluation suite will be executed via automated Python scripts located in th
 
 2. **AI Metric 2: Recommendation Quality (NDCG@5).** We will curate 5 sample resumes and a pool of 50 job descriptions. Human evaluators will rank the top 5 ideal matches for each resume. We will compare our `pgvector` cosine similarity results against the human ranking. **Baseline:** Standard keyword matching (no embeddings).
 
-3. **System-Level Evaluation:** We will use load-testing tools (e.g., Locust/JMeter) against the API, ensuring API error rates under normal usage are `< 1%`, and response latency (p95) for vector matching is `< 5 seconds`. We require `> 80%` test coverage orchestrated via the root `tests/` directory (combining JUnit for Java and Pytest for Python), enforced by GitHub Actions CI.
+3. **System-Level Evaluation:** We will use load-testing tools (e.g., Locust/JMeter) against the API, ensuring API error rates under normal usage are `< 1%`, and response latency (p95) for vector matching is `< 5 seconds`. Automated checks combine backend JUnit tests, AI-service pytest tests, and GitHub Actions CI for backend build/test coverage.
 
 ## 9. Timeline & Risks
 
-* **Milestone 1 - Setup & Proposal:** Finalize system architecture, database schema, Docker Compose environment (MinIO, Postgres, MQ), and implement basic JWT Authentication.
+* **Milestone 1 - Setup & Proposal:** Finalize system architecture, database schema, Docker Compose environment (Postgres, RabbitMQ, shared storage), and implement basic JWT Authentication.
 * **Milestone 2 - Design & Prototype:** `ai-service` setup with API Wrapper. Implement RabbitMQ asynchronous communication. Complete AI Technique #1 (Structured Output parsing) and end-to-end file upload flow.
 * **Milestone 3 - Implementation:** Implement `pgvector` semantic search (AI Technique #2) and RAG-based Chat (AI Technique #3). Finalize React UI, write 15+ automated tests, and configure CI pipeline.
 * **Milestone 4 - Final Submission:** Compute evaluation metrics against baselines. Refactor and clean up code, record the 10-to-15-minute demo video, and finalize README documentation.

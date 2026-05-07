@@ -20,7 +20,7 @@ export interface ResumeVersion {
     description: string;
     requirements: string[];
   };
-  parseStatus: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  parseStatus: 'PENDING' | 'PARSING' | 'COMPLETED' | 'FAILED' | 'NOT_APPLICABLE';
   parseErrorMessage?: string;
   createdAt: string;
 }
@@ -35,4 +35,4 @@ export interface UploadResponse {
   };
 }
 
-export type DownloadFormat = 'original' | 'pdf' | 'docx' | 'md' | 'html' | 'txt';
+export type DownloadFormat = 'pdf' | 'docx' | 'md' | 'html' | 'txt';

@@ -8,4 +8,5 @@ package edu.asu.ser594.resumeassistant.application.matching.query;
  */
 public record GetMatchResultQuery(
         String matchId
-) {}
+) {
+}

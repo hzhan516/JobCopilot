@@ -1,12 +1,10 @@
 package edu.asu.ser594.resumeassistant.trigger.listener.ai;
 
 import edu.asu.ser594.resumeassistant.api.conversation.facade.ConversationFacade;
+import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
+import edu.asu.ser594.resumeassistant.api.matching.facade.MatchingFacade;
 import edu.asu.ser594.resumeassistant.api.resume.facade.ResumeFacade;
-import edu.asu.ser594.resumeassistant.domain.embedding.entity.JobVector;
-import edu.asu.ser594.resumeassistant.domain.embedding.entity.ResumeVector;
-import edu.asu.ser594.resumeassistant.domain.embedding.repository.JobVectorRepository;
-import edu.asu.ser594.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,8 +17,14 @@ import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 
+/**
+ * AI 结果消息监听器测试 / AI result message listener tests
+ * <p>
+ * 验证 Listener 仅通过 API 层 Facade 接口委托，不直接依赖 Domain 或 Infrastructure。
+ * Verifies that the listener only delegates through API-layer Facade interfaces
+ * without direct dependency on Domain or Infrastructure.
+ */
 @ExtendWith(MockitoExtension.class)
 class AiResultMessageListenerTest {
 
@@ -34,62 +38,71 @@ class AiResultMessageListenerTest {
     private ConversationFacade conversationFacade;
 
     @Mock
-    private ResumeVectorRepository resumeVectorRepository;
+    private VectorFacade vectorFacade;
 
     @Mock
-    private JobVectorRepository jobVectorRepository;
+    private MatchingFacade matchingFacade;
 
     @InjectMocks
     private AiResultMessageListener listener;
 
     @Test
     void onJobParseResult_ShouldCallJobFacade() {
+        // 准备 / Given
         AiResultEvent event = new AiResultEvent("job-1", "JOB_PARSE", "COMPLETED", null, null, null);
+
+        // 执行 / When
         listener.onJobParseResult(event);
+
+        // 验证 / Then
         verify(jobFacade).handleJobProcessResult(event);
     }
 
     @Test
     void onResumeParseResult_ShouldCallResumeFacade() {
+        // 准备 / Given
         AiResultEvent event = new AiResultEvent("resume-1", "RESUME_PARSE", "COMPLETED", null, null, null);
+
+        // 执行 / When
         listener.onResumeParseResult(event);
+
+        // 验证 / Then
         verify(resumeFacade).handleParseResult(event);
     }
 
     @Test
-    void onVectorGenResult_ShouldCallEmbeddingRepositoryForJob() {
-        AiResultEvent event = new AiResultEvent(
-                "job-123",
-                "VECTOR_GEN",
-                "COMPLETED",
-                Map.of("embedding", List.of(0.1, 0.2)),
-                null,
-                "JOB"
+    void onJobRankResult_ShouldCallMatchingFacade() {
+        // 准备 / Given
+        Map<String, Object> data = Map.of(
+                "rankTimeMs", 150L,
+                "rankedResults", List.of(
+                        Map.of("jobId", "job-1", "title", "Title", "company", "Company",
+                                "matchScore", 0.95, "description", "Description")
+                )
         );
+        AiResultEvent event = new AiResultEvent("match-001", "JOB_RANK", "COMPLETED", data, null, null);
 
-        listener.onVectorGenResult(event);
+        // 执行 / When
+        listener.onJobRankResult(event);
 
-        verify(jobVectorRepository).save(any(JobVector.class));
+        // 验证 / Then
+        verify(matchingFacade).saveJobRankResult(eq("match-001"), any(List.class), eq(150L));
     }
 
     @Test
-    void onVectorGenResult_ShouldCallEmbeddingRepositoryForResume() {
-        AiResultEvent event = new AiResultEvent(
-                "resume-456",
-                "VECTOR_GEN",
-                "COMPLETED",
-                Map.of("embedding", List.of(0.3, 0.4), "entityType", "RESUME"),
-                null,
-                "RESUME"
-        );
+    void onJobRankResult_WhenFailed_ShouldNotCallMatchingFacade() {
+        // 准备 / Given
+        AiResultEvent event = new AiResultEvent("match-002", "JOB_RANK", "FAILED", null, "AI service error", null);
 
-        listener.onVectorGenResult(event);
+        // 执行 / When
+        listener.onJobRankResult(event);
 
-        verify(resumeVectorRepository).save(any(ResumeVector.class));
+        // 验证 / Then — matchingFacade 不应被调用
     }
 
     @Test
     void onConversationReply_ShouldCallConversationFacade() {
+        // 准备 / Given
         AiResultEvent event = new AiResultEvent(
                 "conv-1",
                 "CONVERSATION_REPLY",
@@ -99,13 +112,63 @@ class AiResultMessageListenerTest {
                 null
         );
 
+        // 执行 / When
         listener.onConversationReply(event);
 
-        verify(conversationFacade).saveAiReply("conv-1", "Hello from AI", "http://minio/file.pdf");
+        // 验证 / Then
+        verify(conversationFacade).saveAiReply("conv-1", "Hello from AI", "http://minio/file.pdf", null);
+        verify(conversationFacade).completeAiReply("conv-1", "Hello from AI");
+    }
+
+    @Test
+    void onConversationReply_WithResumeModification_ShouldExtractMarkdown() {
+        // 准备 / Given
+        AiResultEvent event = new AiResultEvent(
+                "conv-1",
+                "CONVERSATION_REPLY",
+                "COMPLETED",
+                Map.of(
+                        "content", "Here is your optimized resume",
+                        "resumeModification", Map.of("modified", true, "markdown", "# Optimized Resume")
+                ),
+                null,
+                null
+        );
+
+        // 执行 / When
+        listener.onConversationReply(event);
+
+        // 验证 / Then
+        verify(conversationFacade).saveAiReply("conv-1", "Here is your optimized resume", null, "# Optimized Resume");
+        verify(conversationFacade).completeAiReply("conv-1", "Here is your optimized resume");
+    }
+
+    @Test
+    void onConversationReply_WithResumeModificationNotModified_ShouldPassNull() {
+        // 准备 / Given
+        AiResultEvent event = new AiResultEvent(
+                "conv-1",
+                "CONVERSATION_REPLY",
+                "COMPLETED",
+                Map.of(
+                        "content", "No changes needed",
+                        "resumeModification", Map.of("modified", false, "markdown", "")
+                ),
+                null,
+                null
+        );
+
+        // 执行 / When
+        listener.onConversationReply(event);
+
+        // 验证 / Then
+        verify(conversationFacade).saveAiReply("conv-1", "No changes needed", null, null);
+        verify(conversationFacade).completeAiReply("conv-1", "No changes needed");
     }
 
     @Test
     void onConversationReply_WhenFailed_ShouldNotCallFacade() {
+        // 准备 / Given
         AiResultEvent event = new AiResultEvent(
                 "conv-1",
                 "CONVERSATION_REPLY",
@@ -115,8 +178,11 @@ class AiResultMessageListenerTest {
                 null
         );
 
+        // 执行 / When
         listener.onConversationReply(event);
 
-        verifyNoInteractions(conversationFacade);
+        // 验证 / Then
+        verify(conversationFacade).saveAiReply(eq("conv-1"), contains("AI response failed"), isNull(), isNull());
+        verify(conversationFacade).failAiReply(eq("conv-1"), contains("AI response failed"));
     }
 }

@@ -1,7 +1,6 @@
 package edu.asu.ser594.resumeassistant.domain.tracking.entity;
 
 import edu.asu.ser594.resumeassistant.domain.shared.entity.AggregateRoot;
-import edu.asu.ser594.resumeassistant.domain.tracking.exception.TrackingException;
 import edu.asu.ser594.resumeassistant.domain.tracking.valueobject.ApplicationStatus;
 import lombok.Builder;
 import lombok.Getter;
@@ -21,14 +20,15 @@ public class ApplicationTracking extends AggregateRoot<String> {
 
     private final String id;
     private final UUID userId;
+    private final List<TrackingEvent> events;
     private String jobId;
     private String companyName;
     private String jobTitle;
     private ApplicationStatus status;
     private LocalDate appliedAt;
     private String notes;
+    private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private final List<TrackingEvent> events;
 
     @Builder
     public ApplicationTracking(final String id,
@@ -39,6 +39,7 @@ public class ApplicationTracking extends AggregateRoot<String> {
                                final ApplicationStatus status,
                                final LocalDate appliedAt,
                                final String notes,
+                               final LocalDateTime createdAt,
                                final LocalDateTime updatedAt,
                                final List<TrackingEvent> events) {
         this.id = id;
@@ -49,25 +50,21 @@ public class ApplicationTracking extends AggregateRoot<String> {
         this.status = status;
         this.appliedAt = appliedAt;
         this.notes = notes;
+        this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.events = events != null ? new ArrayList<>(events) : new ArrayList<>();
     }
 
-    @Override
-    public String getId() {
-        return id;
-    }
-
     /**
-     * 创建新的求职跟踪记录
-     * Create a new application tracking record
+     * 创建新的求职跟踪记录（默认状态为 PENDING）
+     * Create a new application tracking record (default status: PENDING)
      *
-     * @param userId 用户ID / User ID
-     * @param jobId 职位ID(可选) / Job ID (optional)
+     * @param userId      用户ID / User ID
+     * @param jobId       职位ID(可选) / Job ID (optional)
      * @param companyName 公司名称 / Company name
-     * @param jobTitle 职位标题 / Job title
-     * @param appliedAt 投递日期(可选) / Applied date (optional)
-     * @param notes 备注(可选) / Notes (optional)
+     * @param jobTitle    职位标题 / Job title
+     * @param appliedAt   投递日期(可选) / Applied date (optional)
+     * @param notes       备注(可选) / Notes (optional)
      * @return 新的跟踪实体 / New tracking entity
      */
     public static ApplicationTracking create(final UUID userId,
@@ -76,20 +73,50 @@ public class ApplicationTracking extends AggregateRoot<String> {
                                              final String jobTitle,
                                              final LocalDate appliedAt,
                                              final String notes) {
+        return create(userId, jobId, companyName, jobTitle, null, appliedAt, notes);
+    }
+
+    /**
+     * 创建新的求职跟踪记录（支持指定初始状态）
+     * Create a new application tracking record with optional initial status
+     *
+     * @param userId      用户ID / User ID
+     * @param jobId       职位ID(可选) / Job ID (optional)
+     * @param companyName 公司名称 / Company name
+     * @param jobTitle    职位标题 / Job title
+     * @param status      初始状态(可选) / Initial status (optional)
+     * @param appliedAt   投递日期(可选) / Applied date (optional)
+     * @param notes       备注(可选) / Notes (optional)
+     * @return 新的跟踪实体 / New tracking entity
+     */
+    public static ApplicationTracking create(final UUID userId,
+                                             final String jobId,
+                                             final String companyName,
+                                             final String jobTitle,
+                                             final ApplicationStatus status,
+                                             final LocalDate appliedAt,
+                                             final String notes) {
         final String id = UUID.randomUUID().toString();
+        final LocalDateTime now = LocalDateTime.now();
         final ApplicationTracking tracking = ApplicationTracking.builder()
                 .id(id)
                 .userId(userId)
                 .jobId(jobId)
                 .companyName(companyName)
                 .jobTitle(jobTitle)
-                .status(ApplicationStatus.PENDING)
+                .status(status != null ? status : ApplicationStatus.PENDING)
                 .appliedAt(appliedAt)
                 .notes(notes)
-                .updatedAt(LocalDateTime.now())
+                .createdAt(now)
+                .updatedAt(now)
                 .events(new ArrayList<>())
                 .build();
         return tracking;
+    }
+
+    @Override
+    public String getId() {
+        return id;
     }
 
     /**
@@ -97,8 +124,8 @@ public class ApplicationTracking extends AggregateRoot<String> {
      * Update basic information
      *
      * @param companyName 公司名称 / Company name
-     * @param jobTitle 职位标题 / Job title
-     * @param notes 备注 / Notes
+     * @param jobTitle    职位标题 / Job title
+     * @param notes       备注 / Notes
      */
     public void updateInfo(final String companyName, final String jobTitle, final String notes) {
         if (companyName != null) {
@@ -118,12 +145,9 @@ public class ApplicationTracking extends AggregateRoot<String> {
      * Change status
      *
      * @param newStatus 新状态 / New status
-     * @param note 备注 / Note
+     * @param note      备注 / Note
      */
     public void changeStatus(final ApplicationStatus newStatus, final String note) {
-        if (!this.status.canTransitionTo(newStatus)) {
-            throw new TrackingException("tracking.status.invalid", this.status, newStatus);
-        }
         final TrackingEvent event = TrackingEvent.create(this.status, newStatus, note);
         this.events.add(event);
         this.status = newStatus;

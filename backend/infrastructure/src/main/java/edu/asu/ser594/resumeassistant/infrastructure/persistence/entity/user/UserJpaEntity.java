@@ -1,5 +1,6 @@
 package edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.user;
 
+import edu.asu.ser594.resumeassistant.types.enums.OAuthProvider;
 import edu.asu.ser594.resumeassistant.types.enums.UserRole;
 import edu.asu.ser594.resumeassistant.types.enums.UserStatus;
 import jakarta.persistence.*;
@@ -11,7 +12,7 @@ import java.util.UUID;
 /**
  * 用户 JPA 实体
  * User JPA entity
- *
+ * <p>
  * 注意：
  * - 不使用 @Data 注解，因为它会生成 toString/equals/hashCode 可能影响懒加载
  * - 使用 @Getter/@Setter 显式控制访问器
@@ -47,6 +48,10 @@ public class UserJpaEntity {
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private UserStatus status;
+
+    @Column(name = "auth_provider", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private OAuthProvider authProvider;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

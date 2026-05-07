@@ -12,78 +12,70 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 对话聚合根
- * Conversation aggregate root
+ * Aggregate root that manages the dialogue between user and AI around a specific resume-job pair.
+ * 管理用户与 AI 围绕特定简历-职位组合进行对话的聚合根。
  */
 public class Conversation extends AggregateRoot<UUID> {
 
     private final UUID id;
     private final UUID userId;
+    private final UUID resumeVersionId;
+    private final UUID jobId;
+    private UUID aiOptimizedVersionId;
+    private final LocalDateTime createdAt;
+    private final List<Message> messages;
     private String title;
     private ConversationStatus status;
-    private final UUID resumeVersionId;
-    private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private final List<Message> messages;
 
-    /**
-     * 保护级别的原生构造函数
-     * Protected native constructor
-     */
-    protected Conversation(UUID id, UUID userId, String title, ConversationStatus status, 
-                           UUID resumeVersionId, LocalDateTime createdAt, LocalDateTime updatedAt, 
+    protected Conversation(UUID id, UUID userId, String title, ConversationStatus status,
+                           UUID resumeVersionId, UUID jobId, UUID aiOptimizedVersionId,
+                           LocalDateTime createdAt, LocalDateTime updatedAt,
                            List<Message> messages) {
         this.id = id;
         this.userId = userId;
         this.title = title;
         this.status = status;
         this.resumeVersionId = resumeVersionId;
+        this.jobId = jobId;
+        this.aiOptimizedVersionId = aiOptimizedVersionId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.messages = messages != null ? messages : new ArrayList<>();
     }
 
-    /**
-     * 静态工厂方法：创建新对话
-     * Static factory method: create new conversation
-     */
-    public static Conversation create(UUID userId, String title, UUID resumeVersionId) {
+    public static Conversation create(UUID userId, String title, UUID resumeVersionId, UUID jobId) {
         String finalTitle = (title == null || title.trim().isEmpty()) ? "New Conversation" : title;
         LocalDateTime now = LocalDateTime.now();
         return new Conversation(
-            UUID.randomUUID(),
-            userId,
-            finalTitle,
-            ConversationStatus.ACTIVE,
-            resumeVersionId,
-            now,
-            now,
-            new ArrayList<>()
+                UUID.randomUUID(),
+                userId,
+                finalTitle,
+                ConversationStatus.ACTIVE,
+                resumeVersionId,
+                jobId,
+                null,  // aiOptimizedVersionId initially null | AI 优化版本 ID 初始为空
+                now,
+                now,
+                new ArrayList<>()
         );
     }
 
     /**
-     * 从仓储恢复聚合根
-     * Reconstruct aggregate root from repository
+     * Reconstructs an aggregate from persistence data; no business invariants are enforced.
+     * 从持久化数据重建聚合，不执行业务不变量校验。
      */
-    public static Conversation reconstruct(UUID id, UUID userId, String title, ConversationStatus status, 
-                                           UUID resumeVersionId, LocalDateTime createdAt, LocalDateTime updatedAt, 
+    public static Conversation reconstruct(UUID id, UUID userId, String title, ConversationStatus status,
+                                           UUID resumeVersionId, UUID jobId, UUID aiOptimizedVersionId,
+                                           LocalDateTime createdAt, LocalDateTime updatedAt,
                                            List<Message> messages) {
-        return new Conversation(id, userId, title, status, resumeVersionId, createdAt, updatedAt, messages);
+        return new Conversation(id, userId, title, status, resumeVersionId, jobId, aiOptimizedVersionId, createdAt, updatedAt, messages);
     }
 
-    /**
-     * 领域行为：添加新消息
-     * Domain behavior: add new message
-     */
     public void addMessage(MessageRole role, String content) {
         addMessage(role, content, null);
     }
 
-    /**
-     * 领域行为：添加新消息（支持附带文件链接）
-     * Domain behavior: add new message with optional file URL
-     */
     public void addMessage(MessageRole role, String content, String fileUrl) {
         if (this.status == ConversationStatus.CLOSED) {
             throw new ConversationException("conversation.message.send.failed");
@@ -94,19 +86,11 @@ public class Conversation extends AggregateRoot<UUID> {
         this.updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * 领域行为：关闭对话
-     * Domain behavior: close conversation
-     */
     public void close() {
         this.status = ConversationStatus.CLOSED;
         this.updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * 领域行为：修改对话标题
-     * Domain behavior: change conversation title
-     */
     public void changeTitle(String newTitle) {
         if (newTitle != null && !newTitle.trim().isEmpty()) {
             this.title = newTitle;
@@ -115,8 +99,8 @@ public class Conversation extends AggregateRoot<UUID> {
     }
 
     /**
-     * 领域行为：根据首条消息自动生成标题
-     * Domain behavior: auto-generate title from first message
+     * Derives the title from the first user message when the default title is still in place.
+     * 当标题仍为默认值时，从首条用户消息中提取内容作为标题。
      */
     public void autoGenerateTitle(String content) {
         if (content != null && !content.trim().isEmpty()) {
@@ -129,10 +113,6 @@ public class Conversation extends AggregateRoot<UUID> {
         }
     }
 
-    /**
-     * 领域行为：检查是否属于指定用户
-     * Domain behavior: check if owned by specific user
-     */
     public boolean isOwnedBy(UUID userId) {
         return this.userId != null && this.userId.equals(userId);
     }
@@ -143,8 +123,8 @@ public class Conversation extends AggregateRoot<UUID> {
     }
 
     /**
-     * 获取所有消息（返回不可变列表保护内部状态）
-     * Get all messages (returns unmodifiable list to protect internal state)
+     * Exposes messages through an unmodifiable view to prevent external mutation of the aggregate state.
+     * 通过不可修改视图暴露消息列表，防止外部代码篡改聚合内部状态。
      */
     public List<Message> getMessages() {
         return Collections.unmodifiableList(this.messages);
@@ -164,6 +144,19 @@ public class Conversation extends AggregateRoot<UUID> {
 
     public UUID getResumeVersionId() {
         return resumeVersionId;
+    }
+
+    public UUID getJobId() {
+        return jobId;
+    }
+
+    public UUID getAiOptimizedVersionId() {
+        return aiOptimizedVersionId;
+    }
+
+    public void setAiOptimizedVersionId(UUID aiOptimizedVersionId) {
+        this.aiOptimizedVersionId = aiOptimizedVersionId;
+        this.updatedAt = LocalDateTime.now();
     }
 
     public LocalDateTime getCreatedAt() {

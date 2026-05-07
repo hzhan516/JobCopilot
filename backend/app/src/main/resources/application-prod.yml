@@ -1,24 +1,29 @@
 # /backend/app/src/main/resources/application-prod.yml
+# 生产环境配置 / Production environment configuration
+
 spring:
-  # 数据库（从环境变量读取）
+  application:
+    name: ${SPRING_APPLICATION_NAME:resume-assistant-backend}
+
+  # 数据库（从环境变量读取）/ Database (read from environment variables)
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/resume_assistant}
     username: ${SPRING_DATASOURCE_USERNAME:resume_user}
     password: ${SPRING_DATASOURCE_PASSWORD:resume_pass}
     driver-class-name: org.postgresql.Driver
 
-  # JPA
+  # JPA / JPA configuration
   jpa:
     hibernate:
       ddl-auto: validate
     show-sql: false
 
-  # Flyway
+  # Flyway / Flyway configuration
   flyway:
-    enabled: true
+    enabled: ${SPRING_FLYWAY_ENABLED:true}
     locations: classpath:db/migration
 
-  # RabbitMQ（从环境变量读取）
+  # RabbitMQ（从环境变量读取）/ RabbitMQ (read from environment variables)
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST:rabbitmq}
     port: ${SPRING_RABBITMQ_PORT:5672}
@@ -26,12 +31,13 @@ spring:
     password: ${SPRING_RABBITMQ_PASSWORD:guest}
 
 # 文件存储配置（从环境变量读取，支持动态切换存储源）
-# 支持类型: minio, local, s3, oss
+# File storage config (read from environment variables, supports dynamic storage switching)
+# 支持类型: minio, local, s3, oss / Supported types: minio, local, s3, oss
 storage:
-  # 存储类型，通过环境变量设置，默认 minio
+  # 存储类型，通过环境变量设置，默认 minio / Storage type via env var, default minio
   type: ${STORAGE_TYPE:minio}
   
-  # MinIO 配置（当 type=minio 时生效）
+  # MinIO 配置（当 type=minio 时生效）/ MinIO config (effective when type=minio)
   minio:
     endpoint: ${MINIO_ENDPOINT:http://minio:9000}
     access-key: ${MINIO_ACCESS_KEY:minioadmin}
@@ -41,20 +47,43 @@ storage:
     write-timeout: ${MINIO_WRITE_TIMEOUT:60000}
     read-timeout: ${MINIO_READ_TIMEOUT:30000}
   
-  # 本地存储配置（当 type=local 时生效）
+  # 本地存储配置（当 type=local 时生效）/ Local storage config (effective when type=local)
   local:
     base-path: ${LOCAL_STORAGE_BASE_PATH:/app/uploads}
     resume-path: ${LOCAL_STORAGE_RESUME_PATH:resumes}
     date-subdirectory: ${LOCAL_STORAGE_DATE_SUBDIR:true}
     url-prefix: ${LOCAL_STORAGE_URL_PREFIX:}
 
-# JWT（从环境变量读取，必须设置）
+# 应用级配置 / Application-level configuration
+app:
+  embedding:
+    dimension: ${LLM_EMBEDDING_MODEL_DIMENSION:1536}
+    model-version: ${LLM_EMBEDDING_MODEL:gemini/gemini-embedding-001}
+  search:
+    max-limit: ${SEARCH_MAX_LIMIT:100}
+  rabbitmq:
+    queue:
+      res:
+        job-parse: backend.queue.job.parse
+        resume-parse: backend.queue.resume.parse
+        vector-gen: backend.queue.vector.gen
+        conversation: backend.queue.conversation
+        job-rank: backend.queue.job.rank
+
+# AI 服务连接地址 / AI service connection URL
+ai:
+  service:
+    base-url: ${AI_SERVICE_BASE_URL:http://ai-service:8000}
+
+# JWT（从环境变量读取，必须设置）/ JWT (read from environment variables, must be set)
 jwt:
   secret: ${JWT_SECRET}
-  access-token-expiration: 3600000       # 1小时
-  refresh-token-expiration: 604800000    # 7天
+  access-token-expiration: ${JWT_ACCESS_EXPIRATION:3600000}       # 1小时 / 1 hour
+  refresh-token-expiration: ${JWT_REFRESH_EXPIRATION:604800000}    # 7天 / 7 days
 
-# 日志
+# 日志 / Logging
 logging:
   level:
     root: INFO
+    org.hibernate.SQL: ${LOG_HIBERNATE_LEVEL:WARN}
+    edu.asu.ser594.resumeassistant: ${LOG_APP_LEVEL:INFO}

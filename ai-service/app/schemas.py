@@ -1,61 +1,99 @@
+"""Pydantic schemas for API commands, events, and service payloads used by the AI service.
+AI 服务与后端、MQ 之间的数据契约层，统一序列化/反序列化行为并启用别名映射。
+"""
+
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class AppBaseModel(BaseModel):
+    """Base model enabling field population by alias for backward-compatible JSON contracts.
+    启用别名映射的基类，保证前端 camelCase 与后端 snake_case 的兼容。"""
+
     model_config = ConfigDict(populate_by_name=True)
 
 
 class JobParseCommand(AppBaseModel):
+    """Command to trigger job-posting extraction from a URL with optional screenshot verification.
+    触发职位解析的命令：从招聘页面 URL 提取结构化字段，支持截图交叉验证以提高准确率。"""
+
     job_id: str = Field(alias="jobId")
     url: str
-    image_check_enabled: bool = Field(alias="imageCheckEnabled")
+    image_check_enabled: bool = Field(default=False, alias="imageCheckEnabled")
+    screenshot_url: str | None = Field(default=None, alias="screenshotUrl")
+    screenshot_base64: str | None = Field(default=None, alias="screenshotBase64")
 
 
 class ResumeParseCommand(AppBaseModel):
+    """Command to trigger resume file parsing into structured profile data.
+    触发简历解析的命令：将 PDF/DOCX/TXT 文件提取为结构化简历数据。"""
+
     resume_id: str = Field(alias="resumeId")
     file_url: str = Field(alias="fileUrl")
-    file_type: str = Field(alias="fileType")
+    file_type: str = Field(alias="format")
 
 
 class VectorGenCommand(AppBaseModel):
+    """Command to generate an embedding vector for a text entity (job or resume).
+    触发向量生成的命令：为职位或简历文本生成语义嵌入，用于后续相似度检索。"""
+
     reference_id: str = Field(alias="referenceId")
     entity_type: str = Field(alias="entityType")
     text: str
 
 
 class ConversationMessage(AppBaseModel):
+    """Single message within a conversation history, supporting optional file attachments.
+    单条对话消息模型，支持附带文件 URL，用于构建多轮上下文。"""
+
     role: str
     content: str
     file_url: str | None = Field(default=None, alias="fileUrl")
 
 
 class ConversationRequestCommand(AppBaseModel):
+    """Command to orchestrate a conversational AI reply with resume and job context.
+    对话请求命令：聚合用户消息、简历文本、职位上下文及附件，驱动 LLM 生成回复。"""
+
     conversation_id: str = Field(alias="conversationId")
     user_id: str = Field(alias="userId")
     message_history: list[ConversationMessage] = Field(default_factory=list, alias="messageHistory")
     current_message: str = Field(alias="currentMessage")
     file_urls: list[str] = Field(default_factory=list, alias="fileUrls")
     resume_version_id: str | None = Field(default=None, alias="resumeVersionId")
+    resume_text: str | None = Field(default=None, alias="resumeText")
+    primary_job_text: str | None = Field(default=None, alias="primaryJobText")
+    related_job_texts: list[str] | None = Field(default=None, alias="relatedJobTexts")
+    init: bool | None = None
+    locale: str | None = None
 
 
 class JobRankCommand(AppBaseModel):
+    """Command to rank recalled jobs against a resume and query using lexical + semantic signals.
+    职位精排命令：基于简历、查询词及后端召回结果，执行 lexical + semantic 混合排序。"""
+
     match_id: str = Field(alias="matchId")
     user_id: str = Field(alias="userId")
     resume_version_id: str = Field(alias="resumeVersionId")
     resume_text: str = Field(default="", alias="resumeText")
-    query: str
+    query: str | None = Field(default=None)
     recalled_job_ids: list[str] = Field(default_factory=list, alias="recalledJobIds")
     job_details: dict[str, Any] = Field(default_factory=dict, alias="jobDetails")
 
 
 class ScrapeResult(AppBaseModel):
+    """Result of a job-page scraping operation.
+    职位页面抓取结果：包含去噪后的文本及可选截图路径。"""
+
     markdown_text: str
     screenshot_url: str | None = None
 
 
 class ParsedJobContent(AppBaseModel):
+    """Structured output of a parsed job posting.
+    结构化职位信息：提取标题、公司、描述及技能要求列表。"""
+
     title: str
     company: str
     description: str
@@ -63,6 +101,9 @@ class ParsedJobContent(AppBaseModel):
 
 
 class ParsedResumeContent(AppBaseModel):
+    """Structured output of a parsed resume.
+    结构化简历信息：提取姓名、邮箱、技能列表及工作经历。"""
+
     name: str | None = None
     email: str | None = None
     skills: list[str] = Field(default_factory=list)
@@ -70,6 +111,9 @@ class ParsedResumeContent(AppBaseModel):
 
 
 class AiResultEvent(AppBaseModel):
+    """Standard event envelope for all AI processing workflows, consumed by the backend via MQ.
+    AI 处理结果统一事件信封：后端通过 MQ 消费此结构以更新业务实体状态。"""
+
     reference_id: str = Field(alias="referenceId")
     type: str
     status: str
@@ -78,18 +122,46 @@ class AiResultEvent(AppBaseModel):
     event_type: str | None = Field(default=None, alias="eventType")
 
 
+class EmbeddingRequest(AppBaseModel):
+    """Batch request for embedding generation.
+    批量 embedding 请求：支持一次提交多条文本并指定模型版本。"""
+
+    texts: list[str] = Field(default_factory=list)
+    model: str | None = Field(default=None)
+
+
+class EmbeddingResponse(AppBaseModel):
+    """Batch response containing embedding vectors and model metadata.
+    批量 embedding 响应：返回向量列表及实际使用的模型标识。"""
+
+    model_config = ConfigDict(populate_by_name=True, protected_namespaces=())
+
+    embeddings: list[list[float]] = Field(default_factory=list)
+    model_used: str = Field(alias="modelUsed")
+    count: int
+
+
 class SuitabilityRequest(AppBaseModel):
+    """Request to evaluate resume-to-job suitability.
+    人岗匹配度评估请求：输入简历与职位结构化数据，输出综合评分。"""
+
     resume: ParsedResumeContent
     job: ParsedJobContent
 
 
 class SuitabilityBreakdown(AppBaseModel):
+    """Component-level scores explaining the final suitability result.
+    匹配度拆解：从技能、经验等维度解释最终得分的构成。"""
+
     skill_score: float = Field(alias="skillScore")
     experience_score: float = Field(alias="experienceScore")
     overall_score: float = Field(alias="overallScore")
 
 
 class SuitabilityResponse(AppBaseModel):
+    """Final suitability evaluation result with multi-source scoring.
+    人岗匹配度评估结果：融合 LLM 评分、基线规则评分及数据集模型评分，提供可解释摘要。"""
+
     suitable: bool
     summary: str
     breakdown: SuitabilityBreakdown
@@ -99,6 +171,9 @@ class SuitabilityResponse(AppBaseModel):
 
 
 class JobMatchRequest(AppBaseModel):
+    """Request to search and rank jobs by semantic similarity.
+    职位搜索请求：通过查询向量与后端向量库检索，返回语义最相似的职位列表。"""
+
     user_id: str = Field(alias="userId")
     query: str
     top_k: int = Field(default=10, alias="topK")
@@ -106,12 +181,18 @@ class JobMatchRequest(AppBaseModel):
 
 
 class MatchFactors(AppBaseModel):
+    """Breakdown of the factors contributing to a job match score.
+    匹配因子拆解：从技能、经验、地理位置等维度量化匹配程度。"""
+
     skill_match: float = Field(alias="skillMatch")
     experience_match: float = Field(alias="experienceMatch")
     location_match: float = Field(alias="locationMatch")
 
 
 class MatchItem(AppBaseModel):
+    """Single job match result returned to the client.
+    单条职位匹配结果：包含基础信息、综合匹配得分及匹配因子。"""
+
     job_id: str = Field(alias="jobId")
     title: str
     company: str
@@ -121,6 +202,9 @@ class MatchItem(AppBaseModel):
 
 
 class JobMatchResponse(AppBaseModel):
+    """Response containing ranked job match results and timing telemetry.
+    职位搜索响应：返回排序后的匹配列表及召回/排序耗时，用于前端性能监控。"""
+
     matches: list[MatchItem]
     total: int
     recall_time: int = Field(alias="recallTime")
@@ -128,15 +212,22 @@ class JobMatchResponse(AppBaseModel):
 
 
 class JobRankResultItem(AppBaseModel):
+    """Single ranked job item with an optional LLM-generated match reason.
+    单条精排职位结果：在基础匹配得分上附加 LLM 生成的匹配理由，提升可解释性。"""
+
     job_id: str = Field(alias="jobId")
     title: str
     company: str
     match_score: float = Field(alias="matchScore")
     match_factors: MatchFactors = Field(alias="matchFactors")
     description: str
+    match_reason: str | None = Field(default=None, alias="matchReason")
 
 
 class JobRankResultPayload(AppBaseModel):
+    """Final payload for job ranking results delivered via MQ.
+    职位精排最终结果负载：通过 MQ 回传后端，驱动申请追踪状态更新。"""
+
     match_id: str = Field(alias="matchId")
     status: str
     rank_time_ms: int = Field(alias="rankTimeMs")

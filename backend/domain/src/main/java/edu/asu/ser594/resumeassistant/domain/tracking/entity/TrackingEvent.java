@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 /**
  * 跟踪事件
  * Tracking event
- *
+ * <p>
  * 记录状态变更历史 / Records status change history
  */
 @Getter
@@ -36,8 +36,8 @@ public class TrackingEvent {
      * Create a status change event
      *
      * @param fromStatus 原状态 / From status
-     * @param toStatus 新状态 / To status
-     * @param note 备注 / Note
+     * @param toStatus   新状态 / To status
+     * @param note       备注 / Note
      * @return 跟踪事件 / Tracking event
      */
     public static TrackingEvent create(final ApplicationStatus fromStatus,

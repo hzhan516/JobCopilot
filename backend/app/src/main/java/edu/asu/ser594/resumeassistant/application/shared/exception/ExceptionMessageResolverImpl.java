@@ -17,7 +17,8 @@ public class ExceptionMessageResolverImpl implements ExceptionMessageResolver {
             AuthException.ErrorType.INVALID_CREDENTIALS, "auth.error.credentials.invalid",
             AuthException.ErrorType.EMAIL_NOT_VERIFIED, "auth.error.email.not.verified",
             AuthException.ErrorType.TOKEN_EXPIRED, "auth.error.token.expired",
-            AuthException.ErrorType.TOKEN_INVALID, "auth.error.token.invalid"
+            AuthException.ErrorType.TOKEN_INVALID, "auth.error.token.invalid",
+            AuthException.ErrorType.EMAIL_REGISTERED_WITH_PASSWORD, "auth.error.email.registered.with.password"
     );
     private final MessageProvider messageProvider;
 

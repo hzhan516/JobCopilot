@@ -1,11 +1,13 @@
 package edu.asu.ser594.resumeassistant.infrastructure.persistence.mapper.resume;
 
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
+import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.resume.ResumeGroupJpaEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 简历组持久化映射器
@@ -26,6 +28,21 @@ public interface ResumeGroupPersistenceMapper {
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
                 new ArrayList<>()
+        );
+    }
+
+    default ResumeGroup toDomain(ResumeGroupJpaEntity entity, List<ResumeVersion> versions) {
+        if (entity == null) {
+            return null;
+        }
+        return ResumeGroup.reconstruct(
+                entity.getId(),
+                entity.getUserId(),
+                entity.getTitle(),
+                Boolean.TRUE.equals(entity.getIsDefault()),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt(),
+                versions
         );
     }
 

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "backend_job_posting",
+    "jobText": "Senior Backend Engineer - CloudWorks\n\nCloudWorks is hiring a Senior Backend Engineer to build API services for our data platform. Responsibilities include designing REST APIs, maintaining PostgreSQL schemas, deploying Docker containers, and building event-driven workflows with RabbitMQ.\n\nRequirements: Python, FastAPI, PostgreSQL, Docker, REST APIs, RabbitMQ, 3+ years backend engineering experience.",
+    "expected": {
+      "title": "Senior Backend Engineer",
+      "company": "CloudWorks",
+      "requirements": ["Python", "FastAPI", "PostgreSQL", "Docker", "REST APIs", "RabbitMQ"]
+    }
+  },
+  {
+    "id": "frontend_job_posting",
+    "jobText": "Frontend Engineer - PixelForge\n\nPixelForge needs a Frontend Engineer to build user-facing SaaS dashboards. The role focuses on React components, TypeScript, Vite builds, Tailwind CSS styling, accessibility, and integration with REST APIs.\n\nRequirements: React, TypeScript, Vite, Tailwind CSS, HTML, CSS, frontend testing experience.",
+    "expected": {
+      "title": "Frontend Engineer",
+      "company": "PixelForge",
+      "requirements": ["React", "TypeScript", "Vite", "Tailwind CSS", "HTML", "CSS"]
+    }
+  }
+]

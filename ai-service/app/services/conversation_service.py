@@ -1,13 +1,19 @@
 import json
+import logging
 from pathlib import Path
 from urllib.parse import urlparse
 
 from app.schemas import AiResultEvent, ConversationRequestCommand
 from app.services.file_parser import download_file_bytes, extract_resume_text
-from app.services.gemini_client import generate_json_from_text_prompt
+from app.services.llm_client import generate_json_from_text_prompt
+
+
+logger = logging.getLogger(__name__)
 
 
 def _infer_file_format(file_url: str) -> str | None:
+    """Derive supported attachment formats from URL suffix.
+    根据 URL 后缀推断附件格式，限制支持范围以降低解析复杂度与安全攻击面。"""
     suffix = Path(urlparse(file_url).path).suffix.lower()
     if suffix == ".pdf":
         return "pdf"
@@ -21,6 +27,9 @@ def _infer_file_format(file_url: str) -> str | None:
 
 
 def _load_attachment_context(command: ConversationRequestCommand) -> tuple[list[dict[str, str]], list[str]]:
+    """Download and extract text snippets from up to 3 attachments for prompt enrichment.
+    下载并提取最多 3 个附件的文本片段：限制数量与单片段长度（4000 字符），
+    防止超长附件撑爆 prompt token 上限，同时收集告警用于模型自检。"""
     attachments: list[dict[str, str]] = []
     warnings: list[str] = []
 
@@ -54,6 +63,9 @@ def _load_attachment_context(command: ConversationRequestCommand) -> tuple[list[
 
 
 def _build_conversation_prompt(command: ConversationRequestCommand) -> str:
+    """Compose a structured LLM prompt that grounds the reply in resume, job, and attachment context.
+    构建结构化对话 prompt：将简历、职位、附件及历史消息组织为统一上下文，
+    通过严格的 JSON 输出格式约束，保证下游可直接解析而不需额外的后处理清洗。"""
     history = [
         message.model_dump(by_alias=True)
         for message in command.message_history
@@ -73,12 +85,18 @@ Do not include explanations outside JSON.
 Return exactly one JSON object with this shape:
 {{
   "content": "string",
-  "fileUrl": null
+  "fileUrl": null,
+  "resumeModification": {{
+    "modified": false,
+    "markdown": "string"
+  }}
 }}
 
 Rules:
 - content: your reply to the user
 - fileUrl: null unless a generated file URL is explicitly available
+- resumeModification.modified: true ONLY if the user asked you to rewrite/optimize their resume AND you did so
+- resumeModification.markdown: the full rewritten markdown of their resume, if modified=true. Otherwise empty string.
 - be practical and specific
 - use attached file content when readable text is provided below
 - do not invent missing attachment contents
@@ -98,6 +116,15 @@ User ID:
 Resume Version ID:
 {command.resume_version_id}
 
+Main Resume Text:
+{command.resume_text or "None provided"}
+
+Primary Job Context:
+{command.primary_job_text or "None provided"}
+
+Additional Job Contexts:
+{json.dumps(command.related_job_texts or [], ensure_ascii=False, indent=2)}
+
 Attached File URLs:
 {json.dumps(command.file_urls, ensure_ascii=False, indent=2)}
 
@@ -116,15 +143,16 @@ Current Message:
 
 
 def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
+    """Execute the conversation workflow and package the LLM response into a standardized event.
+    执行对话工作流：调用 LLM 生成回复，对空内容做兜底处理，并将结果封装为标准事件回传后端。"""
     prompt = _build_conversation_prompt(command)
-    print(
-        "Conversation request:"
-        f" conversation_id={command.conversation_id},"
-        f" history_count={len(command.message_history)},"
-        f" file_url_count={len(command.file_urls)}"
+    logger.info(
+        "Conversation request: conversation_id=%s, history_count=%d, file_url_count=%d",
+        command.conversation_id,
+        len(command.message_history),
+        len(command.file_urls),
     )
     result = generate_json_from_text_prompt(prompt)
-    print(f"Conversation model result: {result}")
 
     content = str(result.get("content", "")).strip()
     file_url = result.get("fileUrl")
@@ -134,6 +162,15 @@ def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
 
     if file_url is not None:
         file_url = str(file_url).strip() or None
+        
+    resume_modification = result.get("resumeModification")
+    logger.info(
+        "Conversation model result received: conversation_id=%s, content_length=%d, has_file_url=%s, has_resume_modification=%s",
+        command.conversation_id,
+        len(content),
+        file_url is not None,
+        bool(resume_modification),
+    )
 
     return AiResultEvent(
         referenceId=command.conversation_id,
@@ -142,6 +179,7 @@ def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
         data={
             "content": content,
             "fileUrl": file_url,
+            "resumeModification": resume_modification
         },
         errorMessage=None,
         eventType=None,

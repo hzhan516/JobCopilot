@@ -1,17 +1,15 @@
 package edu.asu.ser594.resumeassistant.trigger.listener.ai;
 
 import edu.asu.ser594.resumeassistant.api.conversation.facade.ConversationFacade;
+import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
+import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchFactors;
+import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchItem;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
+import edu.asu.ser594.resumeassistant.api.matching.facade.MatchingFacade;
 import edu.asu.ser594.resumeassistant.api.resume.facade.ResumeFacade;
-import edu.asu.ser594.resumeassistant.domain.embedding.entity.JobVector;
-import edu.asu.ser594.resumeassistant.domain.embedding.entity.ResumeVector;
-import edu.asu.ser594.resumeassistant.domain.embedding.repository.JobVectorRepository;
-import edu.asu.ser594.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
-import edu.asu.ser594.resumeassistant.infrastructure.messaging.config.RabbitMqConfig;
-import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +17,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Async inbound gateway for AI service results. Decouples the AI worker from business workflows by
+ * delegating outcomes to API-layer facades while swallowing exceptions to avoid poisonous messages.
+ * AI 服务结果的异步入口网关。通过将处理结果委托给 API 层门面来解耦 AI 工作线程与业务流，同时捕获异常以避免毒消息
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -27,10 +30,10 @@ public class AiResultMessageListener {
     private final JobFacade jobFacade;
     private final ResumeFacade resumeFacade;
     private final ConversationFacade conversationFacade;
-    private final ResumeVectorRepository resumeVectorRepository;
-    private final JobVectorRepository jobVectorRepository;
+    private final VectorFacade vectorFacade;
+    private final MatchingFacade matchingFacade;
 
-    @RabbitListener(queues = RabbitMqConfig.QUEUE_RES_JOB_PARSE)
+    @RabbitListener(queues = "${app.rabbitmq.queue.res.job-parse}")
     public void onJobParseResult(AiResultEvent event) {
         log.info("Received AiResultEvent for JOB_PARSE, referenceId: {}, status: {}", event.referenceId(), event.status());
         try {
@@ -40,7 +43,7 @@ public class AiResultMessageListener {
         }
     }
 
-    @RabbitListener(queues = RabbitMqConfig.QUEUE_RES_RESUME_PARSE)
+    @RabbitListener(queues = "${app.rabbitmq.queue.res.resume-parse}")
     public void onResumeParseResult(AiResultEvent event) {
         log.info("Received AiResultEvent for RESUME_PARSE, referenceId: {}, status: {}", event.referenceId(), event.status());
         try {
@@ -50,42 +53,102 @@ public class AiResultMessageListener {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    @RabbitListener(queues = RabbitMqConfig.QUEUE_RES_VECTOR_GEN)
-    public void onVectorGenResult(AiResultEvent event) {
-        log.info("Received AiResultEvent for VECTOR_GEN, referenceId: {}, status: {}", event.referenceId(), event.status());
-        try {
-            String entityType = event.eventType() != null ? event.eventType() : extractEntityType(event);
-            float[] embeddingArray = extractEmbedding(event);
-
-            if ("COMPLETED".equals(event.status()) && embeddingArray != null) {
-                saveCompletedVector(event.referenceId(), entityType, embeddingArray);
-            } else {
-                saveFailedVector(event.referenceId(), entityType, event.errorMessage());
-            }
-
-        } catch (Exception e) {
-            log.error("Error processing AiResultEvent for VECTOR_GEN referenceId: {}", event.referenceId(), e);
-        }
-    }
-
-    @RabbitListener(queues = RabbitMqConfig.QUEUE_RES_CONVERSATION)
+    @RabbitListener(queues = "${app.rabbitmq.queue.res.conversation}")
     public void onConversationReply(AiResultEvent event) {
         log.info("Received AiResultEvent for CONVERSATION_REPLY, referenceId: {}, status: {}", event.referenceId(), event.status());
         try {
             if (!"COMPLETED".equals(event.status())) {
                 log.warn("Conversation AI reply failed for conversation: {}, error: {}", event.referenceId(), event.errorMessage());
+                String errorContent = "AI response failed: " + (event.errorMessage() != null ? event.errorMessage() : "Unknown error");
+                conversationFacade.saveAiReply(
+                        event.referenceId(),
+                        errorContent,
+                        null,
+                        null
+                );
+                conversationFacade.failAiReply(event.referenceId(), errorContent);
                 return;
             }
 
             String content = extractReplyContent(event);
             String fileUrl = extractFileUrl(event);
+            String aiOptimizedMarkdown = extractAiOptimizedMarkdown(event);
 
-            conversationFacade.saveAiReply(event.referenceId(), content, fileUrl);
+            conversationFacade.saveAiReply(event.referenceId(), content, fileUrl, aiOptimizedMarkdown);
             log.info("Saved AI reply for conversation: {}", event.referenceId());
+
+            conversationFacade.completeAiReply(event.referenceId(), content);
         } catch (Exception e) {
             log.error("Error processing AiResultEvent for CONVERSATION_REPLY referenceId: {}", event.referenceId(), e);
+            conversationFacade.failAiReply(event.referenceId(), e.getMessage());
         }
+    }
+
+    @RabbitListener(queues = "${app.rabbitmq.queue.res.job-rank}")
+    public void onJobRankResult(AiResultEvent event) {
+        log.info("Received AiResultEvent for JOB_RANK, referenceId: {}, status: {}",
+                event.referenceId(), event.status());
+        try {
+            if (!"COMPLETED".equals(event.status())) {
+                log.warn("Job rank failed for matchId: {}, error: {}",
+                        event.referenceId(), event.errorMessage());
+                return;
+            }
+            Map<String, Object> data = event.data();
+            if (data == null) {
+                log.warn("Job rank result has no data for matchId: {}", event.referenceId());
+                return;
+            }
+
+            Long rankTimeMs = data.containsKey("rankTimeMs")
+                    ? ((Number) data.get("rankTimeMs")).longValue() : 0L;
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> rankedData = (List<Map<String, Object>>) data.get("rankedResults");
+            List<MatchItem> matchItems = new ArrayList<>();
+
+            if (rankedData != null) {
+                for (Map<String, Object> item : rankedData) {
+                    MatchFactors factors = extractMatchFactors(item);
+                    matchItems.add(new MatchItem(
+                            (String) item.get("jobId"),
+                            (String) item.get("title"),
+                            (String) item.get("company"),
+                            item.get("matchScore") != null ? ((Number) item.get("matchScore")).doubleValue() : 0.0,
+                            factors,
+                            (String) item.get("description"),
+                            (String) item.get("matchReason")
+                    ));
+                }
+            }
+
+            matchingFacade.saveJobRankResult(event.referenceId(), matchItems, rankTimeMs);
+            log.info("Job rank result saved for matchId: {}", event.referenceId());
+        } catch (Exception e) {
+            log.error("Error processing AiResultEvent for JOB_RANK referenceId: {}",
+                    event.referenceId(), e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private MatchFactors extractMatchFactors(final Map<String, Object> item) {
+        final Object factorsObj = item.get("matchFactors");
+        if (factorsObj instanceof Map) {
+            final Map<String, Object> factorsMap = (Map<String, Object>) factorsObj;
+            return new MatchFactors(
+                    extractDouble(factorsMap.get("skillMatch")),
+                    extractDouble(factorsMap.get("experienceMatch")),
+                    extractDouble(factorsMap.get("locationMatch"))
+            );
+        }
+        return new MatchFactors(0.0, 0.0, 0.0);
+    }
+
+    private Double extractDouble(final Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        return 0.0;
     }
 
     private String extractReplyContent(AiResultEvent event) {
@@ -102,55 +165,16 @@ public class AiResultMessageListener {
         return null;
     }
 
-    private String extractEntityType(AiResultEvent event) {
-        if (event.data() != null && event.data().containsKey("entityType")) {
-            return (String) event.data().get("entityType");
+    private String extractAiOptimizedMarkdown(AiResultEvent event) {
+        if (event.data() == null) {
+            return null;
         }
-        // 默认回退 / Default fallback
-        return "JOB";
-    }
-
-    @SuppressWarnings("unchecked")
-    private float[] extractEmbedding(AiResultEvent event) {
-        if (event.data() != null && event.data().containsKey("embedding")) {
-            Object rawEmbedding = event.data().get("embedding");
-            if (rawEmbedding instanceof List<?> list) {
-                float[] arr = new float[list.size()];
-                for (int i = 0; i < list.size(); i++) {
-                    Object val = list.get(i);
-                    if (val instanceof Number n) {
-                        arr[i] = n.floatValue();
-                    }
-                }
-                return arr;
+        Object mod = event.data().get("resumeModification");
+        if (mod instanceof Map<?, ?> map) {
+            if (Boolean.TRUE.equals(map.get("modified"))) {
+                return (String) map.get("markdown");
             }
         }
         return null;
-    }
-
-    private void saveCompletedVector(String referenceId, String entityType, float[] embedding) {
-        String id = UUID.randomUUID().toString();
-        if ("RESUME".equalsIgnoreCase(entityType) || "RESUME_VECTOR".equalsIgnoreCase(entityType)) {
-            ResumeVector vector = ResumeVector.createCompleted(id, referenceId, embedding);
-            resumeVectorRepository.save(vector);
-            log.info("Saved COMPLETED resume vector for versionId: {}", referenceId);
-        } else {
-            JobVector vector = JobVector.createCompleted(id, referenceId, embedding);
-            jobVectorRepository.save(vector);
-            log.info("Saved COMPLETED job vector for jobId: {}", referenceId);
-        }
-    }
-
-    private void saveFailedVector(String referenceId, String entityType, String errorMessage) {
-        String id = UUID.randomUUID().toString();
-        if ("RESUME".equalsIgnoreCase(entityType) || "RESUME_VECTOR".equalsIgnoreCase(entityType)) {
-            ResumeVector vector = ResumeVector.createFailed(id, referenceId, errorMessage);
-            resumeVectorRepository.save(vector);
-            log.warn("Saved FAILED resume vector for versionId: {}", referenceId);
-        } else {
-            JobVector vector = JobVector.createFailed(id, referenceId, errorMessage);
-            jobVectorRepository.save(vector);
-            log.warn("Saved FAILED job vector for jobId: {}", referenceId);
-        }
     }
 }

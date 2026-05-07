@@ -1,5 +1,9 @@
-import { useEffect, useState } from 'react';
-import type { JobApplication } from '@/types';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import type { Tracking, TrackingStatsResponse } from '@/types';
+import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
+import { formatDate, formatDateTime } from '@/utils/i18n';
+import { trackingService } from '@/services/trackingService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +31,9 @@ import {
   Building2,
   Briefcase,
   Calendar,
+  Clock,
   MoreHorizontal,
+  Pencil,
   Trash2,
 } from 'lucide-react';
 import {
@@ -38,137 +44,234 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
-// 模拟投递数据
-const mockApplications: JobApplication[] = [
-  {
-    applicationId: '1',
-    jobId: '1',
-    jobTitle: '高级前端工程师',
-    company: '字节跳动',
-    status: 'INTERVIEW',
-    appliedAt: '2024-01-10T10:00:00',
-    notes: '已通过初筛，等待面试安排',
-  },
-  {
-    applicationId: '2',
-    jobId: '2',
-    jobTitle: 'Java后端开发',
-    company: '阿里巴巴',
-    status: 'APPLIED',
-    appliedAt: '2024-01-12T14:30:00',
-    notes: '',
-  },
-  {
-    applicationId: '3',
-    jobId: '3',
-    jobTitle: '产品经理',
-    company: '腾讯',
-    status: 'OFFER',
-    appliedAt: '2024-01-05T09:00:00',
-    notes: '已收到offer，正在考虑',
-  },
-];
-
-const statusLabels: Record<string, { label: string; color: string }> = {
-  APPLIED: { label: '已投递', color: 'bg-blue-100 text-blue-700' },
-  SCREENING: { label: '筛选中', color: 'bg-yellow-100 text-yellow-700' },
-  INTERVIEW: { label: '面试中', color: 'bg-purple-100 text-purple-700' },
-  OFFER: { label: '已录用', color: 'bg-green-100 text-green-700' },
-  REJECTED: { label: '已拒绝', color: 'bg-red-100 text-red-700' },
-  WITHDRAWN: { label: '已撤回', color: 'bg-gray-100 text-gray-700' },
+const getTodayDateInputValue = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
-export default function Tracking() {
-  const [applications, setApplications] = useState<JobApplication[]>([]);
+const clampAppliedDate = (value: string) => {
+  const today = getTodayDateInputValue();
+  return value && value > today ? today : value;
+};
+
+const getAppliedDateForStatus = (status: Tracking['status'], appliedAt: string) => {
+  const clampedAppliedAt = clampAppliedDate(appliedAt);
+  return status === 'APPLIED' && !clampedAppliedAt ? getTodayDateInputValue() : clampedAppliedAt;
+};
+
+export default function TrackingPage() {
+  const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const dismissedEditTrackingIdRef = useRef<string | null>(null);
+  const [trackings, setTrackings] = useState<Tracking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [newApplication, setNewApplication] = useState({
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingTrackingId, setEditingTrackingId] = useState<string | null>(null);
+  const [newTracking, setNewTracking] = useState({
     jobTitle: '',
-    company: '',
-    status: 'APPLIED' as JobApplication['status'],
+    companyName: '',
+    status: 'APPLIED' as Tracking['status'],
+    appliedAt: getTodayDateInputValue(),
     notes: '',
   });
+  const [editTracking, setEditTracking] = useState({
+    jobTitle: '',
+    companyName: '',
+    status: 'APPLIED' as Tracking['status'],
+    appliedAt: '',
+    notes: '',
+  });
+  const [stats, setStats] = useState<TrackingStatsResponse | null>(null);
+  const todayDateInputValue = getTodayDateInputValue();
 
-  // 加载投递记录
-  useEffect(() => {
-    loadApplications();
-  }, []);
+  const statusConfig: Record<string, { labelKey: string; color: string }> = useMemo(
+    () => ({
+      PENDING: { labelKey: 'tracking.status.PENDING', color: 'bg-gray-100 text-gray-500' },
+      APPLIED: { labelKey: 'tracking.status.APPLIED', color: 'bg-blue-100 text-blue-700' },
+      SCREENING: { labelKey: 'tracking.status.SCREENING', color: 'bg-yellow-100 text-yellow-700' },
+      INTERVIEWING: { labelKey: 'tracking.status.INTERVIEWING', color: 'bg-purple-100 text-purple-700' },
+      OFFER: { labelKey: 'tracking.status.OFFER', color: 'bg-green-100 text-green-700' },
+      ACCEPTED: { labelKey: 'tracking.status.ACCEPTED', color: 'bg-emerald-100 text-emerald-700' },
+      REJECTED: { labelKey: 'tracking.status.REJECTED', color: 'bg-red-100 text-red-700' },
+      WITHDRAWN: { labelKey: 'tracking.status.WITHDRAWN', color: 'bg-gray-100 text-gray-700' },
+    }),
+    []
+  );
 
-  const loadApplications = async () => {
+  const loadTrackings = useCallback(async () => {
     try {
       setIsLoading(true);
-      // 使用模拟数据
-      // const data = await trackingService.getApplications();
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setApplications(mockApplications);
-    } catch (error) {
-      toast.error('加载投递记录失败');
+      const data = await trackingService.getTrackings();
+      setTrackings(data);
+    } catch {
+      toast.error(t('tracking.loadError'));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t]);
 
-  // 添加投递记录
-  const handleAddApplication = async () => {
-    if (!newApplication.jobTitle || !newApplication.company) {
-      toast.error('请填写完整信息');
+  // Silently degrade to local counts when the stats API is unavailable
+  // 统计 API 不可用时静默降级，回退到前端本地统计
+  const loadStats = useCallback(async () => {
+    try {
+      const data = await trackingService.getTrackingStats();
+      setStats(data);
+    } catch {
+      setStats(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTrackings();
+    loadStats();
+  }, [loadTrackings, loadStats]);
+
+  const updateEditSearchParam = useCallback((trackingId: string) => {
+    dismissedEditTrackingIdRef.current = null;
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      next.set('edit', trackingId);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const clearEditSearchParam = useCallback(() => {
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      next.delete('edit');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const closeEditDialog = useCallback(() => {
+    dismissedEditTrackingIdRef.current = editingTrackingId ?? searchParams.get('edit');
+    setEditDialogOpen(false);
+    setEditingTrackingId(null);
+    clearEditSearchParam();
+  }, [clearEditSearchParam, editingTrackingId, searchParams]);
+
+  const handleAddTracking = async () => {
+    if (!newTracking.jobTitle || !newTracking.companyName) {
+      toast.error(t('tracking.fillRequired'));
       return;
     }
     try {
-      const application: JobApplication = {
-        applicationId: Date.now().toString(),
-        jobId: '',
-        jobTitle: newApplication.jobTitle,
-        company: newApplication.company,
-        status: newApplication.status,
-        appliedAt: new Date().toISOString(),
-        notes: newApplication.notes,
-      };
-      setApplications([application, ...applications]);
-      setNewApplication({ jobTitle: '', company: '', status: 'APPLIED', notes: '' });
+      await trackingService.createTracking({
+        jobTitle: newTracking.jobTitle,
+        companyName: newTracking.companyName,
+        status: newTracking.status,
+        appliedAt: getAppliedDateForStatus(newTracking.status, newTracking.appliedAt) || undefined,
+        notes: newTracking.notes || undefined,
+      });
+      await Promise.all([loadTrackings(), loadStats()]);
+      setNewTracking({ jobTitle: '', companyName: '', status: 'APPLIED', appliedAt: getTodayDateInputValue(), notes: '' });
       setAddDialogOpen(false);
-      toast.success('添加成功');
-    } catch (error) {
-      toast.error('添加失败');
+      toast.success(t('tracking.addSuccess'));
+    } catch {
+      toast.error(t('tracking.addFailed'));
     }
   };
 
-  // 更新状态
-  const handleUpdateStatus = async (applicationId: string, status: JobApplication['status']) => {
+  const openEditDialog = useCallback((tracking: Tracking) => {
+    setEditingTrackingId(tracking.trackingId);
+    setEditTracking({
+      jobTitle: tracking.jobTitle,
+      companyName: tracking.companyName,
+      status: tracking.status,
+      appliedAt: clampAppliedDate(tracking.appliedAt ?? ''),
+      notes: tracking.notes ?? '',
+    });
+    updateEditSearchParam(tracking.trackingId);
+    setEditDialogOpen(true);
+  }, [updateEditSearchParam]);
+
+  const handleEditTracking = async () => {
+    if (!editingTrackingId) return;
+
+    const jobTitle = editTracking.jobTitle.trim();
+    const companyName = editTracking.companyName.trim();
+    if (!jobTitle || !companyName) {
+      toast.error(t('tracking.fillRequired'));
+      return;
+    }
+
     try {
-      setApplications((prev) =>
-        prev.map((app) => (app.applicationId === applicationId ? { ...app, status } : app))
-      );
-      toast.success('状态更新成功');
-    } catch (error) {
-      toast.error('更新失败');
+      await trackingService.updateTracking(editingTrackingId, {
+        jobTitle,
+        companyName,
+        status: editTracking.status,
+        appliedAt: getAppliedDateForStatus(editTracking.status, editTracking.appliedAt) || undefined,
+        notes: editTracking.notes,
+      });
+      await Promise.all([loadTrackings(), loadStats()]);
+      closeEditDialog();
+      toast.success(t('tracking.editSuccess'));
+    } catch {
+      toast.error(t('tracking.editFailed'));
     }
   };
 
-  // 删除投递记录
-  const handleDeleteApplication = async (applicationId: string) => {
+  const handleUpdateStatus = async (trackingId: string, status: Tracking['status']) => {
     try {
-      setApplications((prev) => prev.filter((app) => app.applicationId !== applicationId));
-      toast.success('删除成功');
-    } catch (error) {
-      toast.error('删除失败');
+      const tracking = trackings.find((item) => item.trackingId === trackingId);
+      await trackingService.updateTracking(trackingId, {
+        status,
+        appliedAt: getAppliedDateForStatus(status, tracking?.appliedAt ?? '') || undefined,
+      });
+      await Promise.all([loadTrackings(), loadStats()]);
+      toast.success(t('tracking.updateSuccess'));
+    } catch {
+      toast.error(t('tracking.updateFailed'));
     }
   };
 
-  // 统计各状态数量
-  const statusCounts = applications.reduce((acc, app) => {
-    acc[app.status] = (acc[app.status] || 0) + 1;
+  const handleDeleteTracking = async (trackingId: string) => {
+    try {
+      await trackingService.deleteTracking(trackingId);
+      await Promise.all([loadTrackings(), loadStats()]);
+      toast.success(t('tracking.deleteSuccess'));
+    } catch {
+      toast.error(t('tracking.deleteFailed'));
+    }
+  };
+
+  useEffect(() => {
+    const editTrackingId = searchParams.get('edit');
+    if (!editTrackingId) {
+      dismissedEditTrackingIdRef.current = null;
+      return;
+    }
+    if (dismissedEditTrackingIdRef.current === editTrackingId || isLoading || editDialogOpen) return;
+
+    const tracking = trackings.find((item) => item.trackingId === editTrackingId);
+    if (tracking) {
+      openEditDialog(tracking);
+    }
+  }, [editDialogOpen, isLoading, openEditDialog, searchParams, trackings]);
+
+  // Derive local counts as fallback when stats API fails
+  // 统计各状态数量（作为 stats API 失败时的回退）
+  const statusCounts = trackings.reduce((acc, t) => {
+    acc[t.status] = (acc[t.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  // 渲染加载状态
+  const successRate = useMemo(() => {
+    const value = stats?.successRate ?? 0;
+    return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
+  }, [stats]);
+
   if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">求职跟踪</h1>
-            <p className="text-gray-500 mt-1">管理您的求职进度</p>
+            <h1 className="text-3xl font-bold text-gray-900">{t('tracking.title')}</h1>
+            <p className="text-gray-500 mt-1">{t('tracking.subtitle')}</p>
           </div>
           <Skeleton className="h-10 w-32" />
         </div>
@@ -184,27 +287,25 @@ export default function Tracking() {
 
   return (
     <div className="space-y-6">
-      {/* 页面标题 */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">求职跟踪</h1>
-          <p className="text-gray-500 mt-1">管理您的求职进度</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('tracking.title')}</h1>
+          <p className="text-gray-500 mt-1">{t('tracking.subtitle')}</p>
         </div>
         <Button onClick={() => setAddDialogOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
-          添加记录
+          {t('tracking.addRecord')}
         </Button>
       </div>
 
-      {/* 统计卡片 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">已投递</p>
+                <p className="text-sm text-gray-500">{t('tracking.stats.applied')}</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {statusCounts.APPLIED || 0}
+                  {stats?.applied ?? statusCounts.APPLIED ?? 0}
                 </p>
               </div>
               <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -217,9 +318,9 @@ export default function Tracking() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">面试中</p>
+                <p className="text-sm text-gray-500">{t('tracking.stats.interview')}</p>
                 <p className="text-2xl font-bold text-purple-600">
-                  {statusCounts.INTERVIEW || 0}
+                  {stats?.interview ?? statusCounts.INTERVIEWING ?? 0}
                 </p>
               </div>
               <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
@@ -232,9 +333,9 @@ export default function Tracking() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">已录用</p>
+                <p className="text-sm text-gray-500">{t('tracking.stats.offered')}</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {statusCounts.OFFER || 0}
+                  {stats?.offer ?? statusCounts.OFFER ?? 0}
                 </p>
               </div>
               <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
@@ -247,8 +348,10 @@ export default function Tracking() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">总计</p>
-                <p className="text-2xl font-bold text-gray-900">{applications.length}</p>
+                <p className="text-sm text-gray-500">{t('tracking.stats.total')}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats?.total ?? trackings.length}
+                </p>
               </div>
               <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
                 <Calendar className="w-5 h-5 text-gray-600" />
@@ -258,64 +361,89 @@ export default function Tracking() {
         </Card>
       </div>
 
-      {/* 投递记录列表 */}
+      <div className="mt-6">
+        <div className="flex justify-between text-sm mb-2">
+          <span className="font-medium text-gray-700">{t('tracking.successRate')}</span>
+          <span className="text-gray-500">{Math.round(successRate)}%</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-4">
+          <div
+            className="bg-green-500 h-4 rounded-full transition-all duration-500"
+            style={{ width: `${successRate}%` }}
+          />
+        </div>
+      </div>
+
       <Card>
         <CardHeader className="pb-4">
-          <h3 className="text-lg font-semibold">投递记录</h3>
+          <h3 className="text-lg font-semibold">{t('tracking.recordList')}</h3>
         </CardHeader>
         <CardContent>
-          {applications.length === 0 ? (
+          {trackings.length === 0 ? (
             <div className="text-center py-12">
               <ClipboardList className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">暂无投递记录</h3>
-              <p className="text-gray-500 mb-4">添加您的第一笔投递记录</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">{t('tracking.emptyTitle')}</h3>
+              <p className="text-gray-500 mb-4">{t('tracking.emptyDesc')}</p>
               <Button onClick={() => setAddDialogOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
-                添加记录
+                {t('tracking.addRecord')}
               </Button>
             </div>
           ) : (
             <div className="space-y-4">
-              {applications.map((application) => (
+              {trackings.map((tracking) => (
                 <div
-                  key={application.applicationId}
+                  key={tracking.trackingId}
                   className="flex items-start justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
-                      <h4 className="font-semibold text-gray-900">{application.jobTitle}</h4>
-                      <Badge className={statusLabels[application.status].color}>
-                        {statusLabels[application.status].label}
-                      </Badge>
+                      <h4 className="font-semibold text-gray-900">{tracking.jobTitle}</h4>
+                      {(() => {
+                        const config = statusConfig[tracking.status] || { labelKey: 'tracking.status.UNKNOWN', color: 'bg-gray-100 text-gray-500' };
+                        return (
+                          <Badge className={config.color}>
+                            {t(config.labelKey)}
+                          </Badge>
+                        );
+                      })()}
                     </div>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500 mb-2">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500 mb-2">
                       <span className="flex items-center">
                         <Building2 className="w-4 h-4 mr-1" />
-                        {application.company}
+                        {tracking.companyName}
                       </span>
+                      {tracking.appliedAt && (
+                        <span className="flex items-center">
+                          <Calendar className="w-4 h-4 mr-1" />
+                          {formatDate(tracking.appliedAt)}
+                        </span>
+                      )}
                       <span className="flex items-center">
-                        <Calendar className="w-4 h-4 mr-1" />
-                        {new Date(application.appliedAt).toLocaleDateString('zh-CN')}
+                        <Clock className="w-4 h-4 mr-1" />
+                        {t('tracking.lastEditedAt', {
+                          time: formatDateTime(tracking.updatedAt || tracking.createdAt),
+                        })}
                       </span>
                     </div>
-                    {application.notes && (
-                      <p className="text-sm text-gray-600">{application.notes}</p>
+                    {tracking.notes && (
+                      <p className="text-sm text-gray-600">{tracking.notes}</p>
                     )}
                   </div>
                   <div className="flex items-center space-x-2">
                     <Select
-                      value={application.status}
+                      value={tracking.status}
                       onValueChange={(value) =>
-                        handleUpdateStatus(application.applicationId, value as JobApplication['status'])
+                        handleUpdateStatus(tracking.trackingId, value as Tracking['status'])
                       }
                     >
                       <SelectTrigger className="w-32">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.entries(statusLabels).map(([key, { label }]) => (
+                        {Object.entries(statusConfig).map(([key, { labelKey }]) => (
                           <SelectItem key={key} value={key}>
-                            {label}
+                            {t(labelKey)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -327,12 +455,16 @@ export default function Tracking() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEditDialog(tracking)}>
+                          <Pencil className="w-4 h-4 mr-2" />
+                          {t('common.edit')}
+                        </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => handleDeleteApplication(application.applicationId)}
+                          onClick={() => handleDeleteTracking(tracking.trackingId)}
                           className="text-red-600"
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
-                          删除
+                          {t('common.delete')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -344,42 +476,42 @@ export default function Tracking() {
         </CardContent>
       </Card>
 
-      {/* 添加记录对话框 */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>添加投递记录</DialogTitle>
-            <DialogDescription>记录您的求职投递信息</DialogDescription>
+            <DialogTitle>{t('tracking.addRecordTitle')}</DialogTitle>
+            <DialogDescription>{t('tracking.addRecordDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>职位名称</Label>
+              <Label>{t('tracking.jobTitle')}</Label>
               <Input
-                placeholder="例如：前端工程师"
-                value={newApplication.jobTitle}
+                placeholder={t('tracking.jobTitlePlaceholder')}
+                value={newTracking.jobTitle}
                 onChange={(e) =>
-                  setNewApplication({ ...newApplication, jobTitle: e.target.value })
+                  setNewTracking({ ...newTracking, jobTitle: e.target.value })
                 }
               />
             </div>
             <div className="space-y-2">
-              <Label>公司名称</Label>
+              <Label>{t('tracking.company')}</Label>
               <Input
-                placeholder="例如：阿里巴巴"
-                value={newApplication.company}
+                placeholder={t('tracking.companyPlaceholder')}
+                value={newTracking.companyName}
                 onChange={(e) =>
-                  setNewApplication({ ...newApplication, company: e.target.value })
+                  setNewTracking({ ...newTracking, companyName: e.target.value })
                 }
               />
             </div>
             <div className="space-y-2">
-              <Label>当前状态</Label>
+              <Label>{t('tracking.currentStatus')}</Label>
               <Select
-                value={newApplication.status}
+                value={newTracking.status}
                 onValueChange={(value) =>
-                  setNewApplication({
-                    ...newApplication,
-                    status: value as JobApplication['status'],
+                  setNewTracking({
+                    ...newTracking,
+                    status: value as Tracking['status'],
+                    appliedAt: getAppliedDateForStatus(value as Tracking['status'], newTracking.appliedAt),
                   })
                 }
               >
@@ -387,30 +519,129 @@ export default function Tracking() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(statusLabels).map(([key, { label }]) => (
+                  {Object.entries(statusConfig).map(([key, { labelKey }]) => (
                     <SelectItem key={key} value={key}>
-                      {label}
+                      {t(labelKey)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>备注</Label>
+              <Label>{t('tracking.appliedAt')}</Label>
               <Input
-                placeholder="可选"
-                value={newApplication.notes}
+                type="date"
+                max={todayDateInputValue}
+                value={newTracking.appliedAt}
                 onChange={(e) =>
-                  setNewApplication({ ...newApplication, notes: e.target.value })
+                  setNewTracking({ ...newTracking, appliedAt: clampAppliedDate(e.target.value) })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('tracking.notes')}</Label>
+              <Input
+                placeholder={t('tracking.notesPlaceholder')}
+                value={newTracking.notes}
+                onChange={(e) =>
+                  setNewTracking({ ...newTracking, notes: e.target.value })
                 }
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
-              取消
+              {t('common.cancel')}
             </Button>
-            <Button onClick={handleAddApplication}>添加</Button>
+            <Button onClick={handleAddTracking}>{t('tracking.add')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={editDialogOpen}
+        onOpenChange={(open) => {
+          if (open) setEditDialogOpen(true);
+          else closeEditDialog();
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('tracking.editRecordTitle')}</DialogTitle>
+            <DialogDescription>{t('tracking.editRecordDesc')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>{t('tracking.jobTitle')}</Label>
+              <Input
+                placeholder={t('tracking.jobTitlePlaceholder')}
+                value={editTracking.jobTitle}
+                onChange={(e) =>
+                  setEditTracking({ ...editTracking, jobTitle: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('tracking.company')}</Label>
+              <Input
+                placeholder={t('tracking.companyPlaceholder')}
+                value={editTracking.companyName}
+                onChange={(e) =>
+                  setEditTracking({ ...editTracking, companyName: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('tracking.currentStatus')}</Label>
+              <Select
+                value={editTracking.status}
+                onValueChange={(value) =>
+                  setEditTracking({
+                    ...editTracking,
+                    status: value as Tracking['status'],
+                    appliedAt: getAppliedDateForStatus(value as Tracking['status'], editTracking.appliedAt),
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(statusConfig).map(([key, { labelKey }]) => (
+                    <SelectItem key={key} value={key}>
+                      {t(labelKey)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{t('tracking.appliedAt')}</Label>
+              <Input
+                type="date"
+                max={todayDateInputValue}
+                value={editTracking.appliedAt}
+                onChange={(e) =>
+                  setEditTracking({ ...editTracking, appliedAt: clampAppliedDate(e.target.value) })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('tracking.notes')}</Label>
+              <Input
+                placeholder={t('tracking.notesPlaceholder')}
+                value={editTracking.notes}
+                onChange={(e) =>
+                  setEditTracking({ ...editTracking, notes: e.target.value })
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeEditDialog}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={handleEditTracking}>{t('common.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

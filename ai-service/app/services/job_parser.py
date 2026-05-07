@@ -1,9 +1,14 @@
 from typing import Any
 
+import base64
+import re
+from pathlib import Path
+
 import httpx
 
 from app.schemas import ParsedJobContent
-from app.services.gemini_client import (
+from app.services.file_parser import download_file_bytes
+from app.services.llm_client import (
     generate_json_from_image_prompt,
     generate_json_from_text_prompt,
 )
@@ -28,7 +33,20 @@ def _build_job_content(data: dict[str, Any]) -> ParsedJobContent:
     )
 
 
+def is_job_content_incomplete(content: ParsedJobContent) -> bool:
+    """Check whether critical fields are missing so we can trigger vision fallback.
+    校验关键字段是否缺失：用于决定是否需要触发截图 vision 解析作为兜底。"""
+    return (
+        not content.title.strip()
+        or not content.company.strip()
+        or not content.description.strip()
+    )
+
+
 def parse_job_text(markdown_text: str) -> ParsedJobContent:
+    """Extract structured job fields from cleaned page text using an LLM.
+    从清洗后的页面文本中提取结构化职位信息：限制输入长度（12000 字符）以控制 token 成本，
+    同时通过严格的 JSON schema 约束降低解析失败率。"""
     cleaned_text = markdown_text.strip()
     if not cleaned_text:
         raise ValueError("Scraped job page text is empty.")
@@ -66,23 +84,102 @@ Job posting text:
     return _build_job_content(parsed)
 
 
+def _decode_base64_image(data: str) -> tuple[bytes, str]:
+    match = re.match(r"data:([\w/]+);base64,(.+)", data)
+    if match:
+        mime_type = match.group(1)
+        image_bytes = base64.b64decode(match.group(2))
+        return image_bytes, mime_type
+    # Plain base64 string without data URI prefix defaults to PNG.
+    # 无 data URI 前缀的纯 Base64 字符串默认按 PNG 处理。
+    image_bytes = base64.b64decode(data)
+    return image_bytes, "image/png"
+
+
+def _load_image_bytes(image_url: str) -> tuple[bytes, str]:
+    """Load image bytes from data-URI, HTTP(S), or local path with graceful fallback.
+    加载图片字节：支持 data URI、HTTP(S) 及本地路径；对超长字符串可能触发的 OSError 做静默兜底，
+    最后尝试纯 Base64 解码，提高解析容错性。"""
+    if image_url.startswith("data:"):
+        return _decode_base64_image(image_url)
+
+    if image_url.startswith("http://") or image_url.startswith("https://"):
+        image_response = httpx.get(image_url, timeout=30.0, follow_redirects=True)
+        image_response.raise_for_status()
+        return image_response.content, image_response.headers.get("Content-Type", "image/png")
+
+    try:
+        image_path = Path(image_url)
+        if image_path.is_file():
+            return image_path.read_bytes(), "image/png"
+    except OSError:
+        # Very long strings can exceed OS path length limits; fall through to base64 fallback.
+        # 超长字符串可能超出操作系统路径长度限制，继续走 Base64 兜底分支。
+        pass
+
+    return _decode_base64_image(image_url)
+
+
+def parse_job_from_image(
+    screenshot_url: str,
+    context_text: str = "",
+) -> ParsedJobContent:
+    """Extract structured job fields from a screenshot using vision LLM with optional text context.
+    从截图中提取职位信息：vision 模型处理可见内容，页面文本作为辅助上下文仅用于填补或澄清细节，
+    避免过度依赖可能不准确的 scraped text。"""
+    image_bytes, mime_type = _load_image_bytes(screenshot_url)
+
+    prompt = f"""
+You are an information extraction system for job posting screenshots.
+
+Return valid JSON only.
+Do not include markdown fences.
+Do not include explanations.
+
+Extract the visible job posting from the screenshot. Use the optional text context only to fill gaps or clarify details.
+
+Optional text context:
+\"\"\"
+{context_text[:6000]}
+\"\"\"
+
+Return exactly one JSON object with this shape:
+{{
+  "title": "string",
+  "company": "string",
+  "description": "string",
+  "requirements": ["string", "string"]
+}}
+
+Rules:
+- title: the actual job title
+- company: the hiring company name if visible or provided in context
+- description: a concise but complete cleaned summary of the role
+- requirements: concrete required skills, technologies, qualifications, or experience
+- if a field is missing, return an empty string or empty list
+""".strip()
+
+    parsed = generate_json_from_image_prompt(
+        prompt=prompt,
+        image_bytes=image_bytes,
+        mime_type=mime_type,
+    )
+
+    return _build_job_content(parsed)
+
+
 def validate_job_with_vision(
     parsed_content: ParsedJobContent,
     page_text: str,
     screenshot_url: str | None,
 ) -> ParsedJobContent:
+    """Cross-check and correct parsed job fields against a screenshot to reduce hallucination.
+    使用截图交叉验证已解析的职位字段：当 scraped text 存在歧义或截断时，
+    vision 模型可基于真实页面视觉内容进行校正，降低幻觉风险。"""
     if not screenshot_url:
         return parsed_content
 
-    if screenshot_url.startswith("http://") or screenshot_url.startswith("https://"):
-        image_response = httpx.get(screenshot_url, timeout=30.0, follow_redirects=True)
-        image_response.raise_for_status()
-        image_bytes = image_response.content
-        mime_type = image_response.headers.get("Content-Type", "image/png")
-    else:
-        with open(screenshot_url, "rb") as image_file:
-            image_bytes = image_file.read()
-        mime_type = "image/png"
+    image_bytes, mime_type = _load_image_bytes(screenshot_url)
 
     prompt = f"""
 You are validating job posting extraction results using a webpage screenshot.
@@ -122,4 +219,3 @@ Return exactly one JSON object with this shape:
     )
 
     return _build_job_content(parsed)
-

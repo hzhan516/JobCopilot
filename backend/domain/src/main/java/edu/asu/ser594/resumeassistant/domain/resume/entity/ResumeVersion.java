@@ -7,47 +7,35 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * 简历版本实体
- * Resume Version Entity
- *
+ * A single version of a resume within a ResumeGroup, capturing either the uploaded file or editable content.
+ * 简历组中的单个版本，承载上传的原始文件或可编辑内容。
+ * <p>
+ * Invariants:
+ * 1. ORIGINAL versions are immutable.
+ * 2. Only ACTIVE versions are mutable.
  * 不变式：
- * 1. ORIGINAL版本不可编辑
- * 2. 只有ACTIVE版本可编辑
+ * 1. ORIGINAL 版本不可编辑
+ * 2. 只有 ACTIVE 版本可编辑
  */
 public final class ResumeVersion implements Entity<UUID> {
-
-    public enum VersionType {
-        ORIGINAL,      // 原版 - 只读
-        CONVERTED,     // 转换版 - 可编辑Markdown
-        AI_OPTIMIZED   // AI版 - 可编辑Markdown
-    }
-
-    public enum Status {
-        ACTIVE,    // 活跃
-        ARCHIVED   // 已归档
-    }
 
     private final UUID id;
     private final UUID groupId;
     private final VersionType versionType;
-
-    // 文件信息（原版特有）
+    // File metadata persisted for the original upload | 原始上传文件的元数据
     private final String originalFileName;
     private final String storedFileName;
     private final String fileType;
     private final long fileSize;
     private final String storagePath;
     private final String storageProvider;
-
-    // 内容（转换版/AI版特有）
+    private final LocalDateTime createdAt;
+    // Editable content and parsing state for converted / AI versions | 转换版/AI 版本的可编辑内容与解析状态
     private String content;
     private String parsedContent;
-
     private ParseStatus parseStatus;
     private String parseErrorMessage;
-
     private Status status;
-    private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     private ResumeVersion(UUID id, UUID groupId, VersionType versionType,
@@ -73,8 +61,6 @@ public final class ResumeVersion implements Entity<UUID> {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
-
-    // ==================== 工厂方法 ====================
 
     public static ResumeVersion createOriginal(UUID groupId, String originalFileName,
                                                String fileType, long fileSize,
@@ -110,7 +96,7 @@ public final class ResumeVersion implements Entity<UUID> {
                 0L,
                 null,
                 null,
-                "",  // 空内容待填充
+                "",  // Empty placeholder to be filled by parser | 空占位符，等待解析器填充
                 null,
                 ParseStatus.PENDING,
                 null,
@@ -120,23 +106,40 @@ public final class ResumeVersion implements Entity<UUID> {
         );
     }
 
+    // Factory methods | 工厂方法
+
     public static ResumeVersion reconstruct(UUID id, UUID groupId, VersionType versionType,
                                             String originalFileName, String storedFileName,
                                             String fileType, long fileSize, String storagePath,
                                             String storageProvider, String content,
-                                            String parsedContent, ParseStatus parseStatus, String parseErrorMessage, 
+                                            String parsedContent, ParseStatus parseStatus, String parseErrorMessage,
                                             Status status, LocalDateTime createdAt, LocalDateTime updatedAt) {
         return new ResumeVersion(id, groupId, versionType, originalFileName, storedFileName,
                 fileType, fileSize, storagePath, storageProvider, content, parsedContent,
                 parseStatus, parseErrorMessage, status, createdAt, updatedAt);
     }
 
-    // ==================== 领域行为 ====================
+    public static ResumeVersion createAiOptimized(UUID groupId, String content) {
+        return new ResumeVersion(
+                UUID.randomUUID(),
+                groupId,
+                VersionType.AI_OPTIMIZED,
+                null,
+                null,
+                "text/markdown",
+                0L,
+                null,
+                null,
+                content,
+                null,
+                ParseStatus.PENDING,
+                null,
+                Status.ACTIVE,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+    }
 
-    /**
-     * 编辑内容
-     * @throws IllegalStateException if not editable
-     */
     public void editContent(String newContent) {
         if (versionType == VersionType.ORIGINAL) {
             throw new IllegalStateException("Original version cannot be edited");
@@ -153,6 +156,8 @@ public final class ResumeVersion implements Entity<UUID> {
         this.updatedAt = LocalDateTime.now();
     }
 
+    // Domain behaviors | 领域行为
+
     public void markParseCompleted(String parsedContent) {
         this.parseStatus = ParseStatus.COMPLETED;
         this.parsedContent = parsedContent;
@@ -165,61 +170,100 @@ public final class ResumeVersion implements Entity<UUID> {
         this.updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * 应用解析后的结构化内容
-     */
     public void applyParsedContent(String parsedJson) {
         this.parsedContent = parsedJson;
         this.updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * 归档此版本
-     */
     public void archive() {
         this.status = Status.ARCHIVED;
         this.updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * 检查是否可编辑
-     */
+    public void activate() {
+        this.status = Status.ACTIVE;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public boolean isEditable() {
         return versionType != VersionType.ORIGINAL && status == Status.ACTIVE;
     }
 
-    // ==================== Getters ====================
-
     @Override
-    public UUID getId() { return id; }
+    public UUID getId() {
+        return id;
+    }
 
-    public UUID getGroupId() { return groupId; }
+    public UUID getGroupId() {
+        return groupId;
+    }
 
-    public VersionType getVersionType() { return versionType; }
+    // Property accessors | 属性访问器
 
-    public String getOriginalFileName() { return originalFileName; }
+    public VersionType getVersionType() {
+        return versionType;
+    }
 
-    public String getStoredFileName() { return storedFileName; }
+    public String getOriginalFileName() {
+        return originalFileName;
+    }
 
-    public String getFileType() { return fileType; }
+    public String getStoredFileName() {
+        return storedFileName;
+    }
 
-    public long getFileSize() { return fileSize; }
+    public String getFileType() {
+        return fileType;
+    }
 
-    public String getStoragePath() { return storagePath; }
+    public long getFileSize() {
+        return fileSize;
+    }
 
-    public String getStorageProvider() { return storageProvider; }
+    public String getStoragePath() {
+        return storagePath;
+    }
 
-    public String getContent() { return content; }
+    public String getStorageProvider() {
+        return storageProvider;
+    }
 
-    public String getParsedContent() { return parsedContent; }
-    
-    public ParseStatus getParseStatus() { return parseStatus; }
+    public String getContent() {
+        return content;
+    }
 
-    public String getParseErrorMessage() { return parseErrorMessage; }
+    public String getParsedContent() {
+        return parsedContent;
+    }
 
-    public Status getStatus() { return status; }
+    public ParseStatus getParseStatus() {
+        return parseStatus;
+    }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
+    public String getParseErrorMessage() {
+        return parseErrorMessage;
+    }
 
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public Status getStatus() {
+        return status;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public enum VersionType {
+        ORIGINAL,      // Immutable uploaded file | 不可变的上传文件
+        CONVERTED,     // Editable Markdown derived from parsing | 从解析得到的可编辑 Markdown
+        AI_OPTIMIZED   // Editable Markdown generated by AI copilot | AI 助手生成的可编辑 Markdown
+    }
+
+    public enum Status {
+        ACTIVE,    // Currently in use and editable | 当前使用中且可编辑
+        ARCHIVED   // Retained for history but immutable | 保留历史但不可编辑
+    }
 }

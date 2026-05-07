@@ -1,7 +1,7 @@
 from typing import Any
 
 from app.schemas import ParsedResumeContent
-from app.services.gemini_client import generate_json_from_text_prompt
+from app.services.llm_client import generate_json_from_text_prompt
 
 
 def _normalize_skills(value: Any) -> list[str]:
@@ -34,6 +34,9 @@ def _normalize_experience(value: Any) -> list[dict[str, Any]]:
 
 
 def parse_resume_text(resume_text: str) -> ParsedResumeContent:
+    """Extract structured resume fields using an LLM with normalization post-processing.
+    使用 LLM 提取结构化简历字段：限制输入长度（12000 字符）控制成本，
+    并对解析结果做归一化后处理，兼容模型返回的多种数据类型（列表、字符串、字典）。"""
     cleaned_text = resume_text.strip()
     if not cleaned_text:
         raise ValueError("Extracted resume text is empty.")

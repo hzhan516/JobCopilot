@@ -1,10 +1,13 @@
 package edu.asu.ser594.resumeassistant.trigger.http.advice;
 
 import edu.asu.ser594.resumeassistant.api.common.dto.ApiResponse;
+import edu.asu.ser594.resumeassistant.api.shared.service.ExceptionMessageResolver;
+import edu.asu.ser594.resumeassistant.domain.job.exception.JobContentNotReadyException;
+import edu.asu.ser594.resumeassistant.domain.matching.exception.ResumeVectorNotReadyException;
+import edu.asu.ser594.resumeassistant.domain.shared.exception.AiServiceUnavailableException;
 import edu.asu.ser594.resumeassistant.domain.shared.exception.LocalizedException;
 import edu.asu.ser594.resumeassistant.domain.shared.service.MessageProvider;
 import edu.asu.ser594.resumeassistant.domain.user.exception.AuthException;
-import edu.asu.ser594.resumeassistant.api.shared.service.ExceptionMessageResolver;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +23,11 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import java.util.HashMap;
 import java.util.Map;
 
-// Global exception handler with i18n support
+/**
+ * Centralized exception translation layer converting domain and framework errors into standardized,
+ * localized API responses while preserving appropriate HTTP semantics.
+ * 集中式异常转换层，将领域与框架错误映射为标准化的本地化 API 响应，同时保持恰当的 HTTP 语义
+ */
 @Slf4j
 @RestControllerAdvice
 @RequiredArgsConstructor
@@ -30,7 +37,9 @@ public class GlobalExceptionHandler {
     private final ExceptionMessageResolver exceptionResolver;
 
     /**
-     * 参数校验异常 - 从 messages.properties 读取
+     * Aggregates field-level validation failures into a single structured payload so the frontend
+     * can highlight invalid inputs without making multiple round-trips.
+     * 聚合字段级校验失败为单一结构化负载，使前端能够一次性定位所有无效输入
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationExceptions(
@@ -39,12 +48,11 @@ public class GlobalExceptionHandler {
         Map<String, String> fieldErrors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
             String fieldName = ((FieldError) error).getField();
-            // 消息来自 messages.properties，已根据 Accept-Language 本地化
+            // already localized by Spring based on Accept-Language | 已由 Spring 根据 Accept-Language 完成本地化
             String errorMessage = error.getDefaultMessage();
             fieldErrors.put(fieldName, errorMessage);
         });
 
-        // 从 i18n 获取错误摘要
         String summaryMessage = messageProvider.getMessage("validation.failed");
 
         return ResponseEntity.badRequest()
@@ -52,8 +60,8 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 约束校验异常（@Validated）
-     * Handle @Validated constraint violations
+     * Handles constraint violations that surface outside form objects, such as path or query parameter checks.
+     * 处理表单对象之外的约束违规，例如路径参数或查询参数的校验失败
      */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(
@@ -69,8 +77,8 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 参数类型转换异常
-     * Handle method argument type mismatch (e.g., invalid UUID format)
+     * Produces a clear, actionable message when type conversion fails so API consumers know the expected format.
+     * 在类型转换失败时返回明确且可操作的消息，使 API 调用方了解期望的数据格式
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(
@@ -88,18 +96,18 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 认证异常
-     * Handle authentication exceptions
+     * Maps each authentication error subtype to the correct HTTP status and resolves a localized message
+     * via the application-layer resolver rather than exposing raw enum names.
+     * 将每种认证错误子类型映射到正确的 HTTP 状态码，并通过应用层解析器获取本地化消息，避免暴露原始枚举名
      */
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<ApiResponse<Void>> handleAuthException(AuthException ex) {
         log.warn("Authentication failed: {}", ex.getErrorType());
 
-        // 通过 Application 层翻译为本地化消息
         String localizedMessage = exceptionResolver.resolve(ex.getErrorType());
 
         HttpStatus status = switch (ex.getErrorType()) {
-            case EMAIL_EXISTS -> HttpStatus.CONFLICT;
+            case EMAIL_EXISTS, EMAIL_REGISTERED_WITH_PASSWORD -> HttpStatus.CONFLICT;
             case INVALID_CREDENTIALS, EMAIL_NOT_FOUND, EMAIL_NOT_VERIFIED, TOKEN_EXPIRED, TOKEN_INVALID ->
                     HttpStatus.UNAUTHORIZED;
         };
@@ -109,8 +117,8 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 本地化异常
-     * Handle localized exceptions
+     * Resolves message keys dynamically so business exceptions can carry i18n identifiers instead of hard-coded text.
+     * 动态解析消息键，使业务异常能够携带国际化标识而非硬编码文本，支持多语言扩展
      */
     @ExceptionHandler(LocalizedException.class)
     public ResponseEntity<ApiResponse<Void>> handleLocalizedException(LocalizedException ex) {
@@ -128,8 +136,65 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 系统异常
-     * Handle system exceptions
+     * Translates transient AI service failures into 503 so clients can implement retry or graceful degradation.
+     * 将 AI 服务的瞬时故障转换为 503，使客户端能够实现重试或优雅降级策略
+     */
+    @ExceptionHandler(AiServiceUnavailableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAiServiceUnavailable(AiServiceUnavailableException ex) {
+        log.warn("AI service unavailable: {}", ex.getMessageKey());
+
+        String message;
+        try {
+            message = messageProvider.getMessage(ex.getMessageKey(), ex.getArgs());
+        } catch (Exception e) {
+            message = ex.getMessageKey();
+        }
+
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiResponse.error(503, message));
+    }
+
+    /**
+     * Returns 422 when asynchronous job parsing has not yet finished, signaling the client to poll later.
+     * 当异步职位解析尚未完成时返回 422，提示客户端稍后重试轮询
+     */
+    @ExceptionHandler(JobContentNotReadyException.class)
+    public ResponseEntity<ApiResponse<Void>> handleJobContentNotReady(JobContentNotReadyException ex) {
+        log.warn("Job content not ready: {}", ex.getMessageKey());
+
+        String message;
+        try {
+            message = messageProvider.getMessage(ex.getMessageKey(), ex.getArgs());
+        } catch (Exception e) {
+            message = ex.getMessageKey();
+        }
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(ApiResponse.error(422, message));
+    }
+
+    /**
+     * Returns 422 when the resume vector generation pipeline is still running, preventing premature matching.
+     * 当简历向量生成流水线仍在运行时返回 422，阻止过早的匹配计算
+     */
+    @ExceptionHandler(ResumeVectorNotReadyException.class)
+    public ResponseEntity<ApiResponse<Void>> handleResumeVectorNotReady(ResumeVectorNotReadyException ex) {
+        log.warn("Resume vector not ready: {}", ex.getMessageKey());
+
+        String message;
+        try {
+            message = messageProvider.getMessage(ex.getMessageKey(), ex.getArgs());
+        } catch (Exception e) {
+            message = ex.getMessageKey();
+        }
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(ApiResponse.error(422, message));
+    }
+
+    /**
+     * Fallback handler ensuring unanticipated errors never propagate raw stack traces to API consumers.
+     * 兜底处理器，确保未预期的错误不会将原始堆栈跟踪暴露给 API 调用方
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception ex) {

@@ -1,15 +1,19 @@
+import { useTranslation } from 'react-i18next';
+import { formatDate, formatTime } from '@/utils/i18n';
 import { Badge } from '../ui/badge';
 import type { ResumeVersion } from '../../types/resume';
 import { ParseStatusBadge } from './ParseStatusBadge';
-import { FileText, Sparkles, FileCode2 } from 'lucide-react';
+import { FileText, Sparkles, FileCode2, Play } from 'lucide-react';
 
 interface VersionTimelineProps {
   versions: ResumeVersion[];
   selectedVersionId: string;
   onSelectVersion: (versionId: string) => void;
+  onActivateVersion?: (versionId: string) => void;
 }
 
-export function VersionTimeline({ versions, selectedVersionId, onSelectVersion }: VersionTimelineProps) {
+export function VersionTimeline({ versions, selectedVersionId, onSelectVersion, onActivateVersion }: VersionTimelineProps) {
+  const { t } = useTranslation();
   const sortedVersions = [...versions].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
@@ -28,11 +32,11 @@ export function VersionTimeline({ versions, selectedVersionId, onSelectVersion }
   const getVersionLabel = (type: ResumeVersion['versionType']) => {
     switch (type) {
       case 'ORIGINAL':
-        return 'Original Upload';
+        return t('resume.timeline.original');
       case 'CONVERTED':
-        return 'Parsed Version';
+        return t('resume.timeline.converted');
       case 'AI_OPTIMIZED':
-        return 'AI Optimized';
+        return t('resume.timeline.aiOptimized');
     }
   };
 
@@ -67,21 +71,36 @@ export function VersionTimeline({ versions, selectedVersionId, onSelectVersion }
                     {getVersionIcon(version.versionType)}
                   </div>
                   <span className="font-medium text-sm">
-                    {getVersionLabel(version.versionType)}
+                    {getVersionLabel(version.versionType)} - {version.versionId.slice(0, 8)}
                   </span>
                 </div>
                 {version.status === 'ACTIVE' ? (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">Active</Badge>
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">{t('resume.timeline.active')}</Badge>
                 ) : (
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">Archived</Badge>
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">{t('resume.timeline.archived')}</Badge>
                 )}
               </div>
               
               <div className="flex items-center justify-between mt-3">
                 <span className="text-xs text-muted-foreground">
-                  {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {formatDate(date)} {formatTime(date)}
                 </span>
-                <ParseStatusBadge status={version.parseStatus} />
+                <div className="flex items-center gap-2">
+                  {onActivateVersion && version.status === 'ARCHIVED' && version.versionType !== 'ORIGINAL' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onActivateVersion(version.versionId);
+                      }}
+                      className="flex items-center text-[10px] px-2 py-0.5 rounded bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+                      title={t('resume.timeline.setActive')}
+                    >
+                      <Play className="w-3 h-3 mr-1" />
+                      {t('resume.timeline.setActive')}
+                    </button>
+                  )}
+                  <ParseStatusBadge status={version.parseStatus} />
+                </div>
               </div>
             </div>
           </div>
