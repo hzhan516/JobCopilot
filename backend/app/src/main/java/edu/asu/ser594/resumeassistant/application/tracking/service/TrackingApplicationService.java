@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,13 +33,14 @@ public class TrackingApplicationService {
         final ApplicationStatus initialStatus = command.status() != null
                 ? ApplicationStatus.valueOf(command.status())
                 : null;
+        final LocalDate appliedAt = normalizeAppliedAt(initialStatus, command.appliedAt());
         final ApplicationTracking tracking = ApplicationTracking.create(
                 command.userId(),
                 command.jobId(),
                 command.companyName(),
                 command.jobTitle(),
                 initialStatus,
-                command.appliedAt(),
+                appliedAt,
                 command.notes()
         );
         return trackingRepository.save(tracking);
@@ -56,6 +58,7 @@ public class TrackingApplicationService {
         if (updateCmd != null) {
             tracking.updateInfo(updateCmd.companyName(), updateCmd.jobTitle(), updateCmd.notes());
             if (updateCmd.appliedAt() != null) {
+                validateAppliedAt(updateCmd.appliedAt());
                 tracking.setAppliedAt(updateCmd.appliedAt());
             }
         }
@@ -64,6 +67,9 @@ public class TrackingApplicationService {
             final ApplicationStatus newStatus = ApplicationStatus.valueOf(statusCmd.status());
             if (newStatus != tracking.getStatus()) {
                 tracking.changeStatus(newStatus, statusCmd.note());
+            }
+            if (newStatus == ApplicationStatus.APPLIED && tracking.getAppliedAt() == null) {
+                tracking.setAppliedAt(LocalDate.now());
             }
         }
 
@@ -91,5 +97,19 @@ public class TrackingApplicationService {
         final ApplicationTracking tracking = trackingRepository.findByIdAndUserId(command.trackingId(), command.userId())
                 .orElseThrow(() -> new IllegalArgumentException("Tracking not found: " + command.trackingId()));
         trackingRepository.deleteById(tracking.getId());
+    }
+
+    private LocalDate normalizeAppliedAt(final ApplicationStatus status, final LocalDate appliedAt) {
+        if (appliedAt != null) {
+            validateAppliedAt(appliedAt);
+            return appliedAt;
+        }
+        return status == ApplicationStatus.APPLIED ? LocalDate.now() : null;
+    }
+
+    private void validateAppliedAt(final LocalDate appliedAt) {
+        if (appliedAt.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("Applied date cannot be in the future");
+        }
     }
 }
