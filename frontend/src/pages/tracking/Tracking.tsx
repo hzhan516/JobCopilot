@@ -41,18 +41,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
-const STATUS_DISTRIBUTION: Array<{
-  key: keyof TrackingStatsResponse;
-  labelKey: string;
-  color: string;
-}> = [
-  { key: 'applied', labelKey: 'tracking.status.APPLIED', color: 'bg-blue-500' },
-  { key: 'screening', labelKey: 'tracking.status.SCREENING', color: 'bg-yellow-500' },
-  { key: 'interview', labelKey: 'tracking.status.INTERVIEWING', color: 'bg-purple-500' },
-  { key: 'offer', labelKey: 'tracking.status.OFFER', color: 'bg-green-500' },
-  { key: 'rejected', labelKey: 'tracking.status.REJECTED', color: 'bg-red-500' },
-];
-
 export default function TrackingPage() {
   const { t } = useTranslation();
   const [trackings, setTrackings] = useState<Tracking[]>([]);
@@ -282,29 +270,6 @@ export default function TrackingPage() {
           />
         </div>
       </div>
-
-      {/* 状态分布迷你条形图 */}
-      {/* Status distribution mini bar chart */}
-      {stats && stats.total > 0 && (
-        <div className="mt-4 space-y-2">
-          {STATUS_DISTRIBUTION.map(({ key, labelKey, color }) => {
-            const count = stats[key] ?? 0;
-            const pct = stats.total > 0 ? (count / stats.total) * 100 : 0;
-            return (
-              <div key={key} className="flex items-center gap-3">
-                <span className="text-xs w-20 text-gray-600">{t(labelKey)}</span>
-                <div className="flex-1 bg-gray-200 rounded-full h-2">
-                  <div
-                    className={`${color} h-2 rounded-full transition-all`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <span className="text-xs w-6 text-right text-gray-500">{count}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       {/* 投递记录列表 */}
       <Card>
