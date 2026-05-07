@@ -262,12 +262,14 @@ export interface UpdateTrackingRequest {
 
 export interface TrackingStatsResponse {
   total: number;
+  pending: number;
   applied: number;
   screening: number;
   interview: number;
   offer: number;
   rejected: number;
   withdrawn: number;
+  successRate: number;
 }
 
 // 职位评分请求
