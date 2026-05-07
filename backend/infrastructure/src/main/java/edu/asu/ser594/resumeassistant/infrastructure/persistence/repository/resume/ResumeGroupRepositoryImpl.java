@@ -49,20 +49,37 @@ public class ResumeGroupRepositoryImpl implements ResumeGroupRepository {
             }
         }
 
-        // 先保存已存在版本（产生 UPDATE）
-        // Save existing versions first (produces UPDATE)
+        // 将 existing 中 status 为 ARCHIVED 的挑出来先 saveAndFlush，
+        // 避免与后续变为 ACTIVE 的版本在 partial unique index 上冲突。
+        // Separate ARCHIVED existing versions to saveAndFlush first,
+        // preventing partial unique index violation with later ACTIVE versions.
+        List<ResumeVersion> archived = new ArrayList<>();
+        List<ResumeVersion> rest = new ArrayList<>();
         for (ResumeVersion version : existing) {
-            jpaVersionRepo.save(versionMapper.toJpaEntity(version));
+            if (version.getStatus() == ResumeVersion.Status.ARCHIVED) {
+                archived.add(version);
+            } else {
+                rest.add(version);
+            }
         }
 
-        // 强制刷盘，确保 UPDATE 先于 INSERT 落库
-        // Force flush so UPDATEs are persisted before INSERTs
-        if (!existing.isEmpty()) {
+        // 先保存并刷盘 ARCHIVED 版本
+        // Save and flush ARCHIVED versions first
+        for (ResumeVersion version : archived) {
+            jpaVersionRepo.saveAndFlush(versionMapper.toJpaEntity(version));
+        }
+
+        // 再批量保存剩下的已存在版本（产生 UPDATE）
+        // Then batch save remaining existing versions (produces UPDATE)
+        for (ResumeVersion version : rest) {
+            jpaVersionRepo.save(versionMapper.toJpaEntity(version));
+        }
+        if (!rest.isEmpty()) {
             entityManager.flush();
         }
 
-        // 再保存新增版本（产生 INSERT）
-        // Then save new versions (produces INSERT)
+        // 最后保存新增版本（产生 INSERT）
+        // Finally save new versions (produces INSERT)
         for (ResumeVersion version : newVersions) {
             jpaVersionRepo.save(versionMapper.toJpaEntity(version));
         }
