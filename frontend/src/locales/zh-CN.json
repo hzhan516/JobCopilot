@@ -205,6 +205,8 @@
     "matchError": "开始匹配失败",
     "status": {
       "PENDING": "待处理",
+      "SCRAPING": "抓取中",
+      "PARSING": "解析中",
       "PROCESSING": "处理中",
       "COMPLETED": "已完成",
       "FAILED": "失败"

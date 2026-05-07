@@ -204,6 +204,8 @@
     "matchError": "Failed to start match",
     "status": {
       "PENDING": "Pending",
+      "SCRAPING": "Scraping",
+      "PARSING": "Parsing",
       "PROCESSING": "Processing",
       "COMPLETED": "Completed",
       "FAILED": "Failed"

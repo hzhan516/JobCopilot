@@ -204,6 +204,8 @@
     "matchError": "開始配對失敗",
     "status": {
       "PENDING": "待處理",
+      "SCRAPING": "抓取中",
+      "PARSING": "解析中",
       "PROCESSING": "處理中",
       "COMPLETED": "已完成",
       "FAILED": "失敗"
