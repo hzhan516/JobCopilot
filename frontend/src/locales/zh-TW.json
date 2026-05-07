@@ -19,7 +19,7 @@
     "viewDetails": "查看詳情",
     "enter": "進入",
     "viewAll": "查看全部",
-    "viewMore": "查看更多",
+    "viewMore": "查看詳情",
     "notSpecified": "未指定",
     "notAvailable": "不可用",
     "optional": "可選",
@@ -122,7 +122,7 @@
       "trackingDesc": "追蹤投遞和面試進度"
     },
     "recommendedJobs": {
-      "title": "為您推薦",
+      "title": "AI評分",
       "matchLabel": "配對度"
     },
     "applicationProgress": {

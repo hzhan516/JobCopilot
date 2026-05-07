@@ -19,7 +19,7 @@
     "viewDetails": "查看详情",
     "enter": "进入",
     "viewAll": "查看全部",
-    "viewMore": "查看更多",
+    "viewMore": "查看详情",
     "notSpecified": "未指定",
     "notAvailable": "不可用",
     "optional": "可选",
@@ -122,7 +122,7 @@
       "trackingDesc": "跟踪投递和面试进度"
     },
     "recommendedJobs": {
-      "title": "最新职位评分",
+      "title": "AI评分",
       "matchLabel": "匹配度"
     },
     "noScoreRecords": "暂无职位评分记录，前往职位匹配页面进行评分",

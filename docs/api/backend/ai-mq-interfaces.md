@@ -11,7 +11,7 @@
 ## 1. Interaction Principles
 
 - **One-way asynchronous**: The Java backend sends task requests via MQ; the Python AI service returns results via MQ after processing.
-- **No direct HTTP coupling**: Except for health checks, the Java backend does not directly call the AI service via HTTP; all time-consuming operations go through the message queue.
+- **Async-first AI processing**: Long-running parsing, conversation, and ranking work goes through MQ. The backend also has synchronous REST calls to the AI service for lightweight embedding and suitability-scoring endpoints.
 - **Unified Exchange**: All MQ messages share `ai.direct.exchange` (DirectExchange).
 - **Transactional Outbox**: The backend does **not** send MQ messages directly. Instead, it persists them into the `outbox_message` table within the same local database transaction as the business data. An `OutboxRelayScheduler` polls pending records every 2 seconds and delivers them to RabbitMQ asynchronously.
 - **Dead Letter Queue (DLQ)**: All 8 business queues are configured with `x-dead-letter-exchange: ai.dlx.exchange`. When the Python consumer rejects a message with `nack(requeue=false)`, the message is automatically routed to `ai.dlq.queue` instead of being silently dropped.
@@ -120,8 +120,13 @@ The backend uses the **Transactional Outbox** pattern to guarantee atomicity bet
     { "role": "USER", "content": "帮我优化一下项目经验部分", "fileUrl": null }
   ],
   "currentMessage": "帮我优化一下项目经验部分",
-  "fileUrls": ["https://minio.example.com/resumes/xxx.pdf"],
-  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002"
+  "fileUrls": [],
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
+  "resumeText": "# Resume Markdown...",
+  "primaryJobText": "Software Engineer\nExample Corp\nJob description...",
+  "relatedJobTexts": ["Backend Engineer\nExample Corp\nRelated job description..."],
+  "init": true,
+  "locale": "zh-TW"
 }
 ```
 
@@ -131,8 +136,13 @@ The backend uses the **Transactional Outbox** pattern to guarantee atomicity bet
 | `userId` | String | User ID |
 | `messageHistory` | List<Map> | Historical message list (role, content, fileUrl) |
 | `currentMessage` | String | Latest message sent by the user |
-| `fileUrls` | List<String> | List of external file URLs referenced by the user |
+| `fileUrls` | List<String> | File URL list sent to the AI service; current backend context requests send an empty list |
 | `resumeVersionId` | String | Associated resume version ID (optional) |
+| `resumeText` | String | Resume Markdown/text loaded from the selected resume version or conversation AI working copy |
+| `primaryJobText` | String | Current job text loaded from the conversation job ID |
+| `relatedJobTexts` | List<String> | Up to five other completed job texts for context |
+| `init` | Boolean | Whether this request is the first AI initialization for the conversation |
+| `locale` | String | User interface locale, e.g. `en`, `zh-CN`, or `zh-TW` |
 
 ---
 
@@ -217,7 +227,11 @@ All AI callbacks use the following unified structure, distinguished by the `type
   "status": "COMPLETED",
   "data": {
     "content": "根据您的简历，我建议从以下几个方面优化工作经验...",
-    "fileUrl": "https://minio.example.com/conversations/xxx/optimized_resume.pdf"
+    "fileUrl": null,
+    "resumeModification": {
+      "modified": true,
+      "markdown": "# Optimized Resume\n\n..."
+    }
   },
   "errorMessage": null,
   "eventType": null
@@ -228,19 +242,21 @@ All AI callbacks use the following unified structure, distinguished by the `type
 |----------------|------|-------------|
 | `content` | String | AI reply text content |
 | `fileUrl` | String | AI generated file URL (optional) |
+| `resumeModification.modified` | Boolean | Whether the AI rewrote or optimized the resume |
+| `resumeModification.markdown` | String | Full optimized resume Markdown when `modified=true` |
 
 ---
 
-## 5. File Upload and MinIO
+## 5. File Upload and Storage
 
 ### 5.1 Backend File Upload API
 
-The frontend or AI layer can upload generated file streams to the backend, which then stores them in MinIO:
+The frontend or AI layer can upload generated file streams to the backend, which then stores them through the configured storage backend:
 
 - **Resume Upload**: `POST /api/v1/resumes` (`multipart/form-data`)
 - **Conversation Attachment Upload**: `POST /api/v1/conversations/{conversationId}/files` (`multipart/form-data`)
 
-### 5.2 MinIO Storage Path Conventions
+### 5.2 Storage Path Conventions
 
 | Business | Object Key Prefix Example |
 |----------|---------------------------|
@@ -249,7 +265,7 @@ The frontend or AI layer can upload generated file streams to the backend, which
 
 ### 5.3 Presigned URL
 
-`MinioFileStorageService.generatePresignedUrl()` generates a temporary access URL for successfully uploaded files (default 7-day validity).
+`FileStorageService.generatePresignedUrl()` generates a temporary access URL for successfully uploaded files (default 7-day validity).
 
 ---
 
