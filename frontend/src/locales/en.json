@@ -421,7 +421,10 @@
       "cancel": "Cancel",
       "autoSaving": "Saving...",
       "autoSaveSuccess": "Auto-saved",
-      "autoSaveError": "Auto-save failed"
+      "autoSaveError": "Auto-save failed",
+      "readOnly": "Read-Only",
+      "readOnlyTooltip": "This version is archived. Please activate it to edit.",
+      "autoSaveConflict": "Save conflict detected. Auto-save has been stopped."
     },
     "download": {
       "button": "Download",

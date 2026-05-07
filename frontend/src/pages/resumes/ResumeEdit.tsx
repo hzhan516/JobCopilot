@@ -85,7 +85,8 @@ export default function ResumeEdit() {
           versionId={version.versionId}
           onSave={handleSave}
           onCancel={handleCancel}
-          onAutoSave={handleAutoSave}
+          onAutoSave={version.status === 'ACTIVE' ? handleAutoSave : undefined}
+          readOnly={version.status !== 'ACTIVE'}
         />
       </div>
     </div>

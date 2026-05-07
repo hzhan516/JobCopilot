@@ -422,7 +422,10 @@
       "cancel": "取消",
       "autoSaving": "保存中...",
       "autoSaveSuccess": "已自动保存",
-      "autoSaveError": "自动保存失败"
+      "autoSaveError": "自动保存失败",
+      "readOnly": "只读模式",
+      "readOnlyTooltip": "该版本已归档，请先激活后再进行编辑。",
+      "autoSaveConflict": "检测到保存冲突，自动保存已停止。"
     },
     "download": {
       "button": "下载",

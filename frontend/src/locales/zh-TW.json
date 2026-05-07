@@ -421,7 +421,10 @@
       "cancel": "取消",
       "autoSaving": "儲存中...",
       "autoSaveSuccess": "已自動儲存",
-      "autoSaveError": "自動儲存失敗"
+      "autoSaveError": "自動儲存失敗",
+      "readOnly": "唯讀模式",
+      "readOnlyTooltip": "該版本已封存，請先啟用後再進行編輯。",
+      "autoSaveConflict": "偵測到儲存衝突，自動儲存已停止。"
     },
     "download": {
       "button": "下載",
