@@ -169,6 +169,7 @@
     "jobUrl": "職位連結",
     "jobUrlPlaceholder": "https://...",
     "jobScreenshot": "職位截圖",
+    "selectScreenshot": "選擇圖片",
     "screenshotHint": "最大 5MB，用於 AI 解析異常時兜底。",
     "screenshotTooLarge": "截圖超過 5MB 限制",
     "urlRequired": "請填寫職位連結",

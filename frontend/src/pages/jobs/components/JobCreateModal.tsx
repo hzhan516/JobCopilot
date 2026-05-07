@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Link as LinkIcon, Image, Loader2 } from 'lucide-react';
+import { Plus, Link as LinkIcon, Image, Loader2, FileText, UploadCloud } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
@@ -25,6 +25,7 @@ export default function JobCreateModal({ open, onOpenChange, onSubmit }: JobCrea
   const { t } = useTranslation();
   const [jobUrl, setJobUrl] = useState('');
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resetForm = useCallback(() => {
@@ -106,7 +107,30 @@ export default function JobCreateModal({ open, onOpenChange, onSubmit }: JobCrea
               <Image className="w-4 h-4 mr-1" />
               {t('jobList.jobScreenshot')}
             </label>
-            <Input type="file" accept="image/*" onChange={handleFileChange} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept="image/*"
+              onChange={handleFileChange}
+            />
+            <div
+              className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <div className="flex flex-col items-center justify-center space-y-2">
+                <UploadCloud className="w-6 h-6 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">
+                  {t('jobList.selectScreenshot')}
+                </span>
+              </div>
+            </div>
+            {screenshotFile && (
+              <div className="mt-2 flex items-center text-sm text-muted-foreground">
+                <FileText className="w-4 h-4 mr-2 flex-shrink-0" />
+                <span className="truncate">{screenshotFile.name}</span>
+              </div>
+            )}
             <p className="text-xs text-gray-500 mt-1">{t('jobList.screenshotHint')}</p>
           </div>
         </div>

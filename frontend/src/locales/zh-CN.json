@@ -170,6 +170,7 @@
     "jobUrl": "职位链接",
     "jobUrlPlaceholder": "https://...",
     "jobScreenshot": "职位截图",
+    "selectScreenshot": "选择图片",
     "screenshotHint": "最大 5MB，用于 AI 解析异常时兜底。",
     "screenshotTooLarge": "截图超过 5MB 限制",
     "urlRequired": "请填写职位链接",

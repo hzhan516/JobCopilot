@@ -169,6 +169,7 @@
     "jobUrl": "Job URL",
     "jobUrlPlaceholder": "https://...",
     "jobScreenshot": "Job Screenshot",
+    "selectScreenshot": "Select Image",
     "screenshotHint": "Max 5MB. Required for AI fallback parsing.",
     "screenshotTooLarge": "Screenshot exceeds 5MB limit",
     "urlRequired": "Please enter the job URL",
