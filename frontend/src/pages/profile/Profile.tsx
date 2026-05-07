@@ -56,7 +56,7 @@ export default function Profile() {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { profile, loading, fetchProfile, updateProfile } = useProfileStore();
+  const { profile, loading, fetchProfile, updateProfile, updateAvatar } = useProfileStore();
 
   const profileSchema = useProfileSchema();
 
@@ -96,7 +96,13 @@ export default function Profile() {
 
   const onSubmit = async (values: ProfileFormValues) => {
     try {
-      await updateProfile(values);
+      await updateProfile({
+        fullName: values.fullName,
+        phone: values.phone,
+        targetPosition: values.targetPosition,
+        preferredLocation: values.preferredLocation,
+      });
+      await updateAvatar({ avatarUrl: values.avatarUrl });
       toast.success(t('profile.saveSuccess'));
     } catch {
       toast.error(t('profile.saveError'));
