@@ -309,7 +309,7 @@ services:
       # ABSOLUTE host path (e.g. /home/user/gcp-key.json). Relative paths
       # or bare filenames are treated as named volumes by Docker/Podman and
       # will cause a mount error on startup.
-      - ${VERTEX_CREDENTIALS}:/app/credentials/gcp-service-account.json:ro
+      - ${VERTEX_CREDENTIALS:-./empty-vertex.json}:/app/credentials/gcp-service-account.json:ro
     networks:
       # AI service is strictly internal-tier only.
       - internal-network
