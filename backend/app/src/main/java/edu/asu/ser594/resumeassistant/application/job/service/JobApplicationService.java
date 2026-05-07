@@ -155,6 +155,10 @@ public class JobApplicationService {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new JobException("job.not.found"));
 
+        if (job.isHidden()) {
+            throw new JobException("job.not.found");
+        }
+
         // 校验用户权限 / Verify user access
         if (!job.getUserId().equals(userId)) {
             throw new JobException("access.denied");
@@ -183,6 +187,10 @@ public class JobApplicationService {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new JobException("job.not.found"));
 
+        if (job.isHidden()) {
+            throw new JobException("job.not.found");
+        }
+
         if (!job.getUserId().equals(userId)) {
             throw new JobException("access.denied");
         }
@@ -203,6 +211,24 @@ public class JobApplicationService {
     }
 
     /**
+     * 隐藏职位，让它不再出现在用户列表中，同时保留数据库记录。
+     * Hide a job from user-facing lists while preserving the database row.
+     */
+    @Transactional
+    public void deleteJob(String jobId, UUID userId) {
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new JobException("job.not.found"));
+
+        if (!job.getUserId().equals(userId)) {
+            throw new JobException("access.denied");
+        }
+
+        job.hide();
+        jobRepository.save(job);
+        log.info("Job {} hidden by user {}", jobId, userId);
+    }
+
+    /**
      * 对单个职位进行简历评分
      * Scores a single job against a resume by calling AI service /api/v1/suitability.
      */
@@ -210,6 +236,10 @@ public class JobApplicationService {
     public JobScoreResponse scoreJob(String jobId, UUID userId, JobScoreRequest request) {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new JobException("job.not.found"));
+
+        if (job.isHidden()) {
+            throw new JobException("job.not.found");
+        }
 
         if (!job.getUserId().equals(userId)) {
             throw new JobException("access.denied");

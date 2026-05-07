@@ -28,6 +28,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -170,6 +171,17 @@ class JobControllerContractTest {
                 .andExpect(jsonPath("$.data.parsedContent.company").value("Updated Corp"))
                 .andExpect(jsonPath("$.data.parsedContent.requirements[0]").value("Python"))
                 .andExpect(jsonPath("$.data.parsedContent.requirements[1]").value("AWS"));
+    }
+
+    @Test
+    @DisplayName("Should expose soft delete endpoint")
+    void shouldExposeSoftDeleteEndpoint() throws Exception {
+        mockMvc.perform(delete("/v1/jobs/{jobId}", TEST_JOB_ID)
+                        .requestAttr("userId", TEST_USER_ID.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        verify(jobFacade).deleteJob(eq(TEST_JOB_ID), any());
     }
 
     /**

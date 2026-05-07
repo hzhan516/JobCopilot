@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Building2, ExternalLink } from 'lucide-react';
+import { Building2, ExternalLink, Trash2 } from 'lucide-react';
 import type { Job, JobScoreResponse, ResumeGroup } from '@/types';
 import { useTranslation } from 'react-i18next';
 import JobScorePanel from './JobScorePanel';
@@ -22,6 +22,7 @@ interface JobCardProps {
   onSelectResume: (versionId: string) => void;
   onScore: () => void;
   onViewDetail: () => void;
+  onDelete: () => void;
 }
 
 /**
@@ -38,6 +39,7 @@ export default function JobCard({
   onSelectResume,
   onScore,
   onViewDetail,
+  onDelete,
 }: JobCardProps) {
   const { t } = useTranslation();
 
@@ -73,10 +75,22 @@ export default function JobCard({
               )}
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={onViewDetail}>
-            <ExternalLink className="w-4 h-4 mr-2" />
-            {t('jobList.viewDetails')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onViewDetail}>
+              <ExternalLink className="w-4 h-4 mr-2" />
+              {t('jobList.viewDetails')}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={onDelete}
+              title={t('jobList.deleteTitle')}
+              aria-label={t('jobList.deleteTitle')}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

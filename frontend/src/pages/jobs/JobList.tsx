@@ -35,6 +35,7 @@ export default function JobList() {
   const setSelectedResume = useJobStore((state) => state.setSelectedResume);
   const scoreJob = useJobStore((state) => state.scoreJob);
   const submitJobToStore = useJobStore((state) => state.submitJob);
+  const deleteJob = useJobStore((state) => state.deleteJob);
 
   // === 局部 UI 状态（无需全局共享）===
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -141,6 +142,14 @@ export default function JobList() {
     [submitJobToStore]
   );
 
+  const handleDeleteJob = useCallback(
+    async (jobId: string) => {
+      if (!window.confirm(t('jobList.deleteConfirm'))) return;
+      await deleteJob(jobId);
+    },
+    [deleteJob, t]
+  );
+
   // === 渲染加载态 ===
   if (loading && jobs.length === 0) {
     return (
@@ -208,6 +217,7 @@ export default function JobList() {
                   onSelectResume={(versionId) => setSelectedResume(job.id, versionId)}
                   onScore={() => handleScoreJob(job.id)}
                   onViewDetail={() => navigate(`/jobs/${job.id}`)}
+                  onDelete={() => handleDeleteJob(job.id)}
                 />
               );
             })

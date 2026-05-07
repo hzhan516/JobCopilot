@@ -101,14 +101,17 @@ public class MatchingApplicationService {
                 resumeVector.getEmbedding(), topK, modelVersion);
         final long recallTimeMs = System.currentTimeMillis() - recallStart;
 
-        result.setRecallResults(recallResults, recallTimeMs);
-        jobMatchResultRepository.save(result);
-
-        final List<String> recalledJobIds = recallResults.stream()
-                .map(RecallResult::jobId)
+        final Map<String, Object> jobDetails = buildJobDetailsMap(recallResults);
+        final List<RecallResult> visibleRecallResults = recallResults.stream()
+                .filter(recall -> jobDetails.containsKey(recall.jobId()))
                 .collect(Collectors.toList());
 
-        final Map<String, Object> jobDetails = buildJobDetailsMap(recallResults);
+        result.setRecallResults(visibleRecallResults, recallTimeMs);
+        jobMatchResultRepository.save(result);
+
+        final List<String> recalledJobIds = visibleRecallResults.stream()
+                .map(RecallResult::jobId)
+                .collect(Collectors.toList());
 
         final ResumeVersion resumeVersion = resumeVersionRepository.findById(UUID.fromString(command.resumeVersionId()))
                 .orElseThrow(() -> new IllegalArgumentException("Resume version not found: " + command.resumeVersionId()));
@@ -200,6 +203,9 @@ public class MatchingApplicationService {
                         return null;
                     }
                     Job job = jobOpt.get();
+                    if (job.isHidden()) {
+                        return null;
+                    }
                     // PGVector distance is Cosine Distance (1 - Cosine Similarity)
                     // We map distance to a semantic match score [0, 1]
                     // Cosine Similarity = 1 - distance

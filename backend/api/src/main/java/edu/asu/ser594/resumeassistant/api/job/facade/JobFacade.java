@@ -58,6 +58,15 @@ public interface JobFacade {
     JobResponse updateJob(String jobId, UUID userId, UpdateJobRequest request);
 
     /**
+     * 隐藏职位，使其不再出现在用户列表中。
+     * Hide a job from user-facing lists.
+     *
+     * @param jobId  职位 ID / The job ID.
+     * @param userId 用户 ID / The user ID.
+     */
+    void deleteJob(String jobId, UUID userId);
+
+    /**
      * 对单个职位进行简历评分
      * Scores a single job against a resume.
      *

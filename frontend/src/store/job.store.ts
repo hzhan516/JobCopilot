@@ -50,6 +50,12 @@ interface JobStore {
   submitJob: (url: string, screenshot: File) => Promise<void>;
 
   /**
+   * 隐藏职位
+   * Hide a job from user-facing lists
+   */
+  deleteJob: (jobId: string) => Promise<void>;
+
+  /**
    * 对职位进行简历评分
    * Score a job against a resume
    */
@@ -150,6 +156,12 @@ function buildScoreStateFromHistory(
   return { scoreResults, selectedResumes };
 }
 
+function omitJobScoreState<T>(record: Record<string, T>, jobId: string): Record<string, T> {
+  return Object.fromEntries(
+    Object.entries(record).filter(([key]) => !key.startsWith(`${jobId}_`))
+  ) as Record<string, T>;
+}
+
 export const useJobStore = create<JobStore>((set, get) => ({
   jobs: [],
   filteredJobs: [],
@@ -194,6 +206,32 @@ export const useJobStore = create<JobStore>((set, get) => ({
       throw error;
     } finally {
       set({ loading: false });
+    }
+  },
+
+  deleteJob: async (jobId: string) => {
+    set({ error: null });
+    try {
+      await jobService.deleteJob(jobId);
+      const { filters } = get();
+      set((state) => {
+        const jobs = state.jobs.filter((job) => job.id !== jobId);
+        const selectedResumes = { ...state.selectedResumes };
+        delete selectedResumes[jobId];
+        return {
+          jobs,
+          filteredJobs: applyFilters(jobs, filters),
+          selectedResumes,
+          scoreResults: omitJobScoreState(state.scoreResults, jobId),
+          scoringState: omitJobScoreState(state.scoringState, jobId),
+        };
+      });
+      toast.success(i18n.t('jobList.deleteSuccess') ?? 'Job deleted successfully');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      set({ error: message });
+      toast.error(i18n.t('jobList.deleteError') ?? 'Failed to delete job');
+      throw error;
     }
   },
 
