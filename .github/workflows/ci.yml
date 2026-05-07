@@ -2,14 +2,14 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ master, develop ]
     paths:
       - 'backend/**'
       - 'frontend/**'
       - 'ai-service/**'
       - '.github/workflows/**'
   pull_request:
-    branches: [ main, develop ]
+    branches: [ master, develop ]
     paths:
       - 'backend/**'
       - 'frontend/**'
@@ -106,7 +106,7 @@ jobs:
     name: Build Application
     runs-on: ubuntu-latest
     needs: [test, integration-test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     
     defaults:
       run:
@@ -224,3 +224,61 @@ jobs:
     
     - name: Run Checkstyle
       run: mvn checkstyle:check -B --file pom.xml || true
+
+  build-and-push-images:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    needs: [test, integration-test, frontend-test, ai-service-test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Docker Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract short SHA
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build & Push Frontend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/resume-assistant-frontend:master-${{ steps.vars.outputs.sha_short }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+          build-args: |
+            VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID || 'dummy' }}
+
+      - name: Build & Push Backend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/resume-assistant-backend:master-${{ steps.vars.outputs.sha_short }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build & Push AI Service Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ai-service
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/resume-assistant-ai-service:master-${{ steps.vars.outputs.sha_short }}
+          cache-from: type=gha,scope=ai-service
+          cache-to: type=gha,mode=max,scope=ai-service
