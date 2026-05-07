@@ -441,7 +441,6 @@
     },
     "download": {
       "button": "下载",
-      "original": "原始文件",
       "pdf": "PDF 文档",
       "docx": "Word 文档",
       "md": "Markdown",
