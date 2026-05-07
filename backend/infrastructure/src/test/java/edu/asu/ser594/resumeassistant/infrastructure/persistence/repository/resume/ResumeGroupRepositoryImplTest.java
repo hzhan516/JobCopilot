@@ -83,6 +83,12 @@ class ResumeGroupRepositoryImplTest {
             return ResumeGroup.reconstruct(e.getId(), e.getUserId(), e.getTitle(),
                     Boolean.TRUE.equals(e.getIsDefault()), e.getCreatedAt(), e.getUpdatedAt(), java.util.Collections.emptyList());
         });
+        when(groupMapper.toDomain(any(ResumeGroupJpaEntity.class), anyList())).thenAnswer(invocation -> {
+            ResumeGroupJpaEntity e = invocation.getArgument(0);
+            List<ResumeVersion> versions = invocation.getArgument(1);
+            return ResumeGroup.reconstruct(e.getId(), e.getUserId(), e.getTitle(),
+                    Boolean.TRUE.equals(e.getIsDefault()), e.getCreatedAt(), e.getUpdatedAt(), versions);
+        });
         when(versionMapper.toJpaEntity(any(ResumeVersion.class))).thenReturn(new ResumeVersionJpaEntity());
         when(versionMapper.toDomain(any(ResumeVersionJpaEntity.class))).thenReturn(
                 ResumeVersion.createConverted(GROUP_ID));
@@ -241,5 +247,70 @@ class ResumeGroupRepositoryImplTest {
         // 然后
         // Then
         verify(jpaRepository).deleteById(GROUP_ID);
+    }
+
+    // ==================== 重建状态保持测试 ====================
+    // ==================== Reconstruction Status Tests ====================
+
+    @Test
+    @DisplayName("Should preserve mixed ACTIVE/ARCHIVED statuses on reconstruction")
+    void shouldPreserveMixedActiveArchivedStatusesOnReconstruction() {
+        // 给定
+        // Given
+        ResumeVersionJpaEntity activeJpa = ResumeVersionJpaEntity.builder()
+                .id(UUID.randomUUID())
+                .groupId(GROUP_ID)
+                .versionType("CONVERTED")
+                .status("ACTIVE")
+                .fileType("text/markdown")
+                .fileSize(0L)
+                .parseStatus(edu.asu.ser594.resumeassistant.domain.resume.valueobject.ParseStatus.PENDING)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        ResumeVersionJpaEntity archivedJpa = ResumeVersionJpaEntity.builder()
+                .id(UUID.randomUUID())
+                .groupId(GROUP_ID)
+                .versionType("CONVERTED")
+                .status("ARCHIVED")
+                .fileType("text/markdown")
+                .fileSize(0L)
+                .parseStatus(edu.asu.ser594.resumeassistant.domain.resume.valueobject.ParseStatus.PENDING)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        ResumeVersion activeDomain = ResumeVersion.reconstruct(
+                activeJpa.getId(), GROUP_ID, ResumeVersion.VersionType.CONVERTED,
+                null, null, "text/markdown", 0L, null, null,
+                "active content", null, edu.asu.ser594.resumeassistant.domain.resume.valueobject.ParseStatus.PENDING, null,
+                ResumeVersion.Status.ACTIVE, activeJpa.getCreatedAt(), activeJpa.getUpdatedAt()
+        );
+
+        ResumeVersion archivedDomain = ResumeVersion.reconstruct(
+                archivedJpa.getId(), GROUP_ID, ResumeVersion.VersionType.CONVERTED,
+                null, null, "text/markdown", 0L, null, null,
+                "archived content", null, edu.asu.ser594.resumeassistant.domain.resume.valueobject.ParseStatus.PENDING, null,
+                ResumeVersion.Status.ARCHIVED, archivedJpa.getCreatedAt(), archivedJpa.getUpdatedAt()
+        );
+
+        when(jpaRepository.findById(GROUP_ID)).thenReturn(Optional.of(testJpaEntity));
+        when(jpaVersionRepository.findAllByGroupId(GROUP_ID)).thenReturn(List.of(activeJpa, archivedJpa));
+        when(versionMapper.toDomain(activeJpa)).thenReturn(activeDomain);
+        when(versionMapper.toDomain(archivedJpa)).thenReturn(archivedDomain);
+
+        // 当
+        // When
+        Optional<ResumeGroup> result = groupRepository.findById(GROUP_ID);
+
+        // 然后
+        // Then
+        assertThat(result).isPresent();
+        ResumeGroup group = result.get();
+        List<ResumeVersion> versions = group.getVersions();
+        assertThat(versions).hasSize(2);
+        assertThat(versions).extracting(ResumeVersion::getStatus)
+                .containsExactlyInAnyOrder(ResumeVersion.Status.ACTIVE, ResumeVersion.Status.ARCHIVED);
     }
 }

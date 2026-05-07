@@ -8,8 +8,8 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import { Download, Loader2 } from 'lucide-react';
-import type { DownloadFormat, ResumeVersion } from '../../types/resume';
-import { downloadResume } from '../../utils/file';
+import type { DownloadFormat, ResumeVersion } from '@/types/resume.ts';
+import { downloadResume } from '@/utils/file.ts';
 
 interface DownloadButtonProps {
   versionId: string;
@@ -41,9 +41,7 @@ export function DownloadButton({ versionId, versionType, filename = 'resume' }: 
     { labelKey: 'resume.download.txt', value: 'txt' },
   ];
 
-  const availableFormats = versionType === 'ORIGINAL' 
-    ? formats.filter(f => f.value === 'original')
-    : formats;
+  const availableFormats = formats;
 
   if (availableFormats.length === 1) {
     return (

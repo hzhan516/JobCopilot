@@ -5,6 +5,8 @@ import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
 import edu.asu.ser594.resumeassistant.application.resume.command.CreateVersionCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeEditCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeUploadCommand;
+import edu.asu.ser594.resumeassistant.application.resume.dto.ResumeDownloadResult;
+import edu.asu.ser594.resumeassistant.application.resume.query.ResumeDownloadQuery;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeGroupRepository;
@@ -25,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -351,18 +354,34 @@ class ResumeApplicationServiceTest {
     }
 
     @Test
-    @DisplayName("Should activate archived version")
-    void shouldActivateArchivedVersion() {
+    @DisplayName("Should activate archived version and archive previous active")
+    void shouldActivateArchivedVersionAndArchivePreviousActive() {
         // 准备 / Given
         UUID archivedId = UUID.randomUUID();
+        UUID activeId = UUID.randomUUID();
+
+        ResumeVersion activeVersion = ResumeVersion.reconstruct(
+                activeId, GROUP_ID, ResumeVersion.VersionType.CONVERTED,
+                null, null, "text/markdown", 0L, null, null,
+                "Active content", null, ParseStatus.PENDING, null,
+                ResumeVersion.Status.ACTIVE, java.time.LocalDateTime.now(), java.time.LocalDateTime.now()
+        );
+
         ResumeVersion archivedVersion = ResumeVersion.reconstruct(
                 archivedId, GROUP_ID, ResumeVersion.VersionType.CONVERTED,
                 null, null, "text/markdown", 0L, null, null,
                 "Archived content", null, ParseStatus.PENDING, null,
                 ResumeVersion.Status.ARCHIVED, java.time.LocalDateTime.now(), java.time.LocalDateTime.now()
         );
+
         testGroup = createTestGroup();
-        testGroup.addVersion(archivedVersion);
+        // 使用 reconstruct 直接构建包含两个版本的组，避免 addVersion 触发归档规则
+        // Build group with both versions via reconstruct to avoid addVersion's archive rule
+        testGroup = ResumeGroup.reconstruct(
+                GROUP_ID, USER_ID, "Test Resume", false,
+                testGroup.getCreatedAt(), testGroup.getUpdatedAt(),
+                new java.util.ArrayList<>(List.of(activeVersion, archivedVersion))
+        );
 
         when(versionRepository.findById(archivedId)).thenReturn(Optional.of(archivedVersion));
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(testGroup));
@@ -373,6 +392,7 @@ class ResumeApplicationServiceTest {
 
         // 验证 / Then
         assertThat(result.getStatus()).isEqualTo(ResumeVersion.Status.ACTIVE);
+        assertThat(activeVersion.getStatus()).isEqualTo(ResumeVersion.Status.ARCHIVED);
         verify(groupRepository).save(any(ResumeGroup.class));
     }
 
@@ -388,6 +408,158 @@ class ResumeApplicationServiceTest {
 
         // 执行 & 验证 / When & Then
         assertThatThrownBy(() -> resumeService.handleActivateVersion(VERSION_ID, otherUserId))
+                .isInstanceOf(StorageException.class)
+                .hasMessageContaining("access.denied");
+    }
+
+    // ==================== 下载测试 ====================
+    // ==================== Download Tests ====================
+
+    @Test
+    @DisplayName("Should download original resume successfully")
+    void shouldDownloadOriginalResumeSuccessfully() {
+        // 准备 / Given
+        testGroup = createTestGroup();
+        testVersion = createTestVersion(ResumeVersion.VersionType.ORIGINAL);
+        InputStream fileStream = new ByteArrayInputStream("PDF content".getBytes(StandardCharsets.UTF_8));
+
+        when(versionRepository.findById(VERSION_ID)).thenReturn(Optional.of(testVersion));
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(testGroup));
+        when(fileStorageService.download("path/to/file")).thenReturn(Optional.of(fileStream));
+
+        ResumeDownloadQuery query = ResumeDownloadQuery.builder()
+                .versionId(VERSION_ID)
+                .userId(USER_ID)
+                .targetFormat("original")
+                .build();
+
+        // 执行 / When
+        ResumeDownloadResult result = resumeService.handleDownload(query);
+
+        // 验证 / Then
+        assertThat(result).isNotNull();
+        assertThat(result.fileName()).isEqualTo("resume.pdf");
+        assertThat(result.contentType()).isEqualTo("application/pdf");
+    }
+
+    @Test
+    @DisplayName("Should download converted resume as PDF")
+    void shouldDownloadConvertedResumeAsPdf() throws IOException {
+        // 准备 / Given
+        testGroup = createTestGroup();
+        testVersion = createTestVersion(ResumeVersion.VersionType.CONVERTED);
+        testVersion.editContent("# Resume\n\nContent");
+        InputStream convertedStream = new ByteArrayInputStream("PDF bytes".getBytes(StandardCharsets.UTF_8));
+
+        when(versionRepository.findById(VERSION_ID)).thenReturn(Optional.of(testVersion));
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(testGroup));
+        when(documentFormatConverter.convert(any(), eq("md"), eq("pdf"))).thenReturn(convertedStream);
+
+        ResumeDownloadQuery query = ResumeDownloadQuery.builder()
+                .versionId(VERSION_ID)
+                .userId(USER_ID)
+                .targetFormat("pdf")
+                .build();
+
+        // 执行 / When
+        ResumeDownloadResult result = resumeService.handleDownload(query);
+
+        // 验证 / Then
+        assertThat(result).isNotNull();
+        assertThat(result.fileName()).isEqualTo("resume.pdf");
+        assertThat(result.contentType()).isEqualTo("application/pdf");
+        verify(documentFormatConverter).convert(any(), eq("md"), eq("pdf"));
+    }
+
+    @Test
+    @DisplayName("Should download converted resume as HTML via built-in converter")
+    void shouldDownloadConvertedResumeAsHtml() throws IOException {
+        // 准备 / Given
+        testGroup = createTestGroup();
+        testVersion = createTestVersion(ResumeVersion.VersionType.CONVERTED);
+        testVersion.editContent("# Resume\n\nContent");
+        InputStream htmlStream = new ByteArrayInputStream("<h1>Resume</h1>".getBytes(StandardCharsets.UTF_8));
+
+        when(versionRepository.findById(VERSION_ID)).thenReturn(Optional.of(testVersion));
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(testGroup));
+        when(documentFormatConverter.convert(any(), eq("md"), eq("html"))).thenReturn(htmlStream);
+
+        ResumeDownloadQuery query = ResumeDownloadQuery.builder()
+                .versionId(VERSION_ID)
+                .userId(USER_ID)
+                .targetFormat("html")
+                .build();
+
+        // 执行 / When
+        ResumeDownloadResult result = resumeService.handleDownload(query);
+
+        // 验证 / Then
+        assertThat(result).isNotNull();
+        assertThat(result.contentType()).isEqualTo("text/html");
+    }
+
+    @Test
+    @DisplayName("Should throw when conversion fails")
+    void shouldThrowWhenConversionFails() throws IOException {
+        // 准备 / Given
+        testGroup = createTestGroup();
+        testVersion = createTestVersion(ResumeVersion.VersionType.CONVERTED);
+        testVersion.editContent("# Resume");
+
+        when(versionRepository.findById(VERSION_ID)).thenReturn(Optional.of(testVersion));
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(testGroup));
+        when(documentFormatConverter.convert(any(), eq("md"), eq("docx")))
+                .thenThrow(new IOException("Pandoc not available"));
+
+        ResumeDownloadQuery query = ResumeDownloadQuery.builder()
+                .versionId(VERSION_ID)
+                .userId(USER_ID)
+                .targetFormat("docx")
+                .build();
+
+        // 执行与验证 / When & Then
+        assertThatThrownBy(() -> resumeService.handleDownload(query))
+                .isInstanceOf(StorageException.class)
+                .hasMessageContaining("conversion.failed");
+    }
+
+    @Test
+    @DisplayName("Should throw when version not found during download")
+    void shouldThrowWhenVersionNotFoundDuringDownload() {
+        // 准备 / Given
+        when(versionRepository.findById(VERSION_ID)).thenReturn(Optional.empty());
+
+        ResumeDownloadQuery query = ResumeDownloadQuery.builder()
+                .versionId(VERSION_ID)
+                .userId(USER_ID)
+                .targetFormat("pdf")
+                .build();
+
+        // 执行与验证 / When & Then
+        assertThatThrownBy(() -> resumeService.handleDownload(query))
+                .isInstanceOf(StorageException.class)
+                .hasMessageContaining("version.not.found");
+    }
+
+    @Test
+    @DisplayName("Should throw when access denied during download")
+    void shouldThrowWhenAccessDeniedDuringDownload() {
+        // 准备 / Given
+        testGroup = createTestGroup();
+        testVersion = createTestVersion(ResumeVersion.VersionType.CONVERTED);
+        UUID otherUserId = UUID.randomUUID();
+
+        when(versionRepository.findById(VERSION_ID)).thenReturn(Optional.of(testVersion));
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(testGroup));
+
+        ResumeDownloadQuery query = ResumeDownloadQuery.builder()
+                .versionId(VERSION_ID)
+                .userId(otherUserId)
+                .targetFormat("pdf")
+                .build();
+
+        // 执行与验证 / When & Then
+        assertThatThrownBy(() -> resumeService.handleDownload(query))
                 .isInstanceOf(StorageException.class)
                 .hasMessageContaining("access.denied");
     }

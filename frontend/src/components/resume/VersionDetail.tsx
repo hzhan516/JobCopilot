@@ -1,10 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ResumeVersion } from '../../types/resume';
+import type { ResumeVersion } from '@/types/resume.ts';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Edit3, FileText, Briefcase, List, Copy, Play } from 'lucide-react';
+import { DownloadButton } from './DownloadButton';
 
 interface VersionDetailProps {
   version: ResumeVersion;
@@ -62,6 +63,11 @@ export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit, o
         </div>
         
         <div className="flex items-center space-x-2">
+          <DownloadButton
+            versionId={version.versionId}
+            versionType={versionType}
+            filename={`resume-${versionType.toLowerCase()}`}
+          />
           {onCreateCopy && (
             <Button onClick={onCreateCopy} variant="ghost" size="sm">
               <Copy className="w-4 h-4 mr-2" />

@@ -19,7 +19,7 @@ import java.io.InputStream;
 public class PdfConverter extends AbstractDocumentConverter {
 
     public PdfConverter() {
-        register("pdf", "txt", "html", "md");
+        register("pdf", "txt", "html", "md", "docx");
         register("txt", "pdf");
         register("md", "pdf");
         register("html", "pdf");
@@ -34,8 +34,8 @@ public class PdfConverter extends AbstractDocumentConverter {
             return new ByteArrayInputStream(source.readAllBytes());
         }
 
-        // PDF 转 TXT / MD
-        // PDF to TXT / MD
+        // PDF 转 TXT / MD / DOCX
+        // PDF to TXT / MD / DOCX
         if (sf.equals("pdf") && tf.equals("txt")) {
             return pdfToText(source);
         }
@@ -43,6 +43,9 @@ public class PdfConverter extends AbstractDocumentConverter {
             String text = pdfToTextAsString(source);
             String md = "# Extracted Resume\n\n" + text;
             return toStream(md);
+        }
+        if (sf.equals("pdf") && tf.equals("docx")) {
+            return ExternalCommandUtils.runPandoc(source, "pdf", "docx", null);
         }
 
         // MD 转 PDF（Pandoc 使用 weasyprint 和 CJK 主字体）

@@ -52,7 +52,7 @@ export const resumeApi = {
   },
 
   downloadVersion: async (versionId: string, format: DownloadFormat): Promise<Blob> => {
-    const response = await api.get(`/resumes/versions/${versionId}/download`, {
+    const response = await api.get(`/resumes/${versionId}/download`, {
       params: { format },
       responseType: 'blob',
     });

@@ -13,7 +13,10 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -99,9 +102,7 @@ class CompositeDocumentConverterTest {
         when(mockConverter2.supports(anyString(), anyString())).thenReturn(false);
 
         // 执行与验证 / When & Then
-        assertThrows(IOException.class, () -> {
-            compositeConverter.convert(input, "docx", "md");
-        });
+        assertThrows(IOException.class, () -> compositeConverter.convert(input, "docx", "md"));
     }
 
     @Test
@@ -142,5 +143,61 @@ class CompositeDocumentConverterTest {
     void normalizeFormatHandlesEdgeCases() {
         // 执行与验证 / When & Then
         assertFalse(compositeConverter.supports(null, "pdf"));
+    }
+
+    @Test
+    void shouldSupportChainConversion() {
+        // 准备 / Given
+        when(mockConverter1.supports("docx", "md")).thenReturn(true);
+        when(mockConverter1.supports("md", "html")).thenReturn(false);
+        when(mockConverter2.supports("docx", "md")).thenReturn(false);
+        when(mockConverter2.supports("md", "html")).thenReturn(true);
+
+        // 执行与验证 / When & Then
+        assertTrue(compositeConverter.supports("docx", "html"));
+    }
+
+    @Test
+    void shouldPerformChainConversion() throws IOException {
+        // 准备 / Given
+        InputStream input = new ByteArrayInputStream("docx content".getBytes());
+        InputStream intermediate = new ByteArrayInputStream("md content".getBytes());
+        InputStream expectedOutput = new ByteArrayInputStream("html content".getBytes());
+
+        when(mockConverter1.supports("docx", "md")).thenReturn(true);
+        when(mockConverter2.supports("md", "html")).thenReturn(true);
+        when(mockConverter1.convert(any(), eq("docx"), eq("md"))).thenReturn(intermediate);
+        when(mockConverter2.convert(any(), eq("md"), eq("html"))).thenReturn(expectedOutput);
+
+        // 执行 / When
+        InputStream result = compositeConverter.convert(input, "docx", "html");
+
+        // 验证 / Then
+        assertEquals(expectedOutput, result);
+    }
+
+    @Test
+    void shouldFallbackToPureTextConverterOnFailure() throws IOException {
+        // 准备 / Given — 模拟一个失败的外部命令转换器和一个成功的 MarkdownConverter
+        DocumentFormatConverter failingConverter = mock(DocumentFormatConverter.class);
+        DocumentFormatConverter markdownConverter = new MarkdownConverter();
+
+        CompositeDocumentConverter converterWithFallback = new CompositeDocumentConverter(
+                List.of(failingConverter, markdownConverter)
+        );
+
+        InputStream input = new ByteArrayInputStream("# Hello".getBytes());
+
+        when(failingConverter.supports("md", "html")).thenReturn(true);
+        when(failingConverter.convert(any(), eq("md"), eq("html")))
+                .thenThrow(new IOException("Pandoc failed"));
+
+        // 执行 / When
+        InputStream result = converterWithFallback.convert(input, "md", "html");
+
+        // 验证 / Then
+        assertNotNull(result);
+        String resultStr = new String(result.readAllBytes());
+        assertTrue(resultStr.contains("<h1>Hello</h1>") || resultStr.contains("Hello"));
     }
 }

@@ -3,6 +3,7 @@ package edu.asu.ser594.resumeassistant.infrastructure.persistence.repository.res
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeGroupRepository;
+import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.resume.ResumeGroupJpaEntity;
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.mapper.resume.ResumeGroupPersistenceMapper;
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.mapper.resume.ResumeVersionPersistenceMapper;
 import jakarta.persistence.EntityManager;
@@ -70,42 +71,26 @@ public class ResumeGroupRepositoryImpl implements ResumeGroupRepository {
     @Override
     public Optional<ResumeGroup> findById(UUID groupId) {
         return jpaGroupRepo.findById(groupId)
-                .map(e -> {
-                    ResumeGroup group = groupMapper.toDomain(e);
-                    loadVersionsIntoGroup(group);
-                    return group;
-                });
+                .map(this::mapToDomainWithVersions);
     }
 
     @Override
     public Optional<ResumeGroup> findByIdAndUserId(UUID groupId, UUID userId) {
         return jpaGroupRepo.findByIdAndUserId(groupId, userId)
-                .map(e -> {
-                    ResumeGroup group = groupMapper.toDomain(e);
-                    loadVersionsIntoGroup(group);
-                    return group;
-                });
+                .map(this::mapToDomainWithVersions);
     }
 
     @Override
     public List<ResumeGroup> findAllByUserId(UUID userId) {
         return jpaGroupRepo.findAllByUserId(userId).stream()
-                .map(e -> {
-                    ResumeGroup group = groupMapper.toDomain(e);
-                    loadVersionsIntoGroup(group);
-                    return group;
-                })
+                .map(this::mapToDomainWithVersions)
                 .collect(Collectors.toList());
     }
 
     @Override
     public Optional<ResumeGroup> findDefaultByUserId(UUID userId) {
         return jpaGroupRepo.findByUserIdAndIsDefaultTrue(userId)
-                .map(e -> {
-                    ResumeGroup group = groupMapper.toDomain(e);
-                    loadVersionsIntoGroup(group);
-                    return group;
-                });
+                .map(this::mapToDomainWithVersions);
     }
 
     @Override
@@ -118,12 +103,10 @@ public class ResumeGroupRepositoryImpl implements ResumeGroupRepository {
         jpaGroupRepo.clearDefaultForUser(userId);
     }
 
-    private void loadVersionsIntoGroup(ResumeGroup group) {
-        List<ResumeVersion> versions = jpaVersionRepo.findAllByGroupId(group.getId()).stream()
+    private ResumeGroup mapToDomainWithVersions(ResumeGroupJpaEntity entity) {
+        List<ResumeVersion> versions = jpaVersionRepo.findAllByGroupId(entity.getId()).stream()
                 .map(versionMapper::toDomain)
                 .collect(Collectors.toList());
-        for (ResumeVersion version : versions) {
-            group.addVersion(version);
-        }
+        return groupMapper.toDomain(entity, versions);
     }
 }
