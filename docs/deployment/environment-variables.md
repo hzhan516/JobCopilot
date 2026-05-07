@@ -343,13 +343,12 @@ You only need to configure **one** provider. The choice is determined by the pre
 
 | Model | Dimension |
 |-------|-----------|
-| `gemini/gemini-embedding-001` | `768` |
+| `gemini/gemini-embedding-001` | `1536` |
 | `openai/text-embedding-ada-002` | `1536` |
 | `openai/text-embedding-3-small` | `1536` |
 | `openai/text-embedding-3-large` | `3072` |
-| `sentence-transformers/all-MiniLM-L6-v2` | `384` |
 
-> **Note**: The default `1536` in `.env.example` corresponds to OpenAI Ada-002. If you use Gemini embedding, change this to `768`.
+> **Note**: The default `1536` in `.env.example` matches the current default `gemini/gemini-embedding-001` configuration and the listed OpenAI 1536-dimension embedding models.
 
 ### `LLM_TEMPERATURE`
 
@@ -434,10 +433,10 @@ You only need to configure **one** provider. The choice is determined by the pre
 | Field | Value |
 |-------|-------|
 | **Purpose** | Absolute host path to the Google Cloud Service Account JSON key file. Mounted as a read-only volume into the AI service container. |
-| **Default** | *(empty)* |
-| **Valid values** | Absolute filesystem path, e.g. `/home/user/service-account.json` |
+| **Default / template value** | `use-your-gcp-service-account-json-key-file-if-using-vertex-ai` in `.env.example`; set it to an absolute path only when using `vertex_ai/`, or clear it when using the default `gemini/` AI Studio models. |
+| **Valid values** | Empty value for non-Vertex local runs, or an absolute filesystem path such as `/home/user/service-account.json` |
 | **Security notes** | **CRITICAL**: This **must** be an absolute path. Relative paths or plain filenames (e.g. `vertex.json`) are interpreted by Docker/Podman as named volume references, which will silently create an empty volume instead of mounting your credentials file. The file is mounted read-only (`:ro`) to prevent accidental modification. Store this key in a secrets manager and rotate it regularly. |
-| **Common mistakes** | <ul><li>Using a relative path like `./vertex.json` or `~/keys/gcp.json`.</li><li>Using a path inside the project directory that is `.gitignore`d but forgetting to copy the file to the deployment host.</li><li>Setting this when using Gemini AI Studio (`gemini/` prefix) — ADC credentials are not needed for AI Studio.</li></ul> |
+| **Common mistakes** | <ul><li>Leaving the placeholder value unchanged after copying `.env.example` to `.env`.</li><li>Using a relative path like `./vertex.json` or `~/keys/gcp.json`.</li><li>Using a path inside the project directory that is `.gitignore`d but forgetting to copy the file to the deployment host.</li><li>Setting this when using Gemini AI Studio (`gemini/` prefix) — ADC credentials are not needed for AI Studio.</li></ul> |
 
 ---
 

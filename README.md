@@ -5,7 +5,8 @@
 
 The **Resume Assistant** is an AI-powered platform designed to streamline the job hunting process for new graduates and career changers. It automatically parses user-uploaded resumes, evaluates them against job market data using semantic vector matching, and provides an interactive AI copilot to iteratively optimize resume content. By combining secure document management, asynchronous AI processing, and personalized recommendations, the system saves users hours of manual tailoring while increasing their interview chances.
 
-**Deployment URL:** [TBD - Will be updated upon implementation completion]
+**Deployment:** The system is verified through Docker Compose. Copy `docker-compose.yml.example` to `docker-compose.yml`, configure `.env`, then run `docker compose up -d --build`. The frontend is available at `http://localhost` by default, or `http://localhost:${FRONTEND_HOST_PORT}` if a custom port is configured.
+
 
 ## Team Roster
 
@@ -16,7 +17,7 @@ The **Resume Assistant** is an AI-powered platform designed to streamline the jo
 ## Features
 
 - **Resume Management**: Upload, parse, and manage your resumes in multiple formats
-- **AI-Powered Parsing**: Extract structured information from resumes and job posts using Vertex AI Gemini
+- **AI-Powered Parsing**: Extract structured information from resumes and job posts using LiteLLM-compatible models
 - **Job Matching**: Intelligent job recommendations based on resume content and vector similarity
 - **Application Tracking**: Track job application status and manage your job search pipeline
 - **AI Conversation**: Interactive chat assistant for job search advice and resume optimization
@@ -47,9 +48,9 @@ This project adopts a microservices architecture with the following components:
 
 | Service       | Technology                | Port         | Description                          |
 |---------------|---------------------------|--------------|--------------------------------------|
-| Frontend      | React 18 + Vite           | 80           | Web user interface served by Nginx   |
+| Frontend      | React 19 + Vite 7         | 80           | Web user interface served by Nginx   |
 | Backend       | Java 21 + Spring Boot 3.5 | 8080         | REST API and business logic          |
-| AI Service    | Python 3 + FastAPI        | 8000         | AI processing with Vertex AI Gemini  |
+| AI Service    | Python 3 + FastAPI + LiteLLM | 8000      | AI processing through configured providers |
 | Database      | PostgreSQL 15 + pgvector  | 5432         | Business data and vector storage     |
 | Message Queue | RabbitMQ 3                | 5672 / 15672 | Async message processing             |
 
@@ -57,26 +58,27 @@ This project adopts a microservices architecture with the following components:
 
 ```text
 .
-├── frontend/              # React frontend application
-│   ├── src/              # Source code
-│   ├── package.json      # Node.js dependencies
-│   └── Dockerfile        # Frontend Docker image
-├── backend/              # Java Spring Boot backend
-│   ├── app/              # Application entry point
-│   ├── api/              # API layer (DTOs, Facades)
-│   ├── domain/           # Domain layer (business logic)
-│   ├── infrastructure/   # Infrastructure (DB, cache, messaging)
-│   ├── trigger/          # Controllers, schedulers, listeners
-│   └── types/            # Shared types and constants
-├── ai-service/           # Python AI service
-│   ├── app/              # FastAPI application
-│   ├── requirements.txt  # Python dependencies
-│   └── Dockerfile        # AI service Docker image
-├── docs/                 # Documentation
-├── eval/                 # Evaluation scripts
-├── tests/                # Test scripts
-├── docker-compose.yml    # Docker Compose configuration
-└── .env.example          # Environment variables template
+├── frontend/                  # React frontend application
+│   ├── src/                   # Source code
+│   ├── package.json           # Node.js dependencies and scripts
+│   └── Dockerfile             # Frontend Docker image
+├── backend/                   # Java Spring Boot backend
+│   ├── app/                   # Application entry point, config, DB init, app tests
+│   ├── api/                   # API DTOs and facade interfaces
+│   ├── domain/                # Domain entities, value objects, domain tests
+│   ├── infrastructure/        # Persistence, storage, messaging, security, converters
+│   ├── trigger/               # HTTP controllers, MQ listeners, controller tests
+│   └── types/                 # Shared types and constants
+├── ai-service/                # Python FastAPI AI service
+│   ├── app/                   # AI service source code
+│   ├── tests/                 # Pytest test suite
+│   ├── requirements.txt       # Python dependencies
+│   └── Dockerfile             # AI service Docker image
+├── docs/                      # Architecture, API, deployment, and i18n documentation
+├── eval/                      # AI evaluation scripts, benchmark cases, and results
+├── docker-compose.yml.example # Docker Compose template; copy to docker-compose.yml
+├── empty-vertex.json          # Placeholder credentials file for non-Vertex local runs
+└── .env.example               # Environment variables template
 ```
 
 ## Backend Architecture
@@ -184,7 +186,7 @@ docker-compose down -v
 
 ## Testing
 
-The project maintains a rigorous test suite (`> 80%` coverage) across all modules to ensure system reliability.
+The project includes backend JUnit tests and AI-service pytest tests covering API, domain, persistence, authentication, AI service, and message queue logic.
 
 ### Backend Tests (Java)
 
@@ -298,9 +300,9 @@ See [docs/deployment/DOCKER_DEPLOY.md](docs/deployment/DOCKER_DEPLOY.md) for det
 
 ### Frontend
 
-- React 18.2
-- Vite 5.0
-- React Router 6
+- React 19
+- Vite 7
+- React Router 7
 - Axios
 
 ### Backend
@@ -315,8 +317,8 @@ See [docs/deployment/DOCKER_DEPLOY.md](docs/deployment/DOCKER_DEPLOY.md) for det
 
 - Python 3.11
 - FastAPI
-- Google Vertex AI Gemini
-- Google Vertex AI embeddings
+- LiteLLM-compatible text, vision, and embedding models
+- Gemini via Google AI Studio by default; Vertex AI is optional
 - Uvicorn
 
 ### DevOps

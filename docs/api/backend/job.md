@@ -110,7 +110,25 @@ Authorization: Bearer <user-jwt-token>
 **Response Body (`JobMatchResponse`):**
 Same format as the 1.4 response.
 
-### 1.6 Get Match History
+### 1.6 Hide Job from List
+**Endpoint:** `DELETE /api/v1/jobs/{jobId}`
+**Description:** Hides a job from user-facing job lists while preserving the database row. The backend sets `hidden_at`, and `GET /api/v1/jobs` returns only jobs whose `hidden_at` is null.
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+```
+
+**Response Body:**
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": null
+}
+```
+
+### 1.7 Get Match History
 **Endpoint:** `GET /api/v1/jobs/match/history`
 **Description:** Gets the historical match record list for the currently logged-in user.
 
@@ -133,7 +151,7 @@ Authorization: Bearer <user-jwt-token>
 
 ---
 
-### 1.7 Match Jobs (Intelligent)
+### 1.8 Match Jobs (Intelligent)
 **Endpoint:** `POST /api/v1/jobs/match`
 **Description:** Calls the AI service to get a list of matching job recommendations based on the user's resume or query conditions.
 

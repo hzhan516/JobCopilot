@@ -40,15 +40,16 @@
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `title` | String | No | Conversation title, defaults to "New Conversation" if not provided |
-| `resumeVersionId` | String (UUID) | No | Associated resume version ID |
-| `jobId` | String (UUID) | No | Associated job ID |
+| `resumeVersionId` | String (UUID) | No | Associated resume version ID. If provided, `jobId` must also be provided |
+| `jobId` | String (UUID) | No | Associated job ID. If provided, `resumeVersionId` must also be provided |
 
 #### Request Example
 
 ```json
 {
   "title": "Optimize Work Experience",
-  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002"
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
+  "jobId": "550e8400-e29b-41d4-a716-446655440010"
 }
 ```
 
@@ -63,6 +64,7 @@
 | `title` | String | Conversation title |
 | `status` | String | Status: ACTIVE, CLOSED |
 | `resumeVersionId` | String (UUID) | Associated resume version ID |
+| `jobId` | String (UUID) | Associated job ID |
 | `messages` | Array | Message list (empty when newly created) |
 | `createdAt` | String (ISO 8601) | Creation time |
 | `updatedAt` | String (ISO 8601) | Update time |
@@ -79,6 +81,7 @@
     "title": "Optimize Work Experience",
     "status": "ACTIVE",
     "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
+    "jobId": "550e8400-e29b-41d4-a716-446655440010",
     "messages": [],
     "createdAt": "2024-01-15T10:30:00",
     "updatedAt": "2024-01-15T10:30:00"
@@ -325,7 +328,7 @@ Returns all conversation lists for the current user (without message details).
 
 #### Success Response (200)
 
-Returns the MinIO presigned URL after successful file upload.
+Returns a temporary storage URL after successful file upload.
 
 ```json
 {
@@ -421,11 +424,12 @@ After the user calls the [Send Message] interface, the backend executes the foll
 
 1. Save user message (`role=USER`) to the database
 2. If the conversation title is the default value and this is the first message, automatically generate the title
-3. Assemble `ConversationRequestCommand`, including history messages, current message, fileUrls, resumeVersionId
+3. Assemble `ConversationRequestCommand`, including history messages, current message, resumeVersionId, resumeText, primaryJobText, relatedJobTexts, init flag, and locale
 4. Send via RabbitMQ to the `ai.req.conversation` queue
 5. Python AI service consumes the message and generates a reply
 6. AI service sends the result to the `backend.res.conversation` queue
 7. `AiResultMessageListener` listens for `CONVERSATION_REPLY` type events and saves the AI reply (`role=ASSISTANT`) to the database
+8. If the AI result includes `resumeModification.modified=true`, the backend creates or updates an `AI_OPTIMIZED` resume version and appends the optimized Markdown to the assistant message content
 
 ### 8.2 Data Format Sent to AI Service
 
@@ -439,8 +443,13 @@ After the user calls the [Send Message] interface, the backend executes the foll
     { "role": "USER", "content": "帮我优化一下项目经验部分", "fileUrl": null }
   ],
   "currentMessage": "帮我优化一下项目经验部分",
-  "fileUrls": ["https://minio.example.com/resumes/xxx.pdf"],
-  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002"
+  "fileUrls": [],
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
+  "resumeText": "# Resume Markdown...",
+  "primaryJobText": "Software Engineer\nExample Corp\nJob description...",
+  "relatedJobTexts": ["Backend Engineer\nExample Corp\nRelated job description..."],
+  "init": true,
+  "locale": "zh-TW"
 }
 ```
 
@@ -450,8 +459,13 @@ After the user calls the [Send Message] interface, the backend executes the foll
 | `userId` | String | User ID |
 | `messageHistory` | List<Map> | Historical message list (role, content, fileUrl) |
 | `currentMessage` | String | Latest message sent by the user |
-| `fileUrls` | List<String> | List of external file URLs referenced by the user |
+| `fileUrls` | List<String> | File URL list sent to the AI service; current backend context requests send an empty list |
 | `resumeVersionId` | String | Associated resume version ID (optional) |
+| `resumeText` | String | Resume Markdown/text loaded from the selected resume version or conversation AI working copy |
+| `primaryJobText` | String | Current job text loaded from the conversation job ID |
+| `relatedJobTexts` | List<String> | Up to five other completed job texts for context |
+| `init` | Boolean | Whether this request is the first AI initialization for the conversation |
+| `locale` | String | User interface locale, e.g. `en`, `zh-CN`, or `zh-TW` |
 
 ### 8.3 Data Format for Receiving AI Replies
 
@@ -464,7 +478,11 @@ After the user calls the [Send Message] interface, the backend executes the foll
   "status": "COMPLETED",
   "data": {
     "content": "根据您的简历，我建议从以下几个方面优化工作经验...",
-    "fileUrl": "https://minio.example.com/conversations/xxx/optimized_resume.pdf"
+    "fileUrl": null,
+    "resumeModification": {
+      "modified": true,
+      "markdown": "# Optimized Resume\n\n..."
+    }
   },
   "errorMessage": null,
   "eventType": null
@@ -478,6 +496,8 @@ After the user calls the [Send Message] interface, the backend executes the foll
 | `status` | String | `COMPLETED` or `FAILED` |
 | `data.content` | String | AI reply text |
 | `data.fileUrl` | String | AI generated file URL (optional) |
+| `data.resumeModification.modified` | Boolean | Whether the AI rewrote or optimized the resume |
+| `data.resumeModification.markdown` | String | Full optimized resume Markdown when `modified=true` |
 | `errorMessage` | String | Failure reason (exists when `status=FAILED`) |
 
 ---
@@ -547,8 +567,8 @@ After the user calls the [Send Message] interface, the backend executes the foll
 ```java
 {
   "title": String,          // Optional, conversation title
-  "resumeVersionId": String, // Optional, resume version ID
-  "jobId": String           // Optional, associated job ID
+  "resumeVersionId": String, // Optional, but must be provided with jobId
+  "jobId": String           // Optional, but must be provided with resumeVersionId
 }
 ```
 
