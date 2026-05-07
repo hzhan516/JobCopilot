@@ -514,26 +514,32 @@ CREATE INDEX IF NOT EXISTS idx_resume_vectors_status ON resume_vectors (status);
 
 CREATE TABLE IF NOT EXISTS job_vectors
 (
-    id
-    VARCHAR
-(
-    64
-) PRIMARY KEY,
-    job_id VARCHAR
-(
-    64
-) NOT NULL UNIQUE,
+    id                VARCHAR(64) PRIMARY KEY,
+    job_id            VARCHAR(64) NOT NULL UNIQUE,
     embedding         vector(1536),
     status            VARCHAR(32) NOT NULL,
     error_message     TEXT,
+    title             TEXT,
+    description       TEXT,
+    requirements      JSONB,
+    raw_content       TEXT,
+    source_file       VARCHAR(255),
+    model_version     VARCHAR(50),
     created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    description       VARCHAR(255
-)
-    );
+    updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE INDEX IF NOT EXISTS idx_job_vectors_job_id ON job_vectors (job_id);
 CREATE INDEX IF NOT EXISTS idx_job_vectors_status ON job_vectors (status);
+
+-- 全文搜索 GIN 索引 / Full-text search GIN index
+CREATE INDEX IF NOT EXISTS idx_job_vectors_fts ON job_vectors
+    USING GIN (to_tsvector('english', COALESCE(raw_content, '')));
+
+-- HNSW 近似最近邻索引 / HNSW ANN index
+CREATE INDEX IF NOT EXISTS idx_job_vectors_embedding_hnsw ON job_vectors
+    USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64);
 
 -- ==========================================
 -- V7: Drop unused table / 删除废弃表
