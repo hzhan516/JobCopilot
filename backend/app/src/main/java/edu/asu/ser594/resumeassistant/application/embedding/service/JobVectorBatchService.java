@@ -46,10 +46,12 @@ public class JobVectorBatchService {
         List<String> failedJobIds = new ArrayList<>();
         int skipped = 0;
 
+        int index = 0;
         for (JobVectorItem item : items) {
+            index++;
             try {
                 if (item.jobId() == null || item.jobId().isBlank()) {
-                    log.warn("Skipping item with blank jobId");
+                    log.warn("Skipping item with blank jobId at index {}", index);
                     continue;
                 }
 

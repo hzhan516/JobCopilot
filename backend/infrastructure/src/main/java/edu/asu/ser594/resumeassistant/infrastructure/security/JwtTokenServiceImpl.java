@@ -60,8 +60,8 @@ public class JwtTokenServiceImpl implements TokenService {
 
     // 生成单个令牌 / Generate a single token
     private String generateToken(String userId, long expiration) {
-        Date now = new Date();
-        Date expiry = new Date(now.getTime() + expiration);
+        final Date now = new Date();
+        final Date expiry = new Date(now.getTime() + expiration);
 
         return Jwts.builder()
                 .subject(userId)
@@ -93,7 +93,7 @@ public class JwtTokenServiceImpl implements TokenService {
             Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token);
             return true;
         } catch (Exception e) {
-            log.warn("Invalid JWT token: {}", e.getMessage());
+            log.warn("Invalid JWT token format: {}", e.getMessage());
             return false;
         }
     }
@@ -111,7 +111,7 @@ public class JwtTokenServiceImpl implements TokenService {
             log.warn("JWT token expired: {}", e.getMessage());
             return TokenValidationResult.EXPIRED;
         } catch (Exception e) {
-            log.warn("Invalid JWT token: {}", e.getMessage());
+            log.warn("Invalid JWT token signature or claims: {}", e.getMessage());
             return TokenValidationResult.INVALID;
         }
     }
