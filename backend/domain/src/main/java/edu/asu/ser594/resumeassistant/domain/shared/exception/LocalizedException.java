@@ -2,6 +2,7 @@ package edu.asu.ser594.resumeassistant.domain.shared.exception;
 
 import lombok.Getter;
 
+// 支持国际化的异常
 // Exception with i18n support
 @Getter
 public abstract class LocalizedException extends RuntimeException {

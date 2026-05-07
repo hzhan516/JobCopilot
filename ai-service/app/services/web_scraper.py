@@ -5,6 +5,8 @@ from pathlib import Path
 import httpx
 from playwright.sync_api import sync_playwright
 
+# Web scraping helpers for job postings, including HTML-to-text and screenshots.
+
 from app.schemas import ScrapeResult
 
 
@@ -17,6 +19,7 @@ DEFAULT_HEADERS = {
 }
 
 
+# Convert raw HTML into readable plain text.
 def _html_to_text(html: str) -> str:
     text = re.sub(r"<script.*?>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"<style.*?>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
@@ -28,6 +31,7 @@ def _html_to_text(html: str) -> str:
     return text.strip()
 
 
+# Capture a full-page screenshot using Playwright.
 def _capture_screenshot(url: str) -> str | None:
     screenshots_dir = Path(tempfile.gettempdir()) / "resume_assistant_job_screenshots"
     screenshots_dir.mkdir(parents=True, exist_ok=True)
@@ -44,6 +48,7 @@ def _capture_screenshot(url: str) -> str | None:
     return str(screenshot_path)
 
 
+# Fetch a job page, extract text, and optionally capture a screenshot.
 def scrape_job_page(url: str, capture_screenshot: bool) -> ScrapeResult:
     response = httpx.get(
         url,
@@ -58,7 +63,7 @@ def scrape_job_page(url: str, capture_screenshot: bool) -> ScrapeResult:
 
     screenshot_url = None
     if capture_screenshot:
-        _ = _capture_screenshot(url)
+        screenshot_url = _capture_screenshot(url)
 
 
     return ScrapeResult(

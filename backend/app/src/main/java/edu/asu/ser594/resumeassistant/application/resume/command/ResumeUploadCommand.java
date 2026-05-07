@@ -10,9 +10,10 @@ import java.io.InputStream;
  */
 @Builder
 public record ResumeUploadCommand(
-    String fileName,
-    String contentType,
-    long fileSize,
-    InputStream inputStream,
-    String title
-) {}
+        String fileName,
+        String contentType,
+        long fileSize,
+        InputStream inputStream,
+        String title
+) {
+}

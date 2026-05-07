@@ -2,6 +2,7 @@ package edu.asu.ser594.resumeassistant.domain.embedding.repository;
 
 import edu.asu.ser594.resumeassistant.domain.embedding.entity.ResumeVector;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -15,6 +16,12 @@ public interface ResumeVectorRepository {
      * Save resume vector
      */
     void save(ResumeVector vector);
+
+    /**
+     * 批量保存简历向量
+     * Save resume vectors in batch
+     */
+    void saveAll(List<ResumeVector> vectors);
 
     /**
      * 根据简历版本ID查找向量

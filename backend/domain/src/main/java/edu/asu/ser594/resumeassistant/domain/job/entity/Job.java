@@ -5,9 +5,11 @@ import edu.asu.ser594.resumeassistant.domain.job.valueobject.ParsedJobContent;
 import edu.asu.ser594.resumeassistant.domain.shared.entity.AggregateRoot;
 import lombok.Getter;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
+ * 职位聚合根。管理职位发布URL的处理生命周期
  * The Job aggregate root. Manages the lifecycle of processing a job posting url.
  */
 public class Job extends AggregateRoot<String> {
@@ -25,8 +27,10 @@ public class Job extends AggregateRoot<String> {
     private ParsedJobContent parsedContent;
     @Getter
     private String errorMessage;
+    @Getter
+    private LocalDateTime hiddenAt;
 
-    public Job(String id, UUID userId, String originalUrl, boolean imageCheckEnabled, JobStatus status, ParsedJobContent parsedContent, String errorMessage) {
+    public Job(String id, UUID userId, String originalUrl, boolean imageCheckEnabled, JobStatus status, ParsedJobContent parsedContent, String errorMessage, LocalDateTime hiddenAt) {
         this.id = id;
         this.userId = userId;
         this.originalUrl = originalUrl;
@@ -34,14 +38,24 @@ public class Job extends AggregateRoot<String> {
         this.status = status;
         this.parsedContent = parsedContent;
         this.errorMessage = errorMessage;
+        this.hiddenAt = hiddenAt;
     }
 
     private Job(String id, UUID userId, String originalUrl, boolean imageCheckEnabled, JobStatus status) {
-        this.id = id;
-        this.userId = userId;
-        this.originalUrl = originalUrl;
-        this.imageCheckEnabled = imageCheckEnabled;
-        this.status = status;
+        this(id, userId, originalUrl, imageCheckEnabled, status, null, null, null);
+    }
+
+    /**
+     * 创建新职位用于处理
+     * Creates a new Job for processing.
+     *
+     * @param userId            The ID of the user requesting the job parse.
+     * @param url               The URL of the job posting.
+     * @param imageCheckEnabled Whether visual verification is required.
+     * @return A newly initialized Job aggregate root.
+     */
+    public static Job create(UUID userId, String url, boolean imageCheckEnabled) {
+        return new Job(UUID.randomUUID().toString(), userId, url, imageCheckEnabled, JobStatus.PENDING);
     }
 
     @Override
@@ -50,18 +64,7 @@ public class Job extends AggregateRoot<String> {
     }
 
     /**
-     * Creates a new Job for processing.
-     * 
-     * @param userId The ID of the user requesting the job parse.
-     * @param url The URL of the job posting.
-     * @param imageCheckEnabled Whether visual verification is required.
-     * @return A newly initialized Job aggregate root.
-     */
-    public static Job create(UUID userId, String url, boolean imageCheckEnabled) {
-        return new Job(UUID.randomUUID().toString(), userId, url, imageCheckEnabled, JobStatus.PENDING);
-    }
-
-    /**
+     * 转换职位状态以表示抓取已开始
      * Transitions the job state to indicate scraping has started.
      */
     public void markScraping() {
@@ -72,6 +75,7 @@ public class Job extends AggregateRoot<String> {
     }
 
     /**
+     * 转换职位状态以表示解析已开始
      * Transitions the job state to indicate parsing has started.
      */
     public void markParsing() {
@@ -82,8 +86,9 @@ public class Job extends AggregateRoot<String> {
     }
 
     /**
+     * 标记职位为成功完成并携带解析内容
      * Marks the job as successfully completed with the parsed content.
-     * 
+     *
      * @param parsedContent The structured data extracted from the job posting.
      */
     public void markCompleted(ParsedJobContent parsedContent) {
@@ -95,13 +100,38 @@ public class Job extends AggregateRoot<String> {
     }
 
     /**
+     * 标记职位为失败并记录错误原因
      * Marks the job as failed and records the error reason.
-     * 
+     *
      * @param error A description of why the job processing failed.
      */
     public void markFailed(String error) {
         this.status = JobStatus.FAILED;
         this.errorMessage = error;
+    }
+
+    /**
+     * 直接更新解析后的职位内容（用户手动编辑）
+     * Updates the parsed content directly (user manual edit).
+     *
+     * @param newContent The new parsed content.
+     */
+    public void updateParsedContent(ParsedJobContent newContent) {
+        this.parsedContent = newContent;
+    }
+
+    /**
+     * 隐藏职位，使其不再出现在用户列表中，但保留数据库记录。
+     * Hide the job from user-facing lists while keeping the database record.
+     */
+    public void hide() {
+        if (this.hiddenAt == null) {
+            this.hiddenAt = LocalDateTime.now();
+        }
+    }
+
+    public boolean isHidden() {
+        return hiddenAt != null;
     }
 
 }

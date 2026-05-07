@@ -31,6 +31,16 @@ public class MinioFileStorageService implements FileStorageService {
 
     @PostConstruct
     public void init() {
+        String accessKey = storageProperties.getMinio().getAccessKey();
+        String secretKey = storageProperties.getMinio().getSecretKey();
+        if (accessKey == null || accessKey.isBlank() || secretKey == null || secretKey.isBlank()) {
+            throw new IllegalStateException(
+                    "MinIO credentials are not configured. "
+                            + "Please set 'storage.minio.access-key' and 'storage.minio.secret-key'. / "
+                            + "MinIO 凭证未配置。请设置 'storage.minio.access-key' 和 'storage.minio.secret-key'。"
+            );
+        }
+
         String bucketName = storageProperties.getMinio().getBucketName();
         try {
             boolean bucketExists = minioClient.bucketExists(

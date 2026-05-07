@@ -1,9 +1,16 @@
 import json
+import logging
+
+# RabbitMQ consumers for AI workflow requests: declare queues, parse commands, handle messages,
+# and dispatch results or failures back to the appropriate result queues.
 
 import pika
 
 from app.config import (
     AI_DIRECT_EXCHANGE,
+    AI_DLX_EXCHANGE,
+    AI_DLQ_QUEUE,
+    AI_DLQ_ROUTING_KEY,
     CONVERSATION_REQUEST_QUEUE,
     CONVERSATION_REQUEST_ROUTING_KEY,
     CONVERSATION_RESULT_QUEUE,
@@ -24,10 +31,6 @@ from app.config import (
     RABBITMQ_PASSWORD,
     RABBITMQ_PORT,
     RABBITMQ_USERNAME,
-    VECTOR_GEN_REQUEST_QUEUE,
-    VECTOR_GEN_REQUEST_ROUTING_KEY,
-    VECTOR_GEN_RESULT_QUEUE,
-    VECTOR_GEN_RESULT_ROUTING_KEY,
 )
 
 from app.mq.publisher import publish_ai_result, publish_job_rank_result
@@ -37,91 +40,111 @@ from app.schemas import (
     JobRankCommand,
     JobParseCommand,
     ResumeParseCommand,
-    VectorGenCommand,
 )
 from app.services.conversation_service import process_conversation
 from app.services.job_rank_service import rank_jobs
 from app.services.job_orchestrator import process_job
 from app.services.resume_orchestrator import process_resume
-from app.services.vector_service import process_vector
+
+logger = logging.getLogger(__name__)
+
+JOB_PARSE_FAILED_MESSAGE = "AI service failed while parsing the job posting. Please try again."
+RESUME_PARSE_FAILED_MESSAGE = "AI service failed while parsing the resume. Please try again."
+CONVERSATION_FAILED_MESSAGE = "AI service failed while generating the chat response. Please try again."
+JOB_RANK_FAILED_MESSAGE = "AI service failed while ranking jobs. Please try again."
+
+QUEUE_ARGUMENTS = {
+    "x-dead-letter-exchange": AI_DLX_EXCHANGE,
+    "x-dead-letter-routing-key": AI_DLQ_ROUTING_KEY,
+}
 
 
+# Declare a durable queue with shared DLQ configuration.
+def declare_queue(
+    channel: pika.adapters.blocking_connection.BlockingChannel,
+    queue: str,
+) -> None:
+    channel.queue_declare(queue=queue, durable=True, arguments=QUEUE_ARGUMENTS)
+
+
+# Create a blocking RabbitMQ connection using configured credentials.
 def create_connection() -> pika.BlockingConnection:
     credentials = pika.PlainCredentials(RABBITMQ_USERNAME, RABBITMQ_PASSWORD)
     parameters = pika.ConnectionParameters(
         host=RABBITMQ_HOST,
         port=RABBITMQ_PORT,
         credentials=credentials,
+        heartbeat=60,
+        blocked_connection_timeout=300
     )
     return pika.BlockingConnection(parameters)
 
 
+# Declare exchanges, queues, and bindings for all AI workflow routes.
 def setup_all_queues(channel: pika.adapters.blocking_connection.BlockingChannel) -> None:
     channel.exchange_declare(
         exchange=AI_DIRECT_EXCHANGE,
         exchange_type="direct",
         durable=True,
     )
+    channel.exchange_declare(
+        exchange=AI_DLX_EXCHANGE,
+        exchange_type="direct",
+        durable=True,
+    )
+    channel.queue_declare(queue=AI_DLQ_QUEUE, durable=True)
+    channel.queue_bind(
+        exchange=AI_DLX_EXCHANGE,
+        queue=AI_DLQ_QUEUE,
+        routing_key=AI_DLQ_ROUTING_KEY,
+    )
 
-    channel.queue_declare(queue=JOB_PARSE_REQUEST_QUEUE, durable=True)
+    declare_queue(channel, JOB_PARSE_REQUEST_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=JOB_PARSE_REQUEST_QUEUE,
         routing_key=JOB_PARSE_REQUEST_ROUTING_KEY,
     )
-    channel.queue_declare(queue=JOB_PARSE_RESULT_QUEUE, durable=True)
+    declare_queue(channel, JOB_PARSE_RESULT_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=JOB_PARSE_RESULT_QUEUE,
         routing_key=JOB_PARSE_RESULT_ROUTING_KEY,
     )
 
-    channel.queue_declare(queue=RESUME_PARSE_REQUEST_QUEUE, durable=True)
+    declare_queue(channel, RESUME_PARSE_REQUEST_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=RESUME_PARSE_REQUEST_QUEUE,
         routing_key=RESUME_PARSE_REQUEST_ROUTING_KEY,
     )
-    channel.queue_declare(queue=RESUME_PARSE_RESULT_QUEUE, durable=True)
+    declare_queue(channel, RESUME_PARSE_RESULT_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=RESUME_PARSE_RESULT_QUEUE,
         routing_key=RESUME_PARSE_RESULT_ROUTING_KEY,
     )
 
-    channel.queue_declare(queue=VECTOR_GEN_REQUEST_QUEUE, durable=True)
-    channel.queue_bind(
-        exchange=AI_DIRECT_EXCHANGE,
-        queue=VECTOR_GEN_REQUEST_QUEUE,
-        routing_key=VECTOR_GEN_REQUEST_ROUTING_KEY,
-    )
-    channel.queue_declare(queue=VECTOR_GEN_RESULT_QUEUE, durable=True)
-    channel.queue_bind(
-        exchange=AI_DIRECT_EXCHANGE,
-        queue=VECTOR_GEN_RESULT_QUEUE,
-        routing_key=VECTOR_GEN_RESULT_ROUTING_KEY,
-    )
-
-    channel.queue_declare(queue=CONVERSATION_REQUEST_QUEUE, durable=True)
+    declare_queue(channel, CONVERSATION_REQUEST_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=CONVERSATION_REQUEST_QUEUE,
         routing_key=CONVERSATION_REQUEST_ROUTING_KEY,
     )
-    channel.queue_declare(queue=CONVERSATION_RESULT_QUEUE, durable=True)
+    declare_queue(channel, CONVERSATION_RESULT_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=CONVERSATION_RESULT_QUEUE,
         routing_key=CONVERSATION_RESULT_ROUTING_KEY,
     )
 
-    channel.queue_declare(queue=JOB_RANK_REQUEST_QUEUE, durable=True)
+    declare_queue(channel, JOB_RANK_REQUEST_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=JOB_RANK_REQUEST_QUEUE,
         routing_key=JOB_RANK_REQUEST_ROUTING_KEY,
     )
-    channel.queue_declare(queue=JOB_RANK_RESULT_QUEUE, durable=True)
+    declare_queue(channel, JOB_RANK_RESULT_QUEUE)
     channel.queue_bind(
         exchange=AI_DIRECT_EXCHANGE,
         queue=JOB_RANK_RESULT_QUEUE,
@@ -129,31 +152,31 @@ def setup_all_queues(channel: pika.adapters.blocking_connection.BlockingChannel)
     )
 
 
+# Parse a job-parse command payload from the message body.
 def parse_job_command(body: bytes) -> JobParseCommand:
     payload = json.loads(body.decode("utf-8"))
     return JobParseCommand.model_validate(payload)
 
 
+# Parse a resume-parse command payload from the message body.
 def parse_resume_command(body: bytes) -> ResumeParseCommand:
     payload = json.loads(body.decode("utf-8"))
     return ResumeParseCommand.model_validate(payload)
 
 
-def parse_vector_command(body: bytes) -> VectorGenCommand:
-    payload = json.loads(body.decode("utf-8"))
-    return VectorGenCommand.model_validate(payload)
-
-
+# Parse a conversation request command payload from the message body.
 def parse_conversation_command(body: bytes) -> ConversationRequestCommand:
     payload = json.loads(body.decode("utf-8"))
     return ConversationRequestCommand.model_validate(payload)
 
 
+# Parse a job-ranking command payload from the message body.
 def parse_job_rank_command(body: bytes) -> JobRankCommand:
     payload = json.loads(body.decode("utf-8"))
     return JobRankCommand.model_validate(payload)
 
 
+# Build a standardized failure event for AI results.
 def build_failed_event(
     reference_id: str,
     event_type: str,
@@ -170,6 +193,7 @@ def build_failed_event(
     )
 
 
+# Handle a job-parse request and publish the result or failure.
 def handle_job_message(
     channel: pika.adapters.blocking_connection.BlockingChannel,
     body: bytes,
@@ -179,16 +203,18 @@ def handle_job_message(
     try:
         result = process_job(command)
     except Exception as exc:
+        logger.exception("Job processing failed: job_id=%s", command.job_id)
         result = build_failed_event(
             reference_id=command.job_id,
             event_type="JOB_PARSE",
-            error_message=str(exc),
+            error_message=JOB_PARSE_FAILED_MESSAGE,
             event_entity_type="JOB",
         )
 
     publish_ai_result(channel, result)
 
 
+# Handle a resume-parse request and publish the result or failure.
 def handle_resume_message(
     channel: pika.adapters.blocking_connection.BlockingChannel,
     body: bytes,
@@ -197,34 +223,18 @@ def handle_resume_message(
     try:
         result = process_resume(command)
     except Exception as exc:
+        logger.exception("Resume processing failed: resume_id=%s", command.resume_id)
         result = build_failed_event(
             reference_id=command.resume_id,
             event_type="RESUME_PARSE",
-            error_message=str(exc),
+            error_message=RESUME_PARSE_FAILED_MESSAGE,
             event_entity_type=None,
         )
 
     publish_ai_result(channel, result)
 
 
-def handle_vector_message(
-    channel: pika.adapters.blocking_connection.BlockingChannel,
-    body: bytes,
-) -> None:
-    command = parse_vector_command(body)
-    try:
-        result = process_vector(command)
-    except Exception as exc:
-        result = build_failed_event(
-            reference_id=command.reference_id,
-            event_type="VECTOR_GEN",
-            error_message=str(exc),
-            event_entity_type=command.entity_type,
-        )
-
-    publish_ai_result(channel, result)
-
-
+# Handle a conversation request and publish the result or failure.
 def handle_conversation_message(
     channel: pika.adapters.blocking_connection.BlockingChannel,
     body: bytes,
@@ -233,22 +243,18 @@ def handle_conversation_message(
     try:
         result = process_conversation(command)
     except Exception as exc:
-        print(
-            "Conversation processing failed:"
-            f" conversation_id={command.conversation_id},"
-            f" error={exc}",
-            flush=True,
-        )
+        logger.exception("Conversation processing failed: conversation_id=%s", command.conversation_id)
         result = build_failed_event(
             reference_id=command.conversation_id,
             event_type="CONVERSATION_REPLY",
-            error_message=str(exc),
+            error_message=CONVERSATION_FAILED_MESSAGE,
             event_entity_type=None,
         )
 
     publish_ai_result(channel, result)
 
 
+# Handle a job-ranking request and publish the result or failure.
 def handle_job_rank_message(
     channel: pika.adapters.blocking_connection.BlockingChannel,
     body: bytes,
@@ -257,92 +263,74 @@ def handle_job_rank_message(
 
     try:
         result = rank_jobs(command)
-        publish_job_rank_result(channel, result.model_dump(by_alias=True))
-    except Exception as exc:
         publish_job_rank_result(
             channel,
-            {
-                "matchId": command.match_id,
-                "status": "FAILED",
-                "rankTimeMs": 0,
-                "rankedResults": [],
-                "errorMessage": str(exc),
-            },
+            match_id=command.match_id,
+            status="COMPLETED",
+            rank_time_ms=result.rank_time_ms,
+            ranked_results=[item.model_dump(by_alias=True) for item in result.ranked_results],
+        )
+    except Exception as exc:
+        logger.exception("Job rank processing failed: match_id=%s", command.match_id)
+        publish_job_rank_result(
+            channel,
+            match_id=command.match_id,
+            status="FAILED",
+            rank_time_ms=0,
+            ranked_results=[],
+            error_message=JOB_RANK_FAILED_MESSAGE,
         )
 
 
-def job_message_callback(ch, method, properties, body) -> None:
-    try:
-        handle_job_message(ch, body)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception as exc:
-        print(f"Failed to process job message: {exc}")
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+# Wrap MQ handlers and ACK/NACK from the RabbitMQ thread.
+# 使用同步方式处理任务，并通过 RabbitMQ 线程安全回调确认或拒绝消息。
+def _async_handler(wrapped_handler, log_message_metadata: bool = False):
+    def wrapper(ch, method, properties, body) -> None:
+        delivery_tag = method.delivery_tag
+
+        if log_message_metadata:
+            logger.info(
+                "Received conversation MQ message: delivery_tag=%s, payload_bytes=%d",
+                delivery_tag,
+                len(body),
+            )
+
+        try:
+            wrapped_handler(ch, body)
+            ch.connection.add_callback_threadsafe(
+                lambda: ch.basic_ack(delivery_tag=delivery_tag)
+            )
+        except Exception:
+            logger.exception("Handler failed, tag=%s", delivery_tag)
+            ch.connection.add_callback_threadsafe(
+                lambda: ch.basic_nack(delivery_tag=delivery_tag, requeue=False)
+            )
+
+    return wrapper
 
 
-def resume_message_callback(ch, method, properties, body) -> None:
-    try:
-        handle_resume_message(ch, body)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception as exc:
-        print(f"Failed to process resume message: {exc}")
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
-
-
-def vector_message_callback(ch, method, properties, body) -> None:
-    try:
-        handle_vector_message(ch, body)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception as exc:
-        print(f"Failed to process vector message: {exc}")
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
-
-
-def conversation_message_callback(ch, method, properties, body) -> None:
-    print(
-        "Received raw conversation MQ message:"
-        f" delivery_tag={method.delivery_tag},"
-        f" body={body.decode('utf-8', errors='replace')[:1000]}",
-        flush=True,
-    )
-    try:
-        handle_conversation_message(ch, body)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception as exc:
-        print(f"Failed to process conversation message: {exc}", flush=True)
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
-
-
-def job_rank_message_callback(ch, method, properties, body) -> None:
-    try:
-        handle_job_rank_message(ch, body)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception as exc:
-        print(f"Failed to process job rank message: {exc}")
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
-
-
+# Start all consumer subscriptions and begin consuming.
 def start_all_consumers(channel: pika.adapters.blocking_connection.BlockingChannel) -> None:
     channel.basic_qos(prefetch_count=1)
 
     channel.basic_consume(
         queue=JOB_PARSE_REQUEST_QUEUE,
-        on_message_callback=job_message_callback,
+        on_message_callback=_async_handler(handle_job_message),
+        auto_ack=False,
     )
     channel.basic_consume(
         queue=RESUME_PARSE_REQUEST_QUEUE,
-        on_message_callback=resume_message_callback,
-    )
-    channel.basic_consume(
-        queue=VECTOR_GEN_REQUEST_QUEUE,
-        on_message_callback=vector_message_callback,
+        on_message_callback=_async_handler(handle_resume_message),
+        auto_ack=False,
     )
     channel.basic_consume(
         queue=CONVERSATION_REQUEST_QUEUE,
-        on_message_callback=conversation_message_callback,
+        on_message_callback=_async_handler(handle_conversation_message, log_message_metadata=True),
+        auto_ack=False,
     )
     channel.basic_consume(
         queue=JOB_RANK_REQUEST_QUEUE,
-        on_message_callback=job_rank_message_callback,
+        on_message_callback=_async_handler(handle_job_rank_message),
+        auto_ack=False,
     )
     channel.start_consuming()

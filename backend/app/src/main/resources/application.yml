@@ -1,15 +1,21 @@
 # /backend/app/src/main/resources/application.yml
+# 主配置文件 / Main configuration file
+
 spring:
   application:
     name: resume-assistant-backend
 
+  # 激活的 profile / Active profile
   profiles:
     active: dev
 
+  # Jackson 序列化配置 / Jackson serialization config
   jackson:
     serialization:
       write-dates-as-timestamps: false
+    time-zone: UTC
 
+# 服务器配置 / Server config
 server:
   servlet:
     context-path: /api

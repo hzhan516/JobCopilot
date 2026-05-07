@@ -4,7 +4,9 @@ import lombok.Builder;
 import lombok.Getter;
 
 /**
+ * Token 对 DTO
  * Token pair DTO
+ * 包含访问令牌、刷新令牌及过期信息
  * Contains access token, refresh token and expiration info
  */
 @Getter

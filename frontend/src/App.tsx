@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/sonner';
 
 // 布局
 import MainLayout from '@/components/layout/MainLayout';
+import ErrorBoundary from '@/components/layout/ErrorBoundary';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import PublicRoute from '@/components/PublicRoute';
 
@@ -15,15 +16,18 @@ import ResumeList from '@/pages/resumes/ResumeList';
 import ResumeDetail from '@/pages/resumes/ResumeDetail';
 import ResumeEdit from '@/pages/resumes/ResumeEdit';
 import JobList from '@/pages/jobs/JobList';
+import JobDetail from '@/pages/jobs/JobDetail';
 import Chat from '@/pages/chat/Chat';
 import Tracking from '@/pages/tracking/Tracking';
+import Profile from '@/pages/profile/Profile';
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <Routes>
-          {/* 公开路由 - 已登录用户将被重定向 */}
+        <ErrorBoundary>
+          <Routes>
+            {/* 公开路由 - 已登录用户将被重定向 */}
           <Route
             path="/login"
             element={
@@ -93,6 +97,16 @@ function App() {
             }
           />
           <Route
+            path="/jobs/:jobId"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <JobDetail />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/chat"
             element={
               <ProtectedRoute>
@@ -103,7 +117,7 @@ function App() {
             }
           />
           <Route
-            path="/tracking"
+            path="/applications"
             element={
               <ProtectedRoute>
                 <MainLayout>
@@ -112,11 +126,22 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Profile />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
 
           {/* 404 重定向 */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </Router>
+      </ErrorBoundary>
+    </Router>
       <Toaster position="top-center" richColors />
     </AuthProvider>
   );

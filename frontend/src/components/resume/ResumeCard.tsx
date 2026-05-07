@@ -55,7 +55,7 @@ export function ResumeCard({ group, onView, onDelete }: ResumeCardProps) {
             <span className="text-muted-foreground">{t('resume.card.versions')}</span>
             <span className="font-medium">{group.versions.length}</span>
           </div>
-          {latestVersion && (
+          {latestVersion && latestVersion.parseStatus !== 'NOT_APPLICABLE' && (
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">{t('resume.card.latestStatus')}</span>
               <ParseStatusBadge status={latestVersion.parseStatus} />

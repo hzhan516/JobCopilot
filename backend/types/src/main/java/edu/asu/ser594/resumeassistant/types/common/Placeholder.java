@@ -7,5 +7,6 @@ package edu.asu.ser594.resumeassistant.types.common;
 public final class Placeholder {
     private Placeholder() {
         // 工具类，禁止实例化
+        // Utility class, instantiation forbidden
     }
 }

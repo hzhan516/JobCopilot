@@ -11,8 +11,9 @@ import java.util.UUID;
 /**
  * 用户凭证实体
  * User credential entity
- *
+ * <p>
  * 不变性：凭证创建后不可变，密码修改创建新凭证记录
+ * Immutability: credentials are immutable after creation, password changes create new credential records
  */
 @Getter
 @Builder
@@ -27,6 +28,7 @@ public class UserCredential implements Entity<UUID> {
 
     /**
      * 全参构造函数 - 由 Lombok @Builder 使用
+     * All-args constructor used by Lombok @Builder
      */
     UserCredential(UUID id, UUID userId, CredentialType credentialType,
                    String credentialValue, LocalDateTime lastChangedAt, LocalDateTime createdAt) {
@@ -40,6 +42,7 @@ public class UserCredential implements Entity<UUID> {
 
     /**
      * 工厂方法：创建密码凭证
+     * Factory method: create password credential
      */
     public static UserCredential createPassword(UUID userId, String hashedPassword) {
         UUID id = UUID.randomUUID();

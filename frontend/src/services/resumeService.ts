@@ -102,7 +102,32 @@ export const resumeService = {
   editVersion: async (versionId: string, content: string): Promise<ResumeVersion> => {
     const response = await apiClient.put<ApiResponse<ResumeVersion>>(
       `/v1/resumes/versions/${versionId}`,
-      { content } as ResumeEditRequest
+      { versionId, content } as ResumeEditRequest
+    );
+    if (response.data.code === 200) {
+      return response.data.data;
+    }
+    throw new Error(response.data.message);
+  },
+
+  // 创建简历版本副本
+  // Create resume version copy
+  createVersion: async (groupId: string, sourceVersionId?: string): Promise<ResumeVersion> => {
+    const response = await apiClient.post<ApiResponse<ResumeVersion>>(
+      `/v1/resumes/groups/${groupId}/versions`,
+      { sourceVersionId: sourceVersionId || null }
+    );
+    if (response.data.code === 200) {
+      return response.data.data;
+    }
+    throw new Error(response.data.message);
+  },
+
+  // 激活简历版本
+  // Activate resume version
+  activateVersion: async (versionId: string): Promise<ResumeVersion> => {
+    const response = await apiClient.post<ApiResponse<ResumeVersion>>(
+      `/v1/resumes/versions/${versionId}/activate`
     );
     if (response.data.code === 200) {
       return response.data.data;

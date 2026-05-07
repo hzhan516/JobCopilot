@@ -1,10 +1,7 @@
--- 启用 UUID 扩展（PostgreSQL 内置）
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- 用户主体表
-CREATE TABLE users
+-- 用户主体表 / User principal table
+CREATE TABLE IF NOT EXISTS users
 (
-    id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email          VARCHAR(255) UNIQUE NOT NULL,
     email_verified BOOLEAN          DEFAULT FALSE,
     role           VARCHAR(50)      DEFAULT 'JOB_SEEKER',
@@ -13,10 +10,10 @@ CREATE TABLE users
     updated_at     TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
 );
 
--- 用户资料表
-CREATE TABLE user_profiles
+-- 用户资料表 / User profile table
+CREATE TABLE IF NOT EXISTS user_profiles
 (
-    id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id            UUID REFERENCES users (id) ON DELETE CASCADE,
     full_name          VARCHAR(255),
     avatar_url         VARCHAR(1000),
@@ -28,10 +25,10 @@ CREATE TABLE user_profiles
     UNIQUE (user_id)
 );
 
--- 本地认证凭证表
-CREATE TABLE user_credentials
+-- 本地认证凭证表 / Local authentication credentials table
+CREATE TABLE IF NOT EXISTS user_credentials
 (
-    id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id          UUID REFERENCES users (id) ON DELETE CASCADE,
     credential_type  VARCHAR(50)  NOT NULL,
     credential_value VARCHAR(255) NOT NULL,
@@ -40,10 +37,10 @@ CREATE TABLE user_credentials
     UNIQUE (user_id, credential_type)
 );
 
--- OAuth绑定表
-CREATE TABLE user_oauth_bindings
+-- OAuth绑定表 / OAuth binding table
+CREATE TABLE IF NOT EXISTS user_oauth_bindings
 (
-    id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id          UUID REFERENCES users (id) ON DELETE CASCADE,
     provider         VARCHAR(50)  NOT NULL,
     provider_user_id VARCHAR(255) NOT NULL,
@@ -59,8 +56,8 @@ CREATE TABLE user_oauth_bindings
     UNIQUE (provider, provider_user_id)
 );
 
--- 索引
-CREATE INDEX idx_users_email ON users (email);
-CREATE INDEX idx_oauth_bindings_user ON user_oauth_bindings (user_id);
-CREATE INDEX idx_oauth_bindings_email ON user_oauth_bindings (email);
-CREATE INDEX idx_credentials_user ON user_credentials (user_id);
+-- 索引 / Indexes
+CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
+CREATE INDEX IF NOT EXISTS idx_oauth_bindings_user ON user_oauth_bindings (user_id);
+CREATE INDEX IF NOT EXISTS idx_oauth_bindings_email ON user_oauth_bindings (email);
+CREATE INDEX IF NOT EXISTS idx_credentials_user ON user_credentials (user_id);

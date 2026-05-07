@@ -1,12 +1,21 @@
-import { useEffect, useState, useRef } from 'react';
-import type { Conversation, Message } from '@/types';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import type { Conversation, Message, ResumeGroup, Job } from '@/types';
 import { useTranslation } from 'react-i18next';
 import { formatTime } from '@/utils/i18n';
 import chatService from '@/services/chatService';
+import { resumeService } from '@/services/resumeService';
+import { jobService } from '@/services/jobService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -26,6 +35,8 @@ import {
   Loader2,
   MoreVertical,
   Sparkles,
+  FileText,
+  Briefcase,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -49,6 +60,7 @@ function normalizeMessages(conversation: Conversation): Message[] {
   }));
 }
 
+
 export default function Chat() {
   const { t } = useTranslation();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -58,8 +70,16 @@ export default function Chat() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [isWaitingForReply, setIsWaitingForReply] = useState(false);
+
+  // New conversation dialog state
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [newChatTitle, setNewChatTitle] = useState('');
+  const [resumes, setResumes] = useState<ResumeGroup[]>([]);
+  const [selectedResumeVersionId, setSelectedResumeVersionId] = useState('');
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const syncConversation = (conversation: Conversation) => {
@@ -76,17 +96,7 @@ export default function Chat() {
     });
   };
 
-  // 加载对话列表
-  useEffect(() => {
-    loadConversations();
-  }, []);
-
-  // 滚动到底部
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await chatService.getConversations();
@@ -102,7 +112,46 @@ export default function Chat() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t]);
+
+  const loadResumes = useCallback(async () => {
+    try {
+      const data = await resumeService.getResumeGroups();
+      setResumes(data);
+    } catch {
+      // 静默处理，简历加载失败不影响聊天功能
+    }
+  }, []);
+
+  const loadJobs = useCallback(async () => {
+    try {
+      const data = await jobService.getJobs();
+      setJobs(data);
+    } catch {
+      // 静默处理，职位加载失败不影响聊天功能
+    }
+  }, []);
+
+  // 加载对话列表、简历列表和职位列表
+  useEffect(() => {
+    loadConversations();
+    loadResumes();
+    loadJobs();
+  }, [loadConversations, loadResumes, loadJobs]);
+
+  // 滚动到底部
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // 关闭弹窗时重置表单
+  useEffect(() => {
+    if (!newDialogOpen) {
+      setNewChatTitle('');
+      setSelectedResumeVersionId('');
+      setSelectedJobId('');
+    }
+  }, [newDialogOpen]);
 
   const handleSelectConversation = async (conversation: Conversation) => {
     syncConversation(conversation);
@@ -116,18 +165,48 @@ export default function Chat() {
 
   // 创建新对话
   const handleCreateConversation = async () => {
-    if (!newChatTitle.trim()) {
-      toast.error(t('chat.createError'));
+    if (!selectedResumeVersionId) {
+      toast.error(t('chat.resumeRequired'));
       return;
     }
+    if (!selectedJobId) {
+      toast.error(t('chat.jobRequired'));
+      return;
+    }
+
+    setIsCreating(true);
     try {
-      const newConversation = await chatService.createConversation(newChatTitle);
+      let finalTitle = newChatTitle.trim();
+
+      // 如果标题为空，按 简历名称-公司名称-职位 自动生成
+      if (!finalTitle) {
+        const resumeGroup = resumes.find((group) =>
+          [group.convertedVersion, group.aiOptimizedVersion]
+            .filter((v): v is NonNullable<typeof v> => !!v && v.exists)
+            .some((v) => v.versionId === selectedResumeVersionId)
+        );
+        const resumeName = resumeGroup?.title || '';
+
+        const selectedJob = jobs.find((j) => j.id === selectedJobId);
+        const companyName = selectedJob?.parsedContent?.company || '';
+        const jobTitle = selectedJob?.parsedContent?.title || '';
+
+        const parts = [resumeName, companyName, jobTitle].filter((p) => p.trim());
+        finalTitle = parts.join('-') || t('chat.newChatTitle');
+      }
+
+      const newConversation = await chatService.createConversation(
+        finalTitle,
+        selectedResumeVersionId,
+        selectedJobId
+      );
       syncConversation(newConversation);
-      setNewChatTitle('');
       setNewDialogOpen(false);
       toast.success(t('chat.createSuccess'));
     } catch {
       toast.error(t('chat.createFailed'));
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -296,26 +375,122 @@ export default function Chat() {
                 {t('chat.newChat')}
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>{t('chat.newChatTitle')}</DialogTitle>
                 <DialogDescription>{t('chat.newChatDesc')}</DialogDescription>
               </DialogHeader>
-              <Input
-                placeholder={t('chat.chatTitlePlaceholder')}
-                value={newChatTitle}
-                onChange={(e) => setNewChatTitle(e.target.value)}
-              />
+              <div className="space-y-4 py-2">
+                {/* 标题输入 */}
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    {t('chat.chatTitlePlaceholder')}
+                    <span className="text-gray-400 ml-1 text-xs">({t('common.optional')})</span>
+                  </label>
+                  <Input
+                    placeholder={t('chat.chatTitlePlaceholder')}
+                    value={newChatTitle}
+                    onChange={(e) => setNewChatTitle(e.target.value)}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">{t('chat.titleAutoHint')}</p>
+                </div>
+
+                {/* 简历选择 */}
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    {t('chat.selectResume')}
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <Select
+                    value={selectedResumeVersionId}
+                    onValueChange={setSelectedResumeVersionId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('chat.selectResumePlaceholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {resumes.map((group) =>
+                        [group.convertedVersion, group.aiOptimizedVersion]
+                          .filter(
+                            (v): v is NonNullable<typeof v> =>
+                              !!v && v.exists
+                          )
+                          .map((version) => {
+                            const label = `${group.title} - ${version.versionId.slice(0, 8)} (${version.status})`;
+                            return (
+                              <SelectItem
+                                key={version.versionId}
+                                value={version.versionId}
+                              >
+                                {label}
+                              </SelectItem>
+                            );
+                          })
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 职位选择 */}
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    {t('chat.selectJob')}
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <Select
+                    value={selectedJobId}
+                    onValueChange={setSelectedJobId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('chat.selectJobPlaceholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {jobs
+                        .filter((job) => job.status === 'COMPLETED')
+                        .map((job) => (
+                          <SelectItem key={job.id} value={job.id}>
+                            {job.parsedContent?.company || t('jobDetail.unknownCompany')}
+                            {' - '}
+                            {job.parsedContent?.title || t('jobDetail.unknownTitle')}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  {jobs.filter((job) => job.status === 'COMPLETED').length === 0 && (
+                    <p className="text-xs text-orange-500 mt-1">
+                      {t('chat.noAvailableJobs')}
+                    </p>
+                  )}
+                </div>
+              </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setNewDialogOpen(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setNewDialogOpen(false)}
+                  disabled={isCreating}
+                >
                   {t('common.cancel')}
                 </Button>
-                <Button onClick={handleCreateConversation}>{t('chat.create')}</Button>
+                <Button
+                  onClick={handleCreateConversation}
+                  disabled={
+                    isCreating ||
+                    !selectedResumeVersionId ||
+                    !selectedJobId
+                  }
+                >
+                  {isCreating ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4 mr-2" />
+                  )}
+                  {t('chat.create')}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
-        <ScrollArea className="flex-1">
+        <div className="flex-1 overflow-y-auto">
           <div className="p-2 space-y-1">
             {conversations.map((conversation) => (
               <div
@@ -355,7 +530,7 @@ export default function Chat() {
               </div>
             ))}
           </div>
-        </ScrollArea>
+        </div>
       </div>
 
       {/* 主聊天区域 */}
@@ -371,14 +546,32 @@ export default function Chat() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">{activeConversation.title}</h3>
-                    <p className="text-xs text-gray-500">{t('chat.aiAssistant')}</p>
+                    <div className="flex items-center space-x-2 mt-0.5">
+                      <p className="text-xs text-gray-500">{t('chat.aiAssistant')}</p>
+                      {(activeConversation.resumeVersionId || activeConversation.jobId) && (
+                        <div className="flex items-center space-x-1">
+                          {activeConversation.resumeVersionId && (
+                            <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
+                              <FileText className="w-3 h-3 mr-0.5" />
+                              {t('chat.selectResume')}
+                            </span>
+                          )}
+                          {activeConversation.jobId && (
+                            <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-600">
+                              <Briefcase className="w-3 h-3 mr-0.5" />
+                              {t('chat.selectJob')}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* 消息列表 */}
-            <ScrollArea className="flex-1 p-4">
+            <div className="flex-1 overflow-y-auto p-4">
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-gray-500">
                   <Bot className="w-16 h-16 mb-4 text-gray-300" />
@@ -398,7 +591,7 @@ export default function Chat() {
                   <div ref={messagesEndRef} />
                 </>
               )}
-            </ScrollArea>
+            </div>
 
             {/* 输入框 */}
             <div className="border-t p-4">

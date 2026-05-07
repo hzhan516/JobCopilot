@@ -1,7 +1,6 @@
 package edu.asu.ser594.resumeassistant.api.resume.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,7 +18,6 @@ import java.util.UUID;
 @AllArgsConstructor
 public class ResumeEditRequest {
 
-    @NotNull(message = "{validation.versionId.required}")
     private UUID versionId;
 
     @NotBlank(message = "{validation.content.required}")

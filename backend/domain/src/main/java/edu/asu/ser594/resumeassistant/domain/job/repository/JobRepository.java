@@ -1,6 +1,7 @@
 package edu.asu.ser594.resumeassistant.domain.job.repository;
 
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -14,7 +15,7 @@ public interface JobRepository {
     /**
      * 保存职位实体
      * Saves a job to the repository.
-     * 
+     *
      * @param job 职位聚合根 / The job to save.
      * @return 保存后的实体 / The saved job.
      */
@@ -23,7 +24,7 @@ public interface JobRepository {
     /**
      * 根据ID查询职位
      * Finds a job by its unique identifier.
-     * 
+     *
      * @param id 职位ID / The ID of the job.
      * @return 职位实体(可选) / An Optional containing the job if found, or empty otherwise.
      */
@@ -32,7 +33,7 @@ public interface JobRepository {
     /**
      * 根据用户 ID 获取职位列表
      * Get job list by user ID
-     * 
+     *
      * @param userId 用户 ID / User ID
      * @return 职位实体列表 / List of job entities
      */

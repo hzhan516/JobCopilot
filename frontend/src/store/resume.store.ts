@@ -19,11 +19,11 @@ function mapSummaryToVersion(
     versionId: summary.versionId,
     groupId,
     versionType,
-    status: 'ACTIVE',
+    status: summary.status as ResumeVersion['status'],
     storagePath: '',
     content: undefined,
     parsedContent: undefined,
-    parseStatus: summary.status as ResumeVersion['parseStatus'],
+    parseStatus: summary.parseStatus as ResumeVersion['parseStatus'],
     parseErrorMessage: undefined,
     createdAt: summary.createdAt,
   };
@@ -34,11 +34,11 @@ function adaptVersion(version: ApiResumeVersion): ResumeVersion {
     versionId: version.versionId,
     groupId: version.groupId,
     versionType: version.versionType as ResumeVersion['versionType'],
-    status: 'ACTIVE',
+    status: version.status as ResumeVersion['status'],
     storagePath: '',
     content: version.content ?? undefined,
     parsedContent: undefined,
-    parseStatus: version.status as ResumeVersion['parseStatus'],
+    parseStatus: version.parseStatus as ResumeVersion['parseStatus'],
     parseErrorMessage: undefined,
     createdAt: version.createdAt,
   };
@@ -72,7 +72,9 @@ interface ResumeStore {
   uploadResume: (file: File, title?: string) => Promise<UploadResponse['data']>;
   pollParseStatus: (groupId: string) => Promise<'COMPLETED' | 'FAILED' | 'TIMEOUT'>;
   saveVersion: (versionId: string, content: string) => Promise<void>;
+  createVersion: (groupId: string, sourceVersionId?: string) => Promise<string>;
   deleteGroup: (groupId: string) => Promise<void>;
+  activateVersion: (versionId: string) => Promise<void>;
   deleteVersion: (versionId: string) => Promise<void>;
 }
 
@@ -157,13 +159,28 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
   },
 
   saveVersion: async (versionId: string, content: string) => {
+    const { currentGroup } = get();
+    const currentVersion = currentGroup?.versions.find((v) => v.versionId === versionId);
+    if (currentVersion && currentVersion.content === content) {
+      return;
+    }
     set({ loading: true });
     try {
       await resumeService.editVersion(versionId, content);
-      const { currentGroup } = get();
       if (currentGroup) {
         await get().fetchGroupDetail(currentGroup.groupId);
       }
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  createVersion: async (groupId: string, sourceVersionId?: string) => {
+    set({ loading: true });
+    try {
+      const newVersion = await resumeService.createVersion(groupId, sourceVersionId);
+      await get().fetchGroupDetail(groupId);
+      return newVersion.versionId;
     } finally {
       set({ loading: false });
     }
@@ -178,6 +195,19 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
         groups: groups.filter(g => g.groupId !== groupId),
         currentGroup: currentGroup?.groupId === groupId ? null : currentGroup
       });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  activateVersion: async (versionId: string) => {
+    set({ loading: true });
+    try {
+      await resumeService.activateVersion(versionId);
+      const { currentGroup } = get();
+      if (currentGroup) {
+        await get().fetchGroupDetail(currentGroup.groupId);
+      }
     } finally {
       set({ loading: false });
     }

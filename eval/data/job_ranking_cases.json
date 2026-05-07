@@ -1,0 +1,48 @@
+[
+  {
+    "id": "backend_resume_job_ranking",
+    "resumeText": "Alex Chen is a Backend Software Engineer with Python, FastAPI, Docker, PostgreSQL, REST API, and RabbitMQ experience. Alex built backend microservices and event-driven workflows.",
+    "query": "backend engineer python fastapi docker postgres rabbitmq",
+    "recalledJobIds": ["job_backend", "job_fullstack", "job_frontend", "job_sales", "job_healthcare"],
+    "idealRelevance": {
+      "job_backend": 3,
+      "job_fullstack": 2,
+      "job_frontend": 1,
+      "job_sales": 0,
+      "job_healthcare": 0
+    },
+    "baselineRanking": ["job_frontend", "job_sales", "job_backend", "job_fullstack", "job_healthcare"],
+    "jobDetails": {
+      "job_backend": {
+        "title": "Backend Engineer",
+        "company": "CloudWorks",
+        "description": "Build Python FastAPI services, PostgreSQL schemas, Docker deployments, REST APIs, and RabbitMQ event workflows.",
+        "semanticMatch": 0.94
+      },
+      "job_fullstack": {
+        "title": "Full Stack Engineer",
+        "company": "Buildly",
+        "description": "Develop React frontend features and Python backend APIs with PostgreSQL and Docker.",
+        "semanticMatch": 0.76
+      },
+      "job_frontend": {
+        "title": "Frontend Engineer",
+        "company": "PixelForge",
+        "description": "Create React and TypeScript dashboards with Vite and Tailwind CSS.",
+        "semanticMatch": 0.32
+      },
+      "job_sales": {
+        "title": "Sales Development Representative",
+        "company": "MarketPath",
+        "description": "Generate leads, qualify prospects, and maintain CRM records.",
+        "semanticMatch": 0.08
+      },
+      "job_healthcare": {
+        "title": "Respiratory Therapist",
+        "company": "CareBridge",
+        "description": "Provide respiratory care, maintain clinical equipment, and support patient treatment plans.",
+        "semanticMatch": 0.03
+      }
+    }
+  }
+]

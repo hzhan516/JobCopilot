@@ -1,38 +1,76 @@
-# AI 服务交互 API 与 MQ 事件契约汇总
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](ai-mq-interfaces.md) | [简体中文](../../i18n/zh-Hans-CN/api/backend/ai-mq-interfaces.md) | [繁體中文](../../i18n/zh-Hant-TW/api/backend/ai-mq-interfaces.md)
 
-> 本文档集中汇总 Java 后端与 Python AI 服务之间的所有 REST API（如有）和 RabbitMQ 消息队列契约。
-> 各模块的详细说明请同时参考 `job.md`、`conversation.md`、`resume.md`。
+# AI Service Interaction API and MQ Event Contracts Summary
 
----
-
-## 1. 交互原则
-
-- **单向异步**：Java 后端通过 MQ 发送任务请求，Python AI 服务处理完成后通过 MQ 返回结果。
-- **无直接 HTTP 耦合**：除健康检查外，Java 后端不直接 HTTP 调用 AI 服务；所有耗时操作均走消息队列。
-- **统一 Exchange**：所有 MQ 消息共用 `ai.direct.exchange`（DirectExchange）。
+> This document consolidates all REST APIs (if any) and RabbitMQ message queue contracts between the Java backend and the Python AI service.
+> For detailed module descriptions, please also refer to `job.md`, `conversation.md`, and `resume.md`.
 
 ---
 
-## 2. MQ 拓扑总览
+## 1. Interaction Principles
 
-| 方向 | 任务类型 | Routing Key | Queue | 生产者 | 消费者 |
-|------|----------|-------------|-------|--------|--------|
-| Request → AI | 职位解析 | `ai.req.job.parse` | `ai.queue.job.parse` | Java Backend | Python AI |
-| Response ← AI | 职位解析结果 | `backend.res.job.parse` | `backend.queue.job.parse` | Python AI | Java Backend |
-| Request → AI | 简历解析 | `ai.req.resume.parse` | `ai.queue.resume.parse` | Java Backend | Python AI |
-| Response ← AI | 简历解析结果 | `backend.res.resume.parse` | `backend.queue.resume.parse` | Python AI | Java Backend |
-| Request → AI | 向量生成 | `ai.req.vector.gen` | `ai.queue.vector.gen` | Java Backend | Python AI |
-| Response ← AI | 向量生成结果 | `backend.res.vector.gen` | `backend.queue.vector.gen` | Python AI | Java Backend |
-| Request → AI | 对话请求 | `ai.req.conversation` | `ai.queue.conversation` | Java Backend | Python AI |
-| Response ← AI | 对话回复结果 | `backend.res.conversation` | `backend.queue.conversation` | Python AI | Java Backend |
+- **One-way asynchronous**: The Java backend sends task requests via MQ; the Python AI service returns results via MQ after processing.
+- **Async-first AI processing**: Long-running parsing, conversation, and ranking work goes through MQ. The backend also has synchronous REST calls to the AI service for lightweight embedding and suitability-scoring endpoints.
+- **Unified Exchange**: All MQ messages share `ai.direct.exchange` (DirectExchange).
+- **Transactional Outbox**: The backend does **not** send MQ messages directly. Instead, it persists them into the `outbox_message` table within the same local database transaction as the business data. An `OutboxRelayScheduler` polls pending records every 2 seconds and delivers them to RabbitMQ asynchronously.
+- **Dead Letter Queue (DLQ)**: All 8 business queues are configured with `x-dead-letter-exchange: ai.dlx.exchange`. When the Python consumer rejects a message with `nack(requeue=false)`, the message is automatically routed to `ai.dlq.queue` instead of being silently dropped.
 
 ---
 
-## 3. 请求命令（Backend → AI）
+## 1.5 Outbox Pattern Details
 
-### 3.1 JobParseCommand — 职位解析请求
+The backend uses the **Transactional Outbox** pattern to guarantee atomicity between database writes and MQ message publishing.
 
-**发送时机**：用户提交职位链接后，`JobApplicationService.submitJob()`
+### Flow
+
+1. **Business Transaction**: Within a `@Transactional` method, the backend:
+   - Saves business data to PostgreSQL (e.g., `JobMatchResult` with `PROCESSING` status).
+   - Serializes the MQ command to JSON and inserts a record into `outbox_message` with `status = PENDING`.
+
+2. **Outbox Relay**: `OutboxRelayScheduler` runs every 2 seconds (`@Scheduled(fixedDelay = 2000)`):
+   - Queries all `PENDING` records from `outbox_message`.
+   - For each record, calls `rabbitTemplate.convertAndSend(exchange, routingKey, payload)`.
+   - On success: updates the record to `status = SENT` and sets `sentAt`.
+   - On failure: updates the record to `status = FAILED` and logs the error.
+
+3. **Cleanup**: `OutboxCleanupScheduler` runs daily at 3:00 AM (`@Scheduled(cron = "0 0 3 * * ?")`):
+   - Physically deletes records where `status = SENT` and `sentAt < now() - 7 days`.
+   - Prevents the `outbox_message` table from growing indefinitely.
+
+### Benefits
+
+- **Atomicity**: If the business transaction rolls back, the Outbox record is also rolled back. No "message sent but DB not committed" inconsistency.
+- **Durability**: Even if RabbitMQ is temporarily unavailable, the message remains in the Outbox table and will be retried by the relay scheduler.
+- **Observability**: The `outbox_message` table serves as an audit log of all async messages sent to the AI service.
+
+---
+
+## 2. MQ Topology Overview
+
+| Direction | Task Type | Routing Key | Queue | Producer | Consumer |
+|-----------|-----------|-------------|-------|----------|----------|
+| Request → AI | Job Parse | `ai.req.job.parse` | `ai.queue.job.parse` | Java Backend | Python AI |
+| Response ← AI | Job Parse Result | `backend.res.job.parse` | `backend.queue.job.parse` | Python AI | Java Backend |
+| Request → AI | Resume Parse | `ai.req.resume.parse` | `ai.queue.resume.parse` | Java Backend | Python AI |
+| Response ← AI | Resume Parse Result | `backend.res.resume.parse` | `backend.queue.resume.parse` | Python AI | Java Backend |
+| Request → AI | Conversation | `ai.req.conversation` | `ai.queue.conversation` | Java Backend | Python AI |
+| Response ← AI | Conversation Reply | `backend.res.conversation` | `backend.queue.conversation` | Python AI | Java Backend |
+| Request → AI | Job Rank | `ai.req.job.rank` | `ai.queue.job.rank` | Java Backend | Python AI |
+| Response ← AI | Job Rank Result | `backend.res.job.rank` | `backend.queue.job.rank` | Python AI | Java Backend |
+| DLX → DLQ | Dead Letter | `dlq.routing.key` | `ai.dlq.queue` | Business queues (auto-forward) | Ops / monitoring |
+
+> **Note on Outbox**: The "Java Backend" producer listed above is technically the `OutboxRelayScheduler`, which reads from the `outbox_message` table and forwards to RabbitMQ. The original business methods (e.g., `JobApplicationService.submitJob`) only write to the Outbox table.
+
+> **Note on DLQ**: The `ai.dlx.exchange` (Dead Letter Exchange) and `ai.dlq.queue` are declared automatically by Spring AMQP at startup. No manual RabbitMQ configuration is required.
+
+---
+
+## 3. Request Commands (Backend → AI)
+
+### 3.1 JobParseCommand — Job Parse Request
+
+**Trigger**: After the user submits a job link, `JobApplicationService.submitJob()` writes the command to the Outbox table.
 
 ```json
 {
@@ -42,17 +80,17 @@
 }
 ```
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `jobId` | String | 职位唯一标识 |
-| `url` | String | 职位详情页 URL |
-| `imageCheckEnabled` | boolean | 是否启用视觉验证 |
+| Field | Type | Description |
+|-------|------|-------------|
+| `jobId` | String | Job unique identifier |
+| `url` | String | Job detail page URL |
+| `imageCheckEnabled` | boolean | Whether visual verification is enabled |
 
 ---
 
-### 3.2 ResumeParseCommand — 简历解析请求
+### 3.2 ResumeParseCommand — Resume Parse Request
 
-**发送时机**：用户上传简历后，`ResumeApplicationService.handleUpload()`
+**Trigger**: After the user uploads a resume, `ResumeApplicationService.handleUpload()` writes the command to the Outbox table.
 
 ```json
 {
@@ -62,37 +100,17 @@
 }
 ```
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `resumeId` | String | 简历版本唯一标识 |
-| `fileUrl` | String | 简历文件在 MinIO 上的 URL |
-| `fileType` | String | 文件类型，如 PDF、DOCX |
+| Field | Type | Description |
+|-------|------|-------------|
+| `resumeId` | String | Resume version unique identifier |
+| `fileUrl` | String | Resume file URL on MinIO |
+| `fileType` | String | File type, e.g. PDF, DOCX |
 
 ---
 
-### 3.3 VectorGenCommand — 向量生成请求
+### 3.3 ConversationRequestCommand — Conversation AI Request
 
-**发送时机**：职位/简历解析完成后，触发异步向量生成
-
-```json
-{
-  "referenceId": "entity-uuid",
-  "entityType": "JOB",
-  "text": "职位或简历的纯文本内容"
-}
-```
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `referenceId` | String | 关联实体 ID（jobId 或 resumeVersionId） |
-| `entityType` | String | `JOB` / `RESUME` |
-| `text` | String | 待生成向量的文本 |
-
----
-
-### 3.4 ConversationRequestCommand — 对话 AI 请求
-
-**发送时机**：用户发送对话消息后，`ConversationApplicationService.sendMessage()`
+**Trigger**: When the user sends a conversation message, `ConversationApplicationService.sendMessage()` writes the command to the Outbox table.
 
 ```json
 {
@@ -102,32 +120,42 @@
     { "role": "USER", "content": "帮我优化一下项目经验部分", "fileUrl": null }
   ],
   "currentMessage": "帮我优化一下项目经验部分",
-  "fileUrls": ["https://minio.example.com/resumes/xxx.pdf"],
-  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002"
+  "fileUrls": [],
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
+  "resumeText": "# Resume Markdown...",
+  "primaryJobText": "Software Engineer\nExample Corp\nJob description...",
+  "relatedJobTexts": ["Backend Engineer\nExample Corp\nRelated job description..."],
+  "init": true,
+  "locale": "zh-TW"
 }
 ```
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `conversationId` | String | 对话 ID |
-| `userId` | String | 用户 ID |
-| `messageHistory` | List<Map> | 历史消息列表（role, content, fileUrl） |
-| `currentMessage` | String | 当前用户发送的最新消息 |
-| `fileUrls` | List<String> | 用户引用的外部文件 URL 列表 |
-| `resumeVersionId` | String | 关联简历版本 ID（可选） |
+| Field | Type | Description |
+|-------|------|-------------|
+| `conversationId` | String | Conversation ID |
+| `userId` | String | User ID |
+| `messageHistory` | List<Map> | Historical message list (role, content, fileUrl) |
+| `currentMessage` | String | Latest message sent by the user |
+| `fileUrls` | List<String> | File URL list sent to the AI service; current backend context requests send an empty list |
+| `resumeVersionId` | String | Associated resume version ID (optional) |
+| `resumeText` | String | Resume Markdown/text loaded from the selected resume version or conversation AI working copy |
+| `primaryJobText` | String | Current job text loaded from the conversation job ID |
+| `relatedJobTexts` | List<String> | Up to five other completed job texts for context |
+| `init` | Boolean | Whether this request is the first AI initialization for the conversation |
+| `locale` | String | User interface locale, e.g. `en`, `zh-CN`, or `zh-TW` |
 
 ---
 
-## 4. 结果事件（AI → Backend）
+## 4. Result Events (AI → Backend)
 
-### 统一事件结构：AiResultEvent
+### Unified Event Structure: AiResultEvent
 
-所有 AI 回调均使用以下统一结构，通过 `type` 字段区分业务类型：
+All AI callbacks use the following unified structure, distinguished by the `type` field:
 
 ```json
 {
   "referenceId": "关联实体ID",
-  "type": "JOB_PARSE | RESUME_PARSE | VECTOR_GEN | CONVERSATION_REPLY",
+  "type": "JOB_PARSE | RESUME_PARSE | CONVERSATION_REPLY | JOB_RANK",
   "status": "COMPLETED | FAILED",
   "data": { ... },
   "errorMessage": null,
@@ -135,20 +163,20 @@
 }
 ```
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `referenceId` | String | 关联实体 ID |
-| `type` | String | 事件类型 |
-| `status` | String | `COMPLETED` 或 `FAILED` |
-| `data` | Map<String, Object> | 业务数据载荷 |
-| `errorMessage` | String | 失败原因（`status=FAILED` 时必填） |
-| `eventType` | String | 内部子路由标记（如 VECTOR_GEN 区分 JOB/RESUME） |
+| Field | Type | Description |
+|-------|------|-------------|
+| `referenceId` | String | Associated entity ID |
+| `type` | String | Event type |
+| `status` | String | `COMPLETED` or `FAILED` |
+| `data` | Map<String, Object> | Business data payload |
+| `errorMessage` | String | Failure reason (required when `status=FAILED`) |
+| `eventType` | String | Internal sub-routing tag (e.g. VECTOR_GEN distinguishes JOB/RESUME) |
 
 ---
 
-### 4.1 职位解析结果（type = JOB_PARSE）
+### 4.1 Job Parse Result (type = JOB_PARSE)
 
-**消费端**：`AiResultMessageListener.onJobParseResult()` → `JobFacade.handleJobProcessResult()`
+**Consumer**: `AiResultMessageListener.onJobParseResult()` → `JobFacade.handleJobProcessResult()`
 
 ```json
 {
@@ -168,9 +196,9 @@
 
 ---
 
-### 4.2 简历解析结果（type = RESUME_PARSE）
+### 4.2 Resume Parse Result (type = RESUME_PARSE)
 
-**消费端**：`AiResultMessageListener.onResumeParseResult()` → `ResumeFacade.handleParseResult()`
+**Consumer**: `AiResultMessageListener.onResumeParseResult()` → `ResumeFacade.handleParseResult()`
 
 ```json
 {
@@ -188,29 +216,9 @@
 
 ---
 
-### 4.3 向量生成结果（type = VECTOR_GEN）
+### 4.3 Conversation Reply Result (type = CONVERSATION_REPLY)
 
-**消费端**：`AiResultMessageListener.onVectorGenResult()`
-
-```json
-{
-  "referenceId": "entity-uuid",
-  "type": "VECTOR_GEN",
-  "status": "COMPLETED",
-  "data": {
-    "embedding": [0.1, 0.2, ...],
-    "entityType": "JOB"
-  },
-  "errorMessage": null,
-  "eventType": "JOB"
-}
-```
-
----
-
-### 4.4 对话回复结果（type = CONVERSATION_REPLY）
-
-**消费端**：`AiResultMessageListener.onConversationReply()` → `ConversationFacade.saveAiReply()`
+**Consumer**: `AiResultMessageListener.onConversationReply()` → `ConversationFacade.saveAiReply()`
 
 ```json
 {
@@ -219,44 +227,50 @@
   "status": "COMPLETED",
   "data": {
     "content": "根据您的简历，我建议从以下几个方面优化工作经验...",
-    "fileUrl": "https://minio.example.com/conversations/xxx/optimized_resume.pdf"
+    "fileUrl": null,
+    "resumeModification": {
+      "modified": true,
+      "markdown": "# Optimized Resume\n\n..."
+    }
   },
   "errorMessage": null,
   "eventType": null
 }
 ```
 
-| data 子字段 | 类型 | 说明 |
-|-------------|------|------|
-| `content` | String | AI 回复的文本内容 |
-| `fileUrl` | String | AI 生成文件的 URL（可选） |
+| data Sub-field | Type | Description |
+|----------------|------|-------------|
+| `content` | String | AI reply text content |
+| `fileUrl` | String | AI generated file URL (optional) |
+| `resumeModification.modified` | Boolean | Whether the AI rewrote or optimized the resume |
+| `resumeModification.markdown` | String | Full optimized resume Markdown when `modified=true` |
 
 ---
 
-## 5. 文件上传与 MinIO
+## 5. File Upload and Storage
 
-### 5.1 后端文件上传 API
+### 5.1 Backend File Upload API
 
-前端或 AI 层可将生成的文件流上传至后端，由后端转存到 MinIO：
+The frontend or AI layer can upload generated file streams to the backend, which then stores them through the configured storage backend:
 
-- **简历上传**：`POST /api/v1/resumes`（`multipart/form-data`）
-- **对话附件上传**：`POST /api/v1/conversations/{conversationId}/files`（`multipart/form-data`）
+- **Resume Upload**: `POST /api/v1/resumes` (`multipart/form-data`)
+- **Conversation Attachment Upload**: `POST /api/v1/conversations/{conversationId}/files` (`multipart/form-data`)
 
-### 5.2 MinIO 存储路径约定
+### 5.2 Storage Path Conventions
 
-| 业务 | 对象键前缀示例 |
-|------|----------------|
-| 简历文件 | `resumes/{uuid}_{filename}` |
-| 对话附件 | `conversations/{conversationId}/{uuid}_{filename}` |
+| Business | Object Key Prefix Example |
+|----------|---------------------------|
+| Resume files | `resumes/{uuid}_{filename}` |
+| Conversation attachments | `conversations/{conversationId}/{uuid}_{filename}` |
 
-### 5.3 预签名 URL
+### 5.3 Presigned URL
 
-`MinioFileStorageService.generatePresignedUrl()` 为上传成功的文件生成临时访问 URL（默认 7 天有效期）。
+`FileStorageService.generatePresignedUrl()` generates a temporary access URL for successfully uploaded files (default 7-day validity).
 
 ---
 
-## 6. 状态码与错误处理
+## 6. Status Codes and Error Handling
 
-- `COMPLETED`：AI 处理成功，`data` 中包含有效结果。
-- `FAILED`：AI 处理失败，`errorMessage` 必须包含具体错误文本，`data` 可为空。
-- 消费端对异常进行 try-catch 包裹，避免 MQ 消息无限重试导致队列阻塞。
+- `COMPLETED`: AI processing succeeded, `data` contains valid results.
+- `FAILED`: AI processing failed, `errorMessage` must contain specific error text, `data` may be empty.
+- The consumer wraps exceptions in try-catch to prevent MQ messages from retrying infinitely and blocking the queue.

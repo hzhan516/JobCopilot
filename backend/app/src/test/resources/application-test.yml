@@ -1,28 +1,30 @@
 # Test Configuration
 spring:
-  datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-  
   jpa:
     hibernate:
       ddl-auto: create-drop
     show-sql: true
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
-  
-  h2:
-    console:
-      enabled: false
+
+  flyway:
+    enabled: false
+
+# 应用级配置 / Application-level configuration
+app:
+  embedding:
+    dimension: ${LLM_EMBEDDING_MODEL_DIMENSION:1536}
+    model-version: ${LLM_EMBEDDING_MODEL:gemini/gemini-embedding-001}
+  search:
+    max-limit: ${SEARCH_MAX_LIMIT:100}
 
 # JWT Configuration
 jwt:
   secret: testSecretKeyThatIsAtLeast32CharactersLongForTesting
   access-token-expiration: 3600000
   refresh-token-expiration: 604800000
+
+# Storage - use local storage for tests (no MinIO credentials required)
+storage:
+  type: local
 
 # Logging
 logging:

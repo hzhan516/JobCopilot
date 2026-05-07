@@ -12,11 +12,16 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
+ * 六边形架构测试
  * Hexagonal Architecture Tests
- * 
+ * <p>
+ * 验证DDD六边形架构合规性的测试：
  * Tests that verify DDD Hexagonal Architecture compliance:
+ * - 领域层独立性
  * - Domain layer independence
+ * - 依赖方向
  * - Dependency direction
+ * - 领域层无基础设施依赖
  * - No infrastructure dependencies in domain
  */
 @DisplayName("Hexagonal Architecture Compliance Tests")

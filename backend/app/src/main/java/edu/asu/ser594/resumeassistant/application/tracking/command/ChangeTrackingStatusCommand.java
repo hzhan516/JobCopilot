@@ -7,10 +7,11 @@ import lombok.Builder;
  * Change tracking status command
  *
  * @param status 新状态 / New status
- * @param note 备注(可选) / Note (optional)
+ * @param note   备注(可选) / Note (optional)
  */
 @Builder
 public record ChangeTrackingStatusCommand(
         String status,
         String note
-) {}
+) {
+}

@@ -1,0 +1,201 @@
+{
+  "mode": "live",
+  "description": "Live evaluation using current ai-service parsing and single-job suitability scoring pipeline functions.",
+  "metrics": {
+    "resumeParsing": {
+      "metric": "resume_parsing_extraction",
+      "caseCount": 2,
+      "averageSkillF1": 1.0,
+      "nameAccuracy": 1.0,
+      "emailAccuracy": 1.0,
+      "cases": [
+        {
+          "id": "backend_engineer_resume",
+          "nameExact": 1,
+          "emailExact": 1,
+          "skillScores": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0
+          },
+          "expectedSkills": [
+            "Python",
+            "FastAPI",
+            "Docker",
+            "PostgreSQL",
+            "REST APIs",
+            "RabbitMQ"
+          ],
+          "predictedSkills": [
+            "Python",
+            "FastAPI",
+            "Docker",
+            "PostgreSQL",
+            "REST APIs",
+            "RabbitMQ"
+          ]
+        },
+        {
+          "id": "frontend_engineer_resume",
+          "nameExact": 1,
+          "emailExact": 1,
+          "skillScores": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0
+          },
+          "expectedSkills": [
+            "React",
+            "TypeScript",
+            "Vite",
+            "Tailwind CSS",
+            "HTML",
+            "CSS"
+          ],
+          "predictedSkills": [
+            "React",
+            "TypeScript",
+            "Vite",
+            "Tailwind CSS",
+            "HTML",
+            "CSS"
+          ]
+        }
+      ]
+    },
+    "jobParsing": {
+      "metric": "job_posting_parsing_extraction",
+      "caseCount": 2,
+      "averageRequirementF1": 0.9231,
+      "titleAccuracy": 1.0,
+      "companyAccuracy": 1.0,
+      "cases": [
+        {
+          "id": "backend_job_posting",
+          "titleExact": 1,
+          "companyExact": 1,
+          "requirementScores": {
+            "precision": 0.8571,
+            "recall": 1.0,
+            "f1": 0.9231
+          },
+          "expectedRequirements": [
+            "Python",
+            "FastAPI",
+            "PostgreSQL",
+            "Docker",
+            "REST APIs",
+            "RabbitMQ"
+          ],
+          "predictedRequirements": [
+            "Python",
+            "FastAPI",
+            "PostgreSQL",
+            "Docker",
+            "REST APIs",
+            "RabbitMQ",
+            "3+ years backend engineering experience"
+          ]
+        },
+        {
+          "id": "frontend_job_posting",
+          "titleExact": 1,
+          "companyExact": 1,
+          "requirementScores": {
+            "precision": 0.8571,
+            "recall": 1.0,
+            "f1": 0.9231
+          },
+          "expectedRequirements": [
+            "React",
+            "TypeScript",
+            "Vite",
+            "Tailwind CSS",
+            "HTML",
+            "CSS"
+          ],
+          "predictedRequirements": [
+            "React",
+            "TypeScript",
+            "Vite",
+            "Tailwind CSS",
+            "HTML",
+            "CSS",
+            "frontend testing experience"
+          ]
+        }
+      ]
+    },
+    "suitabilityScoring": {
+      "metric": "single_job_suitability_scoring",
+      "caseCount": 2,
+      "decisionAccuracy": 1.0,
+      "scoreRangeAccuracy": 1.0,
+      "averageFinalScore": 0.475,
+      "cases": [
+        {
+          "id": "backend_resume_backend_job_good_fit",
+          "expectedSuitable": true,
+          "predictedSuitable": true,
+          "decisionExact": 1,
+          "finalScore": 0.93,
+          "scoreInExpectedRange": 1,
+          "expectedScoreRange": [
+            0.65,
+            1.0
+          ],
+          "skillScore": 1.0,
+          "experienceScore": 1.0,
+          "overallScore": 1.0,
+          "summary": "The candidate is an excellent fit, possessing all required skills and direct experience with every technology and task mentioned in the job description. Their previous role as a Backend Engineer aligns perfectly with the technical requirements of this Senior Backend Engineer position."
+        },
+        {
+          "id": "frontend_resume_backend_job_weak_fit",
+          "expectedSuitable": false,
+          "predictedSuitable": false,
+          "decisionExact": 1,
+          "finalScore": 0.02,
+          "scoreInExpectedRange": 1,
+          "expectedScoreRange": [
+            0.0,
+            0.55
+          ],
+          "skillScore": 0.0,
+          "experienceScore": 0.0,
+          "overallScore": 0.0,
+          "summary": "The candidate's skills and experience are entirely focused on frontend development, which does not align with the senior backend engineer role requiring Python, PostgreSQL, and Docker."
+        }
+      ]
+    },
+    "legacyJobRanking": {
+      "metric": "job_recommendation_ranking",
+      "caseCount": 1,
+      "averageSystemNdcgAt5": 1.0,
+      "averageBaselineNdcgAt5": 0.7059,
+      "averageMatchReasonCoverageAt3": 0.3333,
+      "cases": [
+        {
+          "id": "backend_resume_job_ranking",
+          "systemRanking": [
+            "job_backend",
+            "job_fullstack",
+            "job_frontend",
+            "job_sales",
+            "job_healthcare"
+          ],
+          "baselineRanking": [
+            "job_frontend",
+            "job_sales",
+            "job_backend",
+            "job_fullstack",
+            "job_healthcare"
+          ],
+          "systemNdcgAt5": 1.0,
+          "baselineNdcgAt5": 0.7059,
+          "matchReasonCoverageAt3": 0.3333,
+          "rankTimeMs": 6972
+        }
+      ]
+    }
+  }
+}

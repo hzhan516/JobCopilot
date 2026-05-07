@@ -1,11 +1,11 @@
 package edu.asu.ser594.resumeassistant.api.job.facade;
 
-import edu.asu.ser594.resumeassistant.api.job.dto.request.JobMatchRequest;
+import edu.asu.ser594.resumeassistant.api.job.dto.request.JobScoreRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
-import edu.asu.ser594.resumeassistant.api.matching.dto.response.JobMatchHistoryResponse;
-import edu.asu.ser594.resumeassistant.api.job.dto.response.JobMatchResponse;
+import edu.asu.ser594.resumeassistant.api.job.dto.request.UpdateJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
-import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchItem;
+import edu.asu.ser594.resumeassistant.api.job.dto.response.JobScoreHistoryResponse;
+import edu.asu.ser594.resumeassistant.api.job.dto.response.JobScoreResponse;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 
 import java.util.List;
@@ -21,7 +21,7 @@ public interface JobFacade {
      * 提交一个新的职位请求以供解析
      * Submits a new job posting to be processed and parsed.
      *
-     * @param userId 提交用户的 ID / The ID of the user submitting the job.
+     * @param userId  提交用户的 ID / The ID of the user submitting the job.
      * @param request 职位提交请求 / The job submission details containing URL and options.
      * @return 初步响应结果 / The initial state of the job as a response.
      */
@@ -31,7 +31,7 @@ public interface JobFacade {
      * 获取指定职位的处理状态与详情
      * Retrieves the current processing status and details of a job.
      *
-     * @param jobId 职位的唯一标识 / The unique ID of the job.
+     * @param jobId  职位的唯一标识 / The unique ID of the job.
      * @param userId 请求用户的 ID / The ID of the requesting user.
      * @return 职位状态及详情 / The current state and details of the job.
      */
@@ -47,32 +47,44 @@ public interface JobFacade {
     List<JobResponse> listJobs(UUID userId);
 
     /**
-     * 启动异步职位匹配
-     * Start async job matching
+     * 更新职位的解析内容
+     * Updates the parsed content of a job.
      *
-     * @param userId 用户 ID / User ID
-     * @param request 匹配请求参数 / Match request parameters
-     * @return 异步匹配初始响应（状态为 PROCESSING） / Async match initial response with PROCESSING status
+     * @param jobId   职位 ID / The job ID.
+     * @param userId  用户 ID / The user ID.
+     * @param request 更新请求 / The update request.
+     * @return 更新后的职位 / The updated job.
      */
-    JobMatchResponse matchJobs(UUID userId, JobMatchRequest request);
+    JobResponse updateJob(String jobId, UUID userId, UpdateJobRequest request);
 
     /**
-     * 查询匹配结果
-     * Get match result by match ID
+     * 隐藏职位，使其不再出现在用户列表中。
+     * Hide a job from user-facing lists.
      *
-     * @param matchId 匹配任务ID / Match task ID
-     * @return 匹配结果响应 / Match result response
+     * @param jobId  职位 ID / The job ID.
+     * @param userId 用户 ID / The user ID.
      */
-    JobMatchResponse getMatchResult(String matchId);
+    void deleteJob(String jobId, UUID userId);
 
     /**
-     * 查询用户的匹配历史
-     * Get user's match history
+     * 对单个职位进行简历评分
+     * Scores a single job against a resume.
      *
-     * @param userId 用户 ID / User ID
-     * @return 匹配历史列表 / List of match history
+     * @param jobId   职位 ID / The job ID.
+     * @param userId  用户 ID / The user ID.
+     * @param request 评分请求 / The score request.
+     * @return 评分结果 / The score result.
      */
-    List<JobMatchHistoryResponse> getMatchHistory(UUID userId);
+    JobScoreResponse scoreJob(String jobId, UUID userId, JobScoreRequest request);
+
+    /**
+     * 获取用户的评分历史记录
+     * Gets the score history for a user.
+     *
+     * @param userId 用户 ID / The user ID.
+     * @return 评分历史列表 / List of score history records.
+     */
+    List<JobScoreHistoryResponse> getScoreHistory(UUID userId);
 
     /**
      * 处理异步的职位 AI 解析结果
@@ -81,14 +93,4 @@ public interface JobFacade {
      * @param event AI 结果事件 / The result event containing parsed content or error details.
      */
     void handleJobProcessResult(AiResultEvent event);
-
-    /**
-     * 保存职位精排结果
-     * Save job rank result
-     *
-     * @param matchId 匹配任务ID / Match task ID
-     * @param rankedResults 精排结果列表 / Ranked result list
-     * @param rankTimeMs 精排耗时(毫秒) / Ranking time in ms
-     */
-    void saveJobRankResult(String matchId, List<MatchItem> rankedResults, Long rankTimeMs);
 }

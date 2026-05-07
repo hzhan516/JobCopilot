@@ -1,7 +1,9 @@
-import { useEffect, useState, useMemo } from 'react';
-import type { JobApplication } from '@/types';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import type { Tracking, TrackingStatsResponse } from '@/types';
 import { useTranslation } from 'react-i18next';
-import { formatDate } from '@/utils/i18n';
+import { useSearchParams } from 'react-router-dom';
+import { formatDate, formatDateTime } from '@/utils/i18n';
+import { trackingService } from '@/services/trackingService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,7 +31,9 @@ import {
   Building2,
   Briefcase,
   Calendar,
+  Clock,
   MoreHorizontal,
+  Pencil,
   Trash2,
 } from 'lucide-react';
 import {
@@ -40,96 +44,116 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
-export default function Tracking() {
+export default function TrackingPage() {
   const { t } = useTranslation();
-  const [applications, setApplications] = useState<JobApplication[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const dismissedEditTrackingIdRef = useRef<string | null>(null);
+  const [trackings, setTrackings] = useState<Tracking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [newApplication, setNewApplication] = useState({
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingTrackingId, setEditingTrackingId] = useState<string | null>(null);
+  const [newTracking, setNewTracking] = useState({
     jobTitle: '',
-    company: '',
-    status: 'APPLIED' as JobApplication['status'],
+    companyName: '',
+    status: 'APPLIED' as Tracking['status'],
+    appliedAt: '',
     notes: '',
   });
+  const [editTracking, setEditTracking] = useState({
+    jobTitle: '',
+    companyName: '',
+    status: 'APPLIED' as Tracking['status'],
+    appliedAt: '',
+    notes: '',
+  });
+  const [stats, setStats] = useState<TrackingStatsResponse | null>(null);
 
   const statusConfig: Record<string, { labelKey: string; color: string }> = useMemo(
     () => ({
+      PENDING: { labelKey: 'tracking.status.PENDING', color: 'bg-gray-100 text-gray-500' },
       APPLIED: { labelKey: 'tracking.status.APPLIED', color: 'bg-blue-100 text-blue-700' },
       SCREENING: { labelKey: 'tracking.status.SCREENING', color: 'bg-yellow-100 text-yellow-700' },
-      INTERVIEW: { labelKey: 'tracking.status.INTERVIEW', color: 'bg-purple-100 text-purple-700' },
+      INTERVIEWING: { labelKey: 'tracking.status.INTERVIEWING', color: 'bg-purple-100 text-purple-700' },
       OFFER: { labelKey: 'tracking.status.OFFER', color: 'bg-green-100 text-green-700' },
+      ACCEPTED: { labelKey: 'tracking.status.ACCEPTED', color: 'bg-emerald-100 text-emerald-700' },
       REJECTED: { labelKey: 'tracking.status.REJECTED', color: 'bg-red-100 text-red-700' },
       WITHDRAWN: { labelKey: 'tracking.status.WITHDRAWN', color: 'bg-gray-100 text-gray-700' },
     }),
     []
   );
 
-  // 加载投递记录
-  useEffect(() => {
-    loadApplications();
-  }, []);
-
-  const loadApplications = async () => {
+  const loadTrackings = useCallback(async () => {
     try {
       setIsLoading(true);
-      // 使用模拟数据
-      // const data = await trackingService.getApplications();
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const mockApplications: JobApplication[] = [
-        {
-          applicationId: '1',
-          jobId: '1',
-          jobTitle: 'Senior Frontend Engineer',
-          company: 'Google',
-          status: 'INTERVIEW',
-          appliedAt: '2024-01-10T10:00:00',
-          notes: 'Passed initial screening, waiting for interview schedule',
-        },
-        {
-          applicationId: '2',
-          jobId: '2',
-          jobTitle: 'Java Backend Developer',
-          company: 'Amazon',
-          status: 'APPLIED',
-          appliedAt: '2024-01-12T14:30:00',
-          notes: '',
-        },
-        {
-          applicationId: '3',
-          jobId: '3',
-          jobTitle: 'Product Manager',
-          company: 'Microsoft',
-          status: 'OFFER',
-          appliedAt: '2024-01-05T09:00:00',
-          notes: 'Received offer, considering',
-        },
-      ];
-      setApplications(mockApplications);
+      const data = await trackingService.getTrackings();
+      setTrackings(data);
     } catch {
       toast.error(t('tracking.loadError'));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t]);
+
+  // 加载统计信息
+  // Load tracking stats
+  const loadStats = useCallback(async () => {
+    try {
+      const data = await trackingService.getTrackingStats();
+      setStats(data);
+    } catch {
+      // 静默失败，回退到前端本地统计
+      // Silently fail and fall back to frontend local counts
+      setStats(null);
+    }
+  }, []);
+
+  // 加载投递记录和统计信息
+  useEffect(() => {
+    loadTrackings();
+    loadStats();
+  }, [loadTrackings, loadStats]);
+
+  const updateEditSearchParam = useCallback((trackingId: string) => {
+    dismissedEditTrackingIdRef.current = null;
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      next.set('edit', trackingId);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const clearEditSearchParam = useCallback(() => {
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      next.delete('edit');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const closeEditDialog = useCallback(() => {
+    dismissedEditTrackingIdRef.current = editingTrackingId ?? searchParams.get('edit');
+    setEditDialogOpen(false);
+    setEditingTrackingId(null);
+    clearEditSearchParam();
+  }, [clearEditSearchParam, editingTrackingId, searchParams]);
 
   // 添加投递记录
-  const handleAddApplication = async () => {
-    if (!newApplication.jobTitle || !newApplication.company) {
+  const handleAddTracking = async () => {
+    if (!newTracking.jobTitle || !newTracking.companyName) {
       toast.error(t('tracking.fillRequired'));
       return;
     }
     try {
-      const application: JobApplication = {
-        applicationId: Date.now().toString(),
-        jobId: '',
-        jobTitle: newApplication.jobTitle,
-        company: newApplication.company,
-        status: newApplication.status,
-        appliedAt: new Date().toISOString(),
-        notes: newApplication.notes,
-      };
-      setApplications([application, ...applications]);
-      setNewApplication({ jobTitle: '', company: '', status: 'APPLIED', notes: '' });
+      await trackingService.createTracking({
+        jobTitle: newTracking.jobTitle,
+        companyName: newTracking.companyName,
+        status: newTracking.status,
+        appliedAt: newTracking.appliedAt || undefined,
+        notes: newTracking.notes || undefined,
+      });
+      await Promise.all([loadTrackings(), loadStats()]);
+      setNewTracking({ jobTitle: '', companyName: '', status: 'APPLIED', appliedAt: '', notes: '' });
       setAddDialogOpen(false);
       toast.success(t('tracking.addSuccess'));
     } catch {
@@ -137,12 +161,50 @@ export default function Tracking() {
     }
   };
 
-  // 更新状态
-  const handleUpdateStatus = async (applicationId: string, status: JobApplication['status']) => {
+  const openEditDialog = useCallback((tracking: Tracking) => {
+    setEditingTrackingId(tracking.trackingId);
+    setEditTracking({
+      jobTitle: tracking.jobTitle,
+      companyName: tracking.companyName,
+      status: tracking.status,
+      appliedAt: tracking.appliedAt ?? '',
+      notes: tracking.notes ?? '',
+    });
+    updateEditSearchParam(tracking.trackingId);
+    setEditDialogOpen(true);
+  }, [updateEditSearchParam]);
+
+  const handleEditTracking = async () => {
+    if (!editingTrackingId) return;
+
+    const jobTitle = editTracking.jobTitle.trim();
+    const companyName = editTracking.companyName.trim();
+    if (!jobTitle || !companyName) {
+      toast.error(t('tracking.fillRequired'));
+      return;
+    }
+
     try {
-      setApplications((prev) =>
-        prev.map((app) => (app.applicationId === applicationId ? { ...app, status } : app))
-      );
+      await trackingService.updateTracking(editingTrackingId, {
+        jobTitle,
+        companyName,
+        status: editTracking.status,
+        appliedAt: editTracking.appliedAt || undefined,
+        notes: editTracking.notes,
+      });
+      await Promise.all([loadTrackings(), loadStats()]);
+      closeEditDialog();
+      toast.success(t('tracking.editSuccess'));
+    } catch {
+      toast.error(t('tracking.editFailed'));
+    }
+  };
+
+  // 更新状态
+  const handleUpdateStatus = async (trackingId: string, status: Tracking['status']) => {
+    try {
+      await trackingService.updateTracking(trackingId, { status });
+      await Promise.all([loadTrackings(), loadStats()]);
       toast.success(t('tracking.updateSuccess'));
     } catch {
       toast.error(t('tracking.updateFailed'));
@@ -150,20 +212,43 @@ export default function Tracking() {
   };
 
   // 删除投递记录
-  const handleDeleteApplication = async (applicationId: string) => {
+  const handleDeleteTracking = async (trackingId: string) => {
     try {
-      setApplications((prev) => prev.filter((app) => app.applicationId !== applicationId));
+      await trackingService.deleteTracking(trackingId);
+      await Promise.all([loadTrackings(), loadStats()]);
       toast.success(t('tracking.deleteSuccess'));
     } catch {
       toast.error(t('tracking.deleteFailed'));
     }
   };
 
-  // 统计各状态数量
-  const statusCounts = applications.reduce((acc, app) => {
-    acc[app.status] = (acc[app.status] || 0) + 1;
+  useEffect(() => {
+    const editTrackingId = searchParams.get('edit');
+    if (!editTrackingId) {
+      dismissedEditTrackingIdRef.current = null;
+      return;
+    }
+    if (dismissedEditTrackingIdRef.current === editTrackingId || isLoading || editDialogOpen) return;
+
+    const tracking = trackings.find((item) => item.trackingId === editTrackingId);
+    if (tracking) {
+      openEditDialog(tracking);
+    }
+  }, [editDialogOpen, isLoading, openEditDialog, searchParams, trackings]);
+
+  // 统计各状态数量（作为 stats API 失败时的回退）
+  // Count statuses locally (fallback when stats API fails)
+  const statusCounts = trackings.reduce((acc, t) => {
+    acc[t.status] = (acc[t.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  // 计算成功率
+  // Calculate success rate
+  const successRate = useMemo(() => {
+    const value = stats?.successRate ?? 0;
+    return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
+  }, [stats]);
 
   // 渲染加载状态
   if (isLoading) {
@@ -208,7 +293,7 @@ export default function Tracking() {
               <div>
                 <p className="text-sm text-gray-500">{t('tracking.stats.applied')}</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {statusCounts.APPLIED || 0}
+                  {stats?.applied ?? statusCounts.APPLIED ?? 0}
                 </p>
               </div>
               <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -223,7 +308,7 @@ export default function Tracking() {
               <div>
                 <p className="text-sm text-gray-500">{t('tracking.stats.interview')}</p>
                 <p className="text-2xl font-bold text-purple-600">
-                  {statusCounts.INTERVIEW || 0}
+                  {stats?.interview ?? statusCounts.INTERVIEWING ?? 0}
                 </p>
               </div>
               <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
@@ -238,7 +323,7 @@ export default function Tracking() {
               <div>
                 <p className="text-sm text-gray-500">{t('tracking.stats.offered')}</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {statusCounts.OFFER || 0}
+                  {stats?.offer ?? statusCounts.OFFER ?? 0}
                 </p>
               </div>
               <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
@@ -252,7 +337,9 @@ export default function Tracking() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">{t('tracking.stats.total')}</p>
-                <p className="text-2xl font-bold text-gray-900">{applications.length}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats?.total ?? trackings.length}
+                </p>
               </div>
               <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
                 <Calendar className="w-5 h-5 text-gray-600" />
@@ -262,13 +349,28 @@ export default function Tracking() {
         </Card>
       </div>
 
+      {/* 成功率条形图 */}
+      {/* Success rate bar chart */}
+      <div className="mt-6">
+        <div className="flex justify-between text-sm mb-2">
+          <span className="font-medium text-gray-700">{t('tracking.successRate')}</span>
+          <span className="text-gray-500">{Math.round(successRate)}%</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-4">
+          <div
+            className="bg-green-500 h-4 rounded-full transition-all duration-500"
+            style={{ width: `${successRate}%` }}
+          />
+        </div>
+      </div>
+
       {/* 投递记录列表 */}
       <Card>
         <CardHeader className="pb-4">
           <h3 className="text-lg font-semibold">{t('tracking.recordList')}</h3>
         </CardHeader>
         <CardContent>
-          {applications.length === 0 ? (
+          {trackings.length === 0 ? (
             <div className="text-center py-12">
               <ClipboardList className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">{t('tracking.emptyTitle')}</h3>
@@ -280,37 +382,50 @@ export default function Tracking() {
             </div>
           ) : (
             <div className="space-y-4">
-              {applications.map((application) => (
+              {trackings.map((tracking) => (
                 <div
-                  key={application.applicationId}
+                  key={tracking.trackingId}
                   className="flex items-start justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
-                      <h4 className="font-semibold text-gray-900">{application.jobTitle}</h4>
-                      <Badge className={statusConfig[application.status].color}>
-                        {t(statusConfig[application.status].labelKey)}
-                      </Badge>
+                      <h4 className="font-semibold text-gray-900">{tracking.jobTitle}</h4>
+                      {(() => {
+                        const config = statusConfig[tracking.status] || { labelKey: 'tracking.status.UNKNOWN', color: 'bg-gray-100 text-gray-500' };
+                        return (
+                          <Badge className={config.color}>
+                            {t(config.labelKey)}
+                          </Badge>
+                        );
+                      })()}
                     </div>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500 mb-2">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500 mb-2">
                       <span className="flex items-center">
                         <Building2 className="w-4 h-4 mr-1" />
-                        {application.company}
+                        {tracking.companyName}
                       </span>
+                      {tracking.appliedAt && (
+                        <span className="flex items-center">
+                          <Calendar className="w-4 h-4 mr-1" />
+                          {formatDate(tracking.appliedAt)}
+                        </span>
+                      )}
                       <span className="flex items-center">
-                        <Calendar className="w-4 h-4 mr-1" />
-                        {formatDate(application.appliedAt)}
+                        <Clock className="w-4 h-4 mr-1" />
+                        {t('tracking.lastEditedAt', {
+                          time: formatDateTime(tracking.updatedAt || tracking.createdAt),
+                        })}
                       </span>
                     </div>
-                    {application.notes && (
-                      <p className="text-sm text-gray-600">{application.notes}</p>
+                    {tracking.notes && (
+                      <p className="text-sm text-gray-600">{tracking.notes}</p>
                     )}
                   </div>
                   <div className="flex items-center space-x-2">
                     <Select
-                      value={application.status}
+                      value={tracking.status}
                       onValueChange={(value) =>
-                        handleUpdateStatus(application.applicationId, value as JobApplication['status'])
+                        handleUpdateStatus(tracking.trackingId, value as Tracking['status'])
                       }
                     >
                       <SelectTrigger className="w-32">
@@ -331,8 +446,12 @@ export default function Tracking() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEditDialog(tracking)}>
+                          <Pencil className="w-4 h-4 mr-2" />
+                          {t('common.edit')}
+                        </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => handleDeleteApplication(application.applicationId)}
+                          onClick={() => handleDeleteTracking(tracking.trackingId)}
                           className="text-red-600"
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
@@ -360,9 +479,9 @@ export default function Tracking() {
               <Label>{t('tracking.jobTitle')}</Label>
               <Input
                 placeholder={t('tracking.jobTitlePlaceholder')}
-                value={newApplication.jobTitle}
+                value={newTracking.jobTitle}
                 onChange={(e) =>
-                  setNewApplication({ ...newApplication, jobTitle: e.target.value })
+                  setNewTracking({ ...newTracking, jobTitle: e.target.value })
                 }
               />
             </div>
@@ -370,20 +489,20 @@ export default function Tracking() {
               <Label>{t('tracking.company')}</Label>
               <Input
                 placeholder={t('tracking.companyPlaceholder')}
-                value={newApplication.company}
+                value={newTracking.companyName}
                 onChange={(e) =>
-                  setNewApplication({ ...newApplication, company: e.target.value })
+                  setNewTracking({ ...newTracking, companyName: e.target.value })
                 }
               />
             </div>
             <div className="space-y-2">
               <Label>{t('tracking.currentStatus')}</Label>
               <Select
-                value={newApplication.status}
+                value={newTracking.status}
                 onValueChange={(value) =>
-                  setNewApplication({
-                    ...newApplication,
-                    status: value as JobApplication['status'],
+                  setNewTracking({
+                    ...newTracking,
+                    status: value as Tracking['status'],
                   })
                 }
               >
@@ -400,12 +519,22 @@ export default function Tracking() {
               </Select>
             </div>
             <div className="space-y-2">
+              <Label>{t('tracking.appliedAt')}</Label>
+              <Input
+                type="date"
+                value={newTracking.appliedAt}
+                onChange={(e) =>
+                  setNewTracking({ ...newTracking, appliedAt: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
               <Label>{t('tracking.notes')}</Label>
               <Input
                 placeholder={t('tracking.notesPlaceholder')}
-                value={newApplication.notes}
+                value={newTracking.notes}
                 onChange={(e) =>
-                  setNewApplication({ ...newApplication, notes: e.target.value })
+                  setNewTracking({ ...newTracking, notes: e.target.value })
                 }
               />
             </div>
@@ -414,7 +543,94 @@ export default function Tracking() {
             <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
               {t('common.cancel')}
             </Button>
-            <Button onClick={handleAddApplication}>{t('tracking.add')}</Button>
+            <Button onClick={handleAddTracking}>{t('tracking.add')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 编辑记录对话框 */}
+      <Dialog
+        open={editDialogOpen}
+        onOpenChange={(open) => {
+          if (open) setEditDialogOpen(true);
+          else closeEditDialog();
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('tracking.editRecordTitle')}</DialogTitle>
+            <DialogDescription>{t('tracking.editRecordDesc')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>{t('tracking.jobTitle')}</Label>
+              <Input
+                placeholder={t('tracking.jobTitlePlaceholder')}
+                value={editTracking.jobTitle}
+                onChange={(e) =>
+                  setEditTracking({ ...editTracking, jobTitle: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('tracking.company')}</Label>
+              <Input
+                placeholder={t('tracking.companyPlaceholder')}
+                value={editTracking.companyName}
+                onChange={(e) =>
+                  setEditTracking({ ...editTracking, companyName: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('tracking.currentStatus')}</Label>
+              <Select
+                value={editTracking.status}
+                onValueChange={(value) =>
+                  setEditTracking({
+                    ...editTracking,
+                    status: value as Tracking['status'],
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(statusConfig).map(([key, { labelKey }]) => (
+                    <SelectItem key={key} value={key}>
+                      {t(labelKey)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{t('tracking.appliedAt')}</Label>
+              <Input
+                type="date"
+                value={editTracking.appliedAt}
+                onChange={(e) =>
+                  setEditTracking({ ...editTracking, appliedAt: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('tracking.notes')}</Label>
+              <Input
+                placeholder={t('tracking.notesPlaceholder')}
+                value={editTracking.notes}
+                onChange={(e) =>
+                  setEditTracking({ ...editTracking, notes: e.target.value })
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeEditDialog}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={handleEditTracking}>{t('common.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

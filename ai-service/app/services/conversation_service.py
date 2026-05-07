@@ -1,12 +1,19 @@
 import json
+import logging
 from pathlib import Path
 from urllib.parse import urlparse
 
+# Conversation workflow helpers: load attachments, build prompts, and produce AI responses.
+
 from app.schemas import AiResultEvent, ConversationRequestCommand
 from app.services.file_parser import download_file_bytes, extract_resume_text
-from app.services.gemini_client import generate_json_from_text_prompt
+from app.services.llm_client import generate_json_from_text_prompt
 
 
+logger = logging.getLogger(__name__)
+
+
+# Infer supported attachment type from a URL suffix.
 def _infer_file_format(file_url: str) -> str | None:
     suffix = Path(urlparse(file_url).path).suffix.lower()
     if suffix == ".pdf":
@@ -20,6 +27,7 @@ def _infer_file_format(file_url: str) -> str | None:
     return None
 
 
+# Download and extract attachment snippets plus warnings for the prompt.
 def _load_attachment_context(command: ConversationRequestCommand) -> tuple[list[dict[str, str]], list[str]]:
     attachments: list[dict[str, str]] = []
     warnings: list[str] = []
@@ -53,6 +61,7 @@ def _load_attachment_context(command: ConversationRequestCommand) -> tuple[list[
     return attachments, warnings
 
 
+# Build the LLM prompt for the conversation reply.
 def _build_conversation_prompt(command: ConversationRequestCommand) -> str:
     history = [
         message.model_dump(by_alias=True)
@@ -73,12 +82,18 @@ Do not include explanations outside JSON.
 Return exactly one JSON object with this shape:
 {{
   "content": "string",
-  "fileUrl": null
+  "fileUrl": null,
+  "resumeModification": {{
+    "modified": false,
+    "markdown": "string"
+  }}
 }}
 
 Rules:
 - content: your reply to the user
 - fileUrl: null unless a generated file URL is explicitly available
+- resumeModification.modified: true ONLY if the user asked you to rewrite/optimize their resume AND you did so
+- resumeModification.markdown: the full rewritten markdown of their resume, if modified=true. Otherwise empty string.
 - be practical and specific
 - use attached file content when readable text is provided below
 - do not invent missing attachment contents
@@ -98,6 +113,15 @@ User ID:
 Resume Version ID:
 {command.resume_version_id}
 
+Main Resume Text:
+{command.resume_text or "None provided"}
+
+Primary Job Context:
+{command.primary_job_text or "None provided"}
+
+Additional Job Contexts:
+{json.dumps(command.related_job_texts or [], ensure_ascii=False, indent=2)}
+
 Attached File URLs:
 {json.dumps(command.file_urls, ensure_ascii=False, indent=2)}
 
@@ -115,16 +139,16 @@ Current Message:
 """.strip()
 
 
+# Run the conversation workflow and package the response as an AI result event.
 def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
     prompt = _build_conversation_prompt(command)
-    print(
-        "Conversation request:"
-        f" conversation_id={command.conversation_id},"
-        f" history_count={len(command.message_history)},"
-        f" file_url_count={len(command.file_urls)}"
+    logger.info(
+        "Conversation request: conversation_id=%s, history_count=%d, file_url_count=%d",
+        command.conversation_id,
+        len(command.message_history),
+        len(command.file_urls),
     )
     result = generate_json_from_text_prompt(prompt)
-    print(f"Conversation model result: {result}")
 
     content = str(result.get("content", "")).strip()
     file_url = result.get("fileUrl")
@@ -134,6 +158,15 @@ def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
 
     if file_url is not None:
         file_url = str(file_url).strip() or None
+        
+    resume_modification = result.get("resumeModification")
+    logger.info(
+        "Conversation model result received: conversation_id=%s, content_length=%d, has_file_url=%s, has_resume_modification=%s",
+        command.conversation_id,
+        len(content),
+        file_url is not None,
+        bool(resume_modification),
+    )
 
     return AiResultEvent(
         referenceId=command.conversation_id,
@@ -142,6 +175,7 @@ def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
         data={
             "content": content,
             "fileUrl": file_url,
+            "resumeModification": resume_modification
         },
         errorMessage=None,
         eventType=None,

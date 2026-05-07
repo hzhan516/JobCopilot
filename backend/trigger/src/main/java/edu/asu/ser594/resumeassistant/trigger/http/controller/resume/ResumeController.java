@@ -1,6 +1,7 @@
 package edu.asu.ser594.resumeassistant.trigger.http.controller.resume;
 
 import edu.asu.ser594.resumeassistant.api.common.dto.ApiResponse;
+import edu.asu.ser594.resumeassistant.api.resume.dto.request.CreateVersionRequest;
 import edu.asu.ser594.resumeassistant.api.resume.dto.request.ResumeEditRequest;
 import edu.asu.ser594.resumeassistant.api.resume.dto.request.ResumeUploadRequest;
 import edu.asu.ser594.resumeassistant.api.resume.dto.response.ResumeGroupResponse;
@@ -33,7 +34,7 @@ public class ResumeController {
      * 上传简历
      * Upload resume
      */
-    @PostMapping(consumes = "multipart/form-data")
+    @PostMapping(value = "", consumes = "multipart/form-data")
     public ResponseEntity<ApiResponse<ResumeUploadResponse>> uploadResume(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "title", required = false) String title,
@@ -53,9 +54,9 @@ public class ResumeController {
      * Download resume
      *
      * @param versionId 版本ID（originalVersionId）
-     * @param userId 当前用户ID
-     * @param format 导出格式（可选）：original（默认）, pdf, docx, html, md, txt
-     *               注意：当前版本仅返回原始文件，格式转换功能待实现
+     * @param userId    当前用户ID
+     * @param format    导出格式（可选）：original（默认）, pdf, docx, html, md, txt
+     *                  注意：当前版本仅返回原始文件，格式转换功能待实现
      */
     @GetMapping("/{versionId}/download")
     public ResponseEntity<InputStreamResource> downloadResume(
@@ -83,7 +84,7 @@ public class ResumeController {
      * Get resume group details
      *
      * @param groupId 简历组ID
-     * @param userId 当前用户ID
+     * @param userId  当前用户ID
      * @return 简历组详情
      */
     @GetMapping("/groups/{groupId}")
@@ -98,7 +99,7 @@ public class ResumeController {
      * Delete resume group
      *
      * @param groupId 简历组ID
-     * @param userId 当前用户ID
+     * @param userId  当前用户ID
      * @return 空响应
      */
     @DeleteMapping("/groups/{groupId}")
@@ -113,7 +114,7 @@ public class ResumeController {
      * Get resume versions by group
      *
      * @param groupId 简历组ID
-     * @param userId 当前用户ID
+     * @param userId  当前用户ID
      * @return 版本列表
      */
     @GetMapping("/groups/{groupId}/versions")
@@ -128,7 +129,7 @@ public class ResumeController {
      * Delete resume version
      *
      * @param versionId 版本ID
-     * @param userId 当前用户ID
+     * @param userId    当前用户ID
      * @return 空响应
      */
     @DeleteMapping("/versions/{versionId}")
@@ -143,7 +144,7 @@ public class ResumeController {
      * Get single version details
      *
      * @param versionId 版本ID
-     * @param userId 当前用户ID
+     * @param userId    当前用户ID
      * @return 版本详情
      */
     @GetMapping("/versions/{versionId}")
@@ -158,8 +159,8 @@ public class ResumeController {
      * Edit version content
      *
      * @param versionId 版本ID
-     * @param request 编辑请求
-     * @param userId 当前用户ID
+     * @param request   编辑请求
+     * @param userId    当前用户ID
      * @return 更新后的版本详情
      */
     @PutMapping("/versions/{versionId}")
@@ -172,5 +173,37 @@ public class ResumeController {
                 .versionId(versionId)
                 .build();
         return ResponseEntity.ok(resumeFacade.editVersion(updatedRequest, userId));
+    }
+
+    /**
+     * 创建简历版本副本
+     * Create resume version copy
+     *
+     * @param groupId 简历组ID
+     * @param request 创建请求（sourceVersionId 可选）
+     * @param userId  当前用户ID
+     * @return 新创建的版本详情
+     */
+    @PostMapping("/groups/{groupId}/versions")
+    public ResponseEntity<ApiResponse<ResumeVersionResponse>> createVersion(
+            @PathVariable("groupId") UUID groupId,
+            @Valid @RequestBody CreateVersionRequest request,
+            @CurrentUser UUID userId) {
+        return ResponseEntity.ok(resumeFacade.createVersion(groupId, request, userId));
+    }
+
+    /**
+     * 激活简历版本
+     * Activate resume version
+     *
+     * @param versionId 版本ID
+     * @param userId    当前用户ID
+     * @return 激活后的版本详情
+     */
+    @PostMapping("/versions/{versionId}/activate")
+    public ResponseEntity<ApiResponse<ResumeVersionResponse>> activateVersion(
+            @PathVariable("versionId") UUID versionId,
+            @CurrentUser UUID userId) {
+        return ResponseEntity.ok(resumeFacade.activateVersion(versionId, userId));
     }
 }

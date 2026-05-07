@@ -18,11 +18,11 @@ export function ParseStatusBadge({ status }: ParseStatusBadgeProps) {
           {t('resume.parseStatus.pending')}
         </Badge>
       );
-    case 'PROCESSING':
+    case 'PARSING':
       return (
         <Badge variant="secondary" className="flex items-center gap-1 w-fit bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-900 dark:text-blue-300">
           <Loader2 className="w-3 h-3 animate-spin" />
-          {t('resume.parseStatus.processing')}
+          {t('resume.parseStatus.parsing')}
         </Badge>
       );
     case 'COMPLETED':
@@ -39,6 +39,8 @@ export function ParseStatusBadge({ status }: ParseStatusBadgeProps) {
           {t('resume.parseStatus.failed')}
         </Badge>
       );
+    case 'NOT_APPLICABLE':
+      return null;
     default:
       return null;
   }

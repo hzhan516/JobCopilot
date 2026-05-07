@@ -39,7 +39,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     { path: '/resumes', labelKey: 'layout.nav.resumes', icon: FileText },
     { path: '/jobs', labelKey: 'layout.nav.jobs', icon: Briefcase },
     { path: '/chat', labelKey: 'layout.nav.chat', icon: MessageSquare },
-    { path: '/tracking', labelKey: 'layout.nav.tracking', icon: ClipboardList },
+    { path: '/applications', labelKey: 'layout.nav.tracking', icon: ClipboardList },
   ];
 
   const handleLogout = () => {

@@ -18,6 +18,9 @@ import edu.asu.ser594.resumeassistant.domain.tracking.entity.ApplicationTracking
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -41,6 +44,7 @@ public class TrackingFacadeImpl implements TrackingFacade {
                 .jobId(request.jobId())
                 .companyName(request.companyName())
                 .jobTitle(request.jobTitle())
+                .status(request.status())
                 .appliedAt(request.appliedAt())
                 .notes(request.notes())
                 .build();
@@ -51,6 +55,9 @@ public class TrackingFacadeImpl implements TrackingFacade {
     @Override
     public TrackingResponse updateTracking(final UUID userId, final String trackingId, final UpdateTrackingRequest request) {
         final UpdateTrackingCommand updateCmd = UpdateTrackingCommand.builder()
+                .companyName(request.companyName())
+                .jobTitle(request.jobTitle())
+                .appliedAt(request.appliedAt())
                 .notes(request.notes())
                 .build();
         final ChangeTrackingStatusCommand statusCmd = request.status() != null
@@ -101,12 +108,22 @@ public class TrackingFacadeImpl implements TrackingFacade {
 
         final List<TrackingEventResponse> events = tracking.getEvents().stream()
                 .map(e -> new TrackingEventResponse(
-                        e.getTimestamp(),
+                        e.getTimestamp().atOffset(ZoneOffset.UTC),
                         e.getFromStatus().name(),
                         e.getToStatus().name(),
                         e.getNote()
                 ))
                 .collect(Collectors.toList());
+
+        final LocalDateTime createdAt = tracking.getCreatedAt() != null
+                ? tracking.getCreatedAt()
+                : tracking.getUpdatedAt();
+        final OffsetDateTime createdAtResponse = createdAt != null
+                ? createdAt.atOffset(ZoneOffset.UTC)
+                : null;
+        final OffsetDateTime updatedAtResponse = tracking.getUpdatedAt() != null
+                ? tracking.getUpdatedAt().atOffset(ZoneOffset.UTC)
+                : null;
 
         return new TrackingResponse(
                 tracking.getId(),
@@ -116,7 +133,8 @@ public class TrackingFacadeImpl implements TrackingFacade {
                 tracking.getJobTitle(),
                 tracking.getStatus().name(),
                 tracking.getAppliedAt(),
-                tracking.getUpdatedAt(),
+                createdAtResponse,
+                updatedAtResponse,
                 tracking.getNotes(),
                 events
         );
@@ -128,6 +146,8 @@ public class TrackingFacadeImpl implements TrackingFacade {
             parsed = new JobResponse.ParsedJobContentResponse(
                     job.getParsedContent().title(),
                     job.getParsedContent().company(),
+                    job.getParsedContent().salary(),
+                    job.getParsedContent().location(),
                     job.getParsedContent().description(),
                     job.getParsedContent().requirements()
             );

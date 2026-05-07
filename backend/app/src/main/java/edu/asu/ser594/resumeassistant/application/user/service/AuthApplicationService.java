@@ -1,30 +1,35 @@
 package edu.asu.ser594.resumeassistant.application.user.service;
 
+import edu.asu.ser594.resumeassistant.api.user.dto.TokenPair;
+import edu.asu.ser594.resumeassistant.api.user.dto.response.AuthResponse;
+import edu.asu.ser594.resumeassistant.api.user.service.TokenService;
 import edu.asu.ser594.resumeassistant.application.user.command.LoginByEmailCommand;
 import edu.asu.ser594.resumeassistant.application.user.command.LoginByGoogleCommand;
 import edu.asu.ser594.resumeassistant.application.user.command.RegisterByEmailCommand;
-import edu.asu.ser594.resumeassistant.api.user.dto.TokenPair;
-import edu.asu.ser594.resumeassistant.api.user.service.TokenService;
 import edu.asu.ser594.resumeassistant.domain.user.entity.User;
 import edu.asu.ser594.resumeassistant.domain.user.entity.UserCredential;
 import edu.asu.ser594.resumeassistant.domain.user.entity.UserOAuthBinding;
 import edu.asu.ser594.resumeassistant.domain.user.entity.UserProfile;
 import edu.asu.ser594.resumeassistant.domain.user.exception.AuthException;
+import edu.asu.ser594.resumeassistant.domain.user.port.GoogleTokenVerifierPort;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserCredentialRepository;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserOAuthBindingRepository;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserProfileRepository;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserRepository;
 import edu.asu.ser594.resumeassistant.domain.user.service.PasswordEncoder;
-import edu.asu.ser594.resumeassistant.infrastructure.security.GoogleIdTokenVerifier;
 import edu.asu.ser594.resumeassistant.types.enums.CredentialType;
 import edu.asu.ser594.resumeassistant.types.enums.OAuthProvider;
+import edu.asu.ser594.resumeassistant.types.enums.UserStatus;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+// 认证申请服务
 // Authentication application service
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -35,7 +40,7 @@ public class AuthApplicationService {
     private final UserOAuthBindingRepository userOAuthBindingRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
-    private final GoogleIdTokenVerifier googleIdTokenVerifier;
+    private final GoogleTokenVerifierPort googleTokenVerifierPort;
 
     @Transactional
     public User registerByEmail(RegisterByEmailCommand command) {
@@ -75,20 +80,24 @@ public class AuthApplicationService {
 
     @Transactional
     public User loginByGoogle(LoginByGoogleCommand command) {
+        // 1. 验证 Google ID 令牌
         // 1. Verify Google ID Token
-        GoogleIdTokenVerifier.GoogleUserInfo googleUserInfo = googleIdTokenVerifier.verify(command.idToken());
+        GoogleTokenVerifierPort.GoogleUserInfo googleUserInfo = googleTokenVerifierPort.verify(command.idToken());
 
+        // 2.通过邮箱查找用户
         // 2. Find user by email
         var existingUser = userRepository.findByEmail(googleUserInfo.email());
 
         if (existingUser.isPresent()) {
             User user = existingUser.get();
 
+            // 如果使用EMAIL注册，拒绝Google登录
             // If registered with EMAIL, reject Google login
             if (user.getAuthProvider() == OAuthProvider.EMAIL) {
                 throw new AuthException(AuthException.ErrorType.EMAIL_REGISTERED_WITH_PASSWORD);
             }
 
+            // 如果使用 GOOGLE 注册，则更新 OAuth 绑定并返回
             // If registered with GOOGLE, update OAuth binding and return
             if (user.getAuthProvider() == OAuthProvider.GOOGLE) {
                 updateOAuthBindingIfNeeded(user.getId(), googleUserInfo);
@@ -96,6 +105,7 @@ public class AuthApplicationService {
             }
         }
 
+        // 3.自动注册新用户
         // 3. Auto-register new user
         User user = User.create(googleUserInfo.email(), OAuthProvider.GOOGLE);
         User savedUser = userRepository.save(user);
@@ -122,7 +132,7 @@ public class AuthApplicationService {
         return savedUser;
     }
 
-    private void updateOAuthBindingIfNeeded(UUID userId, GoogleIdTokenVerifier.GoogleUserInfo googleUserInfo) {
+    private void updateOAuthBindingIfNeeded(UUID userId, GoogleTokenVerifierPort.GoogleUserInfo googleUserInfo) {
         var bindingOpt = userOAuthBindingRepository.findByProviderAndProviderUserId(
                 OAuthProvider.GOOGLE, googleUserInfo.providerUserId());
 
@@ -146,5 +156,63 @@ public class AuthApplicationService {
 
     public TokenPair generateTokenPair(User user) {
         return tokenService.generateTokenPair(user.getId().toString());
+    }
+
+    /**
+     * 刷新访问令牌
+     * Refresh access token
+     *
+     * @param refreshToken 刷新令牌 / Refresh token
+     * @return 新认证响应 / New authentication response
+     */
+    public AuthResponse refreshToken(String refreshToken) {
+        // 1. 验证刷新令牌
+        // 1. Validate refresh token
+        var validationResult = tokenService.validateTokenDetailed(refreshToken);
+
+        switch (validationResult) {
+            case EXPIRED -> throw new AuthException(AuthException.ErrorType.TOKEN_EXPIRED);
+            case INVALID -> throw new AuthException(AuthException.ErrorType.TOKEN_INVALID);
+        }
+
+        // 2. 解析用户ID
+        // 2. Parse user ID
+        String userId = tokenService.getUserIdFromToken(refreshToken);
+
+        // 3. 查库确认用户存在且未删除
+        // 3. Verify user exists and is not deleted
+        User user = userRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new AuthException(AuthException.ErrorType.INVALID_CREDENTIALS));
+
+        if (user.getStatus() == UserStatus.DELETED) {
+            throw new AuthException(AuthException.ErrorType.INVALID_CREDENTIALS);
+        }
+
+        // 4. 生成新令牌对
+        // 4. Generate new token pair
+        TokenPair tokens = tokenService.generateTokenPair(userId);
+
+        return AuthResponse.builder()
+                .userId(user.getId())
+                .email(user.getEmail())
+                .accessToken(tokens.getAccessToken())
+                .refreshToken(tokens.getRefreshToken())
+                .expiresIn(tokens.getExpiresIn())
+                .build();
+    }
+
+    /**
+     * 用户注销
+     * User logout
+     *
+     * @param accessToken 当前访问令牌 / Current access token
+     */
+    public void logout(String accessToken) {
+        // MVP 阶段：无状态 JWT，注销由前端完成缓存清理
+        // MVP stage: stateless JWT, logout is handled by frontend cache cleanup
+        // 若后续引入 Refresh Token 持久化表或 Redis 黑名单，在此标记 token 失效
+        // If Refresh Token persistence table or Redis blacklist is introduced later,
+        // mark the token as invalid here
+        log.info("User logout / 用户注销: token={}", accessToken);
     }
 }

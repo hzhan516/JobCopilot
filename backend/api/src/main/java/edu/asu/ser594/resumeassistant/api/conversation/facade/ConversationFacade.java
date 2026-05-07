@@ -53,8 +53,28 @@ public interface ConversationFacade {
     /**
      * 保存 AI 回复消息
      * Save AI reply message
+     *
+     * @param aiOptimizedMarkdown AI 优化后的简历 Markdown（可选）/ AI optimized resume markdown (optional)
      */
-    void saveAiReply(String conversationId, String content, String fileUrl);
+    void saveAiReply(String conversationId, String content, String fileUrl, String aiOptimizedMarkdown);
+
+    /**
+     * 完成 AI 流式回复并唤醒等待中的流请求
+     * Complete AI stream reply and wake up pending stream request.
+     *
+     * @param conversationId 对话 ID / Conversation ID
+     * @param content        AI 回复内容 / AI reply content
+     */
+    void completeAiReply(String conversationId, String content);
+
+    /**
+     * 标记 AI 流式回复失败并释放等待中的流连接
+     * Mark AI stream reply as failed and release pending stream connection.
+     *
+     * @param conversationId 对话 ID / Conversation ID
+     * @param errorMessage   错误信息 / Error message
+     */
+    void failAiReply(String conversationId, String errorMessage);
 
     /**
      * 上传对话附件到 MinIO

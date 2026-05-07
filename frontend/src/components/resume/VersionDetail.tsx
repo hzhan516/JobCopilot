@@ -1,17 +1,26 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ResumeVersion } from '../../types/resume';
+import type { ResumeVersion } from '@/types/resume.ts';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { Edit3, FileText, Briefcase, List } from 'lucide-react';
+import { Edit3, FileText, Briefcase, List, Copy, Play } from 'lucide-react';
+import { DownloadButton } from './DownloadButton';
 
 interface VersionDetailProps {
   version: ResumeVersion;
   onEdit: () => void;
+  /**
+   * 基于此版本创建副本 / Create a copy based on this version
+   */
+  onCreateCopy?: () => void;
+  /**
+   * 激活此版本 / Activate this version
+   */
+  onActivate?: () => void;
 }
 
-export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit }) => {
+export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit, onCreateCopy, onActivate }) => {
   const { t } = useTranslation();
   const { parsedContent, content, versionType, status, parseStatus } = version;
 
@@ -19,10 +28,12 @@ export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit })
     switch (parseStatus) {
       case 'COMPLETED':
         return <Badge variant="default" className="bg-green-500">{t('resume.versionDetail.parsed')}</Badge>;
-      case 'PROCESSING':
-        return <Badge variant="secondary" className="bg-blue-500 text-white">{t('resume.parseStatus.processing')}</Badge>;
+      case 'PARSING':
+        return <Badge variant="secondary" className="bg-blue-500 text-white">{t('resume.parseStatus.parsing')}</Badge>;
       case 'FAILED':
         return <Badge variant="destructive">{t('resume.parseStatus.failed')}</Badge>;
+      case 'NOT_APPLICABLE':
+        return null;
       default:
         return <Badge variant="outline">{t('resume.parseStatus.pending')}</Badge>;
     }
@@ -51,12 +62,30 @@ export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit })
           {status === 'ARCHIVED' && <Badge variant="secondary">{t('resume.timeline.archived')}</Badge>}
         </div>
         
-        {versionType !== 'ORIGINAL' && (
-          <Button onClick={onEdit} variant="outline" size="sm">
-            <Edit3 className="w-4 h-4 mr-2" />
-            {t('resume.versionDetail.editContent')}
-          </Button>
-        )}
+        <div className="flex items-center space-x-2">
+          <DownloadButton
+            versionId={version.versionId}
+            filename={`resume-${versionType.toLowerCase()}`}
+          />
+          {onCreateCopy && (
+            <Button onClick={onCreateCopy} variant="ghost" size="sm">
+              <Copy className="w-4 h-4 mr-2" />
+              {t('resume.versionDetail.createCopy')}
+            </Button>
+          )}
+          {onActivate && versionType !== 'ORIGINAL' && status === 'ARCHIVED' && (
+            <Button onClick={onActivate} variant="ghost" size="sm" className="text-green-600 hover:text-green-700 hover:bg-green-50">
+              <Play className="w-4 h-4 mr-2" />
+              {t('resume.versionDetail.setActive')}
+            </Button>
+          )}
+          {versionType !== 'ORIGINAL' && status === 'ACTIVE' && (
+            <Button onClick={onEdit} variant="outline" size="sm">
+              <Edit3 className="w-4 h-4 mr-2" />
+              {t('resume.versionDetail.editContent')}
+            </Button>
+          )}
+        </div>
       </div>
 
       {parsedContent && (

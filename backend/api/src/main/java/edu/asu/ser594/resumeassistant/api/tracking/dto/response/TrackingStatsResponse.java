@@ -5,13 +5,13 @@ package edu.asu.ser594.resumeassistant.api.tracking.dto.response;
  * Tracking stats response
  *
  * @param totalApplications 总申请数 / Total applications
- * @param pendingCount 待投递数 / Pending count
- * @param appliedCount 已投递数 / Applied count
+ * @param pendingCount      待投递数 / Pending count
+ * @param appliedCount      已投递数 / Applied count
  * @param interviewingCount 面试中数 / Interviewing count
- * @param offerCount 已收到offer数 / Offer count
- * @param rejectedCount 被拒绝数 / Rejected count
- * @param withdrawnCount 已撤回数 / Withdrawn count
- * @param successRate 成功率(%) / Success rate (%)
+ * @param offerCount        已收到offer数 / Offer count
+ * @param rejectedCount     被拒绝数 / Rejected count
+ * @param withdrawnCount    已撤回数 / Withdrawn count
+ * @param successRate       成功率(%) / Success rate (%)
  */
 public record TrackingStatsResponse(
         Long totalApplications,
@@ -22,4 +22,5 @@ public record TrackingStatsResponse(
         Long rejectedCount,
         Long withdrawnCount,
         Double successRate
-) {}
+) {
+}

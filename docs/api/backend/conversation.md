@@ -1,68 +1,75 @@
-# 对话管理 API
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](conversation.md) | [简体中文](../../i18n/zh-Hans-CN/api/backend/conversation.md) | [繁體中文](../../i18n/zh-Hant-TW/api/backend/conversation.md)
 
-> 基于简历上下文的多轮 AI 对话接口，支持异步 MQ 交互、附件上传与消息分页
+# Conversation Management API
 
----
-
-## 目录
-
-1. [创建对话](#1-创建对话)
-2. [发送消息](#2-发送消息)
-3. [获取对话详情](#3-获取对话详情)
-4. [获取对话列表](#4-获取对话列表)
-5. [关闭对话](#5-关闭对话)
-6. [删除对话](#6-删除对话)
-7. [上传附件](#7-上传附件)
-8. [异步消息流说明](#8-异步消息流说明)
-9. [错误码说明](#9-错误码说明)
+> Multi-turn AI conversation interfaces based on resume context, supporting asynchronous MQ interaction, attachment upload, and message pagination
 
 ---
 
-## 1. 创建对话
+## Table of Contents
 
-### 基本信息
+1. [Create Conversation](#1-create-conversation)
+2. [Send Message](#2-send-message)
+3. [Get Conversation Details](#3-get-conversation-details)
+4. [Get Conversation List](#4-get-conversation-list)
+5. [Close Conversation](#5-close-conversation)
+6. [Delete Conversation](#6-delete-conversation)
+7. [Upload Attachment](#7-upload-attachment)
+8. [Stream AI Reply](#8-stream-ai-reply)
+9. [Async Message Flow Description](#9-async-message-flow-description)
+10. [Error Code Description](#10-error-code-description)
 
-| 项目 | 值 |
-|------|-----|
-| **接口名称** | 创建对话 |
-| **接口路径** | `POST /api/v1/conversations` |
-| **是否需要认证** | 是 |
+---
+
+## 1. Create Conversation
+
+### Basic Information
+
+| Item | Value |
+|------|-------|
+| **Interface Name** | Create Conversation |
+| **Interface Path** | `POST /api/v1/conversations` |
+| **Authentication Required** | Yes |
 | **Content-Type** | `application/json` |
 
-### 请求结构
+### Request Structure
 
 #### Request Body
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `title` | String | 否 | 对话标题，不传则默认为 "New Conversation" |
-| `resumeVersionId` | String (UUID) | 否 | 关联的简历版本 ID |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | String | No | Conversation title, defaults to "New Conversation" if not provided |
+| `resumeVersionId` | String (UUID) | No | Associated resume version ID. If provided, `jobId` must also be provided |
+| `jobId` | String (UUID) | No | Associated job ID. If provided, `resumeVersionId` must also be provided |
 
-#### 请求示例
+#### Request Example
 
 ```json
 {
-  "title": "优化工作经验",
-  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002"
+  "title": "Optimize Work Experience",
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
+  "jobId": "550e8400-e29b-41d4-a716-446655440010"
 }
 ```
 
-### 响应结构
+### Response Structure
 
-#### 成功响应 (200)
+#### Success Response (200)
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `conversationId` | String (UUID) | 对话唯一标识 |
-| `userId` | String (UUID) | 用户 ID |
-| `title` | String | 对话标题 |
-| `status` | String | 状态：ACTIVE, CLOSED |
-| `resumeVersionId` | String (UUID) | 关联简历版本 ID |
-| `messages` | Array | 消息列表（新建时为空） |
-| `createdAt` | String (ISO 8601) | 创建时间 |
-| `updatedAt` | String (ISO 8601) | 更新时间 |
+| Field | Type | Description |
+|-------|------|-------------|
+| `conversationId` | String (UUID) | Conversation unique identifier |
+| `userId` | String (UUID) | User ID |
+| `title` | String | Conversation title |
+| `status` | String | Status: ACTIVE, CLOSED |
+| `resumeVersionId` | String (UUID) | Associated resume version ID |
+| `jobId` | String (UUID) | Associated job ID |
+| `messages` | Array | Message list (empty when newly created) |
+| `createdAt` | String (ISO 8601) | Creation time |
+| `updatedAt` | String (ISO 8601) | Update time |
 
-#### 响应示例
+#### Response Example
 
 ```json
 {
@@ -71,9 +78,10 @@
   "data": {
     "conversationId": "550e8400-e29b-41d4-a716-446655440003",
     "userId": "550e8400-e29b-41d4-a716-446655440000",
-    "title": "优化工作经验",
+    "title": "Optimize Work Experience",
     "status": "ACTIVE",
     "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
+    "jobId": "550e8400-e29b-41d4-a716-446655440010",
     "messages": [],
     "createdAt": "2024-01-15T10:30:00",
     "updatedAt": "2024-01-15T10:30:00"
@@ -83,33 +91,33 @@
 
 ---
 
-## 2. 发送消息
+## 2. Send Message
 
-### 基本信息
+### Basic Information
 
-| 项目 | 值 |
-|------|-----|
-| **接口名称** | 发送消息 |
-| **接口路径** | `POST /api/v1/conversations/{conversationId}/messages` |
-| **是否需要认证** | 是 |
+| Item | Value |
+|------|-------|
+| **Interface Name** | Send Message |
+| **Interface Path** | `POST /api/v1/conversations/{conversationId}/messages` |
+| **Authentication Required** | Yes |
 | **Content-Type** | `application/json` |
 
-### 请求结构
+### Request Structure
 
 #### Path Parameters
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `conversationId` | String (UUID) | 是 | 对话唯一标识 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `conversationId` | String (UUID) | Yes | Conversation unique identifier |
 
 #### Request Body
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `content` | String | 是 | 消息内容 |
-| `fileUrls` | List<String> | 否 | 关联文件 URL 列表（如简历、附件等） |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `content` | String | Yes | Message content |
+| `fileUrls` | List<String> | No | Associated file URL list (e.g. resumes, attachments, etc.) |
 
-#### 请求示例
+#### Request Example
 
 ```json
 {
@@ -118,15 +126,15 @@
 }
 ```
 
-### 响应结构
+### Response Structure
 
-#### 成功响应 (200)
+#### Success Response (200)
 
-返回更新后的完整对话信息，包含新增的用户消息。**注意**：AI 回复通过异步 MQ 处理，不会立即出现在响应中，前端需要通过轮询或 WebSocket 获取最新回复。
+Returns the updated complete conversation information, including the newly added user message. **Note**: The AI reply is processed asynchronously via MQ and will not appear in the response immediately; the frontend needs to poll or use WebSocket to get the latest reply.
 
-若创建对话时未指定标题，且这是该对话的**第一条消息**，系统会自动将对话标题设置为消息内容的前 30 个字符。
+If no title was specified when creating the conversation, and this is the **first message** in the conversation, the system will automatically set the conversation title to the first 30 characters of the message content.
 
-#### 响应示例
+#### Response Example
 
 ```json
 {
@@ -156,56 +164,56 @@
 
 ---
 
-## 3. 获取对话详情
+## 3. Get Conversation Details
 
-### 基本信息
+### Basic Information
 
-| 项目 | 值 |
-|------|-----|
-| **接口名称** | 获取对话详情 |
-| **接口路径** | `GET /api/v1/conversations/{conversationId}` |
-| **是否需要认证** | 是 |
+| Item | Value |
+|------|-------|
+| **Interface Name** | Get Conversation Details |
+| **Interface Path** | `GET /api/v1/conversations/{conversationId}` |
+| **Authentication Required** | Yes |
 
-### 请求结构
+### Request Structure
 
 #### Path Parameters
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `conversationId` | String (UUID) | 是 | 对话唯一标识 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `conversationId` | String (UUID) | Yes | Conversation unique identifier |
 
 #### Query Parameters
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `page` | Integer | 否 | 消息页码，从 0 开始 |
-| `size` | Integer | 否 | 每页消息数量，默认返回全部 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `page` | Integer | No | Message page number, starting from 0 |
+| `size` | Integer | No | Messages per page, returns all by default |
 
-### 响应结构
+### Response Structure
 
-#### 成功响应 (200)
+#### Success Response (200)
 
-返回完整的对话信息，包括所有消息列表（按 `sequence` 升序排列）。若传入了 `page` 和 `size`，仅返回指定分页范围的消息。若 AI 已回复，消息列表中会包含 `role=ASSISTANT` 的消息，且可能带有 `fileUrl`。
+Returns complete conversation information, including all message lists (sorted by `sequence` ascending). If `page` and `size` are provided, only messages in the specified pagination range are returned. If the AI has replied, the message list will contain messages with `role=ASSISTANT`, and may include `fileUrl`.
 
 ---
 
-## 4. 获取对话列表
+## 4. Get Conversation List
 
-### 基本信息
+### Basic Information
 
-| 项目 | 值 |
-|------|-----|
-| **接口名称** | 获取对话列表 |
-| **接口路径** | `GET /api/v1/conversations` |
-| **是否需要认证** | 是 |
+| Item | Value |
+|------|-------|
+| **Interface Name** | Get Conversation List |
+| **Interface Path** | `GET /api/v1/conversations` |
+| **Authentication Required** | Yes |
 
-### 响应结构
+### Response Structure
 
-#### 成功响应 (200)
+#### Success Response (200)
 
-返回当前用户的所有对话列表（不包含消息详情）。
+Returns all conversation lists for the current user (without message details).
 
-#### 响应示例
+#### Response Example
 
 ```json
 {
@@ -227,27 +235,27 @@
 
 ---
 
-## 5. 关闭对话
+## 5. Close Conversation
 
-### 基本信息
+### Basic Information
 
-| 项目 | 值 |
-|------|-----|
-| **接口名称** | 关闭对话 |
-| **接口路径** | `PUT /api/v1/conversations/{conversationId}/close` |
-| **是否需要认证** | 是 |
+| Item | Value |
+|------|-------|
+| **Interface Name** | Close Conversation |
+| **Interface Path** | `PUT /api/v1/conversations/{conversationId}/close` |
+| **Authentication Required** | Yes |
 
-### 请求结构
+### Request Structure
 
 #### Path Parameters
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `conversationId` | String (UUID) | 是 | 对话唯一标识 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `conversationId` | String (UUID) | Yes | Conversation unique identifier |
 
-### 响应结构
+### Response Structure
 
-#### 成功响应 (200)
+#### Success Response (200)
 
 ```json
 {
@@ -259,27 +267,27 @@
 
 ---
 
-## 6. 删除对话
+## 6. Delete Conversation
 
-### 基本信息
+### Basic Information
 
-| 项目 | 值 |
-|------|-----|
-| **接口名称** | 删除对话 |
-| **接口路径** | `DELETE /api/v1/conversations/{conversationId}` |
-| **是否需要认证** | 是 |
+| Item | Value |
+|------|-------|
+| **Interface Name** | Delete Conversation |
+| **Interface Path** | `DELETE /api/v1/conversations/{conversationId}` |
+| **Authentication Required** | Yes |
 
-### 请求结构
+### Request Structure
 
 #### Path Parameters
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `conversationId` | String (UUID) | 是 | 对话唯一标识 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `conversationId` | String (UUID) | Yes | Conversation unique identifier |
 
-### 响应结构
+### Response Structure
 
-#### 成功响应 (200)
+#### Success Response (200)
 
 ```json
 {
@@ -291,36 +299,36 @@
 
 ---
 
-## 7. 上传附件
+## 7. Upload Attachment
 
-### 基本信息
+### Basic Information
 
-| 项目 | 值 |
-|------|-----|
-| **接口名称** | 上传对话附件 |
-| **接口路径** | `POST /api/v1/conversations/{conversationId}/files` |
-| **是否需要认证** | 是 |
+| Item | Value |
+|------|-------|
+| **Interface Name** | Upload Conversation Attachment |
+| **Interface Path** | `POST /api/v1/conversations/{conversationId}/files` |
+| **Authentication Required** | Yes |
 | **Content-Type** | `multipart/form-data` |
 
-### 请求结构
+### Request Structure
 
 #### Path Parameters
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `conversationId` | String (UUID) | 是 | 对话唯一标识 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `conversationId` | String (UUID) | Yes | Conversation unique identifier |
 
 #### Request Body (form-data)
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `file` | File | 是 | 附件文件（如 AI 生成的优化简历） |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file` | File | Yes | Attachment file (e.g. AI-generated optimized resume) |
 
-### 响应结构
+### Response Structure
 
-#### 成功响应 (200)
+#### Success Response (200)
 
-返回文件上传成功后的 MinIO 预签名 URL。
+Returns a temporary storage URL after successful file upload.
 
 ```json
 {
@@ -332,23 +340,100 @@
 
 ---
 
-## 8. 异步消息流说明
+## 8. Stream AI Reply
 
-### 8.1 对话 AI 请求流
+### Basic Information
 
-当用户调用【发送消息】接口后，后端会执行以下异步流程：
+| Item | Value |
+|------|-------|
+| **Interface Name** | Stream AI Reply |
+| **Interface Path** | `GET /api/v1/conversations/{conversationId}/stream` |
+| **Authentication Required** | Yes |
+| **Content-Type** | `text/plain` (streaming response) |
 
-1. 保存用户消息（`role=USER`）到数据库
-2. 若对话标题为默认值且是首条消息，自动生成标题
-3. 组装 `ConversationRequestCommand`，包含历史消息、当前消息、fileUrls、resumeVersionId
-4. 通过 RabbitMQ 发送到 `ai.req.conversation` 队列
-5. Python AI 服务消费该消息，生成回复
-6. AI 服务将结果发送到 `backend.res.conversation` 队列
-7. `AiResultMessageListener` 监听到 `CONVERSATION_REPLY` 类型事件，保存 AI 回复（`role=ASSISTANT`）到数据库
+### Request Structure
 
-### 8.2 发送给 AI 服务的数据格式
+#### Path Parameters
 
-**请求消息 (`ConversationRequestCommand`)**：
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `conversationId` | String (UUID) | Yes | Conversation unique identifier |
+
+#### Request Headers
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `Authorization` | Yes | `Bearer {JWT Token}` |
+
+### Response Structure
+
+#### Success Response (200)
+
+Returns a `text/plain` streaming response. The HTTP connection remains open until the AI reply is generated.
+
+> **Note: Current implementation is pseudo-streaming.**
+> The AI Service generates the complete reply synchronously and sends it back via MQ as a single event.
+> The backend holds the HTTP connection open, waits for the MQ reply, and then writes the complete content
+> into the response stream in one go. The frontend experiences a loading state followed by the full reply
+> arriving at once.
+>
+> To upgrade to true token-by-token streaming in the future:
+> 1. Update the AI Service layer to use Gemini's `generate_content_stream()` API.
+> 2. Expose a new REST streaming endpoint in the AI Service (e.g. `/api/v1/conversation/stream`).
+> 3. Have the backend call the AI Service's streaming endpoint directly via `WebClient` or `RestTemplate`,
+>    and proxy each chunk to the frontend through the existing `StreamingResponseBody` infrastructure.
+> 4. The MQ path can be kept for non-streaming scenarios or retired.
+
+#### Calling Sequence
+
+1. Call `POST /api/v1/conversations/{conversationId}/messages` to send the user message.
+2. Immediately call `GET /api/v1/conversations/{conversationId}/stream` to wait for the AI reply.
+3. The connection stays open (default timeout: 60 seconds).
+4. When the AI reply is ready, the complete text is written to the stream and the connection closes.
+
+#### Response Example (Streaming)
+
+```text
+Based on your resume, I suggest optimizing your work experience section from the following aspects...
+```
+
+#### Timeout Behavior
+
+If the AI reply is not generated within 60 seconds, the stream will close and return a timeout message:
+
+```text
+AI reply timed out. Please try again later.
+AI 回复超时，请稍后重试。
+```
+
+### Error Codes
+
+| Status Code | Meaning | Trigger Scenario |
+|-------------|---------|------------------|
+| `401` | Not authenticated | Missing or expired JWT Token |
+| `403` | Insufficient permissions | Attempting to access a conversation that does not belong to you |
+| `404` | Resource does not exist | Conversation ID does not exist |
+
+---
+
+## 9. Async Message Flow Description
+
+### 8.1 Conversation AI Request Flow
+
+After the user calls the [Send Message] interface, the backend executes the following asynchronous flow:
+
+1. Save user message (`role=USER`) to the database
+2. If the conversation title is the default value and this is the first message, automatically generate the title
+3. Assemble `ConversationRequestCommand`, including history messages, current message, resumeVersionId, resumeText, primaryJobText, relatedJobTexts, init flag, and locale
+4. Send via RabbitMQ to the `ai.req.conversation` queue
+5. Python AI service consumes the message and generates a reply
+6. AI service sends the result to the `backend.res.conversation` queue
+7. `AiResultMessageListener` listens for `CONVERSATION_REPLY` type events and saves the AI reply (`role=ASSISTANT`) to the database
+8. If the AI result includes `resumeModification.modified=true`, the backend creates or updates an `AI_OPTIMIZED` resume version and appends the optimized Markdown to the assistant message content
+
+### 8.2 Data Format Sent to AI Service
+
+**Request Message (`ConversationRequestCommand`)**:
 
 ```json
 {
@@ -358,23 +443,33 @@
     { "role": "USER", "content": "帮我优化一下项目经验部分", "fileUrl": null }
   ],
   "currentMessage": "帮我优化一下项目经验部分",
-  "fileUrls": ["https://minio.example.com/resumes/xxx.pdf"],
-  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002"
+  "fileUrls": [],
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
+  "resumeText": "# Resume Markdown...",
+  "primaryJobText": "Software Engineer\nExample Corp\nJob description...",
+  "relatedJobTexts": ["Backend Engineer\nExample Corp\nRelated job description..."],
+  "init": true,
+  "locale": "zh-TW"
 }
 ```
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `conversationId` | String | 对话 ID |
-| `userId` | String | 用户 ID |
-| `messageHistory` | List<Map> | 历史消息列表（role, content, fileUrl） |
-| `currentMessage` | String | 当前用户发送的最新消息 |
-| `fileUrls` | List<String> | 用户引用的外部文件 URL 列表 |
-| `resumeVersionId` | String | 关联简历版本 ID（可选） |
+| Field | Type | Description |
+|-------|------|-------------|
+| `conversationId` | String | Conversation ID |
+| `userId` | String | User ID |
+| `messageHistory` | List<Map> | Historical message list (role, content, fileUrl) |
+| `currentMessage` | String | Latest message sent by the user |
+| `fileUrls` | List<String> | File URL list sent to the AI service; current backend context requests send an empty list |
+| `resumeVersionId` | String | Associated resume version ID (optional) |
+| `resumeText` | String | Resume Markdown/text loaded from the selected resume version or conversation AI working copy |
+| `primaryJobText` | String | Current job text loaded from the conversation job ID |
+| `relatedJobTexts` | List<String> | Up to five other completed job texts for context |
+| `init` | Boolean | Whether this request is the first AI initialization for the conversation |
+| `locale` | String | User interface locale, e.g. `en`, `zh-CN`, or `zh-TW` |
 
-### 8.3 接收 AI 回复的数据格式
+### 8.3 Data Format for Receiving AI Replies
 
-**响应消息 (`AiResultEvent`，type=`CONVERSATION_REPLY`)**：
+**Response Message (`AiResultEvent`, type=`CONVERSATION_REPLY`)**:
 
 ```json
 {
@@ -383,41 +478,47 @@
   "status": "COMPLETED",
   "data": {
     "content": "根据您的简历，我建议从以下几个方面优化工作经验...",
-    "fileUrl": "https://minio.example.com/conversations/xxx/optimized_resume.pdf"
+    "fileUrl": null,
+    "resumeModification": {
+      "modified": true,
+      "markdown": "# Optimized Resume\n\n..."
+    }
   },
   "errorMessage": null,
   "eventType": null
 }
 ```
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `referenceId` | String | 对话 ID |
-| `type` | String | 固定为 `CONVERSATION_REPLY` |
-| `status` | String | `COMPLETED` 或 `FAILED` |
-| `data.content` | String | AI 回复文本 |
-| `data.fileUrl` | String | AI 生成文件的 URL（可选） |
-| `errorMessage` | String | 失败原因（`status=FAILED` 时存在） |
+| Field | Type | Description |
+|-------|------|-------------|
+| `referenceId` | String | Conversation ID |
+| `type` | String | Fixed as `CONVERSATION_REPLY` |
+| `status` | String | `COMPLETED` or `FAILED` |
+| `data.content` | String | AI reply text |
+| `data.fileUrl` | String | AI generated file URL (optional) |
+| `data.resumeModification.modified` | Boolean | Whether the AI rewrote or optimized the resume |
+| `data.resumeModification.markdown` | String | Full optimized resume Markdown when `modified=true` |
+| `errorMessage` | String | Failure reason (exists when `status=FAILED`) |
 
 ---
 
-## 9. 错误码说明
+## 10. Error Code Description
 
-### 通用错误码
+### Common Error Codes
 
-| 状态码 | 含义 | 触发场景 |
-|--------|------|----------|
-| `200` | 成功 | 请求处理成功 |
-| `400` | 请求参数错误 | 消息内容为空、UUID 格式错误、分页参数非法 |
-| `401` | 未认证 | 缺少 JWT Token 或 Token 已过期 |
-| `403` | 权限不足 | 尝试操作不属于自己的对话 |
-| `404` | 资源不存在 | 对话 ID 不存在、简历版本 ID 不存在 |
-| `409` | 业务冲突 | 向已关闭的对话发送消息 |
-| `500` | 服务器内部错误 | 文件上传失败、MQ 发送异常 |
+| Status Code | Meaning | Trigger Scenario |
+|-------------|---------|------------------|
+| `200` | Success | Request processed successfully |
+| `400` | Request parameter error | Message content empty, UUID format error, invalid pagination parameters |
+| `401` | Not authenticated | Missing JWT Token or Token expired |
+| `403` | Insufficient permissions | Attempting to operate a conversation that does not belong to you |
+| `404` | Resource does not exist | Conversation ID does not exist, resume version ID does not exist |
+| `409` | Business conflict | Sending a message to a closed conversation |
+| `500` | Internal server error | File upload failure, MQ send exception |
 
-### 业务错误示例
+### Business Error Examples
 
-**向已关闭对话发送消息 (409)**：
+**Send message to closed conversation (409)**:
 
 ```json
 {
@@ -427,7 +528,7 @@
 }
 ```
 
-**访问不属于自己的对话 (403)**：
+**Access conversation not belonging to you (403)**:
 
 ```json
 {
@@ -437,7 +538,7 @@
 }
 ```
 
-**对话不存在 (404)**：
+**Conversation does not exist (404)**:
 
 ```json
 {
@@ -447,7 +548,7 @@
 }
 ```
 
-**无效的简历版本 (400)**：
+**Invalid resume version (400)**:
 
 ```json
 {
@@ -459,50 +560,62 @@
 
 ---
 
-## DTO 定义
+## DTO Definitions
 
-### CreateConversationRequest (创建对话请求)
+### CreateConversationRequest (Create Conversation Request)
 
 ```java
 {
-  "title": String,          // 可选，对话标题
-  "resumeVersionId": String // 可选，简历版本 ID
+  "title": String,          // Optional, conversation title
+  "resumeVersionId": String, // Optional, but must be provided with jobId
+  "jobId": String           // Optional, but must be provided with resumeVersionId
 }
 ```
 
-### SendMessageRequest (发送消息请求)
+### SendMessageRequest (Send Message Request)
 
 ```java
 {
-  "content": String,         // 必填，消息内容
-  "fileUrls": List<String>   // 可选，关联文件 URL 列表
+  "content": String,         // Required, message content
+  "fileUrls": List<String>   // Optional, associated file URL list
 }
 ```
 
-### ConversationResponse (对话响应)
+### ConversationResponse (Conversation Response)
 
 ```java
 {
-  "conversationId": String,   // 对话 ID
-  "userId": String,           // 用户 ID
-  "title": String,            // 标题
+  "conversationId": String,   // Conversation ID
+  "userId": String,           // User ID
+  "title": String,            // Title
   "status": String,           // ACTIVE / CLOSED
-  "resumeVersionId": String,  // 关联简历版本 ID
-  "messages": MessageResponse[], // 消息列表（可能已分页）
-  "createdAt": LocalDateTime, // 创建时间
-  "updatedAt": LocalDateTime  // 更新时间
+  "resumeVersionId": String,  // Associated resume version ID
+  "jobId": String,            // Associated job ID
+  "messages": MessageResponse[], // Message list (may be paginated)
+  "createdAt": LocalDateTime, // Creation time
+  "updatedAt": LocalDateTime  // Update time
 }
 ```
 
-### MessageResponse (消息响应)
+### MessageResponse (Message Response)
 
 ```java
 {
-  "messageId": String,        // 消息 ID
+  "messageId": String,        // Message ID
   "role": String,             // USER / ASSISTANT / SYSTEM
-  "content": String,          // 内容
-  "sequence": Integer,        // 序号
-  "fileUrl": String,          // 关联文件 URL（AI 生成文件等）
-  "createdAt": LocalDateTime  // 创建时间
+  "content": String,          // Content
+  "sequence": int,            // Sequence number
+  "fileUrl": String,          // Associated file URL (AI generated files, etc.)
+  "createdAt": LocalDateTime  // Creation time
 }
 ```
+
+
+---
+
+## Notes
+
+### Frontend Streaming Interface Call
+
+The frontend `chatService.ts` calls `GET /v1/conversations/{conversationId}/stream` via `fetch` + `ReadableStream`.
+See [8. Stream AI Reply](#8-stream-ai-reply) for the backend endpoint documentation.

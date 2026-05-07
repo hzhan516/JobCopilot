@@ -1,60 +1,58 @@
-from google import genai
-from google.genai import types
+import litellm
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
+# Embedding generation utilities for vector workflows.
 
 from app.config import (
-    EMBEDDING_OUTPUT_DIMENSION,
-    GEMINI_EMBEDDING_MODEL,
-    GOOGLE_CLOUD_PROJECT,
-    VERTEX_AI_LOCATION,
+    LLM_EMBEDDING_MODEL,
+    LLM_EMBEDDING_MODEL_DIMENSION,
+    LLM_REQUEST_TIMEOUT_SECONDS,
 )
-from app.schemas import AiResultEvent, VectorGenCommand
+from app.schemas import AiResultEvent
 
 
-def _get_vertex_client() -> genai.Client:
-    return genai.Client(
-        vertexai=True,
-        project=GOOGLE_CLOUD_PROJECT,
-        location=VERTEX_AI_LOCATION,
-    )
+# Shared retry policy for embedding calls.
+RETRY_STRATEGY = retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_exception_type((
+        litellm.exceptions.RateLimitError,
+        litellm.exceptions.APIConnectionError,
+        litellm.exceptions.Timeout
+    ))
+)
 
-
+# Generate an embedding vector for the provided text.
+@RETRY_STRATEGY
 def generate_embedding(text: str) -> list[float]:
     cleaned_text = text.strip()
 
     if not cleaned_text:
         raise ValueError("Input text for vector generation is empty.")
 
-    client = _get_vertex_client()
-    response = client.models.embed_content(
-        model=GEMINI_EMBEDDING_MODEL,
-        contents=[cleaned_text],
-        config=types.EmbedContentConfig(
-            task_type="RETRIEVAL_DOCUMENT",
-            output_dimensionality=EMBEDDING_OUTPUT_DIMENSION,
-        ),
+    response = litellm.embedding(
+        model=LLM_EMBEDDING_MODEL,
+        input=[cleaned_text],
+        dimensions=LLM_EMBEDDING_MODEL_DIMENSION,
+        timeout=LLM_REQUEST_TIMEOUT_SECONDS,
     )
 
-    if not response.embeddings:
-        raise ValueError("Vertex AI returned no embeddings.")
+    if not response.data:
+        raise ValueError("LiteLLM returned no embeddings.")
 
-    embedding = response.embeddings[0].values
-    if not embedding:
-        raise ValueError("Vertex AI returned an empty embedding vector.")
+    emb_item = response.data[0]
+    emb = emb_item["embedding"] if isinstance(emb_item, dict) else emb_item.embedding
 
-    return [float(value) for value in embedding]
+    if not emb:
+        raise ValueError("LiteLLM returned no embeddings.")
+
+    if len(emb) != LLM_EMBEDDING_MODEL_DIMENSION:
+        raise ValueError(
+            "Embedding dimension mismatch: "
+            f"expected {LLM_EMBEDDING_MODEL_DIMENSION}, got {len(emb)}"
+        )
+
+    return emb
 
 
-def process_vector(command: VectorGenCommand) -> AiResultEvent:
-    embedding = generate_embedding(command.text)
 
-    return AiResultEvent(
-        referenceId=command.reference_id,
-        type="VECTOR_GEN",
-        status="COMPLETED",
-        data={
-            "embedding": embedding,
-            "entityType": command.entity_type,
-        },
-        errorMessage=None,
-        eventType=command.entity_type,
-    )

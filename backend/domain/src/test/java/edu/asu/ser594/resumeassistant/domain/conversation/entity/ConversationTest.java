@@ -26,7 +26,7 @@ class ConversationTest {
     @Test
     @DisplayName("Should create conversation with factory method and default title")
     void shouldCreateConversationWithFactoryMethodAndDefaultTitle() {
-        Conversation conversation = Conversation.create(TEST_USER_ID, null, TEST_RESUME_VERSION_ID);
+        Conversation conversation = Conversation.create(TEST_USER_ID, null, TEST_RESUME_VERSION_ID, null);
 
         assertThat(conversation).isNotNull();
         assertThat(conversation.getId()).isNotNull();
@@ -40,7 +40,7 @@ class ConversationTest {
     @Test
     @DisplayName("Should create conversation with custom title")
     void shouldCreateConversationWithCustomTitle() {
-        Conversation conversation = Conversation.create(TEST_USER_ID, "Custom Title", null);
+        Conversation conversation = Conversation.create(TEST_USER_ID, "Custom Title", null, null);
 
         assertThat(conversation.getTitle()).isEqualTo("Custom Title");
         assertThat(conversation.getResumeVersionId()).isNull();
@@ -49,7 +49,7 @@ class ConversationTest {
     @Test
     @DisplayName("Should add message to active conversation")
     void shouldAddMessageToActiveConversation() {
-        Conversation conversation = Conversation.create(TEST_USER_ID, null, null);
+        Conversation conversation = Conversation.create(TEST_USER_ID, null, null, null);
         conversation.addMessage(MessageRole.USER, "Hello");
 
         assertThat(conversation.getMessages()).hasSize(1);
@@ -61,7 +61,7 @@ class ConversationTest {
     @Test
     @DisplayName("Should add message with file URL")
     void shouldAddMessageWithFileUrl() {
-        Conversation conversation = Conversation.create(TEST_USER_ID, null, null);
+        Conversation conversation = Conversation.create(TEST_USER_ID, null, null, null);
         conversation.addMessage(MessageRole.ASSISTANT, "Here is your file", "https://minio.example.com/file.pdf");
 
         assertThat(conversation.getMessages()).hasSize(1);
@@ -71,7 +71,7 @@ class ConversationTest {
     @Test
     @DisplayName("Should assign incremental sequence to messages")
     void shouldAssignIncrementalSequenceToMessages() {
-        Conversation conversation = Conversation.create(TEST_USER_ID, null, null);
+        Conversation conversation = Conversation.create(TEST_USER_ID, null, null, null);
         conversation.addMessage(MessageRole.USER, "First");
         conversation.addMessage(MessageRole.ASSISTANT, "Second");
         conversation.addMessage(MessageRole.USER, "Third");
@@ -85,7 +85,7 @@ class ConversationTest {
     @Test
     @DisplayName("Should throw exception when adding message to closed conversation")
     void shouldThrowExceptionWhenAddingMessageToClosedConversation() {
-        Conversation conversation = Conversation.create(TEST_USER_ID, null, null);
+        Conversation conversation = Conversation.create(TEST_USER_ID, null, null, null);
         conversation.close();
 
         assertThatThrownBy(() -> conversation.addMessage(MessageRole.USER, "Hello"))
@@ -96,7 +96,7 @@ class ConversationTest {
     @Test
     @DisplayName("Should close conversation and update status")
     void shouldCloseConversationAndUpdateStatus() {
-        Conversation conversation = Conversation.create(TEST_USER_ID, null, null);
+        Conversation conversation = Conversation.create(TEST_USER_ID, null, null, null);
         conversation.close();
 
         assertThat(conversation.getStatus()).isEqualTo(ConversationStatus.CLOSED);
@@ -107,7 +107,7 @@ class ConversationTest {
     void shouldVerifyOwnershipCorrectly() {
         UUID ownerId = UUID.randomUUID();
         UUID otherId = UUID.randomUUID();
-        Conversation conversation = Conversation.create(ownerId, null, null);
+        Conversation conversation = Conversation.create(ownerId, null, null, null);
 
         assertThat(conversation.isOwnedBy(ownerId)).isTrue();
         assertThat(conversation.isOwnedBy(otherId)).isFalse();
@@ -116,7 +116,7 @@ class ConversationTest {
     @Test
     @DisplayName("Should auto-generate title from first message")
     void shouldAutoGenerateTitleFromFirstMessage() {
-        Conversation conversation = Conversation.create(TEST_USER_ID, null, null);
+        Conversation conversation = Conversation.create(TEST_USER_ID, null, null, null);
         conversation.autoGenerateTitle("帮我优化一下项目经验部分的内容和结构，以及技术栈的描述和亮点提炼");
 
         assertThat(conversation.getTitle()).isEqualTo("帮我优化一下项目经验部分的内容和结构，以及技术栈的描述和亮点...");
@@ -125,7 +125,7 @@ class ConversationTest {
     @Test
     @DisplayName("Should not override custom title when auto-generating")
     void shouldNotOverrideCustomTitleWhenAutoGenerating() {
-        Conversation conversation = Conversation.create(TEST_USER_ID, "Custom Title", null);
+        Conversation conversation = Conversation.create(TEST_USER_ID, "Custom Title", null, null);
         conversation.autoGenerateTitle("New message content");
 
         assertThat(conversation.getTitle()).isEqualTo("Custom Title");
@@ -134,7 +134,7 @@ class ConversationTest {
     @Test
     @DisplayName("Should auto-generate title without truncation for short message")
     void shouldAutoGenerateTitleWithoutTruncationForShortMessage() {
-        Conversation conversation = Conversation.create(TEST_USER_ID, null, null);
+        Conversation conversation = Conversation.create(TEST_USER_ID, null, null, null);
         conversation.autoGenerateTitle("Short msg");
 
         assertThat(conversation.getTitle()).isEqualTo("Short msg");
@@ -149,7 +149,7 @@ class ConversationTest {
 
         Conversation conversation = Conversation.reconstruct(
                 id, userId, "Reconstructed", ConversationStatus.ACTIVE,
-                resumeVersionId, LocalDateTime.now(), LocalDateTime.now(),
+                resumeVersionId, null, null, LocalDateTime.now(), LocalDateTime.now(),
                 Collections.emptyList()
         );
 

@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useResumeStore } from '../../store/resume.store';
+import { useResumeStore } from '@/store/resume.store.ts';
 import { MarkdownEditor } from '../../components/resume/MarkdownEditor';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '../../components/ui/button';
+import { toast } from 'sonner';
 
 export default function ResumeEdit() {
   const { t } = useTranslation();
@@ -17,6 +18,26 @@ export default function ResumeEdit() {
       fetchGroupDetail(groupId);
     }
   }, [groupId, currentGroup, fetchGroupDetail]);
+
+  const version = currentGroup?.versions.find((v) => v.versionId === versionId);
+
+  const handleSave = async (content: string) => {
+    if (versionId) {
+      await saveVersion(versionId, content);
+      toast.success(t('resume.markdownEditor.autoSaveSuccess'));
+      navigate(`/resumes/${groupId}`);
+    }
+  };
+
+  const handleAutoSave = useCallback(async (content: string) => {
+    if (versionId) {
+      await saveVersion(versionId, content);
+    }
+  }, [versionId, saveVersion]);
+
+  const handleCancel = () => {
+    navigate(`/resumes/${groupId}`);
+  };
 
   if (loading && !currentGroup) {
     return (
@@ -35,8 +56,6 @@ export default function ResumeEdit() {
     );
   }
 
-  const version = currentGroup.versions.find(v => v.versionId === versionId);
-
   if (!version) {
     return (
       <div className="text-center py-12">
@@ -45,17 +64,6 @@ export default function ResumeEdit() {
       </div>
     );
   }
-
-  const handleSave = async (content: string) => {
-    if (versionId) {
-      await saveVersion(versionId, content);
-      navigate(`/resumes/${groupId}`);
-    }
-  };
-
-  const handleCancel = () => {
-    navigate(`/resumes/${groupId}`);
-  };
 
   return (
     <div className="container mx-auto py-6 space-y-6 h-[calc(100vh-4rem)] flex flex-col">
@@ -77,6 +85,8 @@ export default function ResumeEdit() {
           versionId={version.versionId}
           onSave={handleSave}
           onCancel={handleCancel}
+          onAutoSave={version.status === 'ACTIVE' ? handleAutoSave : undefined}
+          readOnly={version.status !== 'ACTIVE'}
         />
       </div>
     </div>

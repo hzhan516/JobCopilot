@@ -1,5 +1,8 @@
 package edu.asu.ser594.resumeassistant.application.resume.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
+import edu.asu.ser594.resumeassistant.application.resume.command.CreateVersionCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeEditCommand;
 import edu.asu.ser594.resumeassistant.application.resume.command.ResumeUploadCommand;
 import edu.asu.ser594.resumeassistant.application.resume.dto.ResumeDownloadResult;
@@ -8,15 +11,14 @@ import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeGroupRepository;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
-import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
+import edu.asu.ser594.resumeassistant.domain.resume.valueobject.ParseStatus;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ResumeParseCommand;
-import edu.asu.ser594.resumeassistant.domain.shared.event.ai.VectorGenCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.exception.StorageException;
+import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import edu.asu.ser594.resumeassistant.domain.shared.service.DocumentFormatConverter;
 import edu.asu.ser594.resumeassistant.domain.shared.service.FileStorageService;
 import edu.asu.ser594.resumeassistant.domain.shared.valueobject.DocumentFormat;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,12 +28,15 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
+ * 简历申请服务
  * Resume Application Service
- *
+ * <p>
  * 职责：编排用例，协调领域对象
  * Responsibility: Orchestrate use cases, coordinate domain objects
  */
@@ -41,46 +46,98 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class ResumeApplicationService {
 
+    /**
+     * 版本链最大长度限制
+     * Maximum version chain length limit
+     */
+    private static final int MAX_VERSION_CHAIN_LENGTH = 50;
     private final ResumeGroupRepository groupRepository;
     private final ResumeVersionRepository versionRepository;
     private final FileStorageService fileStorageService;
     private final DocumentFormatConverter documentFormatConverter;
     private final AiMessagePublisherPort aiMessagePublisherPort;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final VectorFacade vectorFacade;
 
     // ==================== 命令处理 Command Handlers ====================
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public ResumeGroup handleUpload(ResumeUploadCommand command, UUID userId) {
         // 1. 创建简历组
+        // 1. Create a resume group
         ResumeGroup group = ResumeGroup.create(userId, command.title());
 
         // 2. 存储文件，获取路径（这让底层基础设施去决定真实存的位置，但如果接口设计需要传入Path，则生成随机键）
+        // 2. Store the file and obtain the path (this lets the underlying infrastructure determine the actual storage location, but if the interface design requires passing in the Path, a random key will be generated)
         String storagePath = UUID.randomUUID().toString() + "_" + command.fileName();
-        
+
         fileStorageService.upload(storagePath, command.inputStream(),
                 command.fileSize(), command.contentType());
 
         // 3. 将原版添加进简历组（包含创建衍生版本等生命周期都在聚合内）
+        // 3. Add the original version to the resume group (the life cycle including creating derivative versions is all within the aggregation)
         group.uploadOriginalVersion(command.fileName(), command.contentType(),
                 command.fileSize(), storagePath);
 
         // 4. 保存聚合
+        // 4. Save the aggregation
         groupRepository.save(group);
 
+        // 4.5 本地转换为 Markdown 并填充 CONVERTED 版本
+        // 4.5 Auto-convert to Markdown and populate the CONVERTED version
+        ResumeVersion converted = group.getActiveVersionByType(ResumeVersion.VersionType.CONVERTED);
+        if (converted != null) {
+            DocumentFormat sourceFormat = DocumentFormat.fromMimeType(command.contentType());
+            try (InputStream rawStream = fileStorageService.download(storagePath).orElse(null)) {
+                if (rawStream == null) {
+                    log.warn("Could not download uploaded file for auto-conversion, storagePath={}", storagePath);
+                } else {
+                    String markdown;
+                    if (!"md".equals(sourceFormat.getFormat())) {
+                        InputStream mdStream = documentFormatConverter.convert(rawStream, sourceFormat.getFormat(), "md");
+                        markdown = new String(mdStream.readAllBytes(), StandardCharsets.UTF_8);
+                    } else {
+                        markdown = new String(rawStream.readAllBytes(), StandardCharsets.UTF_8);
+                    }
+                    converted.editContent(markdown);
+                    versionRepository.save(converted);
+                    log.info("Auto-converted uploaded file to markdown for groupId={}", group.getId());
+
+                    // 同步生成 CONVERTED 版本向量
+                    // Synchronously generate vector for CONVERTED version
+                    try {
+                        vectorFacade.generateAndSaveVector(converted.getId().toString(), "RESUME", markdown);
+                        log.info("Vector generated and saved for converted versionId={}", converted.getId());
+                    } catch (Exception e) {
+                        log.error("Failed to generate vector for converted versionId={}", converted.getId(), e);
+                    }
+                }
+            } catch (IOException e) {
+                if (converted != null) {
+                    converted.markParseFailed("Auto-conversion failed: " + e.getMessage());
+                    versionRepository.save(converted);
+                }
+                log.warn("Failed to auto-convert uploaded file to markdown, leaving CONVERTED blank for groupId={}", group.getId(), e);
+            }
+        }
+
         // 5. 触发 AI 异步解析
+        // 5. Trigger AI asynchronous parsing
         ResumeVersion originalVersion = group.getVersions().stream()
                 .filter(v -> v.getVersionType() == ResumeVersion.VersionType.ORIGINAL)
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Original version not found after upload"));
-        
+
         originalVersion.markParsing();
         versionRepository.save(originalVersion);
 
         try {
+            String presignedUrl = fileStorageService.generatePresignedUrl(
+                    originalVersion.getStoragePath(), Duration.ofHours(1)
+            );
             ResumeParseCommand parseCommand = new ResumeParseCommand(
                     originalVersion.getId().toString(),
-                    originalVersion.getStoragePath(),
+                    presignedUrl,
                     command.contentType()
             );
             aiMessagePublisherPort.sendResumeForParsing(parseCommand);
@@ -108,11 +165,104 @@ public class ResumeApplicationService {
         }
 
         // 调用领域方法
+        // Calling domain methods
         version.editContent(command.content());
         versionRepository.save(version);
 
         log.info("Resume edited: versionId={}", version.getId());
+
+        // 对可编辑版本（CONVERTED / AI_OPTIMIZED）自动触发向量重新生成
+        // Auto-trigger vector re-generation for editable versions (CONVERTED / AI_OPTIMIZED)
+        if (version.getVersionType() == ResumeVersion.VersionType.CONVERTED
+                || version.getVersionType() == ResumeVersion.VersionType.AI_OPTIMIZED) {
+            try {
+                vectorFacade.generateAndSaveVector(version.getId().toString(), "RESUME", version.getContent());
+                log.info("Vector generated and saved for resume versionId={}", version.getId());
+            } catch (Exception e) {
+                log.error("Failed to generate vector for versionId={}", version.getId(), e);
+                // 编辑已持久化，向量同步生成失败但不阻塞用户
+                // Edit is already persisted; vector generation failed but do not block user
+            }
+        }
+
         return version;
+    }
+
+    @Transactional
+    public ResumeVersion handleCreateVersion(CreateVersionCommand command) {
+        // 1. 查询简历组并校验所有权
+        // 1. Query resume group and verify ownership
+        ResumeGroup group = groupRepository.findByIdAndUserId(command.groupId(), command.userId())
+                .orElseThrow(() -> new StorageException("group.not.found"));
+
+        // 2. 确定源版本内容
+        // 2. Determine source version content
+        String sourceContent = "";
+        if (command.sourceVersionId() != null) {
+            ResumeVersion sourceVersion = versionRepository.findById(command.sourceVersionId())
+                    .orElseThrow(() -> new StorageException("version.not.found"));
+            // 校验源版本是否属于当前组
+            // Verify source version belongs to current group
+            if (!sourceVersion.getGroupId().equals(command.groupId())) {
+                throw new StorageException("version.group.mismatch");
+            }
+            sourceContent = sourceVersion.getContent() != null ? sourceVersion.getContent() : "";
+        } else {
+            ResumeVersion activeConverted = group.getActiveVersionByType(ResumeVersion.VersionType.CONVERTED);
+            if (activeConverted != null) {
+                sourceContent = activeConverted.getContent() != null ? activeConverted.getContent() : "";
+            }
+        }
+
+        // 3. 版本链长度限制：若 CONVERTED 版本数量超过上限，轮询删除最旧的 ARCHIVED 版本
+        // 3. Version chain length limit: if CONVERTED count exceeds limit, delete oldest ARCHIVED
+        List<ResumeVersion> convertedVersions = versionRepository.findAllByGroupIdAndType(
+                command.groupId(), ResumeVersion.VersionType.CONVERTED);
+        if (convertedVersions.size() >= MAX_VERSION_CHAIN_LENGTH) {
+            convertedVersions.stream()
+                    .filter(v -> v.getStatus() == ResumeVersion.Status.ARCHIVED)
+                    .findFirst()
+                    .ifPresent(oldest -> {
+                        versionRepository.delete(oldest.getId());
+                        log.info("Version chain limit reached. Deleted oldest archived version: versionId={}",
+                                oldest.getId());
+                    });
+        }
+
+        // 4. 创建新的 CONVERTED 版本并写入源内容
+        // 4. Create new CONVERTED version and write source content
+        ResumeVersion newVersion = ResumeVersion.createConverted(command.groupId());
+        newVersion.editContent(sourceContent);
+        // 如果同组 original 已解析完成，直接复制其 parsedContent
+        ResumeVersion original = group.getActiveVersionByType(ResumeVersion.VersionType.ORIGINAL);
+        if (original != null && original.getParsedContent() != null && !original.getParsedContent().isEmpty()) {
+            newVersion.markParseCompleted(original.getParsedContent());
+        }
+
+        // 4.5 同步生成向量（内容非空时）
+        // 4.5 Synchronously generate vector if content is not empty
+        if (sourceContent != null && !sourceContent.isEmpty()) {
+            try {
+                vectorFacade.generateAndSaveVector(newVersion.getId().toString(), "RESUME", sourceContent);
+                log.info("Vector generated and saved for new converted versionId={}", newVersion.getId());
+            } catch (Exception e) {
+                log.error("Failed to generate vector for new converted versionId={}", newVersion.getId(), e);
+            }
+        }
+
+        // 5. 添加到组（自动归档旧的 ACTIVE CONVERTED）并持久化
+        // 5. Add to group (auto-archives old ACTIVE CONVERTED) and persist
+        // 注意：只通过 groupRepository.save 级联保存，避免独立 save(newVersion) 导致
+        // JPA flush 时序问题：INSERT 先于旧版本的 UPDATE，违反 partial unique index
+        // Note: only cascade-save via groupRepository.save to avoid JPA flush ordering issue
+        // where INSERT runs before the old version's UPDATE, violating the partial unique index
+        group.addVersion(newVersion);
+        groupRepository.save(group);
+
+        log.info("Resume version created: groupId={}, newVersionId={}, sourceVersionId={}",
+                command.groupId(), newVersion.getId(), command.sourceVersionId());
+
+        return newVersion;
     }
 
     @Transactional
@@ -123,6 +273,7 @@ public class ResumeApplicationService {
         List<ResumeVersion> versions = versionRepository.findAllByGroupId(groupId);
 
         // 删除文件
+        // Delete files
         for (ResumeVersion v : versions) {
             if (v.getStoragePath() != null) {
                 try {
@@ -152,11 +303,13 @@ public class ResumeApplicationService {
         }
 
         // 如果是 ORIGINAL 版本，不允许单独删除（必须通过删除组来删除）
+        // If it is an ORIGINAL version, individual deletion is not allowed (must be deleted by deleting the group)
         if (version.getVersionType() == ResumeVersion.VersionType.ORIGINAL) {
             throw new StorageException("version.original.cannot.delete");
         }
 
         // 删除文件（如果有存储路径）
+        // Delete the file (if there is a storage path)
         if (version.getStoragePath() != null) {
             try {
                 fileStorageService.delete(version.getStoragePath());
@@ -168,6 +321,29 @@ public class ResumeApplicationService {
         versionRepository.delete(versionId);
 
         log.info("Resume version deleted: versionId={}, groupId={}", versionId, group.getId());
+    }
+
+    @Transactional
+    public ResumeVersion handleActivateVersion(UUID versionId, UUID userId) {
+        ResumeVersion version = versionRepository.findById(versionId)
+                .orElseThrow(() -> new StorageException("version.not.found"));
+
+        ResumeGroup group = groupRepository.findById(version.getGroupId())
+                .orElseThrow(() -> new StorageException("group.not.found"));
+
+        if (!group.isOwnedBy(userId)) {
+            throw new StorageException("access.denied");
+        }
+
+        // 调用领域方法
+        // Call domain method
+        group.activateVersion(versionId);
+        groupRepository.save(group);
+
+        log.info("Resume version activated: versionId={}, groupId={}", versionId, group.getId());
+
+        return versionRepository.findById(versionId)
+                .orElseThrow(() -> new StorageException("version.not.found"));
     }
 
     @Transactional
@@ -183,19 +359,33 @@ public class ResumeApplicationService {
         }
 
         try {
-            String parsedJsonStr = objectMapper.writeValueAsString(event.data());
+            // 提取 parsedContent，避免保存包装对象 {"parsedContent": {...}, "summary": ""}
+            // Extract parsedContent to avoid saving the wrapper object
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = event.data();
+            Object parsedContentObj = data != null ? data.get("parsedContent") : null;
+            String parsedJsonStr = objectMapper.writeValueAsString(parsedContentObj);
             originalVersion.markParseCompleted(parsedJsonStr);
             versionRepository.save(originalVersion);
             log.info("Resume parsing completed for versionId={}", originalVersion.getId());
 
-            // 触发向量生成
-            VectorGenCommand vectorCmd = new VectorGenCommand(
-                    originalVersion.getId().toString(),
-                    "RESUME",
-                    parsedJsonStr
-            );
-            aiMessagePublisherPort.sendTextForVectorGeneration(vectorCmd);
-            log.info("Triggered async vector generation for resume versionId={}", originalVersion.getId());
+            // 同步解析结果到同组所有衍生版本（CONVERTED / AI_OPTIMIZED）
+            ResumeGroup group = groupRepository.findById(originalVersion.getGroupId()).orElse(null);
+            if (group != null) {
+                for (ResumeVersion v : group.getVersions()) {
+                    if (v.getVersionType() != ResumeVersion.VersionType.ORIGINAL
+                            && v.getParseStatus() != ParseStatus.COMPLETED) {
+                        v.markParseCompleted(parsedJsonStr);
+                        versionRepository.save(v);
+                        log.info("Copied parsed content to derived version: versionId={}", v.getId());
+                    }
+                }
+            }
+
+            // 同步生成向量
+            // Synchronously generate vector
+            vectorFacade.generateAndSaveVector(originalVersion.getId().toString(), "RESUME", parsedJsonStr);
+            log.info("Vector generated and saved for resume versionId={}", originalVersion.getId());
 
         } catch (Exception e) {
             log.error("Failed to process parsed data or trigger vector gen for versionId={}", originalVersion.getId(), e);
@@ -246,6 +436,7 @@ public class ResumeApplicationService {
         }
 
         // 格式转换
+        // format conversion
         DocumentFormat targetFormat = DocumentFormat.fromFormatString(query.targetFormat());
         InputStream resultStream = sourceStream;
         DocumentFormat resultFormat = sourceFormat;

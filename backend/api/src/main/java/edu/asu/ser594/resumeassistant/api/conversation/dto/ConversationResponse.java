@@ -1,6 +1,6 @@
 package edu.asu.ser594.resumeassistant.api.conversation.dto;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -12,18 +12,20 @@ import java.util.List;
  * @param title           标题 / Title
  * @param status          状态 / Status
  * @param resumeVersionId 简历版本 ID / Resume version ID
+ * @param jobId           职位 ID / Job ID
  * @param messages        消息列表 / Messages list
  * @param createdAt       创建时间 / Created at
  * @param updatedAt       更新时间 / Updated at
  */
 public record ConversationResponse(
-    String conversationId,
-    String userId,
-    String title,
-    String status,
-    String resumeVersionId,
-    List<MessageResponse> messages,
-    LocalDateTime createdAt,
-    LocalDateTime updatedAt
+        String conversationId,
+        String userId,
+        String title,
+        String status,
+        String resumeVersionId,
+        String jobId,
+        List<MessageResponse> messages,
+        OffsetDateTime createdAt,
+        OffsetDateTime updatedAt
 ) {
 }

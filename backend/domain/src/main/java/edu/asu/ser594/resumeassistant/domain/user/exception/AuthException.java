@@ -1,4 +1,4 @@
-// domain/user/exception/AuthException.java
+// 认证异常 / AuthException
 package edu.asu.ser594.resumeassistant.domain.user.exception;
 
 import edu.asu.ser594.resumeassistant.domain.shared.exception.DomainException;

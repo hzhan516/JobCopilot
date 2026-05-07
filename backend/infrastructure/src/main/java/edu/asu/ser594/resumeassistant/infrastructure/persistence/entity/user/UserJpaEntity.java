@@ -12,7 +12,7 @@ import java.util.UUID;
 /**
  * 用户 JPA 实体
  * User JPA entity
- *
+ * <p>
  * 注意：
  * - 不使用 @Data 注解，因为它会生成 toString/equals/hashCode 可能影响懒加载
  * - 使用 @Getter/@Setter 显式控制访问器

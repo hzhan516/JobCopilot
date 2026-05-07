@@ -1,13 +1,19 @@
 import apiClient from './api';
+import tokenStorage from './tokenStorage';
 import type { ApiResponse, Conversation, Message, PaginatedResponse } from '@/types';
 
 // 对话服务
 export const chatService = {
   // 创建对话
-  createConversation: async (title: string, resumeId?: string): Promise<Conversation> => {
+  createConversation: async (
+    title: string,
+    resumeVersionId: string,
+    jobId: string
+  ): Promise<Conversation> => {
     const response = await apiClient.post<ApiResponse<Conversation>>('/v1/conversations', {
       title,
-      resumeId,
+      resumeVersionId,
+      jobId,
     });
     if (response.data.code === 200) {
       return response.data.data;
@@ -93,7 +99,7 @@ export const chatService = {
         {
           method: 'GET',
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+            Authorization: `Bearer ${tokenStorage.getAccessToken()}`,
           },
         }
       );

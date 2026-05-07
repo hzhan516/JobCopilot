@@ -1,6 +1,9 @@
 package edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.user;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -9,7 +12,7 @@ import java.util.UUID;
 /**
  * 用户资料 JPA 实体
  * User profile JPA entity
- *
+ * <p>
  * 注意：
  * - 不使用 @Data 注解
  * - 使用 @EqualsAndHashCode(onlyExplicitlyIncluded = true) 仅基于 ID

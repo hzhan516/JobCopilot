@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
+ * PDF 转换器：PDF ↔ MD/TXT（由 Pandoc 和 LibreOffice 提供支持）
  * PDF converter: PDF ↔ MD/TXT (powered by Pandoc and LibreOffice)
  */
 @Slf4j
@@ -18,7 +19,7 @@ import java.io.InputStream;
 public class PdfConverter extends AbstractDocumentConverter {
 
     public PdfConverter() {
-        register("pdf", "txt", "html");
+        register("pdf", "txt", "html", "md", "docx");
         register("txt", "pdf");
         register("md", "pdf");
         register("html", "pdf");
@@ -33,17 +34,29 @@ public class PdfConverter extends AbstractDocumentConverter {
             return new ByteArrayInputStream(source.readAllBytes());
         }
 
-        // PDF to TXT
+        // PDF 转 TXT / MD / DOCX
+        // PDF to TXT / MD / DOCX
         if (sf.equals("pdf") && tf.equals("txt")) {
             return pdfToText(source);
         }
-        
+        if (sf.equals("pdf") && tf.equals("md")) {
+            String text = pdfToTextAsString(source);
+            String md = "# Extracted Resume\n\n" + text;
+            return toStream(md);
+        }
+        if (sf.equals("pdf") && tf.equals("docx")) {
+            return ExternalCommandUtils.runPandoc(source, "pdf", "docx", null);
+        }
+
+        // MD 转 PDF（Pandoc 使用 weasyprint 和 CJK 主字体）
         // MD to PDF (Pandoc with weasyprint and CJK mainfont)
         if ((sf.equals("md") || sf.equals("markdown")) && tf.equals("pdf")) {
             return ExternalCommandUtils.runPandoc(source, sf, tf, "--pdf-engine=weasyprint -V CJKmainfont=\"Noto Sans SC\"");
         }
-        
+
+        // HTML/TXT 转 PDF（根据简单标记可使用 LibreOffice 或 Pandoc）
         // HTML/TXT to PDF (can use LibreOffice or Pandoc depending on simple markup)
+        // 由于 HTML 可能包含样式，weasyprint 是理想选择。
         // Since HTML might be styled, weasyprint is ideal.
         if ((sf.equals("txt") || sf.equals("html")) && tf.equals("pdf")) {
             return ExternalCommandUtils.runPandoc(source, sf, tf, "--pdf-engine=weasyprint -V CJKmainfont=\"Noto Sans SC\"");
@@ -53,13 +66,17 @@ public class PdfConverter extends AbstractDocumentConverter {
     }
 
     /**
+     * 使用 PDFBox 提取 PDF 文本
      * Extract text from PDF using PDFBox
      */
     private InputStream pdfToText(InputStream pdfStream) throws IOException {
+        return toStream(pdfToTextAsString(pdfStream));
+    }
+
+    private String pdfToTextAsString(InputStream pdfStream) throws IOException {
         try (PDDocument document = Loader.loadPDF(pdfStream.readAllBytes())) {
             PDFTextStripper stripper = new PDFTextStripper();
-            String text = stripper.getText(document);
-            return toStream(text);
+            return stripper.getText(document);
         }
     }
 }

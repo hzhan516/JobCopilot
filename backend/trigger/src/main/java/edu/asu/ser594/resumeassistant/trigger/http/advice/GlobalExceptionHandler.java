@@ -1,10 +1,13 @@
 package edu.asu.ser594.resumeassistant.trigger.http.advice;
 
 import edu.asu.ser594.resumeassistant.api.common.dto.ApiResponse;
+import edu.asu.ser594.resumeassistant.api.shared.service.ExceptionMessageResolver;
+import edu.asu.ser594.resumeassistant.domain.job.exception.JobContentNotReadyException;
+import edu.asu.ser594.resumeassistant.domain.matching.exception.ResumeVectorNotReadyException;
+import edu.asu.ser594.resumeassistant.domain.shared.exception.AiServiceUnavailableException;
 import edu.asu.ser594.resumeassistant.domain.shared.exception.LocalizedException;
 import edu.asu.ser594.resumeassistant.domain.shared.service.MessageProvider;
 import edu.asu.ser594.resumeassistant.domain.user.exception.AuthException;
-import edu.asu.ser594.resumeassistant.api.shared.service.ExceptionMessageResolver;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +23,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import java.util.HashMap;
 import java.util.Map;
 
+// 支持国际化的全局异常处理器
 // Global exception handler with i18n support
 @Slf4j
 @RestControllerAdvice
@@ -31,6 +35,7 @@ public class GlobalExceptionHandler {
 
     /**
      * 参数校验异常 - 从 messages.properties 读取
+     * Parameter validation exception - read from messages.properties
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationExceptions(
@@ -125,6 +130,63 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error(400, message));
+    }
+
+    /**
+     * AI 服务不可用异常
+     * Handle AI service unavailable exception
+     */
+    @ExceptionHandler(AiServiceUnavailableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAiServiceUnavailable(AiServiceUnavailableException ex) {
+        log.warn("AI service unavailable: {}", ex.getMessageKey());
+
+        String message;
+        try {
+            message = messageProvider.getMessage(ex.getMessageKey(), ex.getArgs());
+        } catch (Exception e) {
+            message = ex.getMessageKey();
+        }
+
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiResponse.error(503, message));
+    }
+
+    /**
+     * 职位解析内容未就绪异常
+     * Handle job content not ready exception
+     */
+    @ExceptionHandler(JobContentNotReadyException.class)
+    public ResponseEntity<ApiResponse<Void>> handleJobContentNotReady(JobContentNotReadyException ex) {
+        log.warn("Job content not ready: {}", ex.getMessageKey());
+
+        String message;
+        try {
+            message = messageProvider.getMessage(ex.getMessageKey(), ex.getArgs());
+        } catch (Exception e) {
+            message = ex.getMessageKey();
+        }
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(ApiResponse.error(422, message));
+    }
+
+    /**
+     * 简历向量未就绪异常
+     * Handle resume vector not ready exception
+     */
+    @ExceptionHandler(ResumeVectorNotReadyException.class)
+    public ResponseEntity<ApiResponse<Void>> handleResumeVectorNotReady(ResumeVectorNotReadyException ex) {
+        log.warn("Resume vector not ready: {}", ex.getMessageKey());
+
+        String message;
+        try {
+            message = messageProvider.getMessage(ex.getMessageKey(), ex.getArgs());
+        } catch (Exception e) {
+            message = ex.getMessageKey();
+        }
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(ApiResponse.error(422, message));
     }
 
     /**
