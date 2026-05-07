@@ -51,6 +51,7 @@ jobs:
     - name: Upload Coverage Report
       uses: codecov/codecov-action@v4
       if: success()
+      continue-on-error: true
       with:
         files: backend/**/target/site/jacoco/jacoco.xml
         flags: unittests
@@ -163,6 +164,7 @@ jobs:
     - name: Upload Frontend Coverage Report
       uses: codecov/codecov-action@v4
       if: success()
+      continue-on-error: true
       with:
         files: frontend/coverage/coverage-final.json
         flags: frontend
