@@ -1,0 +1,511 @@
+# =============================================================================
+# Resume Assistant — Docker Compose Configuration (Example Template)
+# =============================================================================
+# This file defines a production-oriented three-tier Docker network deployment.
+# Only the frontend Nginx reverse proxy is exposed to the host. All other
+# services communicate through isolated Docker networks.
+#
+# QUICK START
+#   1. Copy this file to `docker-compose.yml`:
+#        cp docker-compose.yml.example docker-compose.yml
+#   2. Create a `.env` file from `.env.example` and fill in all secrets:
+#        cp .env.example .env
+#        # Edit .env — you MUST set VITE_GOOGLE_CLIENT_ID and JWT_SECRET.
+#   3. Launch the stack:
+#        docker-compose up -d
+#   4. Verify health:
+#        curl -f http://localhost/health
+#
+# IMPORTANT SECURITY NOTES
+#   - `docker-compose.yml` is gitignored. Never commit secrets.
+#   - Only port 80 (frontend Nginx) is exposed to the host by default.
+#   - Backend, AI service, RabbitMQ, and PostgreSQL are reachable ONLY from
+#     within their respective Docker networks.
+#   - For local development you can uncomment the "DEVELOPMENT ONLY" port
+#     mappings below, but REMOVE them before deploying to production.
+#
+# THREE-TIER ARCHITECTURE
+#   Tier 1 — Public    : frontend (Nginx)          → exposed on host port 80
+#   Tier 2 — Internal  : backend, ai-service, mq   → Docker DNS only
+#   Tier 3 — Database  : postgres                  → Docker DNS only
+#   Gateway            : backend spans ALL tiers
+# =============================================================================
+
+# =============================================================================
+# SERVICE DEFINITIONS
+# =============================================================================
+services:
+
+  # ============================================================================
+  # TIER 1 — PUBLIC-FACING LAYER
+  # ============================================================================
+  # The frontend is the SINGLE entry point for all HTTP/HTTPS traffic.
+  # Nginx serves the React SPA and reverse-proxies `/api/*` requests to the
+  # backend service over the public-network. No other service is exposed.
+  #
+  # Network membership:
+  #   public-network  — yes (receives proxied API calls from Nginx)
+  #   internal-network — no
+  #   db-network       — no
+  #
+  # Security:
+  #   - The VITE_API_BASE_URL build argument MUST be empty or a relative path
+  #     (e.g. `/api`). An absolute URL would cause the browser to bypass Nginx
+  #     and connect directly to the backend, defeating the single-entry-point
+  #     model and exposing the backend port externally.
+  # ============================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Build-time arguments for the Vite bundler.
+        # VITE_API_BASE_URL: leave empty so the browser uses relative `/api`
+        # paths that are intercepted by Nginx and forwarded to the backend.
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-}
+        # Google OAuth 2.0 Client ID. Required for Google Sign-In.
+        # Obtain from https://console.cloud.google.com/apis/credentials
+        - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+    container_name: resume-assistant-frontend
+    ports:
+      # Host port mapping for the Nginx reverse proxy.
+      # FRONTEND_HOST_PORT defaults to 80. Change it in .env if port 80 is
+      # already in use on your machine (e.g. FRONTEND_HOST_PORT=8081).
+      - "${FRONTEND_HOST_PORT:-80}:80"
+    networks:
+      # Frontend lives exclusively in the public tier. It can reach the
+      # backend via Docker DNS (backend:8080) because the backend also joins
+      # this network, but no other service is accessible.
+      - public-network
+    depends_on:
+      # Nginx health checks against /health succeed only after the backend
+      # actuator endpoint is healthy, ensuring the API is ready before users
+      # hit the frontend.
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    # --- Resource limits (recommended for production) ---
+    # Uncomment the block below to cap CPU and memory for the Nginx worker.
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '0.5'
+    #       memory: 512M
+
+  # ============================================================================
+  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 1 of 3)
+  # ============================================================================
+  # The backend is the ONLY service that spans all three network tiers.
+  # It acts as the security gateway between the public internet and the
+  # isolated internal services and database.
+  #
+  # Network membership:
+  #   public-network   — yes (receives API requests from Nginx proxy)
+  #   internal-network — yes (calls ai-service REST API; publishes to RabbitMQ)
+  #   db-network       — yes (JDBC connection to PostgreSQL)
+  #
+  # Role:
+  #   - REST API gateway (JWT auth, business logic, file upload)
+  #   - RabbitMQ producer (outbox pattern for async AI tasks)
+  #   - Vector search orchestrator (delegates embedding to ai-service via REST)
+  #
+  # Security:
+  #   - No host port is mapped. The backend is reachable ONLY through Nginx.
+  #   - Every REST call to ai-service carries the X-Internal-API-Key header
+  #     (defense-in-depth layer 2).
+  #   - All user-facing endpoints require a valid JWT (defense-in-depth layer 3).
+  # ============================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: resume-assistant-backend
+    # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
+    # Uncomment the line below if you need direct host access to the Spring
+    # Boot actuator or API docs during local debugging. In production the
+    # backend must NEVER be exposed directly; all traffic must flow through
+    # the Nginx reverse proxy in the frontend container.
+    # ports:
+    #   - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # --- Database Configuration (Tier 3 connectivity via db-network) ---
+      # The JDBC URL uses the Docker DNS hostname `postgres` which resolves
+      # to the postgres container's IP on the isolated db-network. Port 5432
+      # is NOT exposed to the host; only the backend can reach it.
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-resume_assistant}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-resume_user}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
+
+      # --- RabbitMQ Configuration (Tier 2 connectivity via internal-network) ---
+      # The RabbitMQ hostname `rabbitmq` resolves on the internal-network.
+      # Port 5672 is NOT exposed to the host; AMQP traffic stays inside Docker.
+      - SPRING_RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
+      - SPRING_RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_USERNAME:-guest}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
+
+      # --- File Storage ---
+      # Local filesystem storage is used for the Docker Compose deployment.
+      # The path `/app/uploads` is backed by the named volume `shared-storage`
+      # mounted below. Both backend and ai-service share this volume.
+      - FILE_STORAGE_PATH=/app/uploads
+      - STORAGE_TYPE=local
+      - LOCAL_STORAGE_BASE_PATH=/app/uploads
+
+      # --- JWT Secret ---
+      # Symmetric signing key for HS256 JWT tokens. Must be at least 32
+      # characters. Generate a strong secret with:
+      #   openssl rand -base64 48
+      # If this key is compromised, all active user sessions become invalid.
+      - JWT_SECRET=${JWT_SECRET:-your-256-bit-secret-key-change-in-production}
+
+      # --- Embedding Dimension ---
+      # Must match the output dimension of the embedding model configured in
+      # the AI service (e.g. 1536 for gemini-embedding-001).
+      # Changing this after data exists requires re-indexing all vectors.
+      - LLM_EMBEDDING_MODEL_DIMENSION=${LLM_EMBEDDING_MODEL_DIMENSION:-1536}
+
+      # --- AI Service URL (internal-network DNS resolution) ---
+      # The backend calls the ai-service REST API over the internal-network.
+      # Do NOT change this to a host IP or localhost; Docker DNS resolves
+      # `ai-service` to the correct container IP within the internal-network.
+      - AI_SERVICE_BASE_URL=http://ai-service:8000
+
+      # --- Spring Boot Profile ---
+      # `dev`  : disables Flyway, enables detailed error responses, 24h JWT.
+      # `prod` : enables Flyway, short JWT lifetime, validate DDL.
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+
+      # --- Defense-in-Depth: Internal API Key ---
+      # Shared secret between backend and ai-service REST endpoints.
+      # The backend sends this in the X-Internal-API-Key header on every
+      # outbound call to ai-service. The ai-service middleware rejects
+      # requests with missing or mismatched keys (HTTP 401).
+      # If left empty, both sides skip the check (convenient for local dev).
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-}
+    volumes:
+      # Named volume shared with ai-service. Backend writes uploaded resumes
+      # here; ai-service reads them (read-only mount on its side).
+      - shared-storage:/app/uploads
+      # Host-mounted directory for persistent backend logs.
+      - ./backend/logs:/app/backend/logs
+    networks:
+      # Gateway role: backend bridges all three tiers.
+      - public-network
+      - internal-network
+      - db-network
+    depends_on:
+      # Startup order: database and message broker must be healthy before
+      # Spring Boot attempts to connect. The backend health check (see below)
+      # gates the frontend startup.
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # ============================================================================
+  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 2 of 3)
+  # ============================================================================
+  # The AI service hosts all LLM inference workloads: resume parsing, job
+  # parsing, embedding generation, job ranking, and conversation assistance.
+  # It is a pure worker — it has no public API and no database access.
+  #
+  # Network membership:
+  #   public-network   — no
+  #   internal-network — yes (receives REST calls from backend; listens to MQ)
+  #   db-network       — no
+  #
+  # Role:
+  #   - REST endpoint /api/v1/embeddings (called by backend, protected by
+  #     X-Internal-API-Key middleware)
+  #   - MQ consumers on ai.queue.job.parse, ai.queue.resume.parse,
+  #     ai.queue.conversation, ai.queue.job.rank
+  #   - File parser (reads resumes from shared-storage read-only mount)
+  #
+  # Security:
+  #   - No host port is mapped. The service is invisible from the host.
+  #   - The embedding REST endpoint rejects requests without the correct
+  #     X-Internal-API-Key header.
+  # ============================================================================
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: resume-assistant-ai
+    # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
+    # Uncomment the line below if you want to browse the FastAPI auto-generated
+    # Swagger UI (http://localhost:8000/docs) during local development.
+    # ports:
+    #   - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # --- RabbitMQ Configuration (internal-network) ---
+      - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME:-guest}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
+
+      # --- File Storage (shared with backend, read-only) ---
+      - FILE_STORAGE_PATH=/app/uploads
+
+      # --- Vertex AI / GCP Credentials ---
+      # VERTEX_CREDENTIALS inside the container always points to the mounted
+      # file path. The HOST path is configured in .env (must be absolute).
+      # See the volumes section below for the bind-mount definition.
+      - VERTEX_PROJECT_ID=${VERTEX_PROJECT_ID:-ser594-ai-service}
+      - VERTEX_LOCATION=${VERTEX_LOCATION:-global}
+      - VERTEX_CREDENTIALS=/app/credentials/gcp-service-account.json
+
+      # --- LLM Model Configuration (LiteLLM-compatible prefixes) ---
+      # Format: <provider>/<model-name>
+      # Examples:
+      #   gemini/gemini-2.5-flash          (Google AI Studio, default)
+      #   openai/gpt-4o-mini               (OpenAI)
+      #   vertex_ai/gemini-2.5-flash       (Google Cloud Vertex AI)
+      - LLM_TEXT_MODEL=${LLM_TEXT_MODEL:-gemini/gemini-2.5-flash}
+      - LLM_VISION_MODEL=${LLM_VISION_MODEL:-gemini/gemini-2.5-flash}
+      - LLM_EMBEDDING_MODEL=${LLM_EMBEDDING_MODEL:-gemini/gemini-embedding-001}
+      - LLM_EMBEDDING_MODEL_DIMENSION=${LLM_EMBEDDING_MODEL_DIMENSION:-1536}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE:-0.1}
+      - LLM_REQUEST_TIMEOUT_SECONDS=${LLM_REQUEST_TIMEOUT_SECONDS:-60}
+
+      # --- Backend Client (REST callbacks to backend) ---
+      # The ai-service calls backend REST endpoints (e.g. batch vector upsert)
+      # over the internal-network. Docker DNS resolves `backend` to the
+      # backend container's internal-network IP.
+      - BACKEND_SERVICE_URL=${BACKEND_SERVICE_URL:-http://backend:8080}
+      - BACKEND_QUERY_TIMEOUT=${BACKEND_QUERY_TIMEOUT:-5}
+      - BACKEND_BATCH_UPSERT_TIMEOUT=${BACKEND_BATCH_UPSERT_TIMEOUT:-30}
+      - BACKEND_BATCH_SIZE=${BACKEND_BATCH_SIZE:-100}
+
+      # --- Logging ---
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+
+      # --- Defense-in-Depth: Internal API Key ---
+      # Must match the INTERNAL_API_KEY set in the backend environment.
+      # If empty, the middleware skips validation (dev convenience).
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-}
+    volumes:
+      # Read-only access to resume files uploaded by the backend.
+      - shared-storage:/app/uploads:ro
+      # Google Cloud Service Account JSON key file.
+      # CRITICAL: the ${VERTEX_CREDENTIALS} variable in .env MUST be an
+      # ABSOLUTE host path (e.g. /home/user/gcp-key.json). Relative paths
+      # or bare filenames are treated as named volumes by Docker/Podman and
+      # will cause a mount error on startup.
+      - ${VERTEX_CREDENTIALS:-./empty-vertex.json}:/app/credentials/gcp-service-account.json:ro
+    networks:
+      # AI service is strictly internal-tier only.
+      - internal-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ============================================================================
+  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 3 of 3)
+  # ============================================================================
+  # RabbitMQ is the asynchronous message broker between backend and ai-service.
+  # It implements the Outbox pattern: the backend publishes commands to
+  # ai.queue.* queues; the ai-service consumes them and publishes results back
+  # to backend.queue.* queues.
+  #
+  # Network membership:
+  #   public-network   — no
+  #   internal-network — yes (AMQP from backend; AMQP from ai-service)
+  #   db-network       — no
+  #
+  # Role:
+  #   - ai.queue.job.parse      / backend.queue.job.parse
+  #   - ai.queue.resume.parse   / backend.queue.resume.parse
+  #   - ai.queue.conversation   / backend.queue.conversation
+  #   - ai.queue.job.rank       / backend.queue.job.rank
+  #
+  # Security:
+  #   - No host port is mapped. AMQP traffic (port 5672) stays inside Docker.
+  #   - The Management UI (port 15672) is NOT exposed to the internet.
+  #     Access it via SSH tunnel when needed:
+  #       ssh -L 15672:localhost:15672 <your-host>
+  #   - Override default guest/guest credentials via RABBITMQ_USERNAME and
+  #     RABBITMQ_PASSWORD in .env.
+  # ============================================================================
+  rabbitmq:
+    image: docker.io/library/rabbitmq:3-management-alpine
+    container_name: resume-assistant-rabbitmq
+    # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
+    # Uncomment the lines below if you need direct host access to the AMQP
+    # port (for local debugging tools) or the Management UI.
+    # ports:
+    #   - "5672:5672"   # AMQP protocol
+    #   - "15672:15672" # Management UI (never expose to the internet)
+    env_file:
+      - .env
+    environment:
+      # Default user created on first startup. Override in .env for security.
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
+      # Increase the maximum message size to 10 MB to accommodate large
+      # embedding vectors and resume text summaries transmitted between
+      # backend and ai-service.
+      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit max_message_size 10485760
+    volumes:
+      # Persistent storage for RabbitMQ mnesia database and definitions.
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      # RabbitMQ is strictly internal-tier only.
+      - internal-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ============================================================================
+  # TIER 3 — DATA LAYER
+  # ============================================================================
+  # PostgreSQL 15 with the pgvector extension serves as the unified storage
+  # for relational business data and high-dimensional vector embeddings.
+  #
+  # Network membership:
+  #   public-network   — no
+  #   internal-network — no
+  #   db-network       — yes (JDBC from backend ONLY)
+  #
+  # Role:
+  #   - Relational data: users, resumes, jobs, applications, conversations
+  #   - Vector data: resume embeddings, job embeddings (via pgvector)
+  #   - Similarity search: cosine distance on ivfflat/hnsw indexes
+  #
+  # Security:
+  #   - No host port is mapped. The database is reachable ONLY from the
+  #     backend via the isolated db-network.
+  #   - A strong POSTGRES_PASSWORD is mandatory defense-in-depth even with
+  #     network isolation.
+  #   - pgvector extension is pre-installed in the ankane/pgvector image.
+  # ============================================================================
+  postgres:
+    image: docker.io/ankane/pgvector:latest
+    container_name: resume-assistant-postgres
+    # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
+    # Uncomment the line below if you need to connect with a local database
+    # GUI (e.g. pgAdmin, DBeaver) during development.
+    # ports:
+    #   - "5432:5432"
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-resume_assistant}
+      - POSTGRES_USER=${POSTGRES_USER:-resume_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
+    volumes:
+      # Named volume for persistent database files.
+      - postgres-data:/var/lib/postgresql/data
+      # Initialization scripts executed on the FIRST container start only.
+      # Flyway (enabled in prod profile) handles schema migrations afterwards.
+      - ./backend/app/src/main/resources/db/init.sql:/docker-entrypoint-initdb.d/templates/init.sql:ro
+      - ./backend/app/src/main/resources/db/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    networks:
+      # PostgreSQL is strictly database-tier only.
+      - db-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-resume_user} -d ${POSTGRES_DB:-resume_assistant}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+# =============================================================================
+# NETWORK CONFIGURATION — Three-Tier Isolation
+# =============================================================================
+# Each tier is assigned a dedicated /16 subnet to prevent accidental
+# cross-tier communication. Docker's bridge driver creates an isolated
+# Layer-2 segment per network; inter-network routing is possible only
+# when a container is explicitly attached to multiple networks (the
+# backend is the only multi-homed service).
+#
+# Traffic flow:
+#   Internet → public-network (frontend:80)
+#   frontend:80 → public-network → backend:8080
+#   backend → internal-network → ai-service:8000 / rabbitmq:5672
+#   backend → db-network → postgres:5432
+#
+# DNS resolution:
+#   Docker embeds a DNS server in each network. Service names resolve to
+#   the container's IP within that network. A container with multiple
+#   network interfaces gets a different IP per network, but the same
+#   service name resolves correctly on each segment.
+# =============================================================================
+networks:
+  public-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1500
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+
+  internal-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1500
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
+
+  db-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1500
+    ipam:
+      config:
+        - subnet: 172.23.0.0/16
+
+# =============================================================================
+# VOLUME CONFIGURATION
+# =============================================================================
+# Named volumes are used for data that must survive container restarts.
+# Docker manages their lifecycle; they are stored in Docker's volume
+# directory on the host (typically /var/lib/docker/volumes/).
+#
+# For production, consider backing up these volumes regularly:
+#   docker run --rm -v resume-assistant_postgres-data:/data -v $(pwd):/backup \
+#     alpine tar czf /backup/postgres-backup.tar.gz -C /data .
+# =============================================================================
+volumes:
+  # PostgreSQL data files (tables, indexes, WAL).
+  postgres-data:
+    driver: local
+
+  # RabbitMQ mnesia database and configuration.
+  rabbitmq-data:
+    driver: local
+
+  # Shared storage for uploaded resume files (PDF, DOCX).
+  # Backend writes here; ai-service mounts it read-only.
+  shared-storage:
+    driver: local

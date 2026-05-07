@@ -197,6 +197,5 @@
 /frontend/.env
 /backend/logs/*
 !/backend/logs/README.md
-/docker-compose.yml
 /.env
 /vertex.json

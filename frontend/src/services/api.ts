@@ -1,6 +1,7 @@
 import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type { ApiResponse, AuthResponse, LoginRequest, RegisterRequest, LoginByGoogleRequest } from '@/types';
 import tokenStorage from './tokenStorage';
+import i18n from '@/i18n';
 
 // Maximum retry attempts for transient network failures
 // 网络抖动时的最大重试次数
@@ -22,6 +23,8 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // 传递用户当前选择的语言，使后端 i18n 生效
+    config.headers['Accept-Language'] = i18n.language || 'en';
     return config;
   },
   (error) => Promise.reject(error)
