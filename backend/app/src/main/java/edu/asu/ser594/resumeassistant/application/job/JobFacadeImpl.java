@@ -46,6 +46,11 @@ public class JobFacadeImpl implements JobFacade {
     }
 
     @Override
+    public void deleteJob(final String jobId, final UUID userId) {
+        applicationService.deleteJob(jobId, userId);
+    }
+
+    @Override
     public JobScoreResponse scoreJob(final String jobId, final UUID userId, final JobScoreRequest request) {
         return applicationService.scoreJob(jobId, userId, request);
     }

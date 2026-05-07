@@ -43,6 +43,9 @@ public class JobJpaEntity {
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
+    @Column(name = "hidden_at")
+    private LocalDateTime hiddenAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

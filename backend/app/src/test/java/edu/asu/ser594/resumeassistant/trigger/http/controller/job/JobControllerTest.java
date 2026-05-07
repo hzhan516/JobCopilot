@@ -24,6 +24,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -94,6 +95,17 @@ class JobControllerTest {
         mockMvc.perform(get("/v1/jobs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(1));
+    }
+
+    @Test
+    @DisplayName("Should delete job")
+    void shouldDeleteJob() throws Exception {
+        // 当&那么
+        // When&Then
+        mockMvc.perform(delete("/v1/jobs/job-1"))
+                .andExpect(status().isOk());
+
+        verify(jobFacade).deleteJob("job-1", USER_ID);
     }
 
     @Test

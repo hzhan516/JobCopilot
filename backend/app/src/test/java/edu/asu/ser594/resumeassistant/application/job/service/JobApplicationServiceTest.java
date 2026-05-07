@@ -162,4 +162,38 @@ class JobApplicationServiceTest {
         });
         assertEquals("access.denied", exception.getMessageKey());
     }
+
+    @Test
+    void deleteJob_Success_HidesJob() {
+        // 准备 / Given
+        String jobId = "job123";
+        UUID userId = UUID.randomUUID();
+        Job job = Job.create(userId, "http://example.com", false);
+
+        when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
+        when(jobRepository.save(any(Job.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // 执行 / When
+        jobApplicationService.deleteJob(jobId, userId);
+
+        // 验证 / Then
+        assertTrue(job.isHidden());
+        assertNotNull(job.getHiddenAt());
+        verify(jobRepository).save(job);
+    }
+
+    @Test
+    void deleteJob_WrongUser_ThrowsException() {
+        // 准备 / Given
+        String jobId = "job123";
+        Job job = Job.create(UUID.randomUUID(), "http://example.com", false);
+        when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
+
+        // 执行与验证 / When & Then
+        JobException exception = assertThrows(JobException.class, () -> {
+            jobApplicationService.deleteJob(jobId, UUID.randomUUID());
+        });
+        assertEquals("access.denied", exception.getMessageKey());
+        verify(jobRepository, never()).save(any(Job.class));
+    }
 }

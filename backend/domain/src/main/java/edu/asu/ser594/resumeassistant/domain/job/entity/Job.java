@@ -5,6 +5,7 @@ import edu.asu.ser594.resumeassistant.domain.job.valueobject.ParsedJobContent;
 import edu.asu.ser594.resumeassistant.domain.shared.entity.AggregateRoot;
 import lombok.Getter;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -26,8 +27,10 @@ public class Job extends AggregateRoot<String> {
     private ParsedJobContent parsedContent;
     @Getter
     private String errorMessage;
+    @Getter
+    private LocalDateTime hiddenAt;
 
-    public Job(String id, UUID userId, String originalUrl, boolean imageCheckEnabled, JobStatus status, ParsedJobContent parsedContent, String errorMessage) {
+    public Job(String id, UUID userId, String originalUrl, boolean imageCheckEnabled, JobStatus status, ParsedJobContent parsedContent, String errorMessage, LocalDateTime hiddenAt) {
         this.id = id;
         this.userId = userId;
         this.originalUrl = originalUrl;
@@ -35,14 +38,11 @@ public class Job extends AggregateRoot<String> {
         this.status = status;
         this.parsedContent = parsedContent;
         this.errorMessage = errorMessage;
+        this.hiddenAt = hiddenAt;
     }
 
     private Job(String id, UUID userId, String originalUrl, boolean imageCheckEnabled, JobStatus status) {
-        this.id = id;
-        this.userId = userId;
-        this.originalUrl = originalUrl;
-        this.imageCheckEnabled = imageCheckEnabled;
-        this.status = status;
+        this(id, userId, originalUrl, imageCheckEnabled, status, null, null, null);
     }
 
     /**
@@ -118,6 +118,20 @@ public class Job extends AggregateRoot<String> {
      */
     public void updateParsedContent(ParsedJobContent newContent) {
         this.parsedContent = newContent;
+    }
+
+    /**
+     * 隐藏职位，使其不再出现在用户列表中，但保留数据库记录。
+     * Hide the job from user-facing lists while keeping the database record.
+     */
+    public void hide() {
+        if (this.hiddenAt == null) {
+            this.hiddenAt = LocalDateTime.now();
+        }
+    }
+
+    public boolean isHidden() {
+        return hiddenAt != null;
     }
 
 }

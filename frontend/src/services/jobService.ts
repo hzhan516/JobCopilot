@@ -61,6 +61,15 @@ export const jobService = {
     throw new Error(response.data.message);
   },
 
+  // 隐藏职位（后端保留数据，但列表不再显示）
+  deleteJob: async (jobId: string): Promise<void> => {
+    const response = await apiClient.delete<ApiResponse<null>>(`/v1/jobs/${jobId}`);
+    if (response.data.code === 200) {
+      return;
+    }
+    throw new Error(response.data.message);
+  },
+
   // 对单个职位进行简历评分
   scoreJob: async (jobId: string, request: JobScoreRequest): Promise<JobScoreResponse> => {
     const response = await apiClient.post<ApiResponse<JobScoreResponse>>(

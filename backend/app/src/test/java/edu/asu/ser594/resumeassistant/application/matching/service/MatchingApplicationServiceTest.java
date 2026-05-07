@@ -27,6 +27,7 @@ import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -95,7 +96,7 @@ class MatchingApplicationServiceTest {
         ResumeVector vector = ResumeVector.createCompleted("vec-1", RESUME_VERSION_ID, new float[]{0.1f, 0.2f});
         MatchingModel model = MatchingModel.builder().id(1L).version("v1.0").type(ModelType.RECALL).build();
         List<RecallResult> recallResults = List.of(new RecallResult("job-1", 0.5));
-        Job job = new Job("job-1", USER_ID, "http://example.com", false, JobStatus.COMPLETED, null, null);
+        Job job = new Job("job-1", USER_ID, "http://example.com", false, JobStatus.COMPLETED, null, null, null);
 
         ResumeVersion resumeVersion = ResumeVersion.reconstruct(
                 UUID.fromString(RESUME_VERSION_ID), UUID.randomUUID(), ResumeVersion.VersionType.CONVERTED,
@@ -120,6 +121,56 @@ class MatchingApplicationServiceTest {
         assertThat(result).isNotNull();
         verify(jobMatchResultRepository, times(2)).save(any(JobMatchResult.class));
         verify(aiMessagePublisherPort).sendJobForRanking(any(JobRankCommand.class));
+    }
+
+    @Test
+    @DisplayName("Should exclude hidden jobs from ranking request")
+    void shouldExcludeHiddenJobsFromRankingRequest() {
+        // 给定
+        // Given
+        StartJobMatchCommand command = StartJobMatchCommand.builder()
+                .userId(USER_ID)
+                .resumeVersionId(RESUME_VERSION_ID)
+                .query("Java Developer")
+                .topK(5)
+                .build();
+
+        ResumeVector vector = ResumeVector.createCompleted("vec-1", RESUME_VERSION_ID, new float[]{0.1f, 0.2f});
+        MatchingModel model = MatchingModel.builder().id(1L).version("v1.0").type(ModelType.RECALL).build();
+        List<RecallResult> recallResults = List.of(
+                new RecallResult("visible-job", 0.5),
+                new RecallResult("hidden-job", 0.6)
+        );
+        Job visibleJob = new Job("visible-job", USER_ID, "http://example.com/visible", false, JobStatus.COMPLETED, null, null, null);
+        Job hiddenJob = new Job("hidden-job", USER_ID, "http://example.com/hidden", false, JobStatus.COMPLETED, null, null, null);
+        hiddenJob.hide();
+
+        ResumeVersion resumeVersion = ResumeVersion.reconstruct(
+                UUID.fromString(RESUME_VERSION_ID), UUID.randomUUID(), ResumeVersion.VersionType.CONVERTED,
+                null, null, "text/markdown", 0L, null, null,
+                "resume content", null, ParseStatus.COMPLETED, null,
+                ResumeVersion.Status.ACTIVE, java.time.LocalDateTime.now(), java.time.LocalDateTime.now()
+        );
+
+        when(matchingModelRepository.findActiveByType(ModelType.RECALL)).thenReturn(Optional.of(model));
+        when(resumeVectorRepository.findByResumeVersionId(RESUME_VERSION_ID)).thenReturn(Optional.of(vector));
+        when(vectorSearchPort.findSimilarJobs(any(), eq(5), eq("v1.0"))).thenReturn(recallResults);
+        when(jobRepository.findById("visible-job")).thenReturn(Optional.of(visibleJob));
+        when(jobRepository.findById("hidden-job")).thenReturn(Optional.of(hiddenJob));
+        when(resumeVersionRepository.findById(UUID.fromString(RESUME_VERSION_ID))).thenReturn(Optional.of(resumeVersion));
+        when(jobMatchResultRepository.save(any(JobMatchResult.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // 当
+        // When
+        matchingService.startJobMatch(command);
+
+        // 那么
+        // Then
+        ArgumentCaptor<JobRankCommand> rankCommandCaptor = ArgumentCaptor.forClass(JobRankCommand.class);
+        verify(aiMessagePublisherPort).sendJobForRanking(rankCommandCaptor.capture());
+        JobRankCommand rankCommand = rankCommandCaptor.getValue();
+        assertThat(rankCommand.recalledJobIds()).containsExactly("visible-job");
+        assertThat(rankCommand.jobDetails()).containsOnlyKeys("visible-job");
     }
 
     @Test

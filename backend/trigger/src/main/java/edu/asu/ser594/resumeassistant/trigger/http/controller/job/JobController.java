@@ -91,6 +91,19 @@ public class JobController {
     }
 
     /**
+     * 隐藏职位，让它不再出现在职位列表中，但保留数据库记录。
+     * Hide a job from user-facing lists while preserving its database record.
+     */
+    @DeleteMapping("/{jobId}")
+    public ApiResponse<Void> deleteJob(
+            @CurrentUser UUID userId,
+            @PathVariable("jobId") String jobId) {
+        log.info("User {} deleting job: {}", userId, jobId);
+        jobFacade.deleteJob(jobId, userId);
+        return ApiResponse.success(null);
+    }
+
+    /**
      * 对单个职位进行简历评分
      * Score a single job against a resume.
      */

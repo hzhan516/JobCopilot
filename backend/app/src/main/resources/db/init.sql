@@ -345,12 +345,14 @@ CREATE TABLE IF NOT EXISTS jobs
 ) NOT NULL,
     parsed_content JSONB,
     error_message TEXT,
+    hidden_at TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
 CREATE INDEX IF NOT EXISTS idx_jobs_user_id ON jobs (user_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs (status);
+CREATE INDEX IF NOT EXISTS idx_jobs_user_hidden_at ON jobs (user_id, hidden_at);
 
 -- 职位评分记录表 / Job score records
 CREATE TABLE IF NOT EXISTS job_scores
