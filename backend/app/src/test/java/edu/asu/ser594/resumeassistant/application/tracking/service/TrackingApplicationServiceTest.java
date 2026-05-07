@@ -72,6 +72,39 @@ class TrackingApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should set today as applied date when creating applied tracking without date")
+    void shouldSetTodayAsAppliedDateWhenCreatingAppliedTrackingWithoutDate() {
+        CreateTrackingCommand command = CreateTrackingCommand.builder()
+                .userId(USER_ID)
+                .companyName("Tech Corp")
+                .jobTitle("Java Developer")
+                .status("APPLIED")
+                .build();
+        when(trackingRepository.save(any(ApplicationTracking.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        ApplicationTracking result = trackingService.createTracking(command);
+
+        assertThat(result.getStatus()).isEqualTo(ApplicationStatus.APPLIED);
+        assertThat(result.getAppliedAt()).isEqualTo(LocalDate.now());
+    }
+
+    @Test
+    @DisplayName("Should reject future applied date when creating tracking")
+    void shouldRejectFutureAppliedDateWhenCreatingTracking() {
+        CreateTrackingCommand command = CreateTrackingCommand.builder()
+                .userId(USER_ID)
+                .companyName("Tech Corp")
+                .jobTitle("Java Developer")
+                .appliedAt(LocalDate.now().plusDays(1))
+                .build();
+
+        assertThatThrownBy(() -> trackingService.createTracking(command))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Applied date cannot be in the future");
+    }
+
+    @Test
     @DisplayName("Should update tracking with both info and status")
     void shouldUpdateTrackingWithBothInfoAndStatus() {
         // 给定
@@ -153,6 +186,22 @@ class TrackingApplicationServiceTest {
         // 那么
         // Then
         assertThat(result.getStatus()).isEqualTo(ApplicationStatus.APPLIED);
+        assertThat(result.getAppliedAt()).isEqualTo(LocalDate.now());
+    }
+
+    @Test
+    @DisplayName("Should reject future applied date when updating tracking")
+    void shouldRejectFutureAppliedDateWhenUpdatingTracking() {
+        ApplicationTracking tracking = createTestTracking();
+        UpdateTrackingCommand updateCmd = UpdateTrackingCommand.builder()
+                .appliedAt(LocalDate.now().plusDays(1))
+                .build();
+        when(trackingRepository.findByIdAndUserId(TRACKING_ID, USER_ID))
+                .thenReturn(Optional.of(tracking));
+
+        assertThatThrownBy(() -> trackingService.updateTracking(TRACKING_ID, USER_ID, updateCmd, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Applied date cannot be in the future");
     }
 
     @Test

@@ -44,6 +44,24 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
+const getTodayDateInputValue = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const clampAppliedDate = (value: string) => {
+  const today = getTodayDateInputValue();
+  return value && value > today ? today : value;
+};
+
+const getAppliedDateForStatus = (status: Tracking['status'], appliedAt: string) => {
+  const clampedAppliedAt = clampAppliedDate(appliedAt);
+  return status === 'APPLIED' && !clampedAppliedAt ? getTodayDateInputValue() : clampedAppliedAt;
+};
+
 export default function TrackingPage() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -57,7 +75,7 @@ export default function TrackingPage() {
     jobTitle: '',
     companyName: '',
     status: 'APPLIED' as Tracking['status'],
-    appliedAt: '',
+    appliedAt: getTodayDateInputValue(),
     notes: '',
   });
   const [editTracking, setEditTracking] = useState({
@@ -68,6 +86,7 @@ export default function TrackingPage() {
     notes: '',
   });
   const [stats, setStats] = useState<TrackingStatsResponse | null>(null);
+  const todayDateInputValue = getTodayDateInputValue();
 
   const statusConfig: Record<string, { labelKey: string; color: string }> = useMemo(
     () => ({
@@ -145,11 +164,11 @@ export default function TrackingPage() {
         jobTitle: newTracking.jobTitle,
         companyName: newTracking.companyName,
         status: newTracking.status,
-        appliedAt: newTracking.appliedAt || undefined,
+        appliedAt: getAppliedDateForStatus(newTracking.status, newTracking.appliedAt) || undefined,
         notes: newTracking.notes || undefined,
       });
       await Promise.all([loadTrackings(), loadStats()]);
-      setNewTracking({ jobTitle: '', companyName: '', status: 'APPLIED', appliedAt: '', notes: '' });
+      setNewTracking({ jobTitle: '', companyName: '', status: 'APPLIED', appliedAt: getTodayDateInputValue(), notes: '' });
       setAddDialogOpen(false);
       toast.success(t('tracking.addSuccess'));
     } catch {
@@ -163,7 +182,7 @@ export default function TrackingPage() {
       jobTitle: tracking.jobTitle,
       companyName: tracking.companyName,
       status: tracking.status,
-      appliedAt: tracking.appliedAt ?? '',
+      appliedAt: clampAppliedDate(tracking.appliedAt ?? ''),
       notes: tracking.notes ?? '',
     });
     updateEditSearchParam(tracking.trackingId);
@@ -185,7 +204,7 @@ export default function TrackingPage() {
         jobTitle,
         companyName,
         status: editTracking.status,
-        appliedAt: editTracking.appliedAt || undefined,
+        appliedAt: getAppliedDateForStatus(editTracking.status, editTracking.appliedAt) || undefined,
         notes: editTracking.notes,
       });
       await Promise.all([loadTrackings(), loadStats()]);
@@ -198,7 +217,11 @@ export default function TrackingPage() {
 
   const handleUpdateStatus = async (trackingId: string, status: Tracking['status']) => {
     try {
-      await trackingService.updateTracking(trackingId, { status });
+      const tracking = trackings.find((item) => item.trackingId === trackingId);
+      await trackingService.updateTracking(trackingId, {
+        status,
+        appliedAt: getAppliedDateForStatus(status, tracking?.appliedAt ?? '') || undefined,
+      });
       await Promise.all([loadTrackings(), loadStats()]);
       toast.success(t('tracking.updateSuccess'));
     } catch {
@@ -488,6 +511,7 @@ export default function TrackingPage() {
                   setNewTracking({
                     ...newTracking,
                     status: value as Tracking['status'],
+                    appliedAt: getAppliedDateForStatus(value as Tracking['status'], newTracking.appliedAt),
                   })
                 }
               >
@@ -507,9 +531,10 @@ export default function TrackingPage() {
               <Label>{t('tracking.appliedAt')}</Label>
               <Input
                 type="date"
+                max={todayDateInputValue}
                 value={newTracking.appliedAt}
                 onChange={(e) =>
-                  setNewTracking({ ...newTracking, appliedAt: e.target.value })
+                  setNewTracking({ ...newTracking, appliedAt: clampAppliedDate(e.target.value) })
                 }
               />
             </div>
@@ -574,6 +599,7 @@ export default function TrackingPage() {
                   setEditTracking({
                     ...editTracking,
                     status: value as Tracking['status'],
+                    appliedAt: getAppliedDateForStatus(value as Tracking['status'], editTracking.appliedAt),
                   })
                 }
               >
@@ -593,9 +619,10 @@ export default function TrackingPage() {
               <Label>{t('tracking.appliedAt')}</Label>
               <Input
                 type="date"
+                max={todayDateInputValue}
                 value={editTracking.appliedAt}
                 onChange={(e) =>
-                  setEditTracking({ ...editTracking, appliedAt: e.target.value })
+                  setEditTracking({ ...editTracking, appliedAt: clampAppliedDate(e.target.value) })
                 }
               />
             </div>
