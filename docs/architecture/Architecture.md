@@ -79,14 +79,14 @@ job seekers.
 
 ### 2.5 Technology Stack Summary
 
-| Layer             | Technology                        | Version | Purpose                 |
-| ----------------- | --------------------------------- | ------- | ----------------------- |
-| **Frontend**      | React + TypeScript + Tailwind CSS | 18.x    | User interface          |
-| **Backend**       | Java Spring Boot                  | 3.x     | Business logic, API     |
-| **AI Service**    | Python FastAPI                    | Latest  | AI/ML processing        |
-| **Database**      | PostgreSQL + pgvector             | 15      | Business + vector data  |
-| **Message Queue** | RabbitMQ                          | 3.x     | Async communication     |
-| **Deployment**    | Docker Compose                    | -       | Container orchestration |
+| Layer             | Technology                          | Version / Config        | Purpose                         |
+| ----------------- | ----------------------------------- | ----------------------- | ------------------------------- |
+| **Frontend**      | React + TypeScript + Tailwind CSS   | React 19, Vite 7        | User interface                  |
+| **Backend**       | Java + Spring Boot                  | Java 21, Spring Boot 3  | Business logic, API, auth       |
+| **AI Service**    | Python FastAPI + LiteLLM            | Python 3.11+            | Parsing, embeddings, ranking, chat |
+| **Database**      | PostgreSQL + pgvector               | PostgreSQL 15           | Business data + vector data     |
+| **Message Queue** | RabbitMQ                            | RabbitMQ 3              | Async AI task processing        |
+| **Deployment**    | Docker Compose + Nginx              | Compose v2              | Containerized local deployment  |
 
 ---
 
@@ -106,7 +106,7 @@ job seekers.
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
 │                                   FRONTEND LAYER                                     │
 │  ┌─────────────────────────────────────────────────────────────────────────────┐   │
-│  │                     React 18 + TypeScript + Tailwind CSS                      │   │
+│  │                     React 19 + TypeScript + Tailwind CSS                      │   │
 │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │   │
 │  │  │ Resume Page  │  │ Job Page     │  │ Chat Page    │  │ Tracking Page│    │   │
 │  │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘    │   │
@@ -118,25 +118,25 @@ job seekers.
 │                              JAVA BACKEND SERVICE (DDD)                              │
 │  ┌─────────────────────────────────────────────────────────────────────────────┐   │
 │  │                         API Gateway Layer (Controller)                        │   │
-│  │  ResumeController | JobController | ChatController | TrackController        │   │
+│  │  Resume | Job | Conversation | Tracking Controllers                         │   │
 │  └─────────────────────────────────────────────────────────────────────────────┘   │
 │                                          │                                          │
 │  ┌───────────────────────────────────────▼──────────────────────────────────────┐   │
 │  │                        Application Service Layer                               │   │
-│  │  ResumeAppService | JobAppService | ChatAppService | TrackAppService         │   │
+│  │  Resume | Job | Conversation | Tracking Application Services                │   │
 │  └───────────────────────────────────────▼──────────────────────────────────────┘   │
 │                                          │                                          │
 │  ┌───────────────────────────────────────▼──────────────────────────────────────┐   │
 │  │                              Domain Layer                                      │   │
 │  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐      │   │
-│  │  │  User    │  │  Resume  │  │   Job    │  │  Chat    │  │  Track   │      │   │
+│  │  │  User    │  │  Resume  │  │   Job    │  │  Conv    │  │  Track   │      │   │
 │  │  │  Domain  │  │  Domain  │  │  Domain  │  │  Domain  │  │  Domain  │      │   │
 │  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘  └──────────┘      │   │
 │  └───────────────────────────────────────▼──────────────────────────────────────┘   │
 │                                          │                                          │
 │  ┌───────────────────────────────────────▼──────────────────────────────────────┐   │
 │  │                          Infrastructure Layer                                  │   │
-│  │  Repository | MQ Publisher | MQ Consumer | PGVector Client | Auth Service | MinIO │   │
+│  │  Repository | MQ Publisher | MQ Consumer | pgvector Search | Auth | Storage │   │
 │  └─────────────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────────────┘
                                           │
@@ -146,7 +146,7 @@ job seekers.
 │                              PYTHON AI SERVICE LAYER                                 │
 │  ┌─────────────────────────────────────────────────────────────────────────────┐   │
 │  │                          Message Consumers                                     │   │
-│  │  ResumeParseConsumer | JobMatchConsumer | ChatConsumer                       │   │
+│  │  Resume Parse | Job Parse | Conversation | Job Rank Consumers                │   │
 │  └───────────────────────────────────────▼──────────────────────────────────────┘   │
 │                                          │                                          │
 │  ┌───────────────────────────────────────▼──────────────────────────────────────┐   │
@@ -154,8 +154,8 @@ job seekers.
 │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │   │
 │  │  │ Resume       │  │ Embedding    │  │ Match        │  │ Chat         │      │   │
 │  │  │ Parser       │  │ Generator    │  │ Calculator   │  │ Processor    │      │   │
-│  │  │ (PyPDF2 +    │  │ (Sentence-   │  │ (Similarity  │  │ (RAG +       │      │   │
-│  │  │  OpenAI)     │  │  Transformers│  │  Ranking)    │  │  Memory)     │      │   │
+│  │  │ (PDF/DOCX +  │  │ (LiteLLM     │  │ (pgvector +  │  │ (Context +   │      │   │
+│  │  │  LiteLLM)    │  │  Embeddings) │  │  Ranking)    │  │  Memory)     │      │   │
 │  │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘      │   │
 │  └─────────────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────────────┘
@@ -168,8 +168,8 @@ job seekers.
 │  │                              PostgreSQL 15 + pgvector                         │   │
 │  │  ┌──────────────────────────────┐  ┌─────────────────────────────────┐     │   │
 │  │  │    Business Data Tables      │  │    Vector Tables (pgvector)     │     │   │
-│  │  │  - users                     │  │  - resume_embeddings            │     │   │
-│  │  │  - resumes                   │  │  - job_embeddings               │     │   │
+│  │  │  - users                     │  │  - resume_vectors               │     │   │
+│  │  │  - resume_versions           │  │  - job_vectors                  │     │   │
 │  │  │  - jobs                      │  │                                 │     │   │
 │  │  │  - conversations             │  │  Unified database management    │     │   │
 │  │  │  - messages                  │  │                                 │     │   │
@@ -193,7 +193,7 @@ job seekers.
 │   │                │                  │                  │              │            │
 │   │  Upload Resume │                  │                  │              │            │
 │   │───────────────>│                  │                  │              │            │
-│   │                │  POST /api/resumes/upload          │              │            │
+│   │                │  POST /api/v1/resumes              │              │            │
 │   │                │─────────────────>│                  │              │            │
 │   │                │                  │                  │              │            │
 │   │                │                  │  Save Resume     │              │            │
@@ -201,7 +201,7 @@ job seekers.
 │   │                │                  │  ────────────────│              │            │
 │   │                │                  │                  │              │            │
 │   │                │                  │  Publish Message │              │            │
-│   │                │                  │  ai.resume.parse │              │            │
+│   │                │                  │ ai.req.resume.parse│            │            │
 │   │                │                  │─────────────────>│              │            │
 │   │                │  Return 202      │                  │              │            │
 │   │                │<─────────────────│                  │              │            │
@@ -232,7 +232,7 @@ job seekers.
 │   │                │                  │                  │              │            │
 │   │  Poll Status   │                  │                  │              │            │
 │   │───────────────>│                  │                  │              │            │
-│   │                │  GET /api/resumes/{id}              │              │            │
+│   │                │  GET /api/v1/resumes/versions/{versionId}         │            │
 │   │                │─────────────────>│                  │              │            │
 │   │                │  Return Result   │                  │              │            │
 │   │                │<─────────────────│                  │              │            │
@@ -250,14 +250,14 @@ job seekers.
 
 #### 4.1.1 Technology Stack
 
-| Component        | Technology   | Version | Purpose                 |
-| ---------------- | ------------ | ------- | ----------------------- |
-| Framework        | React        | 18.x    | UI component library    |
-| Language         | TypeScript   | 5.x     | Type-safe development   |
-| Styling          | Tailwind CSS | 3.x     | Utility-first CSS       |
-| State Management | React Query  | Latest  | Server state management |
-| HTTP Client      | Axios        | Latest  | API communication       |
-| Build Tool       | Vite         | Latest  | Fast development build  |
+| Component        | Technology                 | Version | Purpose                 |
+| ---------------- | -------------------------- | ------- | ----------------------- |
+| Framework        | React                      | 19.x    | UI component library    |
+| Language         | TypeScript                 | 5.x     | Type-safe development   |
+| Styling          | Tailwind CSS               | 3.x     | Utility-first CSS       |
+| State Management | Zustand + component state  | 5.x     | Client and page state   |
+| HTTP Client      | Axios                      | Latest  | API communication       |
+| Build Tool       | Vite                       | 7.x     | Frontend build tool     |
 
 #### 4.1.2 Page Structure
 
@@ -414,7 +414,7 @@ public class JobController {
 
 @RestController
 @RequestMapping("/api/v1")
-public class ChatController {
+public class ConversationController {
     @PostMapping("/conversations")
     public ResponseEntity<ConversationDTO> createConversation();
 
@@ -463,11 +463,12 @@ public class TrackingController {
 │  │                      Message Queue Consumer Layer                       │ │
 │  │  ┌──────────────────────────────────────────────────────────────────┐  │ │
 │  │  │  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────┐ │  │ │
-│  │  │  │ Resume Parse     │  │ Job Match        │  │ Chat Message   │ │  │ │
+│  │  │  │ Resume Parse     │  │ Job Parse        │  │ Conversation   │ │  │ │
 │  │  │  │ Consumer         │  │ Consumer         │  │ Consumer       │ │  │ │
 │  │  │  │                  │  │                  │  │                │ │  │ │
 │  │  │  │ Queue:           │  │ Queue:           │  │ Queue:         │ │  │ │
-│  │  │  │ ai.resume.parse  │  │ ai.job.match     │  │ ai.chat.message│ │  │ │
+│  │  │  │ ai.queue.resume  │  │ ai.queue.job     │  │ ai.queue.      │ │  │ │
+│  │  │  │ .parse           │  │ .parse           │  │ conversation   │ │  │ │
 │  │  │  └──────────────────┘  └──────────────────┘  └────────────────┘ │  │ │
 │  │  └──────────────────────────────────────────────────────────────────┘  │ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
@@ -480,9 +481,9 @@ public class TrackingController {
 │  │  │  │ Resume       │  │ Embedding    │  │ Match        │          │  │ │
 │  │  │  │ Parser       │  │ Generator    │  │ Calculator   │          │  │ │
 │  │  │  │              │  │              │  │              │          │  │ │
-│  │  │  │ - PDF/Word   │  │ - Sentence   │  │ - Cosine     │          │  │ │
-│  │  │  │   extraction │  │   Transformer│  │   similarity │          │  │ │
-│  │  │  │ - OpenAI     │  │   (384-dim)  │  │ - Ranking    │          │  │ │
+│  │  │  │ - PDF/Word   │  │ - LiteLLM    │  │ - Cosine     │          │  │ │
+│  │  │  │   extraction │  │   embedding  │  │   similarity │          │  │ │
+│  │  │  │ - LiteLLM    │  │   model      │  │ - Ranking    │          │  │ │
 │  │  │  │   structured │  │ - Batch      │  │ - Filtering  │          │  │ │
 │  │  │  │   output     │  │   processing │  │              │          │  │ │
 │  │  │  └──────────────┘  └──────────────┘  └──────────────┘          │  │ │
@@ -515,14 +516,15 @@ public class TrackingController {
 
 #### 4.3.2 AI Modules
 
-| Module                  | Technology                               | Purpose                                                |
+| Module                  | Technology / Implementation              | Purpose                                                |
 | ----------------------- | ---------------------------------------- | ------------------------------------------------------ |
-| **Resume Parser**       | PyPDF2, python-docx, OpenAI GPT-4        | Extract structured data from PDF/Word resumes          |
-| **Embedding Generator** | sentence-transformers (all-MiniLM-L6-v2) | Generate 384-dimensional embeddings                    |
-| **Match Calculator**    | pgvector, cosine similarity              | Calculate semantic similarity between resumes and jobs |
-| **Chat Processor**      | OpenAI GPT-4, LangChain                  | Process conversational queries with RAG                |
-| **Memory Manager**      | Custom implementation                    | Manage conversation history and context                |
-| **RAG Retriever**       | pgvector, embedding search               | Retrieve relevant resume content for context           |
+| **Resume Parser**       | PDF/DOCX text extraction + LiteLLM structured output | Extract structured resume data              |
+| **Job Parser**          | URL/text parsing + optional vision fallback + LiteLLM | Extract structured job posting data          |
+| **Embedding Generator** | Configured LiteLLM embedding model + pgvector | Generate vectors for semantic search              |
+| **Match Calculator**    | PostgreSQL pgvector cosine distance + backend matching service | Recall and rank relevant jobs      |
+| **Job Ranker**          | LiteLLM text model                       | Explain and rerank recalled jobs                       |
+| **Chat Processor**      | Resume/job context + conversation history + LiteLLM | Process AI chat requests                    |
+| **Context Builder**     | Resume/job repositories + conversation history | Assemble chat context from selected resume, job, and prior messages |
 
 ---
 
@@ -550,13 +552,13 @@ public class TrackingController {
 │  │                                      └──────────────┘                 │ │
 │  │                                                                         │ │
 │  │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐     │ │
-│  │  │  conversations   │  │    messages      │  │ job_applications │     │ │
+│  │  │  conversations   │  │    messages      │  │ app_trackings    │     │ │
 │  │  │──────────────────│  │──────────────────│  │──────────────────│     │ │
 │  │  │ id (PK)          │  │ id (PK)          │  │ id (PK)          │     │ │
 │  │  │ user_id (FK)     │  │ conversation_id  │  │ user_id (FK)     │     │ │
-│  │  │ resume_id (FK)   │  │ role             │  │ job_id (FK)      │     │ │
-│  │  │ title            │  │ content          │  │ resume_id (FK)   │     │ │
-│  │  │ created_at       │  │ created_at       │  │ status           │     │ │
+│  │  │ resume_version_id│  │ role             │  │ job_id (FK)      │     │ │
+│  │  │ job_id           │  │ content          │  │ resume_id (FK)   │     │ │
+│  │  │ ai_opt_version_id│  │ file_url         │  │ status           │     │ │
 │  │  └──────────────────┘  └──────────────────┘  │ applied_at       │     │ │
 │  │                                              └──────────────────┘     │ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
@@ -564,12 +566,13 @@ public class TrackingController {
 │  ┌────────────────────────────────────────────────────────────────────────┐ │
 │  │                         Vector Tables (pgvector)                        │ │
 │  │  ┌──────────────────────────┐  ┌──────────────────────────┐            │ │
-│  │  │   resume_embeddings      │  │    job_embeddings        │            │ │
+│  │  │    resume_vectors        │  │      job_vectors         │            │ │
 │  │  │──────────────────────────│  │──────────────────────────│            │ │
 │  │  │ id (PK)                  │  │ id (PK)                  │            │ │
-│  │  │ resume_id (FK)           │  │ job_id (FK)              │            │ │
-│  │  │ embedding VECTOR(384)    │  │ embedding VECTOR(384)    │            │ │
-│  │  │ metadata JSONB           │  │ metadata JSONB           │            │ │
+│  │  │ resume_version_id (FK)   │  │ job_id (FK)              │            │ │
+│  │  │ embedding vector(1536)   │  │ embedding vector(1536)   │            │ │
+│  │  │ status                   │  │ status                   │            │ │
+│  │  │ error_message            │  │ raw_content              │            │ │
 │  │  │ created_at               │  │ created_at               │            │ │
 │  │  └──────────────────────────┘  └──────────────────────────┘            │ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
@@ -632,28 +635,18 @@ CREATE INDEX idx_resumes_status ON resumes(status);
 -- Enable pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector;
 
-CREATE TABLE resume_embeddings (
-    id BIGSERIAL PRIMARY KEY,
-    resume_id BIGINT NOT NULL REFERENCES resumes(id) ON DELETE CASCADE,
-
-    -- 384-dimensional embedding (all-MiniLM-L6-v2)
-    embedding VECTOR(384) NOT NULL,
-
-    -- Metadata for filtering and context
-    metadata JSONB DEFAULT '{}',
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    UNIQUE(resume_id)
+CREATE TABLE IF NOT EXISTS resume_vectors (
+    id VARCHAR(64) PRIMARY KEY,
+    resume_version_id VARCHAR(64) NOT NULL UNIQUE,
+    embedding vector(1536),
+    status VARCHAR(32) NOT NULL,
+    error_message TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Vector similarity search index (IVFFlat for approximate search)
-CREATE INDEX idx_resume_embeddings_vector ON resume_embeddings 
-    USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
-
--- GIN index for metadata filtering
-CREATE INDEX idx_resume_embeddings_metadata ON resume_embeddings USING GIN (metadata);
+CREATE INDEX IF NOT EXISTS idx_resume_vectors_version_id ON resume_vectors (resume_version_id);
+CREATE INDEX IF NOT EXISTS idx_resume_vectors_status ON resume_vectors (status);
 ```
 
 #### 5.2.4 Jobs Table
@@ -702,161 +695,133 @@ CREATE INDEX idx_jobs_active ON jobs(is_active) WHERE is_active = TRUE;
 #### 5.2.5 Job Embeddings Table (pgvector)
 
 ```sql
-CREATE TABLE job_embeddings (
-    id BIGSERIAL PRIMARY KEY,
-    job_id BIGINT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
-
-    -- 384-dimensional embedding
-    embedding VECTOR(384) NOT NULL,
-
-    -- Metadata for filtering and context
-    metadata JSONB DEFAULT '{}',
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    UNIQUE(job_id)
+CREATE TABLE IF NOT EXISTS job_vectors (
+    id VARCHAR(64) PRIMARY KEY,
+    job_id VARCHAR(64) NOT NULL UNIQUE,
+    embedding vector(1536),
+    status VARCHAR(32) NOT NULL,
+    error_message TEXT,
+    title TEXT,
+    description TEXT,
+    requirements JSONB,
+    raw_content TEXT,
+    source_file VARCHAR(255),
+    model_version VARCHAR(50),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Vector similarity search index
-CREATE INDEX idx_job_embeddings_vector ON job_embeddings 
-    USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
-
-CREATE INDEX idx_job_embeddings_metadata ON job_embeddings USING GIN (metadata);
+CREATE INDEX IF NOT EXISTS idx_job_vectors_job_id ON job_vectors (job_id);
+CREATE INDEX IF NOT EXISTS idx_job_vectors_status ON job_vectors (status);
 ```
 
 #### 5.2.6 Conversations Table
 
 ```sql
 CREATE TABLE conversations (
-    id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    resume_id BIGINT REFERENCES resumes(id) ON DELETE SET NULL,
-
-    -- Conversation metadata
-    title VARCHAR(255),
-    context TEXT, -- Initial context for the conversation
-
-    -- Status
-    is_active BOOLEAN DEFAULT TRUE,
-
+    id VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(64) NOT NULL,
+    title VARCHAR(200),
+    status VARCHAR(32),
+    resume_version_id VARCHAR(64),
+    job_id VARCHAR(64),
+    ai_optimized_version_id VARCHAR(64),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_conversations_user_id ON conversations(user_id);
-CREATE INDEX idx_conversations_resume_id ON conversations(resume_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status);
+CREATE INDEX IF NOT EXISTS idx_conversations_job_id ON conversations(job_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_ai_optimized_version_id
+    ON conversations(ai_optimized_version_id);
 ```
 
 #### 5.2.7 Messages Table
 
 ```sql
 CREATE TABLE messages (
-    id BIGSERIAL PRIMARY KEY,
-    conversation_id BIGINT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-
-    -- Message content
-    role VARCHAR(20) NOT NULL, -- 'user', 'assistant', 'system'
-    content TEXT NOT NULL,
-
-    -- AI-specific fields
-    model_used VARCHAR(50),
-    tokens_used INTEGER,
-
-    -- For resume optimization suggestions
-    suggested_changes JSONB, -- Structured change suggestions
-
+    id VARCHAR(64) PRIMARY KEY,
+    conversation_id VARCHAR(64) NOT NULL,
+    role VARCHAR(32) NOT NULL,
+    content TEXT,
+    sequence INT,
+    file_url VARCHAR(500),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_messages_conversation_id ON messages(conversation_id);
-CREATE INDEX idx_messages_created_at ON messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
 ```
 
-#### 5.2.8 Job Applications Table
+#### 5.2.8 Application Trackings Table
 
 ```sql
-CREATE TABLE job_applications (
-    id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    job_id BIGINT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
-    resume_id BIGINT REFERENCES resumes(id) ON DELETE SET NULL,
-
-    -- Application details
-    status VARCHAR(50) DEFAULT 'APPLIED', -- APPLIED, SCREENING, INTERVIEW, OFFER, REJECTED, WITHDRAWN
-    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    -- Source tracking
-    source VARCHAR(100), -- Where the application was submitted
-    application_url VARCHAR(500),
-
-    -- Notes
+CREATE TABLE IF NOT EXISTS application_trackings (
+    id VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(64) NOT NULL,
+    job_id VARCHAR(64),
+    company_name VARCHAR(200),
+    job_title VARCHAR(200),
+    status VARCHAR(32) NOT NULL,
+    applied_at DATE,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     notes TEXT,
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    events JSONB
 );
 
-CREATE INDEX idx_applications_user_id ON job_applications(user_id);
-CREATE INDEX idx_applications_status ON job_applications(status);
-CREATE INDEX idx_applications_applied_at ON job_applications(applied_at);
+CREATE INDEX IF NOT EXISTS idx_application_trackings_user_id ON application_trackings(user_id);
+CREATE INDEX IF NOT EXISTS idx_application_trackings_job_id ON application_trackings(job_id);
+CREATE INDEX IF NOT EXISTS idx_application_trackings_status ON application_trackings(status);
 ```
 
 ### 5.3 Vector Storage Design
 
 #### 5.3.1 Embedding Model Selection
 
-| Model                  | Dimension | Performance             | Use Case                  |
-| ---------------------- | --------- | ----------------------- | ------------------------- |
-| **all-MiniLM-L6-v2**   | 384       | Fast, good quality      | Selected for this project |
-| all-mpnet-base-v2      | 768       | Slower, better quality  | Alternative option        |
-| text-embedding-ada-002 | 1536      | API-based, high quality | Cloud option              |
+| Model                             | Dimension | Provider       | Use Case                  |
+| --------------------------------- | --------- | -------------- | ------------------------- |
+| **gemini/gemini-embedding-001**   | 1536      | LiteLLM/Gemini | Default local configuration |
+| openai/text-embedding-3-small     | 1536      | LiteLLM/OpenAI | Alternative option        |
+| openai/text-embedding-3-large     | 3072      | LiteLLM/OpenAI | Higher-dimensional option |
 
-**Selected Model**: `sentence-transformers/all-MiniLM-L6-v2`
+**Selected Model**: configured by `LLM_EMBEDDING_MODEL`
 
-- **Dimension**: 384
-- **Max Sequence Length**: 256 tokens
-- **Average Performance**: Strong semantic similarity
-- **Speed**: Fast inference on CPU
+- **Default Dimension**: 1536
+- **Configuration**: `.env` controls provider, model, and dimension
+- **Storage**: vectors are stored in PostgreSQL `pgvector`
+- **Constraint**: `LLM_EMBEDDING_MODEL_DIMENSION` must match the database vector dimension
 
 #### 5.3.2 Vector Search Query Examples
 
 ```sql
 -- Find top 10 matching jobs for a resume
 SELECT 
-    j.id,
-    j.title,
-    j.company,
-    1 - (je.embedding <=> resume_embedding) AS similarity_score
-FROM jobs j
-JOIN job_embeddings je ON j.id = je.job_id
-WHERE j.is_active = TRUE
-ORDER BY je.embedding <=> resume_embedding
+    job_id,
+    title,
+    1 - (embedding <=> CAST(:resumeVector AS vector(1536))) AS similarity_score
+FROM job_vectors
+WHERE status = 'COMPLETED'
+ORDER BY embedding <=> CAST(:resumeVector AS vector(1536))
 LIMIT 10;
 
 -- Find resumes similar to a job description
 SELECT 
-    r.id,
-    r.summary,
-    1 - (re.embedding <=> job_embedding) AS similarity_score
-FROM resumes r
-JOIN resume_embeddings re ON r.id = re.resume_id
-WHERE r.user_id = :user_id
-ORDER BY re.embedding <=> job_embedding
+    resume_version_id,
+    1 - (embedding <=> CAST(:jobVector AS vector(1536))) AS similarity_score
+FROM resume_vectors
+WHERE status = 'COMPLETED'
+ORDER BY embedding <=> CAST(:jobVector AS vector(1536))
 LIMIT 5;
 
--- Hybrid search with metadata filtering
+-- Hybrid search with structured filtering
 SELECT 
-    j.id,
-    j.title,
-    j.company,
-    1 - (je.embedding <=> query_embedding) AS similarity_score
-FROM jobs j
-JOIN job_embeddings je ON j.id = je.job_id
-WHERE j.is_active = TRUE
-  AND j.location = 'Remote'
-  AND je.metadata @> '{"skills": ["Python"]}'
-ORDER BY je.embedding <=> query_embedding
+    job_id,
+    title,
+    1 - (embedding <=> CAST(:queryVector AS vector(1536))) AS similarity_score
+FROM job_vectors
+WHERE status = 'COMPLETED'
+  AND requirements ? 'Python'
+ORDER BY embedding <=> CAST(:queryVector AS vector(1536))
 LIMIT 10;
 ```
 
@@ -940,7 +905,7 @@ LIMIT 10;
 **File Upload Branch**:
 
 ```
-AI Service / Frontend ──▶ Call Backend Upload API ──▶ Store to MinIO ──▶ Return Presigned URL ──▶ Update Message(fileUrl)
+Frontend ──▶ POST /api/v1/resumes ──▶ Store in shared-storage volume ──▶ Publish MQ task ──▶ AI service reads file
 ```
 
 ---
@@ -953,16 +918,15 @@ AI Service / Frontend ──▶ Call Backend Upload API ──▶ Store to MinIO
 
 | Queue Name               | Type           | Producer     | Consumer     | Message Size | TTL    |
 | ------------------------ | -------------- | ------------ | ------------ | ------------ | ------ |
-| `ai.resume.parse`        | Work Queue     | Java Backend | Python AI    | < 1KB        | 1 hour |
-| `ai.resume.parse.result` | Result Queue   | Python AI    | Java Backend | 5-10KB       | 1 hour |
-| `ai.job.match`           | Work Queue     | Java Backend | Python AI    | < 5KB        | 30 min |
-| `ai.job.match.result`    | Result Queue   | Python AI    | Java Backend | < 5KB        | 30 min |
-| `ai.chat.message`        | Work Queue     | Java Backend | Python AI    | < 5KB        | 5 min  |
-| `ai.chat.message.result` | Result Queue   | Python AI    | Java Backend | < 5KB        | 5 min  |
-| `ai.conversation`        | Work Queue     | Java Backend | Python AI    | < 5KB        | 5 min  |
-| `ai.conversation.result` | Result Queue   | Python AI    | Java Backend | < 5KB        | 5 min  |
-| `ai.vector.request`      | Request Queue  | Python AI    | Java Backend | < 1KB        | 1 min  |
-| `ai.vector.response`     | Response Queue | Java Backend | Python AI    | 2-5KB        | 1 min  |
+| `ai.queue.resume.parse`        | Work Queue     | Java Backend | Python AI    | < 1KB        | 1 hour |
+| `backend.queue.resume.parse`   | Result Queue   | Python AI    | Java Backend | 5-10KB       | 1 hour |
+| `ai.queue.job.parse`           | Work Queue     | Java Backend | Python AI    | < 5KB        | 30 min |
+| `backend.queue.job.parse`      | Result Queue   | Python AI    | Java Backend | < 5KB        | 30 min |
+| `ai.queue.conversation`        | Work Queue     | Java Backend | Python AI    | < 5KB        | 5 min  |
+| `backend.queue.conversation`   | Result Queue   | Python AI    | Java Backend | < 5KB        | 5 min  |
+| `ai.queue.job.rank`            | Work Queue     | Java Backend | Python AI    | < 5KB        | 30 min |
+| `backend.queue.job.rank`       | Result Queue   | Python AI    | Java Backend | < 5KB        | 30 min |
+| `ai.dlq.queue`                 | Dead Letter    | RabbitMQ     | Operators    | varies       | -      |
 
 #### 6.1.2 Message Schema Examples
 
@@ -970,14 +934,9 @@ AI Service / Frontend ──▶ Call Backend Upload API ──▶ Store to MinIO
 
 ```json
 {
-  "messageId": "uuid-v4",
-  "timestamp": "2025-01-15T10:30:00Z",
-  "type": "RESUME_PARSE_REQUEST",
-  "payload": {
-    "resumeId": 12345,
-    "fileUrl": "https://storage.example.com/resumes/12345.pdf",
-    "fileType": "PDF"
-  }
+  "resumeId": "550e8400-e29b-41d4-a716-446655440002",
+  "fileUrl": "http://backend:8080/api/v1/resumes/550e8400-e29b-41d4-a716-446655440002/download",
+  "format": "pdf"
 }
 ```
 
@@ -985,60 +944,49 @@ AI Service / Frontend ──▶ Call Backend Upload API ──▶ Store to MinIO
 
 ```json
 {
-  "messageId": "uuid-v4",
-  "correlationId": "original-message-id",
-  "timestamp": "2025-01-15T10:31:30Z",
-  "type": "RESUME_PARSE_RESULT",
-  "payload": {
-    "resumeId": 12345,
-    "status": "SUCCESS",
+  "referenceId": "550e8400-e29b-41d4-a716-446655440002",
+  "type": "RESUME_PARSE",
+  "status": "COMPLETED",
+  "data": {
     "parsedContent": {
-      "personalInfo": { "name": "...", "email": "..." },
+      "name": "...",
+      "email": "...",
       "skills": ["Python", "Java", "React"],
-      "workExperience": [...],
-      "education": [...]
+      "experience": [...]
     },
-    "summary": "Software engineer with 5 years...",
-    "embedding": [0.023, -0.156, ...] // 384 dimensions
-  }
+    "summary": ""
+  },
+  "errorMessage": null,
+  "eventType": "RESUME"
 }
 ```
 
-**Job Match Request:**
+**Job Parse Request:**
 
 ```json
 {
-  "messageId": "uuid-v4",
-  "timestamp": "2025-01-15T11:00:00Z",
-  "type": "JOB_MATCH_REQUEST",
-  "payload": {
-    "resumeId": 12345,
-    "userId": 67890,
-    "filters": {
-      "location": "Remote",
-      "jobType": "FULL_TIME"
-    },
-    "limit": 10
-  }
+  "jobId": "550e8400-e29b-41d4-a716-446655440010",
+  "url": "https://example.com/jobs/software-engineer",
+  "imageCheckEnabled": false,
+  "screenshotBase64": null
 }
 ```
 
-**Chat Message Request:**
+**Job Parse Result:**
 
 ```json
 {
-  "messageId": "uuid-v4",
-  "timestamp": "2025-01-15T12:00:00Z",
-  "type": "CHAT_MESSAGE_REQUEST",
-  "payload": {
-    "conversationId": 98765,
-    "userId": 67890,
-    "message": "How can I improve my resume for software engineering roles?",
-    "context": {
-      "resumeId": 12345,
-      "previousMessages": [...]
-    }
-  }
+  "referenceId": "550e8400-e29b-41d4-a716-446655440010",
+  "type": "JOB_PARSE",
+  "status": "COMPLETED",
+  "data": {
+    "title": "Software Engineer",
+    "company": "Example Corp",
+    "description": "...",
+    "requirements": ["Java", "React"]
+  },
+  "errorMessage": null,
+  "eventType": "JOB"
 }
 ```
 
@@ -1052,8 +1000,13 @@ AI Service / Frontend ──▶ Call Backend Upload API ──▶ Store to MinIO
     { "role": "USER", "content": "How can I improve my resume?" }
   ],
   "currentMessage": "How can I improve my resume?",
-  "fileUrls": ["https://minio.example.com/resumes/xxx.pdf"],
-  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002"
+  "fileUrls": [],
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
+  "resumeText": "# Resume Markdown...",
+  "primaryJobText": "Software Engineer\nExample Corp\nJob description...",
+  "relatedJobTexts": ["Backend Engineer\nExample Corp\nRelated job description..."],
+  "init": true,
+  "locale": "en"
 }
 ```
 
@@ -1066,7 +1019,11 @@ AI Service / Frontend ──▶ Call Backend Upload API ──▶ Store to MinIO
   "status": "COMPLETED",
   "data": {
     "content": "Based on your resume, here are my suggestions...",
-    "fileUrl": "https://minio.example.com/conversations/xxx/optimized.pdf"
+    "fileUrl": null,
+    "resumeModification": {
+      "modified": true,
+      "markdown": "# Optimized Resume\n\n..."
+    }
   },
   "errorMessage": null,
   "eventType": null
@@ -1079,40 +1036,50 @@ AI Service / Frontend ──▶ Call Backend Upload API ──▶ Store to MinIO
 
 | Endpoint                                    | Method | Description                                   | Auth Required |
 | ------------------------------------------- | ------ | --------------------------------------------- | ------------- |
-| `/api/v1/auth/register`                     | POST   | User registration                             | No            |
-| `/api/v1/auth/login`                        | POST   | User login                                    | No            |
+| `/api/v1/auth/register/email`               | POST   | Email registration                            | No            |
+| `/api/v1/auth/login/email`                  | POST   | Email login                                   | No            |
+| `/api/v1/auth/login/google`                 | POST   | Google login                                  | No            |
 | `/api/v1/auth/refresh`                      | POST   | Refresh access token                          | Yes           |
-| `/api/v1/users/me`                          | GET    | Get current user profile                      | Yes           |
-| `/api/v1/users/me`                          | PUT    | Update user profile                           | Yes           |
-| `/api/v1/resumes`                           | GET    | List user resumes                             | Yes           |
+| `/api/v1/auth/logout`                       | POST   | Logout                                        | Yes           |
+| `/api/v1/profile`                           | GET    | Get current user profile                      | Yes           |
+| `/api/v1/profile`                           | PUT    | Update user profile                           | Yes           |
+| `/api/v1/profile/avatar`                    | PUT    | Update avatar URL                             | Yes           |
 | `/api/v1/resumes`                           | POST   | Upload new resume                             | Yes           |
-| `/api/v1/resumes/{id}`                      | GET    | Get resume details                            | Yes           |
-| `/api/v1/resumes/{id}`                      | PUT    | Update resume                                 | Yes           |
-| `/api/v1/resumes/{id}`                      | DELETE | Delete resume                                 | Yes           |
-| `/api/v1/jobs`                              | GET    | Search jobs                                   | Yes           |
-| `/api/v1/jobs/{id}`                         | GET    | Get job details                               | Yes           |
-| `/api/v1/jobs/matches`                      | GET    | Get matching jobs                             | Yes           |
+| `/api/v1/resumes/groups`                    | GET    | List resume groups                            | Yes           |
+| `/api/v1/resumes/groups/{groupId}`          | GET    | Get resume group                              | Yes           |
+| `/api/v1/resumes/groups/{groupId}`          | DELETE | Delete resume group                           | Yes           |
+| `/api/v1/resumes/versions/{versionId}`      | GET    | Get resume version                            | Yes           |
+| `/api/v1/resumes/versions/{versionId}`      | PUT    | Update resume version                         | Yes           |
+| `/api/v1/resumes/versions/{versionId}`      | DELETE | Delete resume version                         | Yes           |
+| `/api/v1/jobs`                              | GET    | List visible jobs                             | Yes           |
+| `/api/v1/jobs`                              | POST   | Submit job URL and optional screenshot        | Yes           |
+| `/api/v1/jobs/{jobId}`                      | GET    | Get job details                               | Yes           |
+| `/api/v1/jobs/{jobId}`                      | PUT    | Update job parsed content                     | Yes           |
+| `/api/v1/jobs/{jobId}`                      | DELETE | Hide job from user-facing lists               | Yes           |
+| `/api/v1/jobs/{jobId}/score`                | POST   | Score one job against a resume                | Yes           |
+| `/api/v1/jobs/match`                        | POST   | Start job matching                            | Yes           |
+| `/api/v1/jobs/match/history`                | GET    | Get match history                             | Yes           |
 | `/api/v1/conversations`                     | GET    | List conversations                            | Yes           |
 | `/api/v1/conversations`                     | POST   | Create conversation                           | Yes           |
-| `/api/v1/conversations/{id}`                | GET    | Get conversation                              | Yes           |
-| `/api/v1/conversations/{id}/messages`       | GET    | Get messages                                  | Yes           |
-| `/api/v1/conversations/{id}/messages`       | POST   | Send message                                  | Yes           |
-| `/api/v1/conversations/{id}/files`          | POST   | Upload attachment                             | Yes           |
-| `/api/v1/conversations/{id}?page=0&size=20` | GET    | Get conversation details (paginated messages) | Yes           |
-| `/api/v1/applications`                      | GET    | List applications                             | Yes           |
-| `/api/v1/applications`                      | POST   | Create application                            | Yes           |
-| `/api/v1/applications/{id}`                 | PUT    | Update application                            | Yes           |
+| `/api/v1/conversations/{conversationId}`    | GET    | Get conversation                              | Yes           |
+| `/api/v1/conversations/{conversationId}`    | DELETE | Delete conversation                           | Yes           |
+| `/api/v1/conversations/{conversationId}/close` | PUT | Close conversation                            | Yes           |
+| `/api/v1/conversations/{conversationId}/messages` | POST | Send message                             | Yes           |
+| `/api/v1/conversations/{conversationId}/files` | POST | Upload attachment                           | Yes           |
+| `/api/v1/trackings`                         | GET    | List application tracking records             | Yes           |
+| `/api/v1/trackings`                         | POST   | Create tracking record                        | Yes           |
+| `/api/v1/trackings/{id}`                    | GET    | Get tracking record                           | Yes           |
+| `/api/v1/trackings/{id}`                    | PUT    | Update tracking record                        | Yes           |
+| `/api/v1/trackings/{id}`                    | DELETE | Delete tracking record                        | Yes           |
+| `/api/v1/trackings/stats`                   | GET    | Get tracking statistics                       | Yes           |
 
 #### 6.2.2 API Response Format
 
 ```json
 {
-  "success": true,
-  "data": { ... },
-  "meta": {
-    "timestamp": "2025-01-15T10:30:00Z",
-    "requestId": "uuid-v4"
-  }
+  "code": 200,
+  "message": "Success",
+  "data": { ... }
 }
 ```
 
@@ -1120,18 +1087,9 @@ Error Response:
 
 ```json
 {
-  "success": false,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid input data",
-    "details": [
-      { "field": "email", "message": "Email is required" }
-    ]
-  },
-  "meta": {
-    "timestamp": "2025-01-15T10:30:00Z",
-    "requestId": "uuid-v4"
-  }
+  "code": 400,
+  "message": "Invalid input data",
+  "data": null
 }
 ```
 
@@ -1178,13 +1136,13 @@ Error Response:
 
 ### 7.1 AI Technologies Overview
 
-| #   | Technology                               | Implementation                   | Purpose                                     |
-| --- | ---------------------------------------- | -------------------------------- | ------------------------------------------- |
-| 1   | **Vector Search/Embeddings**             | sentence-transformers + pgvector | Semantic matching between resumes and jobs  |
-| 2   | **Structured Outputs**                   | OpenAI Function Calling          | Parse resumes into structured JSON          |
-| 3   | **LLM API Integration**                  | OpenAI API with retry logic      | AI assistant for chat and optimization      |
-| 4   | **Memory/Conversation Management**       | Custom context window            | Dialogue history management                 |
-| 5   | **RAG (Retrieval-Augmented Generation)** | pgvector + prompt engineering    | Retrieve resume content as dialogue context |
+| #   | Technology                               | Implementation                         | Purpose                                     |
+| --- | ---------------------------------------- | -------------------------------------- | ------------------------------------------- |
+| 1   | **Structured Outputs**                   | LiteLLM text/vision model + JSON schema prompts | Parse resumes and jobs into structured JSON |
+| 2   | **Vector Search / Embeddings**           | LiteLLM embedding model + PostgreSQL pgvector | Semantic matching between resumes and jobs  |
+| 3   | **RAG / Context Injection**              | Resume content + job content + conversation history | Ground chat responses in user data |
+| 4   | **LLM API Integration**                  | LiteLLM-compatible provider abstraction | Switch between Gemini, OpenAI, Vertex, etc. |
+| 5   | **AI Job Ranking / Explanation**         | LiteLLM ranking prompt over recalled jobs | Explain and prioritize job matches          |
 
 ### 7.2 AI Component Architecture
 
@@ -1198,8 +1156,8 @@ Error Response:
 │  │  ┌──────────────────────────────────────────────────────────────────┐  │ │
 │  │  │                     1. Resume Parser Module                       │  │ │
 │  │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │  │ │
-│  │  │  │ PDF Extractor│  │ Docx         │  │ OpenAI       │          │  │ │
-│  │  │  │ (PyPDF2)     │  │ Extractor    │  │ Structured   │          │  │ │
+│  │  │  │ PDF Extractor│  │ Docx         │  │ LiteLLM      │          │  │ │
+│  │  │  │ (PDF/DOCX)   │  │ Extractor    │  │ Structured   │          │  │ │
 │  │  │  │              │  │ (python-docx)│  │ Output       │          │  │ │
 │  │  │  └──────────────┘  └──────────────┘  └──────────────┘          │  │ │
 │  │  │                              │                                  │  │ │
@@ -1213,8 +1171,8 @@ Error Response:
 │  │  ┌──────────────────────────────────────────────────────────────────┐  │ │
 │  │  │                  2. Embedding Generator Module                    │  │ │
 │  │  │  ┌────────────────────────────────────────────────────────────┐ │  │ │
-│  │  │  │  Model: sentence-transformers/all-MiniLM-L6-v2             │ │  │ │
-│  │  │  │  Dimension: 384                                            │ │  │ │
+│  │  │  │  Model: configured by LLM_EMBEDDING_MODEL                  │ │  │ │
+│  │  │  │  Default dimension: 1536                                   │ │  │ │
 │  │  │  │  Input: Resume text summary                                │ │  │ │
 │  │  │  │  Output: Dense vector embedding                            │ │  │ │
 │  │  │  └────────────────────────────────────────────────────────────┘ │  │ │
@@ -1235,8 +1193,8 @@ Error Response:
 │  │  │  │ RAG          │  │ Memory       │  │ LLM          │          │  │ │
 │  │  │  │ Retriever    │  │ Manager      │  │ Processor    │          │  │ │
 │  │  │  │              │  │              │  │              │          │  │ │
-│  │  │  │ - Vector     │  │ - Context    │  │ - OpenAI     │          │  │ │
-│  │  │  │   search     │  │   window     │  │   GPT-4      │          │  │ │
+│  │  │  │ - Context    │  │ - History    │  │ - LiteLLM    │          │  │ │
+│  │  │  │   injection  │  │   window     │  │   model      │          │  │ │
 │  │  │  │ - Resume     │  │ - Message    │  │ - Prompt     │          │  │ │
 │  │  │  │   content    │  │   history    │  │   templates  │          │  │ │
 │  │  │  └──────────────┘  └──────────────┘  └──────────────┘          │  │ │
@@ -1275,8 +1233,8 @@ Error Response:
 │              ▼                                                              │
 │  ┌─────────────────────────┐                                                │
 │  │  Step 3: AI Extraction   │                                               │
-│  │  - OpenAI GPT-4 with     │                                               │
-│  │    function calling      │                                               │
+│  │  - LiteLLM structured    │                                               │
+│  │    output prompt         │                                               │
 │  │  - Structured output     │                                               │
 │  │    schema                │                                               │
 │  └───────────┬─────────────┘                                               │
@@ -1364,11 +1322,11 @@ Error Response:
 
 ### 7.4 RAG Implementation
 
-#### 7.4.1 RAG Flow for Chat
+#### 7.4.1 Context Injection Flow for Chat
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                        RAG Flow for Chat Conversations                        │
+│                    Context Injection Flow for Chat Conversations              │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  User Query: "How can I improve my resume for software engineering roles?"  │
@@ -1383,24 +1341,24 @@ Error Response:
 │                       │                                                     │
 │                       ▼                                                     │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │  Step 2: Context Retrieval (RAG)                                     │   │
+│  │  Step 2: Static Context Loading                                      │   │
 │  │                                                                       │   │
-│  │  2a. Generate query embedding                                         │   │
+│  │  2a. Load selected resume text                                        │   │
 │  │       ┌──────────────┐                                                │   │
-│  │       │  Embedding   │ ──> Query Vector (384-dim)                     │   │
-│  │       │  Generator   │                                                │   │
+│  │       │ Resume       │ ──> Current or AI-optimized Markdown           │   │
+│  │       │ Version      │                                                │   │
 │  │       └──────────────┘                                                │   │
 │  │                                                                       │   │
-│  │  2b. Search resume content                                            │   │
+│  │  2b. Load primary job text                                            │   │
 │  │       ┌──────────────┐                                                │   │
-│  │       │  pgvector    │ ──> Top-K relevant resume sections             │   │
-│  │       │  Search      │                                                │   │
+│  │       │ Job          │ ──> Current job description and requirements    │   │
+│  │       │ Repository   │                                                │   │
 │  │       └──────────────┘                                                │   │
 │  │                                                                       │   │
-│  │  2c. Retrieve conversation history                                    │   │
+│  │  2c. Load related jobs and conversation history                       │   │
 │  │       ┌──────────────┐                                                │   │
-│  │       │  Memory      │ ──> Recent messages (last N)                   │   │
-│  │       │  Manager     │                                                │   │
+│  │       │ Context      │ ──> Up to 5 completed jobs + recent messages   │   │
+│  │       │ Builder      │                                                │   │
 │  │       └──────────────┘                                                │   │
 │  └────────────────────┬────────────────────────────────────────────────┘   │
 │                       │                                                     │
@@ -1408,7 +1366,7 @@ Error Response:
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │  Step 3: Context Assembly                                            │   │
 │  │                                                                       │   │
-│  │  Context = System Prompt + Resume Content + History + User Query     │   │
+│  │  Context = System Prompt + Resume Text + Job Text + History + Query  │   │
 │  │                                                                       │   │
 │  │  ┌────────────────────────────────────────────────────────────────┐  │   │
 │  │  │ System: "You are a helpful resume optimization assistant..."   │  │   │
@@ -1422,13 +1380,14 @@ Error Response:
 │  │  │ - Assistant: "Great! Let's highlight your leadership..."         │  │   │
 │  │  │                                                                  │  │   │
 │  │  │ Current Query: "How can I improve my resume..."                  │  │   │
+│  │  │ Optional output: resumeModification.markdown                     │  │   │
 │  │  └────────────────────────────────────────────────────────────────┘  │   │
 │  └────────────────────┬────────────────────────────────────────────────┘   │
 │                       │                                                     │
 │                       ▼                                                     │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │  Step 4: LLM Generation                                              │   │
-│  │  - Send assembled context to OpenAI GPT-4                            │   │
+│  │  - Send assembled context to the configured LiteLLM model             │   │
 │  │  - Stream response back to user                                      │   │
 │  └────────────────────┬────────────────────────────────────────────────┘   │
 │                       │                                                     │
@@ -1460,7 +1419,7 @@ class LLMClient:
         functions: Optional[List[Function]] = None
     ) -> LLMResponse:
         """
-        Generate response with retry logic and cost tracking.
+        Generate response with retry logic and structured logging.
         """
         for attempt in range(self.max_retries):
             try:
@@ -1471,8 +1430,8 @@ class LLMClient:
                     functions=functions
                 )
 
-                # Track usage
-                self._track_usage(response.usage)
+                # Log usage when the provider returns usage metadata
+                self._log_usage(response.usage)
 
                 return response
 
@@ -1486,15 +1445,13 @@ class LLMClient:
                     continue
                 raise LLMException(f"API call failed: {e}")
 
-    def _track_usage(self, usage: TokenUsage):
-        """Track token usage for cost monitoring."""
-        # Log to monitoring system
+    def _log_usage(self, usage: TokenUsage):
+        """Log token usage for operational monitoring."""
         metrics.record("llm.tokens.input", usage.prompt_tokens)
         metrics.record("llm.tokens.output", usage.completion_tokens)
-        metrics.record("llm.cost", self._calculate_cost(usage))
 ```
 
-#### 7.5.2 Cost Tracking
+#### 7.5.2 Provider Cost Awareness
 
 | Model         | Input Cost ($/1M tokens) | Output Cost ($/1M tokens) |
 | ------------- | ------------------------ | ------------------------- |
@@ -1502,11 +1459,7 @@ class LLMClient:
 | GPT-4 Turbo   | $10.00                   | $30.00                    |
 | GPT-3.5 Turbo | $0.50                    | $1.50                     |
 
-**Estimated Monthly Cost** (1000 active users, 50 messages/user):
-
-- Input tokens: ~25M = $250 (GPT-4 Turbo)
-- Output tokens: ~10M = $300 (GPT-4 Turbo)
-- **Total: ~$550/month**
+The actual cost depends on the configured LiteLLM provider and model. The current code logs LLM failures and supports retries; persistent per-user cost accounting is not stored in the application database.
 
 ---
 
@@ -1821,7 +1774,7 @@ networks:
 │  │  Application Metrics:                                                  │ │
 │  │  - Request count, latency, error rate                                  │ │
 │  │  - Queue depth, processing time                                        │ │
-│  │  - AI API calls, token usage, cost                                     │ │
+│  │  - AI API calls, token usage when provider metadata is available       │ │
 │  │                                                                        │ │
 │  │  System Metrics:                                                       │ │
 │  │  - CPU, memory, disk usage                                             │ │
@@ -1876,8 +1829,8 @@ networks:
 1. [Domain-Driven Design: Tackling Complexity in the Heart of Software](https://www.amazon.com/Domain-Driven-Design-Tackling-Complexity-Software/dp/0321125215) -
    Eric Evans
 2. [pgvector Documentation](https://github.com/pgvector/pgvector) - GitHub
-3. [Sentence Transformers Documentation](https://www.sbert.net/) - UKPLab
-4. [OpenAI API Documentation](https://platform.openai.com/docs) - OpenAI
+3. [LiteLLM Documentation](https://docs.litellm.ai/) - LiteLLM
+4. [OpenAI API Documentation](https://platform.openai.com/docs) - OpenAI-compatible provider option
 5. [Spring Boot Documentation](https://spring.io/projects/spring-boot) - VMware
 6. [FastAPI Documentation](https://fastapi.tiangolo.com/) - Sebastián Ramírez
 7. [RabbitMQ Documentation](https://www.rabbitmq.com/documentation.html) - VMware
@@ -1920,23 +1873,20 @@ networks:
 - (+) Can scale AI workers independently
 - (-) Added complexity
 
-#### ADR-003: Use sentence-transformers for Embeddings
+#### ADR-003: Use LiteLLM-compatible Embedding Models
 
 **Status**: Accepted
 
-**Context**: Need to generate embeddings for semantic search. Options:
+**Context**: The system needs embeddings for semantic job matching. The model provider should be configurable so the project can run with Gemini, OpenAI, Vertex AI, or another LiteLLM-supported provider.
 
-- OpenAI text-embedding-ada-002 (API-based)
-- sentence-transformers (local)
-
-**Decision**: Use sentence-transformers/all-MiniLM-L6-v2.
+**Decision**: Use LiteLLM-compatible embedding models and store vectors in PostgreSQL `pgvector`.
 
 **Consequences**:
 
-- (+) No API costs for embeddings
-- (+) Fast local inference
-- (+) 384-dim vectors (efficient storage)
-- (-) Slightly lower quality than OpenAI
+- (+) Provider can be changed through `.env`
+- (+) Docker deployment does not depend on a local ML model download
+- (+) Embedding model version is tracked with vector data
+- (-) The configured embedding dimension must match the database vector dimension
 
 ---
 
