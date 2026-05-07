@@ -5,35 +5,70 @@ on:
     branches: [ main, develop ]
     paths:
       - 'backend/**'
+      - 'frontend/**'
       - '.github/workflows/**'
   pull_request:
     branches: [ main, develop ]
     paths:
       - 'backend/**'
+      - 'frontend/**'
 
 jobs:
-  test:
-    name: Run Tests
+  frontend-test:
+    name: Frontend Tests
     runs-on: ubuntu-latest
-    
+
     defaults:
       run:
-        working-directory: ./backend
-    
+        working-directory: ./frontend
+
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
-    
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install Dependencies
+      run: npm ci
+
+    - name: Run Frontend Tests
+      run: npm run test:run
+
+    - name: Upload Coverage Report
+      uses: codecov/codecov-action@v4
+      if: success()
+      with:
+        files: frontend/coverage/coverage-final.json
+        flags: frontend
+        name: codecov-frontend
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
     - name: Set up JDK 21
       uses: actions/setup-java@v4
       with:
         java-version: '21'
         distribution: 'temurin'
         cache: maven
-    
+
     - name: Run Unit Tests
       run: mvn clean test -B --file pom.xml
-    
+
     - name: Generate Test Report
       uses: dorny/test-reporter@v1
       if: success() || failure()
@@ -42,7 +77,7 @@ jobs:
         path: backend/**/target/surefire-reports/*.xml
         reporter: java-junit
         fail-on-error: true
-    
+
     - name: Upload Coverage Report
       uses: codecov/codecov-action@v4
       if: success()

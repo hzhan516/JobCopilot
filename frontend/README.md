@@ -1,11 +1,42 @@
-# React + TypeScript + Vite
+# Resume Assistant Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + TypeScript + Vite frontend for the Resume Assistant application.
 
-Currently, two official plugins are available:
+## Available Scripts
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```bash
+npm run dev        # Start dev server (http://localhost:5173)
+npm run build      # Production build
+npm run lint       # ESLint
+npm run test       # Run tests in watch mode (Vitest)
+npm run test:run   # Run tests once
+npm run test:coverage # Run tests with coverage report
+```
+
+## Testing
+
+We use [Vitest](https://vitest.dev/) (aligned with Vite) together with [React Testing Library](https://testing-library.com/react) for unit and integration tests.
+
+- Test files: `src/**/*.{test,spec}.{ts,tsx}` (co-located with source)
+- Setup: `src/test/setup.ts`
+- Mock utilities: `vi.mock()` / `vi.fn()` from Vitest
+- DOM environment: `happy-dom`
+
+### Writing Tests
+
+```ts
+import { describe, it, expect } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MyComponent } from './MyComponent'
+
+describe('MyComponent', () => {
+  it('renders correctly', () => {
+    render(<MyComponent />)
+    expect(screen.getByText('Hello')).toBeInTheDocument()
+  })
+})
+```
 
 ## React Compiler
 
