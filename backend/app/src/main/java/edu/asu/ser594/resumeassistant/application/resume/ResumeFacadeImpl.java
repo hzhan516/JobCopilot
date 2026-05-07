@@ -24,6 +24,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import java.time.ZoneOffset;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -75,7 +76,7 @@ public class ResumeFacadeImpl implements ResumeFacade {
                     .groupId(group.getId())
                     .originalVersionId(originalVersionId)
                     .title(group.getTitle())
-                    .createdAt(group.getCreatedAt())
+                    .createdAt(group.getCreatedAt().atOffset(ZoneOffset.UTC))
                     .build();
 
         } catch (IOException e) {
@@ -209,8 +210,8 @@ public class ResumeFacadeImpl implements ResumeFacade {
                 .groupId(group.getId())
                 .title(group.getTitle())
                 .isDefault(group.isDefault())
-                .createdAt(group.getCreatedAt())
-                .updatedAt(group.getUpdatedAt())
+                .createdAt(group.getCreatedAt().atOffset(ZoneOffset.UTC))
+                .updatedAt(group.getUpdatedAt().atOffset(ZoneOffset.UTC))
                 .originalVersion(toVersionSummary(original))
                 .convertedVersion(toVersionSummary(converted))
                 .aiOptimizedVersion(toVersionSummary(ai))
@@ -223,7 +224,7 @@ public class ResumeFacadeImpl implements ResumeFacade {
                 .versionId(v.getId())
                 .status(v.getStatus().name())
                 .parseStatus(v.getParseStatus().name())
-                .createdAt(v.getCreatedAt())
+                .createdAt(v.getCreatedAt().atOffset(ZoneOffset.UTC))
                 .exists(true)
                 .build();
     }
@@ -240,8 +241,8 @@ public class ResumeFacadeImpl implements ResumeFacade {
                 .content(v.getContent())
                 .parseStatus(v.getParseStatus().name())
                 .editable(v.isEditable())
-                .createdAt(v.getCreatedAt())
-                .updatedAt(v.getUpdatedAt())
+                .createdAt(v.getCreatedAt().atOffset(ZoneOffset.UTC))
+                .updatedAt(v.getUpdatedAt().atOffset(ZoneOffset.UTC))
                 .build();
     }
 

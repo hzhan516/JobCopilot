@@ -6,6 +6,8 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfileStore } from '@/store/profile.store';
+import { useTimeZone } from '@/hooks/useTimeZone';
+import { getUserTimeZone } from '@/utils/i18n';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,9 +33,56 @@ import {
   MapPin,
   Save,
   Loader2,
+  Globe,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
+
+/**
+ * 获取常用时区列表
+ * Get a curated list of common time zones
+ */
+function getCommonTimeZones(): string[] {
+  try {
+    if (typeof Intl !== 'undefined' && 'supportedValuesOf' in Intl) {
+      return (Intl as unknown as { supportedValuesOf: (key: string) => string[] }).supportedValuesOf('timeZone');
+    }
+  } catch {
+    // fallback
+  }
+  return [
+    'UTC',
+    'America/New_York',
+    'America/Chicago',
+    'America/Denver',
+    'America/Los_Angeles',
+    'America/Toronto',
+    'America/Sao_Paulo',
+    'Europe/London',
+    'Europe/Paris',
+    'Europe/Berlin',
+    'Europe/Moscow',
+    'Asia/Dubai',
+    'Asia/Kolkata',
+    'Asia/Shanghai',
+    'Asia/Hong_Kong',
+    'Asia/Tokyo',
+    'Asia/Seoul',
+    'Asia/Singapore',
+    'Asia/Bangkok',
+    'Australia/Sydney',
+    'Australia/Melbourne',
+    'Pacific/Auckland',
+    'Pacific/Honolulu',
+  ];
+}
 
 function useProfileSchema() {
   const { t } = useTranslation();
@@ -57,6 +106,7 @@ export default function Profile() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { profile, loading, fetchProfile, updateProfile, updateAvatar } = useProfileStore();
+  const { timeZone, updateTimeZone, resetTimeZone } = useTimeZone();
 
   const profileSchema = useProfileSchema();
 
@@ -317,6 +367,50 @@ export default function Profile() {
             <Button variant="outline" onClick={() => navigate('/resumes')}>
               {t('profile.goToResumes')}
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 偏好设置 / Preferences */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg flex items-center">
+            <Globe className="w-5 h-5 mr-2 text-muted-foreground" />
+            {t('profile.preferences')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <p className="font-medium">{t('profile.timeZone')}</p>
+              <p className="text-sm text-gray-500">
+                {t('profile.timeZoneAuto', { timeZone: getUserTimeZone() })}
+              </p>
+            </div>
+            <Select
+              value={timeZone}
+              onValueChange={(tz) => {
+                if (tz === 'auto') {
+                  resetTimeZone();
+                } else {
+                  updateTimeZone(tz);
+                }
+              }}
+            >
+              <SelectTrigger className="w-[240px]">
+                <SelectValue placeholder={t('profile.timeZone')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">
+                  {t('profile.timeZoneAuto', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })}
+                </SelectItem>
+                {getCommonTimeZones().map((tz) => (
+                  <SelectItem key={tz} value={tz}>
+                    {tz}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

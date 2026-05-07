@@ -35,6 +35,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.Map;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -380,7 +381,7 @@ public class JobApplicationService {
                 record.getExperienceScore() != null ? record.getExperienceScore() : 0.0f,
                 record.getOverallScore() != null ? record.getOverallScore() : 0.0f,
                 record.getSummary(),
-                record.getCreatedAt()
+                record.getCreatedAt().atOffset(ZoneOffset.UTC)
         );
     }
 

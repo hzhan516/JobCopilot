@@ -11,6 +11,7 @@ import edu.asu.ser594.resumeassistant.domain.user.entity.UserProfile;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 /**
@@ -64,8 +65,8 @@ public class ProfileFacadeImpl implements ProfileFacade {
                 profile.getPhone(),
                 profile.getTargetPosition(),
                 profile.getPreferredLocation(),
-                profile.getCreatedAt(),
-                profile.getUpdatedAt()
+                profile.getCreatedAt().atOffset(ZoneOffset.UTC),
+                profile.getUpdatedAt().atOffset(ZoneOffset.UTC)
         );
     }
 }

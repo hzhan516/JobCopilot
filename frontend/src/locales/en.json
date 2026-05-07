@@ -480,7 +480,10 @@
     "aiFeatures": "AI Features",
     "resumeOptimization": "Resume Optimization",
     "resumeOptimizationDesc": "Use AI to optimize your resume for better job matching",
-    "goToResumes": "Go to Resumes"
+    "goToResumes": "Go to Resumes",
+    "preferences": "Preferences",
+    "timeZone": "Time Zone",
+    "timeZoneAuto": "Auto-detect ({timeZone})"
   },
   "language": {
     "en": "English",

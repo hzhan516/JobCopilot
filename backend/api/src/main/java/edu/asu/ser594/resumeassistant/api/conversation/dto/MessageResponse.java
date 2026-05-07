@@ -1,6 +1,6 @@
 package edu.asu.ser594.resumeassistant.api.conversation.dto;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * 消息响应 DTO
@@ -19,6 +19,6 @@ public record MessageResponse(
         String content,
         int sequence,
         String fileUrl,
-        LocalDateTime createdAt
+        OffsetDateTime createdAt
 ) {
 }

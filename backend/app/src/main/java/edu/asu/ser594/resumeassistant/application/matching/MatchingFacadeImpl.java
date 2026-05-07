@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -116,8 +117,8 @@ public class MatchingFacadeImpl implements MatchingFacade {
                 result.getRecallTimeMs(),
                 result.getRankTimeMs(),
                 result.getModelVersion(),
-                result.getCreatedAt(),
-                result.getCompletedAt()
+                result.getCreatedAt().atOffset(ZoneOffset.UTC),
+                result.getCompletedAt() != null ? result.getCompletedAt().atOffset(ZoneOffset.UTC) : null
         );
     }
 }

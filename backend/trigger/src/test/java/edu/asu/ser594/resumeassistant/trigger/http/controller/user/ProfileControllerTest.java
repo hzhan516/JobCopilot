@@ -16,7 +16,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -65,8 +66,8 @@ class ProfileControllerTest {
                         "+1-555-0199",
                         "Software Engineer",
                         "San Francisco, CA",
-                        LocalDateTime.now().minusDays(7),
-                        LocalDateTime.now().minusDays(1)
+                        OffsetDateTime.now(ZoneOffset.UTC).minusDays(7),
+                        OffsetDateTime.now(ZoneOffset.UTC).minusDays(1)
                 ));
 
         // 当&那么
@@ -94,8 +95,8 @@ class ProfileControllerTest {
                         "+1-555-0200",
                         "Senior Software Engineer",
                         "Remote",
-                        LocalDateTime.now().minusDays(7),
-                        LocalDateTime.now()
+                        OffsetDateTime.now(ZoneOffset.UTC).minusDays(7),
+                        OffsetDateTime.now(ZoneOffset.UTC)
                 ));
 
         // 当&那么
@@ -130,8 +131,8 @@ class ProfileControllerTest {
                         "+1-555-0199",
                         "Software Engineer",
                         "San Francisco, CA",
-                        LocalDateTime.now().minusDays(7),
-                        LocalDateTime.now()
+                        OffsetDateTime.now(ZoneOffset.UTC).minusDays(7),
+                        OffsetDateTime.now(ZoneOffset.UTC)
                 ));
 
         // 当&那么

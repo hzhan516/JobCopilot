@@ -20,6 +20,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.ZoneOffset;
 import java.util.stream.Collectors;
 
 /**
@@ -102,7 +103,7 @@ public class TrackingFacadeImpl implements TrackingFacade {
 
         final List<TrackingEventResponse> events = tracking.getEvents().stream()
                 .map(e -> new TrackingEventResponse(
-                        e.getTimestamp(),
+                        e.getTimestamp().atOffset(ZoneOffset.UTC),
                         e.getFromStatus().name(),
                         e.getToStatus().name(),
                         e.getNote()
@@ -117,7 +118,7 @@ public class TrackingFacadeImpl implements TrackingFacade {
                 tracking.getJobTitle(),
                 tracking.getStatus().name(),
                 tracking.getAppliedAt(),
-                tracking.getUpdatedAt(),
+                tracking.getUpdatedAt().atOffset(ZoneOffset.UTC),
                 tracking.getNotes(),
                 events
         );

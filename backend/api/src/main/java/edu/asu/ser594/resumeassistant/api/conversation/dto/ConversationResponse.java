@@ -1,6 +1,6 @@
 package edu.asu.ser594.resumeassistant.api.conversation.dto;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -25,7 +25,7 @@ public record ConversationResponse(
         String resumeVersionId,
         String jobId,
         List<MessageResponse> messages,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        OffsetDateTime createdAt,
+        OffsetDateTime updatedAt
 ) {
 }

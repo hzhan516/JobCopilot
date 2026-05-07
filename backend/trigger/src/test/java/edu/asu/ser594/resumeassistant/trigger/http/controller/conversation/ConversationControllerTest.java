@@ -60,8 +60,8 @@ class ConversationControllerTest {
                 null,
                 null,
                 Collections.emptyList(),
-                java.time.LocalDateTime.now(),
-                java.time.LocalDateTime.now()
+                java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC),
+                java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)
         );
     }
 

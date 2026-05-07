@@ -2,7 +2,7 @@ package edu.asu.ser594.resumeassistant.api.matching.dto.response;
 
 import edu.asu.ser594.resumeassistant.api.job.dto.response.MatchItem;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -33,7 +33,7 @@ public record JobMatchHistoryResponse(
         Long recallTime,
         Long rankTime,
         String modelVersion,
-        LocalDateTime createdAt,
-        LocalDateTime completedAt
+        OffsetDateTime createdAt,
+        OffsetDateTime completedAt
 ) {
 }

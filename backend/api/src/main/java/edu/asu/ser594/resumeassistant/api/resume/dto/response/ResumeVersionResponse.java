@@ -3,7 +3,7 @@ package edu.asu.ser594.resumeassistant.api.resume.dto.response;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
@@ -24,6 +24,6 @@ public class ResumeVersionResponse {
     private final String content;
     private final String parseStatus;
     private final boolean editable;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    private final OffsetDateTime createdAt;
+    private final OffsetDateTime updatedAt;
 }

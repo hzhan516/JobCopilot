@@ -3,7 +3,7 @@ package edu.asu.ser594.resumeassistant.api.tracking.dto.response;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -29,7 +29,7 @@ public record TrackingResponse(
         String jobTitle,
         String status,
         LocalDate appliedAt,
-        LocalDateTime updatedAt,
+        OffsetDateTime updatedAt,
         String notes,
         List<TrackingEventResponse> events
 ) {

@@ -465,7 +465,10 @@
     "aiFeatures": "AI 功能",
     "resumeOptimization": "履歷優化",
     "resumeOptimizationDesc": "使用 AI 優化履歷以獲得更好的職位配對",
-    "goToResumes": "前往履歷"
+    "goToResumes": "前往履歷",
+    "preferences": "偏好設定",
+    "timeZone": "時區",
+    "timeZoneAuto": "自動檢測 ({timeZone})"
   },
   "language": {
     "en": "English",

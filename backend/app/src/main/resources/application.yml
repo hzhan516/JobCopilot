@@ -13,6 +13,7 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: false
+    time-zone: UTC
 
 # 服务器配置 / Server config
 server:

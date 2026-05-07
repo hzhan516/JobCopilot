@@ -481,7 +481,10 @@
     "aiFeatures": "AI 功能",
     "resumeOptimization": "简历优化",
     "resumeOptimizationDesc": "使用 AI 优化简历以获得更好的职位匹配",
-    "goToResumes": "前往简历"
+    "goToResumes": "前往简历",
+    "preferences": "偏好设置",
+    "timeZone": "时区",
+    "timeZoneAuto": "自动检测 ({timeZone})"
   },
   "language": {
     "en": "English",

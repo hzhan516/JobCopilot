@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 /**
@@ -145,8 +146,8 @@ public class ConversationFacadeImpl implements ConversationFacade {
                 conversation.getResumeVersionId() != null ? conversation.getResumeVersionId().toString() : null,
                 conversation.getJobId() != null ? conversation.getJobId().toString() : null,
                 messageResponses,
-                conversation.getCreatedAt(),
-                conversation.getUpdatedAt()
+                conversation.getCreatedAt().atOffset(ZoneOffset.UTC),
+                conversation.getUpdatedAt().atOffset(ZoneOffset.UTC)
         );
     }
 
@@ -187,7 +188,7 @@ public class ConversationFacadeImpl implements ConversationFacade {
                 message.getContent(),
                 message.getSequence(),
                 message.getFileUrl(),
-                message.getCreatedAt()
+                message.getCreatedAt().atOffset(ZoneOffset.UTC)
         );
     }
 }

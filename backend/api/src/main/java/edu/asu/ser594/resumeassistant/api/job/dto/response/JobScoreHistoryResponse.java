@@ -1,6 +1,6 @@
 package edu.asu.ser594.resumeassistant.api.job.dto.response;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * 职位评分历史响应
@@ -27,6 +27,6 @@ public record JobScoreHistoryResponse(
         float experienceScore,
         float overallScore,
         String summary,
-        LocalDateTime createdAt
+        OffsetDateTime createdAt
 ) {
 }

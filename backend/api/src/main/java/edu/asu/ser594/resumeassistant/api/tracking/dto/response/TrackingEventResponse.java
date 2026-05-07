@@ -1,6 +1,6 @@
 package edu.asu.ser594.resumeassistant.api.tracking.dto.response;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * 跟踪事件响应
@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  * @param note       备注 / Note
  */
 public record TrackingEventResponse(
-        LocalDateTime timestamp,
+        OffsetDateTime timestamp,
         String fromStatus,
         String toStatus,
         String note
