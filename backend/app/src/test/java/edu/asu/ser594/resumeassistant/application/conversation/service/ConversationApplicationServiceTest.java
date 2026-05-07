@@ -97,6 +97,30 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    void createConversation_ShouldPersistPresetMessage() {
+        // 准备 / Given
+        UUID userId = UUID.randomUUID();
+        CreateConversationCommand command = CreateConversationCommand.builder()
+                .userId(userId)
+                .title("Test Conversation")
+                .resumeVersionId(null)
+                .jobId(null)
+                .build();
+
+        when(conversationRepository.save(any(Conversation.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // 执行 / When
+        Conversation conversation = applicationService.createConversation(command);
+
+        // 验证 / Then
+        assertNotNull(conversation);
+        assertEquals(1, conversation.getMessages().size());
+        assertEquals(MessageRole.USER, conversation.getMessages().get(0).getRole());
+        verify(conversationRepository, times(2)).save(any(Conversation.class));
+    }
+
+    @Test
     void createConversation_WithResumeVersionAndJob_Success() {
         // 准备 / Given
         UUID userId = UUID.randomUUID();
@@ -245,7 +269,66 @@ class ConversationApplicationServiceTest {
         ArgumentCaptor<ConversationRequestCommand> captor = ArgumentCaptor.forClass(ConversationRequestCommand.class);
         verify(aiMessagePublisherPort, times(1)).sendConversationRequest(captor.capture());
         assertEquals("Hello AI", captor.getValue().currentMessage());
-        assertFalse(captor.getValue().init()); // not init because preset message exists
+        assertTrue(captor.getValue().init()); // init because no AI reply exists yet
+    }
+
+    @Test
+    void sendMessage_WithPresetAndNoAiReply_ShouldSendInitTrue() {
+        // 准备 / Given
+        UUID userId = UUID.randomUUID();
+        UUID conversationId = UUID.randomUUID();
+        Conversation conversation = Conversation.create(userId, "Title", null, null);
+        conversation.addMessage(MessageRole.USER, "Preset message");
+
+        when(conversationRepository.findById(conversationId)).thenReturn(Optional.of(conversation));
+        when(conversationRepository.save(any(Conversation.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        SendMessageCommand command = SendMessageCommand.builder()
+                .conversationId(conversationId)
+                .userId(userId)
+                .role(MessageRole.USER)
+                .content("Hello AI")
+                .fileUrls(new ArrayList<>())
+                .build();
+
+        // 执行 / When
+        applicationService.sendMessage(command);
+
+        // 验证 / Then
+        ArgumentCaptor<ConversationRequestCommand> captor = ArgumentCaptor.forClass(ConversationRequestCommand.class);
+        verify(aiMessagePublisherPort, times(1)).sendConversationRequest(captor.capture());
+        assertTrue(captor.getValue().init()); // init because no AI reply exists
+    }
+
+    @Test
+    void sendMessage_WithAiReply_ShouldSendInitFalse() {
+        // 准备 / Given
+        UUID userId = UUID.randomUUID();
+        UUID conversationId = UUID.randomUUID();
+        Conversation conversation = Conversation.create(userId, "Title", null, null);
+        conversation.addMessage(MessageRole.USER, "Preset message");
+        conversation.addMessage(MessageRole.ASSISTANT, "AI reply");
+
+        when(conversationRepository.findById(conversationId)).thenReturn(Optional.of(conversation));
+        when(conversationRepository.save(any(Conversation.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        SendMessageCommand command = SendMessageCommand.builder()
+                .conversationId(conversationId)
+                .userId(userId)
+                .role(MessageRole.USER)
+                .content("Follow up")
+                .fileUrls(new ArrayList<>())
+                .build();
+
+        // 执行 / When
+        applicationService.sendMessage(command);
+
+        // 验证 / Then
+        ArgumentCaptor<ConversationRequestCommand> captor = ArgumentCaptor.forClass(ConversationRequestCommand.class);
+        verify(aiMessagePublisherPort, times(1)).sendConversationRequest(captor.capture());
+        assertFalse(captor.getValue().init()); // not init because AI already replied
     }
 
     @Test

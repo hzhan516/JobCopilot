@@ -95,7 +95,7 @@ public class ConversationApplicationService {
         String preset = messageProvider.getMessage("conversation.preset.match_score");
         conversation.addMessage(MessageRole.USER, preset);
         conversation.autoGenerateTitle(preset);
-        conversationRepository.save(conversation);
+        conversation = conversationRepository.save(conversation);
 
         // 加载静态上下文并发送首次 AI 请求 / Load static context and send initial AI request
         sendConversationRequestWithContext(conversation, preset, true);
@@ -116,10 +116,11 @@ public class ConversationApplicationService {
         conversation.autoGenerateTitle(command.content());
         Conversation saved = conversationRepository.save(conversation);
 
-        // 判断是否为首次真实用户消息（只有预设消息时视为 init）
-        // Determine if this is the first real user message (only preset message means init)
-        boolean isInit = conversation.getMessages().size() == 2; // preset + this user message
-        sendConversationRequestWithContext(conversation, command.content(), isInit);
+        // 判断是否为首次真实用户消息（AI 尚未回复时视为 init）
+        // Determine if this is the first real user message (init when no AI reply yet)
+        boolean isInit = saved.getMessages().stream()
+                .noneMatch(m -> m.getRole() == MessageRole.ASSISTANT);
+        sendConversationRequestWithContext(saved, command.content(), isInit);
 
         return saved;
     }
@@ -262,6 +263,11 @@ public class ConversationApplicationService {
             // 加载相关职位文本 / Load related job texts
             relatedJobTexts = loadRelatedJobTexts(conversation.getUserId(), conversation.getJobId());
         }
+
+        log.info("Conversation context loaded: resumeTextLength={}, primaryJobTextLength={}, relatedJobsCount={}",
+                resumeText != null ? resumeText.length() : 0,
+                primaryJobText != null ? primaryJobText.length() : 0,
+                relatedJobTexts.size());
 
         String locale = LocaleContextHolder.getLocale().toLanguageTag();
 

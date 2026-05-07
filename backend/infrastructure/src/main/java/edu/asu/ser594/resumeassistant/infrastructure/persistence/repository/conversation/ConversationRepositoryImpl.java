@@ -23,7 +23,7 @@ public class ConversationRepositoryImpl implements ConversationRepository {
     @Override
     public Conversation save(Conversation conversation) {
         ConversationJpaEntity entity = mapToJpaEntity(conversation);
-        ConversationJpaEntity saved = jpaRepository.save(entity);
+        ConversationJpaEntity saved = jpaRepository.saveAndFlush(entity);
         return mapToDomainEntity(saved);
     }
 
