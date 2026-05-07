@@ -5,6 +5,7 @@ import edu.asu.ser594.resumeassistant.api.user.dto.request.UpdateProfileRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.response.ProfileResponse;
 import edu.asu.ser594.resumeassistant.api.user.facade.ProfileFacade;
 import edu.asu.ser594.resumeassistant.trigger.http.security.CurrentUserArgumentResolver;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -161,7 +162,7 @@ class ProfileControllerTest {
         }
 
         @Override
-        public Object resolveArgument(org.springframework.core.MethodParameter parameter,
+        public Object resolveArgument(org.springframework.core.@NotNull MethodParameter parameter,
                                       org.springframework.web.method.support.ModelAndViewContainer mavContainer,
                                       org.springframework.web.context.request.NativeWebRequest webRequest,
                                       org.springframework.web.bind.support.WebDataBinderFactory binderFactory) {
