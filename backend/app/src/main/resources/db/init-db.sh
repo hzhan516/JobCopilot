@@ -27,9 +27,13 @@ PROCESSED=$(mktemp)
 sed "s/vector(1536)/vector(${DIM})/g" "$TEMPLATE" > "$PROCESSED"
 
 # 验证替换是否成功 / Verify substitution succeeded
+<<<<<<< HEAD
 # 先删除 SQL 单行注释，避免注释中的 vector(1536) 干扰验证
 # Remove SQL single-line comments first to avoid false positives from comments
-if sed 's/--.*$//' "$PROCESSED" | grep -q 'vector(1536)'; then
+if [ "$DIM" != "1536" ] && sed 's/--.*$//' "$PROCESSED" | grep -q 'vector(1536)'; then
+=======
+if [ "$DIM" != "1536" ] && grep -q 'vector(1536)' "$PROCESSED"; then
+>>>>>>> 0c3a9b23 (Fix DB init for default embedding dimension)
     echo "ERROR: Dimension substitution failed — vector(1536) still present in processed SQL."
     echo "错误：维度替换失败——处理后 SQL 中仍然存在 vector(1536)。"
     echo "Please ensure init.sql uses single-line 'vector(1536)' format."
