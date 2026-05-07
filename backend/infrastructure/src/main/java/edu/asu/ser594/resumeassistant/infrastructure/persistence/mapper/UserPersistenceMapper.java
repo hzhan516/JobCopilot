@@ -4,8 +4,6 @@ import edu.asu.ser594.resumeassistant.domain.user.entity.User;
 import edu.asu.ser594.resumeassistant.infrastructure.persistence.entity.user.UserJpaEntity;
 import org.mapstruct.Mapper;
 
-// 用户持久化映射器
-// User persistence mapper
 @Mapper(componentModel = "spring")
 public interface UserPersistenceMapper {
 

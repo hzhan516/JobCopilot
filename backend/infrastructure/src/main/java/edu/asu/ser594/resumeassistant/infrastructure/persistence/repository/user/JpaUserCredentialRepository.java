@@ -8,8 +8,6 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 import java.util.UUID;
 
-// 用户凭证 JPA 仓储
-// User credential JPA repository
 @Repository
 public interface JpaUserCredentialRepository extends JpaRepository<UserCredentialJpaEntity, UUID> {
 

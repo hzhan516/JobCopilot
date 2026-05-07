@@ -18,9 +18,7 @@ type BackendTrackingStatsResponse = {
   successRate?: number;
 };
 
-// 求职跟踪服务
 export const trackingService = {
-  // 获取所有投递记录
   getTrackings: async (status?: string): Promise<Tracking[]> => {
     const params = status ? { status } : {};
     const response = await apiClient.get<ApiResponse<Tracking[]>>('/v1/trackings', {
@@ -32,7 +30,6 @@ export const trackingService = {
     throw new Error(response.data.message);
   },
 
-  // 获取投递详情
   getTracking: async (trackingId: string): Promise<Tracking> => {
     const response = await apiClient.get<ApiResponse<Tracking>>(
       `/v1/trackings/${trackingId}`
@@ -43,7 +40,6 @@ export const trackingService = {
     throw new Error(response.data.message);
   },
 
-  // 创建投递记录
   createTracking: async (data: CreateTrackingRequest): Promise<Tracking> => {
     const response = await apiClient.post<ApiResponse<Tracking>>('/v1/trackings', data);
     if (response.data.code === 200) {
@@ -52,7 +48,6 @@ export const trackingService = {
     throw new Error(response.data.message);
   },
 
-  // 更新投递记录
   updateTracking: async (
     trackingId: string,
     data: UpdateTrackingRequest
@@ -67,7 +62,6 @@ export const trackingService = {
     throw new Error(response.data.message);
   },
 
-  // 删除投递记录
   deleteTracking: async (trackingId: string): Promise<void> => {
     const response = await apiClient.delete<ApiResponse<null>>(
       `/v1/trackings/${trackingId}`
@@ -77,7 +71,6 @@ export const trackingService = {
     }
   },
 
-  // 获取投递统计
   getTrackingStats: async (): Promise<TrackingStatsResponse> => {
     const response = await apiClient.get<ApiResponse<BackendTrackingStatsResponse>>(
       '/v1/trackings/stats'

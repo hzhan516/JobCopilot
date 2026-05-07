@@ -1,11 +1,9 @@
-// 通用响应类型
 export interface ApiResponse<T> {
   code: number;
   message: string;
   data: T;
 }
 
-// 分页响应类型
 export interface PaginatedResponse<T> {
   list: T[];
   page: number;
@@ -14,13 +12,11 @@ export interface PaginatedResponse<T> {
   totalPages: number;
 }
 
-// 用户类型
 export interface User {
   userId: string;
   email: string;
 }
 
-// 认证响应
 export interface AuthResponse {
   userId: string;
   email: string;
@@ -29,8 +25,6 @@ export interface AuthResponse {
   expiresIn: number;
 }
 
-// 用户资料类型
-// User profile type
 export interface Profile {
   userId: string;
   fullName: string | null;
@@ -42,8 +36,6 @@ export interface Profile {
   updatedAt: string;
 }
 
-// 更新资料请求
-// Update profile request
 export interface UpdateProfileRequest {
   fullName: string;
   phone: string;
@@ -51,13 +43,10 @@ export interface UpdateProfileRequest {
   preferredLocation: string;
 }
 
-// 更新头像请求
-// Update avatar request
 export interface UpdateAvatarRequest {
   avatarUrl: string;
 }
 
-// 登录/注册请求
 export interface LoginRequest {
   email: string;
   password: string;
@@ -72,7 +61,6 @@ export interface LoginByGoogleRequest {
   idToken: string;
 }
 
-// 版本摘要
 export interface VersionSummary {
   versionId: string;
   status: 'ACTIVE' | 'ARCHIVED';
@@ -81,7 +69,6 @@ export interface VersionSummary {
   exists: boolean;
 }
 
-// 简历组
 export interface ResumeGroup {
   groupId: string;
   title: string;
@@ -93,7 +80,6 @@ export interface ResumeGroup {
   aiOptimizedVersion: VersionSummary | null;
 }
 
-// 简历版本
 export interface ResumeVersion {
   versionId: string;
   groupId: string;
@@ -109,7 +95,6 @@ export interface ResumeVersion {
   updatedAt: string;
 }
 
-// 上传响应
 export interface ResumeUploadResponse {
   groupId: string;
   originalVersionId: string;
@@ -117,14 +102,10 @@ export interface ResumeUploadResponse {
   createdAt: string;
 }
 
-// 编辑请求
 export interface ResumeEditRequest {
   content: string;
 }
 
-// ========== 职位类型 ==========
-
-// 职位内容（解析后）
 export interface ParsedJobContent {
   title: string;
   company: string;
@@ -134,7 +115,6 @@ export interface ParsedJobContent {
   requirements: string[];
 }
 
-// 职位基础类型
 export interface Job {
   id: string;
   userId: string;
@@ -146,14 +126,12 @@ export interface Job {
   createdAt?: string;
 }
 
-// 匹配因子
 export interface MatchFactors {
   skillMatch: number;
   experienceMatch: number;
   locationMatch: number;
 }
 
-// 匹配项
 export interface MatchItem {
   jobId: string;
   title: string;
@@ -164,7 +142,6 @@ export interface MatchItem {
   matchReason?: string;
 }
 
-// 发起匹配请求
 export interface JobMatchRequest {
   resumeVersionId: string;
   query?: string;
@@ -172,7 +149,6 @@ export interface JobMatchRequest {
   filters?: Record<string, string>;
 }
 
-// 匹配响应
 export interface JobMatchResponse {
   matchId: string;
   status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
@@ -182,7 +158,6 @@ export interface JobMatchResponse {
   rankTime: number;
 }
 
-// 匹配历史
 export interface JobMatchHistoryResponse {
   matchId: string;
   userId: string;
@@ -198,8 +173,6 @@ export interface JobMatchHistoryResponse {
   completedAt: string;
 }
 
-// ========== 对话类型 ==========
-
 export interface Conversation {
   conversationId: string;
   userId?: string;
@@ -212,7 +185,6 @@ export interface Conversation {
   updatedAt: string;
 }
 
-// 消息类型
 export interface Message {
   messageId: string;
   conversationId?: string;
@@ -222,8 +194,6 @@ export interface Message {
   fileUrl?: string | null;
   createdAt: string;
 }
-
-// ========== 求职跟踪类型 ==========
 
 export interface TrackingEvent {
   eventId: string;
@@ -276,12 +246,10 @@ export interface TrackingStatsResponse {
   successRate: number;
 }
 
-// 职位评分请求
 export interface JobScoreRequest {
   resumeVersionId: string;
 }
 
-// 职位评分响应
 export interface JobScoreResponse {
   suitable: boolean;
   summary: string;
@@ -293,7 +261,6 @@ export interface JobScoreResponse {
   };
 }
 
-// 职位评分历史记录
 export interface JobScoreHistoryResponse {
   id: string;
   jobId: string;
@@ -307,7 +274,6 @@ export interface JobScoreHistoryResponse {
   createdAt: string;
 }
 
-// 更新职位请求
 export interface UpdateJobRequest {
   title: string;
   company: string;
@@ -317,6 +283,7 @@ export interface UpdateJobRequest {
   requirements: string[];
 }
 
+// Kept for backward compatibility during gradual migration
 // 保留旧名称以兼容现有代码（将被逐步替换）
 export interface JobApplication {
   applicationId: string;

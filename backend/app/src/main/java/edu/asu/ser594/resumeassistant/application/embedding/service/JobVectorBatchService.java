@@ -13,12 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 
 /**
- * 职位向量批量服务
- * Job vector batch service
- * <p>
- * 供 AI 层调用，批量 Upsert 职位向量数据。
- * 支持数据库级去重：内容完全相同的记录会被跳过，避免冗余写入。
- * Exposed for AI layer to batch upsert job vector data with deduplication.
+ * Exposed to the AI layer for batch upserting job vectors with content-level deduplication.
+ * Skipping identical records reduces write pressure on pgvector and avoids redundant index updates.
+ * 向 AI 层暴露，支持带内容级去重的职位向量批量 Upsert。跳过相同记录可降低 pgvector 写入压力并避免冗余索引更新
  */
 @Slf4j
 @Service
@@ -29,11 +26,12 @@ public class JobVectorBatchService {
     private final EmbeddingConfig embeddingConfig;
 
     /**
-     * 批量 Upsert 职位向量（带数据库去重）
-     * Batch upsert job vectors with database deduplication
+     * Upserts job vectors in batch. Existing records are compared field-by-field and skipped
+     * when no change is detected, keeping the index stable across repeated ingestion runs.
+     * 批量 Upsert 职位向量。对已有记录逐字段比对，无变更时跳过，保证重复摄入时索引稳定
      *
-     * @param items 职位向量条目列表 / List of job vector items
-     * @return 批量操作结果 / Batch operation result
+     * @param items List of job vector items / 职位向量条目列表
+     * @return Batch operation result / 批量操作结果
      */
     @Transactional
     public BatchJobVectorUpsertResponse batchUpsert(List<JobVectorItem> items) {
@@ -108,7 +106,6 @@ public class JobVectorBatchService {
         return new BatchJobVectorUpsertResponse(items.size(), success, failed, skipped, failedJobIds);
     }
 
-    // 判断现有记录与新条目内容是否完全相同 / Check if existing record is identical to new item
     private boolean isContentIdentical(JobVector existing, JobVectorItem item) {
         float[] itemEmbedding;
         try {
@@ -127,7 +124,6 @@ public class JobVectorBatchService {
                 && Objects.equals(existing.getModelVersion(), item.modelVersion());
     }
 
-    // 将 List<Float> 转为 float[] / Convert List<Float> to float[]
     private float[] convertListToArray(List<Float> list) {
         if (list == null || list.isEmpty()) {
             throw new IllegalArgumentException("Embedding list must not be null or empty");

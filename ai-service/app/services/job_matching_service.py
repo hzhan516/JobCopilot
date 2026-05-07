@@ -4,9 +4,6 @@ from typing import Any
 
 import requests
 
-# Job matching now delegates vector search to the backend to avoid in-memory caches.
-# 职位匹配改为调用后端向量检索，避免 AI service 常驻缓存导致内存膨胀。
-
 from app.config import BACKEND_QUERY_TIMEOUT, BACKEND_SERVICE_URL
 from app.schemas import JobMatchRequest, JobMatchResponse, MatchFactors, MatchItem
 from app.services.vector_service import generate_embedding
@@ -14,7 +11,6 @@ from app.services.vector_service import generate_embedding
 logger = logging.getLogger(__name__)
 
 
-# Clamp a score to the [0, 1] range.
 def _clip_score(value: float) -> float:
     return max(0.0, min(1.0, value))
 
@@ -43,9 +39,9 @@ def _to_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
-# Find top job matches by embedding the query and asking backend vector-search.
-# 先生成查询向量，再调用后端 vector-search 返回匹配职位。
 def find_job_matches(request: JobMatchRequest) -> JobMatchResponse:
+    """Embed the user query and delegate vector search to the backend to avoid in-memory caches.
+    生成查询向量后调用后端向量检索：避免 AI 服务常驻缓存导致内存膨胀，同时利用后端 pgvector 的索引加速。"""
     query = request.query.strip()
     if not query:
         return JobMatchResponse(matches=[], total=0, recallTime=0, rankTime=0)

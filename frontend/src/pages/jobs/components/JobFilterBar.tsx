@@ -32,10 +32,6 @@ interface JobFilterBarProps {
   onMatchFilterChange?: (value: string) => void;
 }
 
-/**
- * 职位筛选栏
- * Job filter bar with search and sort controls
- */
 export default function JobFilterBar({
   searchQuery,
   sortBy,

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 /**
- * useAbortableRequest Hook
+ * Manages AbortController lifecycle to prevent state updates on unmounted components
+ * and to supersede stale requests during rapid user interactions.
  *
- * 封装 AbortController 生命周期，防止 React 组件卸载后请求回调引发内存泄漏。
- * Wraps AbortController lifecycle to prevent memory leaks when React components unmount.
+ * 封装 AbortController 生命周期，防止组件卸载后回调导致内存泄漏，
+ * 并在用户高频操作时自动取消前一请求。
  *
  * @example
  * function JobList() {
@@ -23,10 +24,6 @@ import { useCallback, useEffect, useRef } from 'react';
 export function useAbortableRequest() {
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  /**
-   * 组件卸载时自动取消正在进行的请求
-   * Auto-abort pending request on component unmount
-   */
   useEffect(() => {
     return () => {
       abortControllerRef.current?.abort('Component unmounted');
@@ -34,23 +31,18 @@ export function useAbortableRequest() {
     };
   }, []);
 
-  /**
-   * 执行一个可取消的请求
-   * Execute an abortable request
-   *
-   * @param fn - 接收 AbortSignal 的异步工厂函数
-   * @returns 原始 Promise 结果
-   */
   const execute = useCallback(
     <T>(fn: (signal: AbortSignal) => Promise<T>): Promise<T> => {
-      // 取消之前的请求，确保同一时刻只有一个活跃请求
+      // Supersede previous request to avoid race conditions in rapid interactions
+      // 取消前一请求，避免高频操作下的竞态条件
       abortControllerRef.current?.abort('Superseded by new request');
 
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
       return fn(controller.signal).finally(() => {
-        // 仅清理未被再次覆盖的 controller
+        // Only clear if this controller wasn't already replaced by a newer request
+        // 仅清理未被新请求覆盖的 controller，防止误删当前活跃实例
         if (abortControllerRef.current === controller) {
           abortControllerRef.current = null;
         }
@@ -59,19 +51,11 @@ export function useAbortableRequest() {
     []
   );
 
-  /**
-   * 手动取消当前请求
-   * Manually abort the current request
-   */
   const abort = useCallback((reason?: string): void => {
     abortControllerRef.current?.abort(reason);
     abortControllerRef.current = null;
   }, []);
 
-  /**
-   * 获取当前 AbortSignal（用于需要直接读取 signal 的场景）
-   * Get the current AbortSignal
-   */
   const getSignal = useCallback((): AbortSignal | undefined => {
     return abortControllerRef.current?.signal;
   }, []);

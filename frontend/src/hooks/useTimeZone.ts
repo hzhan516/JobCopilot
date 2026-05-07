@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getUserTimeZone, setUserTimeZone, clearUserTimeZone } from '@/utils/i18n';
 
-/**
- * 用户时区偏好 Hook
- * User time zone preference hook
- */
 export function useTimeZone() {
   const [timeZone, setTimeZoneState] = useState<string>(getUserTimeZone());
 

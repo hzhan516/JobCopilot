@@ -10,12 +10,15 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 简历组聚合根
- * Resume Group Aggregate Root
+ * Aggregate root that groups all versions of a single resume under one user.
+ * 将单一简历的所有版本聚合在同一用户下的聚合根。
  * <p>
- * 不变式（Invariants）：
+ * Invariants:
+ * 1. Each group is owned by exactly one user.
+ * 2. Only one ACTIVE version is allowed per version type (ORIGINAL / CONVERTED / AI).
+ * 不变式：
  * 1. 每个组必须属于一个用户
- * 2. 每种版本类型（ORIGINAL/CONVERTED/AI）只能有一个ACTIVE版本
+ * 2. 每种版本类型（ORIGINAL/CONVERTED/AI）只能有一个 ACTIVE 版本
  */
 public final class ResumeGroup extends AggregateRoot<UUID> {
 
@@ -44,10 +47,6 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
         this.versions = versions != null ? new ArrayList<>(versions) : new ArrayList<>();
     }
 
-    /**
-     * 工厂方法：创建新的简历组
-     * Factory method: create new resume group
-     */
     public static ResumeGroup create(UUID userId, String title) {
         return new ResumeGroup(
                 UUID.randomUUID(),
@@ -61,8 +60,8 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
     }
 
     /**
-     * 重建聚合（从仓储恢复）
-     * Reconstruct aggregate from persistence
+     * Reconstructs the aggregate from persisted state without re-evaluating business rules.
+     * 从持久化状态重建聚合，不重新评估业务规则。
      */
     public static ResumeGroup reconstruct(UUID id, UUID userId, String title,
                                           boolean isDefault, LocalDateTime createdAt,
@@ -70,14 +69,11 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
         return new ResumeGroup(id, userId, title, isDefault, createdAt, updatedAt, versions);
     }
 
-    // ==================== 领域行为 ====================
-    // Domain behaviors
+    // Domain behaviors | 领域行为
 
     /**
-     * 上传并添加原版简历
-     * Upload and add original resume
-     * 业务规则：自动创建对应的转换版（空白）
-     * Business rule: automatically create corresponding converted version (blank)
+     * Stores the original file and immediately provisions a blank converted version for editing.
+     * 存储原始文件并立即创建一个空白转换版本供用户编辑。
      */
     public void uploadOriginalVersion(String fileName, String fileType, long fileSize, String storagePath) {
         ResumeVersion original = ResumeVersion.createOriginal(
@@ -89,10 +85,8 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
     }
 
     /**
-     * 添加版本到组
-     * Add version to group
-     * 业务规则：同类型ACTIVE版本自动归档
-     * Business rule: auto-archive ACTIVE version of same type
+     * Adds a version to the group while enforcing the single-ACTIVE-per-type invariant.
+     * 将版本加入组，同时强制每种类型只能有一个 ACTIVE 版本的不变式。
      */
     public ResumeVersion addVersion(ResumeVersion newVersion) {
         versions.stream()
@@ -106,10 +100,6 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
         return newVersion;
     }
 
-    /**
-     * 获取指定类型的ACTIVE版本
-     * Get ACTIVE version of specified type
-     */
     public ResumeVersion getActiveVersionByType(ResumeVersion.VersionType type) {
         return versions.stream()
                 .filter(v -> v.getVersionType() == type)
@@ -118,35 +108,23 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
                 .orElse(null);
     }
 
-    /**
-     * 获取所有版本（只读）
-     * Get all versions (read-only)
-     */
     public List<ResumeVersion> getVersions() {
         return Collections.unmodifiableList(versions);
     }
 
-    /**
-     * 设为默认简历
-     * Set as default resume
-     */
     public void setAsDefault() {
         this.isDefault = true;
         this.updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * 更新标题
-     * Update title
-     */
     public void changeTitle(String newTitle) {
         this.title = newTitle != null ? newTitle : this.title;
         this.updatedAt = LocalDateTime.now();
     }
 
     /**
-     * 激活指定版本（同类型旧 ACTIVE 自动归档）
-     * Activate specified version (old ACTIVE of same type is auto-archived)
+     * Reactivates a previously archived version and archives the currently active one of the same type.
+     * 重新激活已归档版本，并将同类型当前 ACTIVE 版本归档。
      *
      * @throws IllegalArgumentException if version not found in group
      * @throws IllegalStateException    if version is ORIGINAL or already ACTIVE
@@ -164,8 +142,7 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
             throw new IllegalStateException("Version is already active");
         }
 
-        // 归档同类型当前 ACTIVE 版本
-        // Archive current ACTIVE version of the same type
+        // Archive the current ACTIVE version of the same type to maintain the invariant | 归档同类型当前 ACTIVE 版本以保持不变式
         versions.stream()
                 .filter(v -> v.getVersionType() == target.getVersionType())
                 .filter(v -> v.getStatus() == ResumeVersion.Status.ACTIVE)
@@ -176,10 +153,6 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
         this.updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * 检查用户所有权
-     * Check user ownership
-     */
     public boolean isOwnedBy(UUID userId) {
         return this.userId.equals(userId);
     }

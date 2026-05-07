@@ -1,8 +1,6 @@
 import litellm
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
-# Embedding generation utilities for vector workflows.
-
 from app.config import (
     LLM_EMBEDDING_MODEL,
     LLM_EMBEDDING_MODEL_DIMENSION,
@@ -11,7 +9,8 @@ from app.config import (
 from app.schemas import AiResultEvent
 
 
-# Shared retry policy for embedding calls.
+# Exponential backoff for transient embedding API failures.
+# 指数退避重试：embedding 服务同样可能遇到限流或网络抖动，复用与 LLM 相同的重试策略。
 RETRY_STRATEGY = retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -22,9 +21,12 @@ RETRY_STRATEGY = retry(
     ))
 )
 
-# Generate an embedding vector for the provided text.
+
 @RETRY_STRATEGY
 def generate_embedding(text: str) -> list[float]:
+    """Generate an embedding vector with dimension validation to catch model config mismatches early.
+    生成 embedding 向量：调用完成后校验输出维度是否与配置一致，
+    在模型版本切换或维度配置错误时尽早暴露问题，避免脏数据写入向量库。"""
     cleaned_text = text.strip()
 
     if not cleaned_text:
@@ -53,6 +55,3 @@ def generate_embedding(text: str) -> list[float]:
         )
 
     return emb
-
-
-

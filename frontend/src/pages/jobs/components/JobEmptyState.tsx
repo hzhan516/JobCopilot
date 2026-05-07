@@ -6,10 +6,6 @@ interface JobEmptyStateProps {
   description: string;
 }
 
-/**
- * 职位列表空状态
- * Job list empty state
- */
 export default function JobEmptyState({ title, description }: JobEmptyStateProps) {
   return (
     <Card className="border-dashed">

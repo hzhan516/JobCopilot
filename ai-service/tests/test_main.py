@@ -83,9 +83,9 @@ def test_start_mq_consumer_once(mock_thread, monkeypatch):
     mock_thread.assert_called_once()
     mock_thread_instance.start.assert_called_once()
     
-    # Call again, should not start another thread
+    # Second call should be a no-op because _mq_started is already True.
     _start_mq_consumer_once()
-    mock_thread.assert_called_once() # Still 1
+    mock_thread.assert_called_once()
 
 @patch("app.main.evaluate_suitability_with_vertex")
 def test_evaluate_suitability(mock_eval):

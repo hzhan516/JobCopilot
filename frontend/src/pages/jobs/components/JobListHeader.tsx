@@ -8,10 +8,6 @@ interface JobListHeaderProps {
   onAddClick: () => void;
 }
 
-/**
- * 职位列表页面头部
- * Job list page header
- */
 export default function JobListHeader({
   title,
   subtitle,

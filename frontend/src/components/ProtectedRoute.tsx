@@ -11,7 +11,8 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const location = useLocation();
 
   if (!isAuthenticated) {
-    // 将用户重定向到登录页，并保存当前路径
+    // Preserve the original path so user can be redirected back after login
+    // 保存原始路径，登录后自动跳转回原页面
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

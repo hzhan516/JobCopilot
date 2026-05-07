@@ -19,13 +19,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 
 /**
- * 对话外观实现类
- * Conversation facade implementation
+ * Anti-corruption layer that shields the HTTP trigger layer from domain conversation concepts.
+ * 防腐层，将领域层的对话概念转换为 HTTP 触发层可消费的 DTO，避免控制器直接依赖聚合根。
  */
 @Component
 @RequiredArgsConstructor
@@ -58,7 +58,7 @@ public class ConversationFacadeImpl implements ConversationFacade {
         SendMessageCommand command = SendMessageCommand.builder()
                 .conversationId(UUID.fromString(conversationId))
                 .userId(userId)
-                .role(MessageRole.USER) // Assuming request comes from user
+                .role(MessageRole.USER) // client-facing endpoint only accepts user messages | 面向客户端的端点仅接受用户消息
                 .content(request.content())
                 .fileUrls(request.fileUrls())
                 .build();
@@ -129,8 +129,8 @@ public class ConversationFacadeImpl implements ConversationFacade {
     }
 
     /**
-     * 映射领域聚合根到响应 DTO（支持消息分页）
-     * Map domain aggregate root to response DTO with optional message pagination
+     * Converts the domain aggregate to a serializable response.
+     * 将领域聚合根转换为可序列化的响应对象，包含消息分页防御（空分页参数透传全量列表）。
      */
     private ConversationResponse mapToResponse(Conversation conversation, Integer page, Integer size) {
         List<MessageResponse> messageResponses = applyMessagePagination(conversation.getMessages(), page, size)
@@ -151,17 +151,14 @@ public class ConversationFacadeImpl implements ConversationFacade {
         );
     }
 
-    /**
-     * 默认不分页映射
-     * Default mapping without pagination
-     */
+
     private ConversationResponse mapToResponse(Conversation conversation) {
         return mapToResponse(conversation, null, null);
     }
 
     /**
-     * 对消息列表应用分页
-     * Apply pagination to message list
+     * Best-effort subList pagination; out-of-range requests yield an empty list instead of throwing.
+     * 尽力而为的子列表分页；越界请求返回空列表而非抛异常，避免前端因边界页码崩溃。
      */
     private List<edu.asu.ser594.resumeassistant.domain.conversation.entity.Message> applyMessagePagination(
             List<edu.asu.ser594.resumeassistant.domain.conversation.entity.Message> messages,
@@ -177,10 +174,7 @@ public class ConversationFacadeImpl implements ConversationFacade {
         return messages.subList(fromIndex, toIndex);
     }
 
-    /**
-     * 映射消息实体到响应 DTO
-     * Map message entity to response DTO
-     */
+
     private MessageResponse mapMessageToResponse(Message message) {
         return new MessageResponse(
                 message.getId().toString(),

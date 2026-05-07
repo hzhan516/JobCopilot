@@ -6,8 +6,11 @@ interface PublicRouteProps {
 }
 
 /**
- * 公开路由守卫
- * 已登录用户访问登录/注册页时，自动跳转到简历列表
+ * Redirects authenticated users away from login/register pages.
+ * Uses the stored 'from' location if available, defaulting to /resumes to avoid loop.
+ *
+ * 已登录用户访问登录/注册页时自动跳转。
+ * 优先使用登录前保存的原始路径，避免循环跳转默认回 /resumes
  */
 export default function PublicRoute({ children }: PublicRouteProps) {
   const { isAuthenticated } = useAuth();
@@ -15,7 +18,6 @@ export default function PublicRoute({ children }: PublicRouteProps) {
 
   if (isAuthenticated) {
     const from = (location.state as { from?: { pathname?: string } })?.from?.pathname;
-    // 避免从受保护页面带过来的 state 造成循环，默认跳转到 /resumes
     return <Navigate to={from && from !== '/login' && from !== '/register' ? from : '/resumes'} replace />;
   }
 

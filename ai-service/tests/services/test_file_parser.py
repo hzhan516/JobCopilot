@@ -71,7 +71,6 @@ def test_extract_text_from_pdf(mock_reader_class):
     assert result == "Page 1 text\nPage 2 text"
 
 def test_extract_text_from_docx():
-    # Create a fake docx file in memory
     xml_content = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
     <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
         <w:body>

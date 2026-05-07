@@ -28,10 +28,6 @@ interface JobScorePanelProps {
   onScore: () => void;
 }
 
-/**
- * 职位评分面板
- * Job scoring panel — resume selector, score button, and result display
- */
 export default function JobScorePanel({
   jobStatus,
   availableResumeVersions,
@@ -47,8 +43,11 @@ export default function JobScorePanel({
   const currentResume = availableResumeVersions.find((v) => v.versionId === selectedResumeId);
 
   /**
-   * 根据简历版本 ID 查找对应的简历组标题
-   * Find resume group title by version ID
+   * Looks up the resume group title from a versionId by iterating all groups.
+   * Used because the flat version list doesn't carry parent group metadata.
+   *
+   * 遍历所有简历组，根据版本 ID 查找对应的组标题。
+   * 扁平化的版本列表不携带所属组元数据，因此需要反向查找。
    */
   const getResumeTitle = (versionId: string): string => {
     for (const group of resumes) {

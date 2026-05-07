@@ -3,8 +3,6 @@ import time
 import litellm
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
-# Job ranking utilities combining lexical features with optional LLM explanations.
-
 from app.config import LLM_REQUEST_TIMEOUT_SECONDS, LLM_TEXT_MODEL
 from app.schemas import JobRankCommand, JobRankResultPayload, JobRankResultItem, MatchFactors
 
@@ -12,8 +10,9 @@ from app.schemas import JobRankCommand, JobRankResultPayload, JobRankResultItem,
 logger = logging.getLogger(__name__)
 
 
-# Tokenize text into lowercase alphanumeric tokens of length >= 2.
 def _tokenize(text: str) -> set[str]:
+    """Tokenize into lowercase alphanumeric tokens of length >= 2.
+    分词策略：过滤单字符与纯符号，保留长度 >= 2 的字母数字 token，用于轻量 lexical 匹配。"""
     token = []
     tokens: set[str] = set()
 
@@ -31,16 +30,17 @@ def _tokenize(text: str) -> set[str]:
     return tokens
 
 
-# Clamp a score to the [0, 1] range.
 def _clip_score(value: float) -> float:
     return max(0.0, min(1.0, value))
 
 
-# Rank a single job using lexical overlap and stored semantic scores.
 def _rank_single_job(
     job_id: str,
     command: JobRankCommand,
 ) -> JobRankResultItem:
+    """Rank a single job using lexical overlap weighted against pre-computed semantic similarity.
+    单职位排序：结合 query-resume 与 title/description 的 lexical overlap 及后端预计算的 semantic match，
+    权重分配为 0.35/0.25/0.40，保证语义相似度占主导的同时保留关键词匹配的区分度。"""
     details = command.job_details.get(job_id, {})
     if not isinstance(details, dict):
         details = {}
@@ -49,7 +49,6 @@ def _rank_single_job(
     company = str(details.get("company", "")).strip()
     description = str(details.get("description", "")).strip()
     
-    # Read pre-calculated semantic match from backend DB (O(1) memory read)
     semantic_match = float(details.get("semanticMatch", 0.0))
 
     query_text = " ".join(part for part in [command.query, command.resume_text] if part).strip()
@@ -81,7 +80,6 @@ def _rank_single_job(
     )
 
 
-# Retry wrapper for LLM calls used to generate match reasons.
 @retry(
     stop=stop_after_attempt(2),
     wait=wait_exponential(multiplier=1, min=2, max=5),
@@ -92,6 +90,8 @@ def _rank_single_job(
     ))
 )
 def _safe_llm_call(prompt: str) -> str:
+    """Retry wrapper for LLM calls used to generate match reasons.
+    LLM 调用重试包装器：仅对瞬态异常（超时、限流、连接错误）重试，避免对业务逻辑错误浪费 token。"""
     response = litellm.completion(
         model=LLM_TEXT_MODEL,
         messages=[{"role": "user", "content": prompt}],
@@ -102,12 +102,15 @@ def _safe_llm_call(prompt: str) -> str:
     return response.choices[0].message.content.strip()
 
 
-# Generate a short natural-language match reason for a ranked job.
 def _generate_match_reason(command: JobRankCommand, job: JobRankResultItem) -> str | None:
+    """Generate a concise natural-language match reason for top-ranked jobs.
+    为头部职位生成匹配理由：仅对 top-3 调用 LLM 以控制成本；prompt 中嵌入 XML 标签隔离不可信数据，
+    防止提示注入攻击影响模型行为。"""
     if not command.resume_text:
         return None
 
-    # Safe truncation to prevent token overflow
+    # Truncate inputs to prevent token overflow and reduce latency.
+    # 截断输入防止 token 溢出并降低延迟。
     resume_snippet = command.resume_text[:3000]
     
     details = command.job_details.get(job.job_id, {})
@@ -139,8 +142,10 @@ Details: {job_desc}
         logger.exception("Failed to generate match reason for job_id=%s after retries", job.job_id)
         return None
 
-# Rank recalled jobs and optionally attach LLM match reasons.
+
 def rank_jobs(command: JobRankCommand) -> JobRankResultPayload:
+    """Rank recalled jobs and optionally attach LLM-generated match reasons for the top candidates.
+    职位精排主入口：先按混合得分排序，再为 top-3 生成可解释性理由，兼顾排序效率与用户体验。"""
     rank_start = time.perf_counter()
 
     ranked_results = [
@@ -149,7 +154,8 @@ def rank_jobs(command: JobRankCommand) -> JobRankResultPayload:
     ]
     ranked_results.sort(key=lambda item: item.match_score, reverse=True)
 
-    # RAG Generation: Generate match reasons for top 3 candidates
+    # RAG-style generation: only top-3 get LLM match reasons to balance cost vs. value.
+    # RAG 生成策略：仅对 top-3 调用 LLM 生成匹配理由，在成本与可解释性之间取平衡。
     for i in range(min(3, len(ranked_results))):
         reason = _generate_match_reason(command, ranked_results[i])
         if reason:

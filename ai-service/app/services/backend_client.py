@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 JOB_VECTOR_BATCH_URL = f"{BACKEND_SERVICE_URL.rstrip('/')}/api/v1/job-vectors/batch"
 RESUME_VECTOR_BATCH_URL = f"{BACKEND_SERVICE_URL.rstrip('/')}/api/v1/resume-vectors/batch"
 
+# Exponential backoff for transient backend failures (network blips, short outages).
+# 指数退避重试策略：应对后端瞬时网络抖动或短暂不可用，避免请求风暴。
 RETRY_STRATEGY = retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -26,7 +28,8 @@ RETRY_STRATEGY = retry(
 
 @RETRY_STRATEGY
 def batch_upsert_job_vectors(items: list[dict]) -> dict:
-    """批量 upsert 职位向量到后端 / Batch upsert job vectors to backend."""
+    """Batch upsert job embeddings to the backend vector store.
+    批量写入职位向量：后端可能因并发或 GC 出现瞬时失败，因此配置重试与超时。"""
     if not items:
         return {"total": 0, "success": 0, "failed": 0, "skipped": 0, "failedJobIds": []}
 
@@ -55,7 +58,8 @@ def batch_upsert_job_vectors(items: list[dict]) -> dict:
 
 @RETRY_STRATEGY
 def batch_upsert_resume_vectors(items: list[dict]) -> dict:
-    """批量 upsert 简历向量到后端 / Batch upsert resume vectors to backend."""
+    """Batch upsert resume embeddings to the backend vector store.
+    批量写入简历向量：与职位向量使用相同的重试策略，保证双写一致性。"""
     if not items:
         return {"total": 0, "success": 0, "failed": 0, "skipped": 0, "failedResumeVersionIds": []}
 
@@ -92,7 +96,6 @@ def _build_job_vector_item(
     source_file: str = "",
     model_version: str = "",
 ) -> dict:
-    """构造职位向量条目 / Build a job vector item dict."""
     return {
         "jobId": reference_id,
         "embedding": embedding,
@@ -109,7 +112,6 @@ def _build_resume_vector_item(
     reference_id: str,
     embedding: list[float],
 ) -> dict:
-    """构造简历向量条目 / Build a resume vector item dict."""
     return {
         "resumeVersionId": reference_id,
         "embedding": embedding,
@@ -120,9 +122,9 @@ def sync_existing_job_embeddings(
     data_file: Path | str | None = None,
     batch_size: int = BACKEND_BATCH_SIZE,
 ) -> dict:
-    """启动时同步：读取数据管道输出文件，生成 embedding 并批量写入后端。
-    Startup sync: read data pipeline output, generate embeddings and batch-write to backend.
-    """
+    """Startup sync: read offline data-pipeline output, generate embeddings, and batch-write to backend.
+    启动时同步离线数据：读取数据管道产出的归一化职位数据，生成 embedding 后批量写入后端，
+    使向量库在系统启动后即具备可检索数据，避免冷启动空窗期。"""
     if data_file is None:
         project_root = Path(__file__).resolve().parent.parent.parent
         data_file = project_root / "data_pipeline" / "output" / "normalized_jobs_sample.jsonl"

@@ -15,10 +15,6 @@ import java.util.UUID;
 @Slf4j
 public class ExternalCommandUtils {
 
-    /**
-     * 使用临时文件运行 Pandoc 转换
-     * Run Pandoc conversion using temp files
-     */
     public static InputStream runPandoc(InputStream source, String sourceExt, String targetExt, String extraArgs) throws IOException {
         File inputFile = File.createTempFile("resume-in-" + UUID.randomUUID(), "." + sourceExt);
         File outputFile = File.createTempFile("resume-out-" + UUID.randomUUID(), "." + targetExt);
@@ -57,14 +53,9 @@ public class ExternalCommandUtils {
         }
     }
 
-    /**
-     * 使用临时文件运行 LibreOffice 转换
-     * Run LibreOffice conversion using temp files
-     */
     public static InputStream runLibreOffice(InputStream source, String sourceExt, String targetFormat) throws IOException {
         File inputFile = File.createTempFile("resume-in-" + UUID.randomUUID(), "." + sourceExt);
-        // soffice 根据输入名称自动创建输出文件
-        // soffice creates an output file automatically based on the input name
+        // soffice derives the output filename from the input filename automatically | soffice 根据输入文件名自动推导输出文件名
         File outDir = new File(System.getProperty("java.io.tmpdir"));
         String expectedOutName = inputFile.getName().replaceAll("\\." + sourceExt + "$", "") + "." + targetFormat;
         File outputFile = new File(outDir, expectedOutName);
@@ -72,8 +63,6 @@ public class ExternalCommandUtils {
         try {
             FileUtils.copyInputStreamToFile(source, inputFile);
 
-            // 使用 unoconv 或 soffice 无头模式
-            // Using unoconv or soffice headless
             String commandStr = String.format("soffice --headless --convert-to %s --outdir %s %s",
                     targetFormat, outDir.getAbsolutePath(), inputFile.getAbsolutePath());
             log.info("Executing LibreOffice: {}", commandStr);

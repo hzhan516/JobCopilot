@@ -95,20 +95,17 @@ export default function TrackingPage() {
     }
   }, [t]);
 
-  // 加载统计信息
-  // Load tracking stats
+  // Silently degrade to local counts when the stats API is unavailable
+  // 统计 API 不可用时静默降级，回退到前端本地统计
   const loadStats = useCallback(async () => {
     try {
       const data = await trackingService.getTrackingStats();
       setStats(data);
     } catch {
-      // 静默失败，回退到前端本地统计
-      // Silently fail and fall back to frontend local counts
       setStats(null);
     }
   }, []);
 
-  // 加载投递记录和统计信息
   useEffect(() => {
     loadTrackings();
     loadStats();
@@ -138,7 +135,6 @@ export default function TrackingPage() {
     clearEditSearchParam();
   }, [clearEditSearchParam, editingTrackingId, searchParams]);
 
-  // 添加投递记录
   const handleAddTracking = async () => {
     if (!newTracking.jobTitle || !newTracking.companyName) {
       toast.error(t('tracking.fillRequired'));
@@ -200,7 +196,6 @@ export default function TrackingPage() {
     }
   };
 
-  // 更新状态
   const handleUpdateStatus = async (trackingId: string, status: Tracking['status']) => {
     try {
       await trackingService.updateTracking(trackingId, { status });
@@ -211,7 +206,6 @@ export default function TrackingPage() {
     }
   };
 
-  // 删除投递记录
   const handleDeleteTracking = async (trackingId: string) => {
     try {
       await trackingService.deleteTracking(trackingId);
@@ -236,21 +230,18 @@ export default function TrackingPage() {
     }
   }, [editDialogOpen, isLoading, openEditDialog, searchParams, trackings]);
 
+  // Derive local counts as fallback when stats API fails
   // 统计各状态数量（作为 stats API 失败时的回退）
-  // Count statuses locally (fallback when stats API fails)
   const statusCounts = trackings.reduce((acc, t) => {
     acc[t.status] = (acc[t.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  // 计算成功率
-  // Calculate success rate
   const successRate = useMemo(() => {
     const value = stats?.successRate ?? 0;
     return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
   }, [stats]);
 
-  // 渲染加载状态
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -273,7 +264,6 @@ export default function TrackingPage() {
 
   return (
     <div className="space-y-6">
-      {/* 页面标题 */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">{t('tracking.title')}</h1>
@@ -285,7 +275,6 @@ export default function TrackingPage() {
         </Button>
       </div>
 
-      {/* 统计卡片 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -349,8 +338,6 @@ export default function TrackingPage() {
         </Card>
       </div>
 
-      {/* 成功率条形图 */}
-      {/* Success rate bar chart */}
       <div className="mt-6">
         <div className="flex justify-between text-sm mb-2">
           <span className="font-medium text-gray-700">{t('tracking.successRate')}</span>
@@ -364,7 +351,6 @@ export default function TrackingPage() {
         </div>
       </div>
 
-      {/* 投递记录列表 */}
       <Card>
         <CardHeader className="pb-4">
           <h3 className="text-lg font-semibold">{t('tracking.recordList')}</h3>
@@ -467,7 +453,6 @@ export default function TrackingPage() {
         </CardContent>
       </Card>
 
-      {/* 添加记录对话框 */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -548,7 +533,6 @@ export default function TrackingPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 编辑记录对话框 */}
       <Dialog
         open={editDialogOpen}
         onOpenChange={(open) => {

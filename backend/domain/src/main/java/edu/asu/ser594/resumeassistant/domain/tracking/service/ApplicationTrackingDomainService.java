@@ -5,22 +5,13 @@ import edu.asu.ser594.resumeassistant.domain.tracking.valueobject.ApplicationSta
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * 求职申请跟踪领域服务
- * Application tracking domain service
- * <p>
- * 负责状态流转校验等核心业务逻辑
- * Responsible for status transition validation and other core business logic
+ * Centralizes status-transition rules so that invalid business-state changes are rejected at the domain level,
+ * not just at the database constraint level.
+ * 集中管理状态流转规则，使无效的业务状态变更在领域层即被拒绝，而非仅依赖数据库约束。
  */
 @Slf4j
 public class ApplicationTrackingDomainService {
 
-    /**
-     * 校验状态流转是否合法
-     * Validate if status transition is legal
-     *
-     * @param fromStatus 当前状态 / Current status
-     * @param toStatus   目标状态 / Target status
-     */
     public void validateStatusTransition(final ApplicationStatus fromStatus, final ApplicationStatus toStatus) {
         if (!fromStatus.canTransitionTo(toStatus)) {
             log.warn("Invalid status transition attempted: {} -> {}", fromStatus, toStatus);

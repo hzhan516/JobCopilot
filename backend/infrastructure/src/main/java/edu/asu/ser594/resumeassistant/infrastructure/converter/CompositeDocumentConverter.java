@@ -12,12 +12,11 @@ import java.io.InputStream;
 import java.util.List;
 
 /**
- * Composite document converter that routes to specific converters
- * 组合文档转换器 - 路由到具体实现
- * <p>
- * 支持直接转换、链式转换（通过中间格式）以及纯文本降级回退。
- * Supports direct conversion, chain conversion (via intermediate format),
- * and fallback to built-in text converters when external commands fail.
+ * Primary document converter that orchestrates multiple conversion strategies.
+ * Attempts direct conversion first, then chain conversion through intermediate formats,
+ * and finally falls back to built-in text converters to maximize format coverage.
+ * 主文档转换器，协调多种转换策略：优先直接转换，其次通过中间格式链式转换，
+ * 最后降级到内置文本转换器，以最大化支持的格式覆盖范围
  */
 @Slf4j
 @Primary
@@ -38,8 +37,6 @@ public class CompositeDocumentConverter implements DocumentFormatConverter {
             return source;
         }
 
-        // 1. 尝试直接转换
-        // 1. Try direct conversion
         for (DocumentFormatConverter converter : converters) {
             if (converter instanceof CompositeDocumentConverter) {
                 continue;
@@ -50,14 +47,10 @@ public class CompositeDocumentConverter implements DocumentFormatConverter {
                 } catch (IOException e) {
                     log.warn("Direct conversion failed: {} -> {}, trying fallback. Error: {}",
                             sf, tf, e.getMessage());
-                    // 继续尝试降级/链式转换
-                    // Continue to fallback/chain conversion
                 }
             }
         }
 
-        // 2. 尝试链式转换（source -> intermediate -> target）
-        // 2. Try chain conversion
         byte[] sourceBytes = readAllBytes(source);
         for (String intermediate : CHAIN_INTERMEDIATES) {
             if (intermediate.equals(sf) || intermediate.equals(tf)) {
@@ -74,8 +67,6 @@ public class CompositeDocumentConverter implements DocumentFormatConverter {
             }
         }
 
-        // 3. 纯文本降级：如果涉及 md/html/txt，尝试使用内置的 MarkdownConverter
-        // 3. Pure-text fallback: try built-in MarkdownConverter for md/html/txt
         if (isPureTextFormat(sf) && isPureTextFormat(tf)) {
             InputStream fallback = tryPureTextFallback(sourceBytes, sf, tf);
             if (fallback != null) {
@@ -94,7 +85,6 @@ public class CompositeDocumentConverter implements DocumentFormatConverter {
             return true;
         }
 
-        // 直接支持
         boolean direct = converters.stream()
                 .filter(c -> !(c instanceof CompositeDocumentConverter))
                 .anyMatch(c -> c.supports(sf, tf));
@@ -102,7 +92,6 @@ public class CompositeDocumentConverter implements DocumentFormatConverter {
             return true;
         }
 
-        // 链式支持
         for (String intermediate : CHAIN_INTERMEDIATES) {
             if (intermediate.equals(sf) || intermediate.equals(tf)) {
                 continue;
@@ -118,7 +107,6 @@ public class CompositeDocumentConverter implements DocumentFormatConverter {
             }
         }
 
-        // 纯文本降级
         return isPureTextFormat(sf) && isPureTextFormat(tf);
     }
 
@@ -132,10 +120,6 @@ public class CompositeDocumentConverter implements DocumentFormatConverter {
                 .toList();
     }
 
-    /**
-     * 尝试链式转换
-     * Try chain conversion
-     */
     private InputStream tryChainConvert(byte[] sourceBytes, String sf, String intermediate, String tf)
             throws IOException {
         DocumentFormatConverter step1Converter = null;
@@ -162,10 +146,6 @@ public class CompositeDocumentConverter implements DocumentFormatConverter {
         }
     }
 
-    /**
-     * 纯文本降级回退
-     * Pure-text fallback using MarkdownConverter logic
-     */
     private InputStream tryPureTextFallback(byte[] sourceBytes, String sf, String tf) {
         for (DocumentFormatConverter converter : converters) {
             if (converter instanceof CompositeDocumentConverter) {
@@ -191,18 +171,13 @@ public class CompositeDocumentConverter implements DocumentFormatConverter {
         return source.readAllBytes();
     }
 
-    /**
-     * 规范化格式名称
-     * Normalize format name
-     */
     private String normalize(String format) {
         if (format == null) return "";
         String f = format.toLowerCase();
         return switch (f) {
             case "markdown" -> "md";
             case "word" -> "docx";
-            case "doc" -> "docx"; // Treat DOC as DOCX for simplicity
-            // 为简单起见，将 DOC 视为 DOCX
+            case "doc" -> "docx"; // Treat DOC as DOCX for simplicity | 将 DOC 视为 DOCX 以简化处理
             case "text" -> "txt";
             default -> f;
         };

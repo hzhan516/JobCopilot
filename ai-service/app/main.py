@@ -1,5 +1,6 @@
 """
 Resume Assistant - Python AI service entry point.
+智能求职助手 —— AI 服务入口，负责任务调度、HTTP API 及 MQ 消费者生命周期管理。
 """
 
 import logging
@@ -35,8 +36,10 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+
 def _start_sync_thread() -> None:
-    """启动后台线程同步已有 embedding 数据到后端 / Start background thread to sync existing embeddings."""
+    """Launch a background thread to sync offline job embeddings into the backend vector store on startup.
+    启动后台线程，在应用启动时将离线职位 embedding 同步到后端向量库，避免冷启动时向量检索为空。"""
     def _run_sync() -> None:
         try:
             sync_existing_job_embeddings()
@@ -63,23 +66,21 @@ app = FastAPI(
 
 # ---------------------------------------------------------------------------
 # Internal API Key Middleware (Defense in Depth)
-# 应用层内部 API Key 中间件（纵深防御）
+# 内部 API Key 中间件 —— 纵深防御，防止 AI 服务被外部直接访问。
 # ---------------------------------------------------------------------------
 INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "")
 
-# Paths exempt from internal API key checks.
-# 免予内部 API Key 检查的路径。
+# Whitelist paths that must remain accessible without authentication (health, docs).
+# 以下路径免鉴权，确保探针和文档端点始终可访问。
 _SKIP_AUTH_PATHS = {"/health", "/", "/docs", "/openapi.json", "/redoc"}
 
 
 @app.middleware("http")
 async def internal_api_key_middleware(request: Request, call_next):
-    """
-    Validate X-Internal-API-Key header for all inbound HTTP requests.
+    """Validate X-Internal-API-Key header for all inbound HTTP requests.
     Skipped when INTERNAL_API_KEY is unset (local development) or path is whitelisted.
     对所有入站 HTTP 请求校验 X-Internal-API-Key header。
-    当 INTERNAL_API_KEY 未设置（本地开发）或路径在白名单内时跳过检查。
-    """
+    当 INTERNAL_API_KEY 未设置（本地开发）或路径在白名单内时跳过检查。"""
     if INTERNAL_API_KEY and request.url.path not in _SKIP_AUTH_PATHS:
         provided = request.headers.get("X-Internal-API-Key", "")
         if provided != INTERNAL_API_KEY:
@@ -161,7 +162,7 @@ def initialize_mq() -> None:
             logger.info("RabbitMQ consumers are ready.")
             _mq_is_connected = True
             start_all_consumers(channel)
-            break # Successfully connected and consuming
+            break
         except Exception as e:
             _mq_is_connected = False
             logger.warning("RabbitMQ consumer startup failed (Attempt %d): %s. Retrying in %d seconds...", attempt, e, retry_delay)
@@ -184,7 +185,6 @@ def _start_mq_consumer_once() -> None:
         _mq_started = True
         logger = logging.getLogger(__name__)
         logger.info("RabbitMQ consumer thread started.")
-
 
 
 

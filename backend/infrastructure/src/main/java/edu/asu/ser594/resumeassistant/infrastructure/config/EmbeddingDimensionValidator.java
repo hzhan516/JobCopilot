@@ -12,11 +12,9 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 
 /**
- * 嵌入向量维度启动校验器
- * Embedding dimension startup validator
- * <p>
- * 应用启动时比对 PostgreSQL 向量列的实际维度与配置维度是否一致。
- * Compares the actual PostgreSQL vector column dimension with the configured dimension on startup.
+ * Validates that the PostgreSQL vector column dimension matches the application configuration at startup.
+ * Mismatches silently break semantic search, so early detection prevents runtime failures.
+ * 启动时校验 PostgreSQL 向量列维度与配置一致，防止维度不匹配导致语义搜索失效
  */
 @Slf4j
 @Component
@@ -27,16 +25,14 @@ public class EmbeddingDimensionValidator implements ApplicationRunner {
     private final DataSource dataSource;
 
     @Override
-    public void run(ApplicationArguments args) throws Exception {
+    public void run(ApplicationArguments args) {
         int expectedDim = embeddingProperties.getDimension();
 
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement()) {
 
-            // 检查 resume_vectors.embedding 维度 / Check resume_vectors.embedding dimension
-            checkColumnDimension(stmt, "resume_vectors", "embedding", expectedDim);
-            // 检查 job_vectors.embedding 维度 / Check job_vectors.embedding dimension
-            checkColumnDimension(stmt, "job_vectors", "embedding", expectedDim);
+            checkColumnDimension(stmt, "resume_vectors", expectedDim);
+            checkColumnDimension(stmt, "job_vectors", expectedDim);
 
         } catch (Exception e) {
             log.warn("无法执行嵌入向量维度校验（数据库可能尚未初始化）: {}", e.getMessage());
@@ -44,11 +40,11 @@ public class EmbeddingDimensionValidator implements ApplicationRunner {
         }
     }
 
-    private void checkColumnDimension(Statement stmt, String table, String column, int expectedDim) throws Exception {
+    private void checkColumnDimension(Statement stmt, String table, int expectedDim) throws Exception {
         String sql = String.format(
                 "SELECT atttypmod FROM pg_attribute "
                         + "WHERE attrelid = '%s'::regclass AND attname = '%s'",
-                table, column
+                table, "embedding"
         );
 
         try (ResultSet rs = stmt.executeQuery(sql)) {
@@ -64,11 +60,11 @@ public class EmbeddingDimensionValidator implements ApplicationRunner {
                                     + "2) 生产环境：手动更新 ResumeVectorJpaEntity / JobVectorJpaEntity 中的 @Array(length = ...)，\n"
                                     + "   并重建向量表（所有现有向量将失效需重新生成）。\n"
                                     + "========================================",
-                            table, column, actualDim, expectedDim,
-                            table, column, actualDim, expectedDim
+                            table, "embedding", actualDim, expectedDim,
+                            table, "embedding", actualDim, expectedDim
                     );
                 } else if (actualDim > 0) {
-                    log.info("向量列 {}.{} 维度校验通过: {}", table, column, actualDim);
+                    log.info("向量列 {}.{} 维度校验通过: {}", table, "embedding", actualDim);
                 }
             }
         }

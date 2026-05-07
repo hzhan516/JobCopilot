@@ -27,8 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
-// 认证申请服务
-// Authentication application service
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -80,33 +78,25 @@ public class AuthApplicationService {
 
     @Transactional
     public User loginByGoogle(LoginByGoogleCommand command) {
-        // 1. 验证 Google ID 令牌
-        // 1. Verify Google ID Token
         GoogleTokenVerifierPort.GoogleUserInfo googleUserInfo = googleTokenVerifierPort.verify(command.idToken());
 
-        // 2.通过邮箱查找用户
-        // 2. Find user by email
         var existingUser = userRepository.findByEmail(googleUserInfo.email());
 
         if (existingUser.isPresent()) {
             User user = existingUser.get();
 
-            // 如果使用EMAIL注册，拒绝Google登录
-            // If registered with EMAIL, reject Google login
+            // Reject Google login for accounts created via email to prevent credential confusion
+            // 拒绝通过邮箱注册的账号使用 Google 登录，防止凭据混淆
             if (user.getAuthProvider() == OAuthProvider.EMAIL) {
                 throw new AuthException(AuthException.ErrorType.EMAIL_REGISTERED_WITH_PASSWORD);
             }
 
-            // 如果使用 GOOGLE 注册，则更新 OAuth 绑定并返回
-            // If registered with GOOGLE, update OAuth binding and return
             if (user.getAuthProvider() == OAuthProvider.GOOGLE) {
                 updateOAuthBindingIfNeeded(user.getId(), googleUserInfo);
                 return user;
             }
         }
 
-        // 3.自动注册新用户
-        // 3. Auto-register new user
         User user = User.create(googleUserInfo.email(), OAuthProvider.GOOGLE);
         User savedUser = userRepository.save(user);
 
@@ -159,15 +149,14 @@ public class AuthApplicationService {
     }
 
     /**
-     * 刷新访问令牌
-     * Refresh access token
+     * Refreshes the access token using a valid refresh token, enabling seamless session continuation
+     * without forcing the user to re-authenticate.
+     * 使用有效的刷新令牌重新签发访问令牌，实现无感会话续期
      *
-     * @param refreshToken 刷新令牌 / Refresh token
-     * @return 新认证响应 / New authentication response
+     * @param refreshToken Refresh token / 刷新令牌
+     * @return New authentication response / 新认证响应
      */
     public AuthResponse refreshToken(String refreshToken) {
-        // 1. 验证刷新令牌
-        // 1. Validate refresh token
         var validationResult = tokenService.validateTokenDetailed(refreshToken);
 
         switch (validationResult) {
@@ -175,12 +164,8 @@ public class AuthApplicationService {
             case INVALID -> throw new AuthException(AuthException.ErrorType.TOKEN_INVALID);
         }
 
-        // 2. 解析用户ID
-        // 2. Parse user ID
         String userId = tokenService.getUserIdFromToken(refreshToken);
 
-        // 3. 查库确认用户存在且未删除
-        // 3. Verify user exists and is not deleted
         User user = userRepository.findById(UUID.fromString(userId))
                 .orElseThrow(() -> new AuthException(AuthException.ErrorType.INVALID_CREDENTIALS));
 
@@ -188,8 +173,6 @@ public class AuthApplicationService {
             throw new AuthException(AuthException.ErrorType.INVALID_CREDENTIALS);
         }
 
-        // 4. 生成新令牌对
-        // 4. Generate new token pair
         TokenPair tokens = tokenService.generateTokenPair(userId);
 
         return AuthResponse.builder()
@@ -202,17 +185,14 @@ public class AuthApplicationService {
     }
 
     /**
-     * 用户注销
-     * User logout
+     * Logs out the user. In the current MVP stage, JWT tokens are stateless, so logout is handled
+     * by the frontend clearing cached tokens. A persistent token blacklist (e.g., Redis) could be
+     * introduced here in future iterations.
+     * 用户注销。当前 MVP 阶段 JWT 为无状态令牌，注销由前端清理缓存完成；后续可在此引入 Redis 黑名单等持久化失效机制
      *
-     * @param accessToken 当前访问令牌 / Current access token
+     * @param accessToken Current access token / 当前访问令牌
      */
     public void logout(String accessToken) {
-        // MVP 阶段：无状态 JWT，注销由前端完成缓存清理
-        // MVP stage: stateless JWT, logout is handled by frontend cache cleanup
-        // 若后续引入 Refresh Token 持久化表或 Redis 黑名单，在此标记 token 失效
-        // If Refresh Token persistence table or Redis blacklist is introduced later,
-        // mark the token as invalid here
         log.info("User logout / 用户注销: token={}", accessToken);
     }
 }

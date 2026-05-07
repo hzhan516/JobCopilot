@@ -1,7 +1,5 @@
 from typing import Any
 
-# Job parsing helpers that extract structured fields from text or images.
-
 import base64
 import re
 from pathlib import Path
@@ -16,7 +14,6 @@ from app.services.llm_client import (
 )
 
 
-# Normalize requirement values into a list of cleaned strings.
 def _normalize_requirements(value: Any) -> list[str]:
     if isinstance(value, list):
         return [str(item).strip() for item in value if str(item).strip()]
@@ -27,7 +24,6 @@ def _normalize_requirements(value: Any) -> list[str]:
     return []
 
 
-# Build a ParsedJobContent model from a raw dict.
 def _build_job_content(data: dict[str, Any]) -> ParsedJobContent:
     return ParsedJobContent(
         title=str(data.get("title", "")).strip(),
@@ -37,8 +33,9 @@ def _build_job_content(data: dict[str, Any]) -> ParsedJobContent:
     )
 
 
-# Validate whether required fields are missing from parsed content.
 def is_job_content_incomplete(content: ParsedJobContent) -> bool:
+    """Check whether critical fields are missing so we can trigger vision fallback.
+    校验关键字段是否缺失：用于决定是否需要触发截图 vision 解析作为兜底。"""
     return (
         not content.title.strip()
         or not content.company.strip()
@@ -46,8 +43,10 @@ def is_job_content_incomplete(content: ParsedJobContent) -> bool:
     )
 
 
-# Parse a job posting from cleaned text using the LLM.
 def parse_job_text(markdown_text: str) -> ParsedJobContent:
+    """Extract structured job fields from cleaned page text using an LLM.
+    从清洗后的页面文本中提取结构化职位信息：限制输入长度（12000 字符）以控制 token 成本，
+    同时通过严格的 JSON schema 约束降低解析失败率。"""
     cleaned_text = markdown_text.strip()
     if not cleaned_text:
         raise ValueError("Scraped job page text is empty.")
@@ -85,20 +84,22 @@ Job posting text:
     return _build_job_content(parsed)
 
 
-# Decode a base64 or data-URI image payload.
 def _decode_base64_image(data: str) -> tuple[bytes, str]:
     match = re.match(r"data:([\w/]+);base64,(.+)", data)
     if match:
         mime_type = match.group(1)
         image_bytes = base64.b64decode(match.group(2))
         return image_bytes, mime_type
-    # 处理纯 Base64 字符串（无 data URI 前缀）
+    # Plain base64 string without data URI prefix defaults to PNG.
+    # 无 data URI 前缀的纯 Base64 字符串默认按 PNG 处理。
     image_bytes = base64.b64decode(data)
     return image_bytes, "image/png"
 
 
-# Load image bytes from data-URI, HTTP, or local path.
 def _load_image_bytes(image_url: str) -> tuple[bytes, str]:
+    """Load image bytes from data-URI, HTTP(S), or local path with graceful fallback.
+    加载图片字节：支持 data URI、HTTP(S) 及本地路径；对超长字符串可能触发的 OSError 做静默兜底，
+    最后尝试纯 Base64 解码，提高解析容错性。"""
     if image_url.startswith("data:"):
         return _decode_base64_image(image_url)
 
@@ -107,23 +108,25 @@ def _load_image_bytes(image_url: str) -> tuple[bytes, str]:
         image_response.raise_for_status()
         return image_response.content, image_response.headers.get("Content-Type", "image/png")
 
-    # 尝试作为本地文件路径，但捕获 OSError（例如超长 Base64 字符串导致的文件名过长）
     try:
         image_path = Path(image_url)
         if image_path.is_file():
             return image_path.read_bytes(), "image/png"
     except OSError:
+        # Very long strings can exceed OS path length limits; fall through to base64 fallback.
+        # 超长字符串可能超出操作系统路径长度限制，继续走 Base64 兜底分支。
         pass
 
-    # 兜底：尝试作为纯 Base64 字符串解码（无 data: 前缀）
     return _decode_base64_image(image_url)
 
 
-# Parse a job posting from a screenshot with optional context text.
 def parse_job_from_image(
     screenshot_url: str,
     context_text: str = "",
 ) -> ParsedJobContent:
+    """Extract structured job fields from a screenshot using vision LLM with optional text context.
+    从截图中提取职位信息：vision 模型处理可见内容，页面文本作为辅助上下文仅用于填补或澄清细节，
+    避免过度依赖可能不准确的 scraped text。"""
     image_bytes, mime_type = _load_image_bytes(screenshot_url)
 
     prompt = f"""
@@ -165,12 +168,14 @@ Rules:
     return _build_job_content(parsed)
 
 
-# Validate and correct parsed job content using a screenshot.
 def validate_job_with_vision(
     parsed_content: ParsedJobContent,
     page_text: str,
     screenshot_url: str | None,
 ) -> ParsedJobContent:
+    """Cross-check and correct parsed job fields against a screenshot to reduce hallucination.
+    使用截图交叉验证已解析的职位字段：当 scraped text 存在歧义或截断时，
+    vision 模型可基于真实页面视觉内容进行校正，降低幻觉风险。"""
     if not screenshot_url:
         return parsed_content
 

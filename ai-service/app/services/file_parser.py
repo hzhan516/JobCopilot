@@ -6,17 +6,15 @@ from urllib.parse import urlparse, parse_qs
 from zipfile import ZipFile
 import xml.etree.ElementTree as ET
 
-# File retrieval and text extraction utilities for resumes and attachments.
-
 import httpx
 from pypdf import PdfReader
 
 logger = logging.getLogger(__name__)
 
 
-# Resolve a stored object key to a local path in the shared storage.
 def _resolve_local_path(object_key: str) -> Path | None:
-    """Search the shared filesystem for a file matching the object key."""
+    """Resolve an object key to a local file path within the shared storage volume.
+    将对象键解析为共享存储卷内的本地路径：支持多级目录嵌套，兼容后端多种存储组织方式。"""
     base = Path(os.environ.get("FILE_STORAGE_PATH", "/app/uploads"))
     if not base.exists() or not base.is_dir():
         logger.warning("Local storage base path does not exist: %s", base)
@@ -30,18 +28,18 @@ def _resolve_local_path(object_key: str) -> Path | None:
     return None
 
 
-# Download file content from HTTP URLs or shared storage paths.
 def download_file_bytes(file_url: str) -> bytes:
+    """Download file bytes from HTTP(S), storage download URLs, or plain object keys.
+    统一文件下载入口：支持 HTTP(S) 直连、后端存储下载链接（/api/storage/download?key=...）
+    以及纯对象键三种场景，屏蔽底层存储差异。"""
     stripped = file_url.strip()
 
-    # Case 1: HTTP(S) URL (MinIO, S3, OSS, or local with configured urlPrefix)
     if stripped.startswith(("http://", "https://")):
         logger.debug("Downloading file via HTTP: %s", stripped)
         response = httpx.get(stripped, timeout=30.0, follow_redirects=True)
         response.raise_for_status()
         return response.content
 
-    # Case 2: Relative storage download URL like /api/storage/download?key=...
     if stripped.startswith("/api/storage/download"):
         parsed = urlparse(stripped)
         keys = parse_qs(parsed.query).get("key", [])
@@ -55,7 +53,6 @@ def download_file_bytes(file_url: str) -> bytes:
             f"Could not resolve local file for storage URL: {stripped}"
         )
 
-    # Case 3: Plain object key (e.g. uuid_filename.pdf passed as fileUrl)
     local_path = _resolve_local_path(stripped)
     if local_path:
         logger.info("Reading file from shared storage (by object key): %s", local_path)
@@ -66,7 +63,6 @@ def download_file_bytes(file_url: str) -> bytes:
     )
 
 
-# Extract text from a PDF payload.
 def _extract_text_from_pdf(file_bytes: bytes) -> str:
     reader = PdfReader(BytesIO(file_bytes))
     parts: list[str] = []
@@ -79,12 +75,13 @@ def _extract_text_from_pdf(file_bytes: bytes) -> str:
     return "\n".join(parts).strip()
 
 
-# Extract text from a DOCX payload.
 def _extract_text_from_docx(file_bytes: bytes) -> str:
     with ZipFile(BytesIO(file_bytes)) as docx_zip:
         xml_bytes = docx_zip.read("word/document.xml")
 
     root = ET.fromstring(xml_bytes)
+    # DOCX uses OpenXML namespace; hardcoding avoids external dependency on python-docx.
+    # DOCX 采用 OpenXML 命名空间，直接解析 XML 以避免额外依赖。
     namespaces = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
 
     parts: list[str] = []
@@ -95,13 +92,13 @@ def _extract_text_from_docx(file_bytes: bytes) -> str:
     return " ".join(parts).strip()
 
 
-# Extract text from a plain text payload.
 def _extract_text_from_plain(file_bytes: bytes) -> str:
     return file_bytes.decode("utf-8", errors="ignore").strip()
 
 
-# Route to the appropriate extractor based on content type.
 def extract_resume_text(file_bytes: bytes, content_format: str) -> str:
+    """Route file bytes to the appropriate extractor based on declared MIME type or file extension.
+    根据声明的 MIME 类型或文件扩展名路由到对应提取器：支持 PDF、DOCX、TXT/Markdown。"""
     normalized = content_format.strip().lower()
 
     if normalized in {"pdf", "application/pdf"}:

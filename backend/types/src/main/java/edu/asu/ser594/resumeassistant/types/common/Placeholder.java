@@ -1,12 +1,11 @@
 package edu.asu.ser594.resumeassistant.types.common;
 
 /**
- * 占位类 - 确保 types 模块可以正确打包
- * 后续可以删除或替换为实际类型定义
+ * Temporary placeholder allowing the types module to compile and package correctly until real shared types are introduced.
+ * 临时占位类，确保 types 模块能够正常编译打包，待实际共享类型引入后可删除
  */
 public final class Placeholder {
     private Placeholder() {
-        // 工具类，禁止实例化
-        // Utility class, instantiation forbidden
+        // utility class | 工具类，禁止实例化
     }
 }

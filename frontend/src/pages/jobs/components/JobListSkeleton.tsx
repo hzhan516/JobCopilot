@@ -5,10 +5,6 @@ interface JobListSkeletonProps {
   subtitle: string;
 }
 
-/**
- * 职位列表骨架屏
- * Job list skeleton loading state
- */
 export default function JobListSkeleton({ title, subtitle }: JobListSkeletonProps) {
   return (
     <div className="space-y-6">

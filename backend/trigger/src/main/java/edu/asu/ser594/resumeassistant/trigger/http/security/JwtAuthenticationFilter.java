@@ -17,8 +17,9 @@ import java.io.IOException;
 import java.util.Collections;
 
 /**
- * JWT认证过滤器
- * JWT authentication filter
+ * Stateless JWT filter that extracts bearer tokens and establishes the Spring Security context
+ * for every incoming request without server-side session storage.
+ * 无状态 JWT 过滤器，从每个请求中提取 Bearer 令牌并建立 Spring Security 上下文，无需服务端会话存储
  */
 @Slf4j
 @Component
@@ -46,10 +47,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             case VALID -> {
                 String userId = tokenService.getUserIdFromToken(token);
 
-                // 设置用户ID到request attribute，供CurrentUser注解使用
+                // propagate user identity to downstream resolvers via request attributes | 通过请求属性将用户身份传递给下游解析器
                 request.setAttribute("userId", userId);
 
-                // 设置Spring Security上下文
+                // bridge JWT to Spring Security context so downstream authorization checks work | 将 JWT 桥接到 Spring Security 上下文，使下游鉴权检查生效
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
                 SecurityContextHolder.getContext().setAuthentication(authentication);

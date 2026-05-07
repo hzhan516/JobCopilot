@@ -14,25 +14,23 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * Outbox 消息转发调度器
- * Outbox message relay scheduler
- * <p>
- * 定期扫描 PENDING 状态的 Outbox 记录，投递到 RabbitMQ。
- * Periodically scans PENDING outbox records and delivers them to RabbitMQ.
+ * Relays pending outbox records to RabbitMQ on a fixed schedule, implementing the Transactional Outbox
+ * pattern to guarantee at-least-once message delivery without coupling domain transactions to MQ availability.
+ * 按固定周期将待处理的 Outbox 记录转发到 RabbitMQ，实现事务性发件箱模式，确保至少一次消息投递，同时避免将领域事务与 MQ 可用性耦合
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class OutboxRelayScheduler {
 
-    //    private static final int BATCH_SIZE = 100;
     private final OutboxMessageRepository outboxMessageRepository;
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
 
     /**
-     * 每 2 秒执行一次转发
-     * Relay every 2 seconds
+     * Polls every 2 seconds for PENDING outbox rows and attempts delivery.
+     * Failed messages are marked so downstream monitoring can alert on persistent relay failures.
+     * 每 2 秒轮询 PENDING 状态的 Outbox 行并尝试投递。失败消息会被标记，以便下游监控对持续投递失败发出告警
      */
     @Scheduled(fixedDelay = 2000)
     @Transactional

@@ -11,45 +11,39 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * RabbitMQ 配置类 / RabbitMQ configuration
+ * RabbitMQ topology configuration defining all queues, exchanges and bindings
+ * used for backend-to-AI-service asynchronous communication.
+ * 定义后端与 AI 服务异步通信所需的全部队列、交换机和绑定关系
  */
 @Configuration
 public class RabbitMqConfig {
 
     public static final String EXCHANGE_AI_DIRECT = "ai.direct.exchange";
 
-    // 死信交换机与队列 / Dead letter exchange and queue
     public static final String EXCHANGE_DLX = "ai.dlx.exchange";
     public static final String QUEUE_DLQ = "ai.dlq.queue";
     public static final String ROUTING_KEY_DLQ = "dlq.routing.key";
 
-    // 职位解析队列与路由键 / Job parse queue and routing keys
     public static final String ROUTING_KEY_REQ_JOB_PARSE = "ai.req.job.parse";
     public static final String QUEUE_REQ_JOB_PARSE = "ai.queue.job.parse";
     public static final String ROUTING_KEY_RES_JOB_PARSE = "backend.res.job.parse";
     public static final String QUEUE_RES_JOB_PARSE = "backend.queue.job.parse";
 
-    // 简历解析队列与路由键 / Resume parse queue and routing keys
     public static final String ROUTING_KEY_REQ_RESUME_PARSE = "ai.req.resume.parse";
     public static final String QUEUE_REQ_RESUME_PARSE = "ai.queue.resume.parse";
     public static final String ROUTING_KEY_RES_RESUME_PARSE = "backend.res.resume.parse";
     public static final String QUEUE_RES_RESUME_PARSE = "backend.queue.resume.parse";
 
-    // 对话队列与路由键 / Conversation queue and routing keys
     public static final String ROUTING_KEY_REQ_CONVERSATION = "ai.req.conversation";
     public static final String QUEUE_REQ_CONVERSATION = "ai.queue.conversation";
     public static final String ROUTING_KEY_RES_CONVERSATION = "backend.res.conversation";
     public static final String QUEUE_RES_CONVERSATION = "backend.queue.conversation";
 
-    // 职位排名队列与路由键 / Job rank queue and routing keys
     public static final String ROUTING_KEY_REQ_JOB_RANK = "ai.req.job.rank";
     public static final String QUEUE_REQ_JOB_RANK = "ai.queue.job.rank";
     public static final String ROUTING_KEY_RES_JOB_RANK = "backend.res.job.rank";
     public static final String QUEUE_RES_JOB_RANK = "backend.queue.job.rank";
 
-    /**
-     * Jackson JSON 消息转换器 / Jackson JSON message converter
-     */
     @Bean
     public MessageConverter jackson2JsonMessageConverter() {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -57,9 +51,6 @@ public class RabbitMqConfig {
         return new Jackson2JsonMessageConverter(objectMapper);
     }
 
-    /**
-     * RabbitTemplate 配置 / RabbitTemplate configuration
-     */
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, MessageConverter messageConverter) {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
@@ -67,39 +58,27 @@ public class RabbitMqConfig {
         return rabbitTemplate;
     }
 
-    /**
-     * AI 直连交换机 / AI direct exchange
-     */
     @Bean
     public DirectExchange aiDirectExchange() {
         return new DirectExchange(EXCHANGE_AI_DIRECT);
     }
 
-    /**
-     * 死信交换机 / Dead letter exchange
-     */
     @Bean
     public DirectExchange dlxExchange() {
         return new DirectExchange(EXCHANGE_DLX);
     }
 
-    /**
-     * 死信队列 / Dead letter queue
-     */
     @Bean
     public Queue dlqQueue() {
         return QueueBuilder.durable(QUEUE_DLQ).build();
     }
 
-    /**
-     * 死信队列绑定 / Dead letter queue binding
-     */
     @Bean
     public Binding dlqBinding(Queue dlqQueue, DirectExchange dlxExchange) {
         return BindingBuilder.bind(dlqQueue).to(dlxExchange).with(ROUTING_KEY_DLQ);
     }
 
-    // ========== 职位解析队列绑定 / Job parse queue bindings ==========
+    // ========== Job parse queue bindings ==========
 
     @Bean
     public Queue reqJobParseQueue() {
@@ -127,7 +106,7 @@ public class RabbitMqConfig {
         return BindingBuilder.bind(resJobParseQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_JOB_PARSE);
     }
 
-    // ========== 简历解析队列绑定 / Resume parse queue bindings ==========
+    // ========== Resume parse queue bindings ==========
 
     @Bean
     public Queue reqResumeParseQueue() {
@@ -155,7 +134,7 @@ public class RabbitMqConfig {
         return BindingBuilder.bind(resResumeParseQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_RESUME_PARSE);
     }
 
-    // ========== 对话队列绑定 / Conversation queue bindings ==========
+    // ========== Conversation queue bindings ==========
 
     @Bean
     public Queue reqConversationQueue() {
@@ -183,7 +162,7 @@ public class RabbitMqConfig {
         return BindingBuilder.bind(resConversationQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_CONVERSATION);
     }
 
-    // ========== 职位排名队列绑定 / Job rank queue bindings ==========
+    // ========== Job rank queue bindings ==========
 
     @Bean
     public Queue reqJobRankQueue() {

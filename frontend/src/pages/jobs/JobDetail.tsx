@@ -37,7 +37,6 @@ export default function JobDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [resumes, setResumes] = useState<ResumeGroup[]>([]);
 
-  // 编辑模式
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     title: '',
@@ -48,7 +47,6 @@ export default function JobDetail() {
     requirements: [] as string[],
   });
 
-  // 评分状态
   const [selectedResumeVersionId, setSelectedResumeVersionId] = useState<string>('');
   const [isScoring, setIsScoring] = useState(false);
   const [scoreResult, setScoreResult] = useState<JobScoreResponse | null>(null);
@@ -79,6 +77,7 @@ export default function JobDetail() {
     try {
       const data = await resumeService.getResumeGroups();
       setResumes(data);
+      // Prefer converted over aiOptimized for scoring; original version is fallback-only
       // 默认选择第一个可用的非原版简历（优先 converted，其次 aiOptimized）
       if (data.length > 0) {
         const firstAvailable =
@@ -88,15 +87,16 @@ export default function JobDetail() {
         }
       }
     } catch {
-      // 静默处理
+      // Silently degrade
+      // 静默降级
     }
   }, []);
 
-  // 加载当前职位的历史评分记录
   const loadScoreHistory = useCallback(async () => {
     if (!jobId) return;
     try {
       const history = await jobService.getScoreHistory();
+      // History is sorted by createdAt desc; take the first match for this job
       // 过滤当前职位的评分记录，取最新的一条（history 已按 createdAt 降序）
       const jobScores = history.filter((r) => r.jobId === jobId);
       if (jobScores.length > 0) {
@@ -114,7 +114,8 @@ export default function JobDetail() {
         setSelectedResumeVersionId(latest.resumeVersionId);
       }
     } catch {
-      // 静默处理
+      // Silently degrade
+      // 静默降级
     }
   }, [jobId]);
 
@@ -126,7 +127,8 @@ export default function JobDetail() {
     }
   }, [jobId, loadJob, loadResumes, loadScoreHistory]);
 
-  // 智能轮询：有简历正在解析时，每3秒刷新一次简历列表
+  // Poll resume parse status every 3s when any resume is pending
+  // 有简历正在解析时，每 3 秒刷新一次简历列表
   useEffect(() => {
     const hasPendingResume = resumes.some((group) =>
       [group.originalVersion, group.convertedVersion, group.aiOptimizedVersion]
@@ -244,7 +246,6 @@ export default function JobDetail() {
 
   return (
     <div className="space-y-6">
-      {/* 返回按钮 */}
       <div className="flex items-center justify-between">
         <Button variant="ghost" onClick={() => navigate('/jobs')} className="pl-0">
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -258,7 +259,6 @@ export default function JobDetail() {
         )}
       </div>
 
-      {/* 职位头部 */}
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div className="flex-1">
           {isEditing ? (
@@ -331,7 +331,6 @@ export default function JobDetail() {
             </>
           ) : (
             <>
-              {/* 简历选择 */}
               {resumes.length > 0 && (
                 <select
                   className="h-10 px-3 rounded-md border border-input bg-background text-sm"
@@ -375,7 +374,6 @@ export default function JobDetail() {
         </div>
       </div>
 
-      {/* 评分结果 */}
       {scoreResult && !isEditing && (
         <Card className="border-amber-200 bg-amber-50/50">
           <CardContent className="py-4 space-y-2">
@@ -426,7 +424,6 @@ export default function JobDetail() {
         </Card>
       )}
 
-      {/* 职位详情卡片 */}
       <div className="grid gap-6">
         <Card>
           <CardHeader className="pb-3">

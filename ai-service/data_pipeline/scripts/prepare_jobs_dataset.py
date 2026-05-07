@@ -7,6 +7,8 @@ from pathlib import Path
 OUTPUT_DIR = Path(__file__).resolve().parents[1] / "output"
 OUTPUT_FILE = OUTPUT_DIR / "normalized_jobs_sample.jsonl"
 
+# Limit output to keep vector sync startup time and embedding costs reasonable.
+# 限制输出条数：控制启动时向量同步耗时与 embedding 调用成本。
 MAX_ROWS = 200
 
 
@@ -49,6 +51,9 @@ def load_job_skills(job_skills_csv: Path, skill_mapping: dict[str, str]) -> dict
 
 
 def normalize_posting(row: dict[str, str], job_skills: dict[str, list[str]]) -> dict[str, object]:
+    """Normalize a raw CSV posting row into a clean JSON record with deduplicated skills.
+    归一化职位记录：将原始 CSV 行清洗为结构化 JSON，并关联去重后的技能列表，
+    保证下游 embedding 与检索基于干净、一致的数据。"""
     job_id = (row.get("job_id") or "").strip()
 
     return {

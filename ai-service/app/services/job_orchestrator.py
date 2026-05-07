@@ -8,16 +8,17 @@ from app.services.job_parser import (
 from app.services.web_scraper import scrape_job_page
 
 
-# Job parsing orchestrator that combines scraping and vision/text extraction.
-
+# Minimum text length to trust scraped content before falling back to vision.
+# 抓取文本可信度阈值：低于此长度时优先使用截图解析，避免脏数据进入下游。
 MIN_SCRAPED_TEXT_LENGTH = 200
 
 
-# Orchestrate job parsing from URL content and optional screenshots.
 def process_job(command: JobParseCommand) -> AiResultEvent:
+    """Orchestrate job parsing with a scrape-first, vision-fallback strategy.
+    职位解析编排器：优先从页面文本提取结构化信息；当文本不足或字段缺失时，
+    降级到截图 OCR/vision 解析，最大化解析成功率并减少 LLM vision 调用成本。"""
     scrape_result = None
     scrape_error: Exception | None = None
-    # Use the Base64 screenshot if provided, otherwise fall back to the URL screenshot from scraping.
     screenshot_url = command.screenshot_url
     if command.screenshot_base64:
         screenshot_url = command.screenshot_base64

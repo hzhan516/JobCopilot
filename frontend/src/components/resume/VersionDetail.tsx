@@ -10,13 +10,7 @@ import { DownloadButton } from './DownloadButton';
 interface VersionDetailProps {
   version: ResumeVersion;
   onEdit: () => void;
-  /**
-   * 基于此版本创建副本 / Create a copy based on this version
-   */
   onCreateCopy?: () => void;
-  /**
-   * 激活此版本 / Activate this version
-   */
   onActivate?: () => void;
 }
 
@@ -166,4 +160,4 @@ export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit, o
       </Card>
     </div>
   );
-}
+};

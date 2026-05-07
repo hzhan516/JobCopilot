@@ -17,8 +17,9 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * 简历组仓储实现
- * Resume Group Repository Implementation
+ * Infrastructure implementation of ResumeGroupRepository with careful flush ordering
+ * to respect the partial unique index on active resume versions.
+ * ResumeGroupRepository 的基础设施实现，通过精细控制 flush 顺序避免违反活跃简历版本的部分唯一索引
  */
 @Repository
 @RequiredArgsConstructor
@@ -34,10 +35,9 @@ public class ResumeGroupRepositoryImpl implements ResumeGroupRepository {
     public void save(ResumeGroup group) {
         jpaGroupRepo.save(groupMapper.toJpaEntity(group));
 
-        // 分离已存在版本与新增版本，确保 UPDATE 先于 INSERT 执行，
-        // 避免违反 partial unique index (group_id, version_type) WHERE status = 'ACTIVE'。
         // Separate existing and new versions to ensure UPDATEs run before INSERTs,
-        // preventing violation of the partial unique index.
+        // preventing violation of the partial unique index (group_id, version_type) WHERE status = 'ACTIVE'.
+        // 分离已存在版本与新增版本，确保 UPDATE 先于 INSERT 执行，避免违反部分唯一索引
         List<ResumeVersion> existing = new ArrayList<>();
         List<ResumeVersion> newVersions = new ArrayList<>();
 
@@ -49,10 +49,9 @@ public class ResumeGroupRepositoryImpl implements ResumeGroupRepository {
             }
         }
 
-        // 将 existing 中 status 为 ARCHIVED 的挑出来先 saveAndFlush，
-        // 避免与后续变为 ACTIVE 的版本在 partial unique index 上冲突。
-        // Separate ARCHIVED existing versions to saveAndFlush first,
-        // preventing partial unique index violation with later ACTIVE versions.
+        // Split ARCHIVED versions to flush first so they release the partial unique slot
+        // before ACTIVE versions claim it in the same transaction.
+        // 将 ARCHIVED 版本挑出来先 flush，使其在 ACTIVE 版本占用唯一索引槽位前释放
         List<ResumeVersion> archived = new ArrayList<>();
         List<ResumeVersion> rest = new ArrayList<>();
         for (ResumeVersion version : existing) {
@@ -63,14 +62,10 @@ public class ResumeGroupRepositoryImpl implements ResumeGroupRepository {
             }
         }
 
-        // 先保存并刷盘 ARCHIVED 版本
-        // Save and flush ARCHIVED versions first
         for (ResumeVersion version : archived) {
             jpaVersionRepo.saveAndFlush(versionMapper.toJpaEntity(version));
         }
 
-        // 再批量保存剩下的已存在版本（产生 UPDATE）
-        // Then batch save remaining existing versions (produces UPDATE)
         for (ResumeVersion version : rest) {
             jpaVersionRepo.save(versionMapper.toJpaEntity(version));
         }
@@ -78,8 +73,6 @@ public class ResumeGroupRepositoryImpl implements ResumeGroupRepository {
             entityManager.flush();
         }
 
-        // 最后保存新增版本（产生 INSERT）
-        // Finally save new versions (produces INSERT)
         for (ResumeVersion version : newVersions) {
             jpaVersionRepo.save(versionMapper.toJpaEntity(version));
         }

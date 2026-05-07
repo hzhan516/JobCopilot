@@ -46,8 +46,10 @@ import {
 import { toast } from 'sonner';
 
 /**
- * 获取常用时区列表
- * Get a curated list of common time zones
+ * Returns the browser's supported time zones or a curated fallback list.
+ * Fallback is used when Intl.supportedValuesOf is unavailable (older browsers).
+ *
+ * 获取常用时区列表；在旧浏览器中回退到精选列表
  */
 function getCommonTimeZones(): string[] {
   try {
@@ -121,12 +123,12 @@ export default function Profile() {
     },
   });
 
-  // 加载用户资料 / Load user profile
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
 
-  // 表单值同步 / Sync form values with profile data
+  // Sync form values when profile loads to avoid stale empty defaults
+  // 表单值同步：profile 加载完成后回填，避免空默认值残留
   useEffect(() => {
     if (profile) {
       form.reset({
@@ -163,19 +165,16 @@ export default function Profile() {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      {/* 返回按钮 / Back button */}
       <Button variant="ghost" onClick={() => navigate('/')} className="pl-0">
         <ArrowLeft className="w-4 h-4 mr-2" />
         {t('common.back')}
       </Button>
 
-      {/* 页面标题 / Page title */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">{t('profile.title')}</h1>
         <p className="text-gray-500 mt-1">{t('profile.subtitle')}</p>
       </div>
 
-      {/* 用户信息卡片 / User info card */}
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="text-lg flex items-center">
@@ -316,7 +315,6 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      {/* 安全设置 / Security settings */}
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="text-lg flex items-center">
@@ -350,7 +348,6 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      {/* AI 功能 / AI features */}
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="text-lg flex items-center">
@@ -371,7 +368,6 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      {/* 偏好设置 / Preferences */}
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="text-lg flex items-center">
@@ -415,7 +411,6 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      {/* 退出登录 / Logout */}
       <div className="pt-4">
         <Button variant="destructive" onClick={handleLogout} className="w-full sm:w-auto">
           <LogOut className="w-4 h-4 mr-2" />

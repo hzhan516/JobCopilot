@@ -24,7 +24,7 @@ def test_tokenize():
     assert "test" in tokens
     assert "case" in tokens
     assert "123" in tokens
-    assert "a" not in tokens # length < 2
+    assert "a" not in tokens
 
 def test_clip_score():
     assert _clip_score(-1.0) == 0.0
@@ -55,7 +55,6 @@ def test_safe_llm_call_retry_success(mock_completion):
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message.content = "Worked on retry"
     
-    # Fail first time with Timeout, succeed second time
     mock_completion.side_effect = [
         litellm.exceptions.Timeout("Timeout error", model="test", llm_provider="test"),
         mock_response
@@ -75,7 +74,6 @@ def test_safe_llm_call_max_retries_exceeded(mock_completion):
     with pytest.raises(RetryError):
         _safe_llm_call("Test prompt")
     
-    # Should stop after configured attempts (2 in current implementation)
     assert mock_completion.call_count == 2
 
 @patch("app.services.job_rank_service._safe_llm_call")
@@ -84,7 +82,6 @@ def test_generate_match_reason_no_resume(mock_safe_call):
         matchId="123", userId="user", resumeVersionId="v1", 
         query="", recalledJobIds=["job1"], jobDetails={}
     )
-    # resume_text is empty by default
     result = _generate_match_reason(command, MagicMock())
     assert result is None
     mock_safe_call.assert_not_called()
@@ -110,7 +107,6 @@ def test_generate_match_reason_success(mock_safe_call):
     assert result == "Candidate is perfect."
     mock_safe_call.assert_called_once()
     
-    # Check if XML tags are in prompt
     prompt_sent = mock_safe_call.call_args[0][0]
     assert "<candidate_resume>" in prompt_sent
     assert "</candidate_resume>" in prompt_sent
@@ -131,12 +127,10 @@ def test_generate_match_reason_fallback_on_error(mock_safe_call):
     
     result = _generate_match_reason(command, job_mock)
     
-    # Should catch exception and return None gracefully
     assert result is None
 
 @patch("app.services.job_rank_service._generate_match_reason")
 def test_rank_jobs(mock_generate):
-    # Setup job details with varying pre-computed semanticMatches
     job_details = {
         "job1": {"title": "Junior Java", "description": "Needs basic java", "semanticMatch": 0.4},
         "job2": {"title": "Senior Java", "description": "Needs expert java", "semanticMatch": 0.9},
@@ -151,7 +145,6 @@ def test_rank_jobs(mock_generate):
         jobDetails=job_details
     )
     
-    # Mock LLM reasoning generator to return something
     def mock_reason_generator(cmd, job):
         return f"Reason for {job.job_id}"
     mock_generate.side_effect = mock_reason_generator
@@ -162,14 +155,14 @@ def test_rank_jobs(mock_generate):
     assert result.status == "COMPLETED"
     assert len(result.ranked_results) == 4
     
-    # Check sorting (semantic match plays a large role, so job2 > job4 > job1 > job3)
+    # Semantic match dominates weight (0.40), so job2 > job4 > job1 > job3
     assert result.ranked_results[0].job_id == "job2"
     assert result.ranked_results[1].job_id == "job4"
     
-    # Check RAG Generation logic (only top 3 should have reasons)
+    # Only top-3 receive LLM match reasons to control cost
     assert result.ranked_results[0].match_reason == "Reason for job2"
     assert result.ranked_results[1].match_reason == "Reason for job4"
     assert result.ranked_results[2].match_reason is not None
-    assert result.ranked_results[3].match_reason is None # 4th job should NOT get LLM call
+    assert result.ranked_results[3].match_reason is None
     
     assert mock_generate.call_count == 3

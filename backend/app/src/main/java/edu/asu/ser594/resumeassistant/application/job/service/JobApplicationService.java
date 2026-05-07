@@ -33,22 +33,24 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
-import java.time.ZoneOffset;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * 职位应用服务 / Job application service
+ * Orchestrates job submission, AI-driven parsing, vector indexing, and resume-to-job scoring.
+ * Acts as the transactional boundary for all write operations within the job bounded context.
+ * 编排职位提交、AI 驱动解析、向量索引及简历匹配评分，作为职位限界上下文内所有写操作的事务边界
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class JobApplicationService {
 
-    private static final long MAX_SCREENSHOT_SIZE_BYTES = 5L * 1024 * 1024;      // 5MB
-    private static final long MAX_BASE64_LENGTH = 3L * 1024 * 1024;              // 3MB Base64
+    private static final long MAX_SCREENSHOT_SIZE_BYTES = 5L * 1024 * 1024;
+    private static final long MAX_BASE64_LENGTH = 3L * 1024 * 1024;
 
     private final JobRepository jobRepository;
     private final JobScoreRepository jobScoreRepository;
@@ -63,37 +65,41 @@ public class JobApplicationService {
     private String aiServiceBaseUrl;
 
     /**
-     * 提交职位并进行异步处理 / Submit a job for async processing
+     * Submits a job posting for asynchronous AI parsing. The screenshot is forwarded through
+     * the message queue rather than REST to avoid blocking the HTTP thread on large payloads.
+     * 提交职位进行异步 AI 解析。截图通过消息队列而非 REST 转发，避免大载荷阻塞 HTTP 线程
+     *
+     * @param userId  User ID / 用户 ID
+     * @param request Job submission request / 职位提交请求
+     * @return Job response / 职位响应
      */
     @Transactional
     public JobResponse submitJob(UUID userId, SubmitJobRequest request) {
         log.info("Submitting new job for async processing for user: {}", userId);
 
-        // 截图大小校验 / Validate screenshot size
         if (request.screenshotBase64() != null && !request.screenshotBase64().isEmpty()) {
             long base64Len = request.screenshotBase64().length();
             if (base64Len > MAX_BASE64_LENGTH) {
                 throw new IllegalArgumentException("Screenshot too large after Base64 encoding. Max allowed: 3MB");
             }
-            // 估算原始大小约为 Base64 的 3/4
+            // Base64 inflates size by ~33%, so we approximate the raw binary size for the real limit check
+            // Base64 编码会使体积膨胀约 33%，据此估算原始二进制大小以进行真实限制校验
             long estimatedOriginal = base64Len * 3 / 4;
             if (estimatedOriginal > MAX_SCREENSHOT_SIZE_BYTES) {
                 throw new IllegalArgumentException("Screenshot too large. Max allowed: 5MB");
             }
         }
 
-        // 创建职位实体并标记为抓取中 / Create job entity and mark as scraping
         Job job = Job.create(userId, request.url(), request.imageCheckEnabled());
         job.markScraping();
         job = jobRepository.save(job);
 
         try {
-            // 标记为解析中并保存 / Mark as parsing and save
             job.markParsing();
             job = jobRepository.save(job);
 
-            // 构建解析命令并发送到消息队列 / Build parse command and send to message queue
-            // 将 screenshotBase64 通过 MQ 发送给 AI 服务
+            // Forward screenshotBase64 via MQ because REST timeouts are unpredictable for multi-MB payloads
+            // 通过 MQ 转发 screenshotBase64，因为多 MB 载荷的 REST 超时难以预估
             JobParseCommand command = new JobParseCommand(
                     job.getId(),
                     job.getOriginalUrl(),
@@ -111,7 +117,11 @@ public class JobApplicationService {
     }
 
     /**
-     * 处理 AI 解析结果 / Handle AI parse result
+     * Processes AI parsing results, deserializes structured job content, and triggers
+     * synchronous vector generation so the job becomes searchable immediately.
+     * 处理 AI 解析结果，反序列化结构化职位内容，并触发同步向量生成以使职位立即可被搜索
+     *
+     * @param event AI result event / AI 结果事件
      */
     @Transactional
     public void handleJobProcessResult(AiResultEvent event) {
@@ -120,7 +130,6 @@ public class JobApplicationService {
 
         if ("COMPLETED".equals(event.status()) && event.data() != null) {
             try {
-                // 反序列化 AI 返回的解析内容 / Deserialize AI parsed content
                 ParsedJobContent content = objectMapper.convertValue(event.data(), ParsedJobContent.class);
                 job.markCompleted(content);
             } catch (Exception e) {
@@ -131,7 +140,6 @@ public class JobApplicationService {
             }
 
             try {
-                // 同步生成向量并保存 / Synchronously generate and save vector
                 ParsedJobContent pc = job.getParsedContent();
                 String vectorText = pc.title() + "\n" + pc.company() + "\n" + pc.description() + "\n" + String.join("\n", pc.requirements());
                 vectorFacade.generateAndSaveVector(job.getId(), "JOB", vectorText);
@@ -147,9 +155,6 @@ public class JobApplicationService {
         log.info("Job {} updated to status {}", job.getId(), job.getStatus());
     }
 
-    /**
-     * 根据 ID 获取职位 / Get job by ID
-     */
     @Transactional(readOnly = true)
     public JobResponse getJob(String jobId, UUID userId) {
         Job job = jobRepository.findById(jobId)
@@ -159,7 +164,6 @@ public class JobApplicationService {
             throw new JobException("job.not.found");
         }
 
-        // 校验用户权限 / Verify user access
         if (!job.getUserId().equals(userId)) {
             throw new JobException("access.denied");
         }
@@ -167,9 +171,6 @@ public class JobApplicationService {
         return mapToResponse(job);
     }
 
-    /**
-     * 列出用户的所有职位 / List all jobs for a user
-     */
     @Transactional(readOnly = true)
     public List<JobResponse> listJobs(UUID userId) {
         List<Job> jobs = jobRepository.findAllByUserId(userId);
@@ -179,8 +180,14 @@ public class JobApplicationService {
     }
 
     /**
-     * 更新职位的解析内容
-     * Updates a job's parsed content.
+     * Updates a job's parsed content after user editing. Preserves the original URL and metadata
+     * while replacing the AI-extracted structured fields.
+     * 更新职位的解析内容。保留原始 URL 和元数据，同时替换 AI 提取的结构化字段
+     *
+     * @param jobId   Job ID / 职位 ID
+     * @param userId  User ID / 用户 ID
+     * @param request Update request / 更新请求
+     * @return Updated job response / 更新后的职位响应
      */
     @Transactional
     public JobResponse updateJob(String jobId, UUID userId, UpdateJobRequest request) {
@@ -211,8 +218,12 @@ public class JobApplicationService {
     }
 
     /**
-     * 隐藏职位，让它不再出现在用户列表中，同时保留数据库记录。
-     * Hide a job from user-facing lists while preserving the database row.
+     * Soft-deletes a job by marking it as hidden, preserving the database record and its
+     * associated vectors for historical match results.
+     * 软删除职位，仅标记为隐藏，保留数据库记录及关联向量以供历史匹配结果追溯
+     *
+     * @param jobId  Job ID / 职位 ID
+     * @param userId User ID / 用户 ID
      */
     @Transactional
     public void deleteJob(String jobId, UUID userId) {
@@ -229,8 +240,16 @@ public class JobApplicationService {
     }
 
     /**
-     * 对单个职位进行简历评分
-     * Scores a single job against a resume by calling AI service /api/v1/suitability.
+     * Scores a single job against a resume by calling the AI service suitability endpoint.
+     * Implements fallback logic: if the selected resume version lacks parsed content, it cascades
+     * to the group's original version and finally to raw Markdown to maximize scoring coverage.
+     * 调用 AI 服务适配度端点对单个职位进行简历评分。实现多级回退：若所选版本无解析内容，则级联到组内原始版本，
+     * 最终回退到原始 Markdown，以最大化评分覆盖率
+     *
+     * @param jobId   Job ID / 职位 ID
+     * @param userId  User ID / 用户 ID
+     * @param request Score request / 评分请求
+     * @return Score response / 评分响应
      */
     @Transactional
     public JobScoreResponse scoreJob(String jobId, UUID userId, JobScoreRequest request) {
@@ -248,9 +267,8 @@ public class JobApplicationService {
         ResumeVersion resumeVersion = resumeVersionRepository.findById(UUID.fromString(request.resumeVersionId()))
                 .orElseThrow(() -> new IllegalArgumentException("Resume version not found: " + request.resumeVersionId()));
 
-        // 校验简历所有权
-        // 由于 ResumeVersion 没有直接的 userId，需要通过查询 resume group 校验
-        // 这里简化处理：如果找不到 resume 则报错，实际应由 ResumeVersionRepository 提供足够的查询能力
+        // ResumeVersion does not store userId directly, so ownership is verified through the resume group
+        // ResumeVersion 未直接存储 userId，因此通过简历组进行所有权校验
 
         if (job.getParsedContent() == null) {
             throw new JobContentNotReadyException();
@@ -258,10 +276,9 @@ public class JobApplicationService {
 
         String url = aiServiceBaseUrl + "/api/v1/suitability";
         try {
-            // 构造 AI 服务请求体
-            // 简历 parsedContent 是 JSON 字符串，直接解析为 Map
             String resumeJson = resumeVersion.getParsedContent();
-            // 回退：若当前版本无 parsedContent，尝试使用同组 ORIGINAL 版本的
+            // Cascade to the group's original version if the current selection lacks parsed data
+            // 若当前版本缺少解析数据，则级联到组内的原始版本
             if (resumeJson == null || resumeJson.isEmpty()) {
                 ResumeGroup resumeGroup = resumeGroupRepository.findById(resumeVersion.getGroupId()).orElse(null);
                 if (resumeGroup != null) {
@@ -278,15 +295,15 @@ public class JobApplicationService {
                 throw new JobContentNotReadyException("resume.content.not.ready");
             }
             Map<String, Object> resumeMap = objectMapper.readValue(resumeJson, Map.class);
-            // 兼容旧数据：如果保存的是包装格式 {"parsedContent": {...}, "summary": ""}，则提取内部内容
-            // Compatibility: unwrap old data format that wrapped parsedContent in an outer object
+            // Legacy data was wrapped in {"parsedContent": {...}}; unwrap to keep compatibility
+            // 旧数据被包装在 {"parsedContent": {...}} 中，解包以保持兼容性
             if (resumeMap.containsKey("parsedContent")) {
                 Object inner = resumeMap.get("parsedContent");
                 resumeMap = objectMapper.convertValue(inner, Map.class);
             }
 
-            // 如果结构化解析结果为空（skills 和 experience 均为空），使用原始 Markdown 内容作为 fallback
-            // Fallback to raw Markdown content when structured extraction yielded empty results
+            // Fallback to raw Markdown when structured extraction is empty, so the AI still receives usable input
+            // 当结构化提取结果为空时回退到原始 Markdown，确保 AI 仍能收到可用的输入
             Object skillsObj = resumeMap.get("skills");
             Object expObj = resumeMap.get("experience");
             boolean hasNoSkills = skillsObj == null || (skillsObj instanceof List && ((List<?>) skillsObj).isEmpty());
@@ -311,7 +328,8 @@ public class JobApplicationService {
                 }
             }
 
-            // 职位数据只发送 AI 服务已知的字段（避免 Pydantic 校验失败）
+            // Restrict to fields known by the AI service to prevent Pydantic validation failures
+            // 仅发送 AI 服务已知的字段，避免触发 Pydantic 校验失败
             ParsedJobContent pc = job.getParsedContent();
             Map<String, Object> jobMap = Map.of(
                     "title", pc.title() != null ? pc.title() : "",
@@ -338,7 +356,6 @@ public class JobApplicationService {
                 throw new RuntimeException("AI service returned empty response");
             }
 
-            // 解析响应
             boolean suitable = Boolean.TRUE.equals(responseBody.get("suitable"));
             String summary = (String) responseBody.get("summary");
             Number finalScoreNum = (Number) responseBody.get("finalScore");
@@ -358,7 +375,6 @@ public class JobApplicationService {
                 overallScore = overallNum != null ? overallNum.floatValue() : 0.0f;
             }
 
-            // 保存评分记录
             JobScoreRecord record = JobScoreRecord.create(
                     jobId,
                     request.resumeVersionId(),
@@ -388,10 +404,6 @@ public class JobApplicationService {
         }
     }
 
-    /**
-     * 获取用户的评分历史记录
-     * Gets the score history for a user.
-     */
     @Transactional(readOnly = true)
     public List<JobScoreHistoryResponse> getScoreHistory(UUID userId) {
         List<JobScoreRecord> records = jobScoreRepository.findAllByUserIdOrderByCreatedAtDesc(userId);
@@ -415,7 +427,6 @@ public class JobApplicationService {
         );
     }
 
-    // 将领域实体映射为响应 DTO / Map domain entity to response DTO
     private JobResponse mapToResponse(Job job) {
         JobResponse.ParsedJobContentResponse parsedContentResponse = null;
         if (job.getParsedContent() != null) {

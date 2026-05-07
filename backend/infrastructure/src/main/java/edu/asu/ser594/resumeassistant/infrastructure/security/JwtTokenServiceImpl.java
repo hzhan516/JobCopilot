@@ -17,7 +17,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 /**
- * JWT 令牌服务实现 / JWT token service implementation
+ * JWT token generation and validation using JJWT with HMAC-SHA.
+ * Token pairs support sliding-session refresh: short-lived access tokens minimize
+ * exposure window, while refresh tokens allow seamless re-authentication.
+ * 基于 JJWT HMAC-SHA 的令牌生成与校验；采用双令牌滑动会话机制，短期访问令牌降低暴露风险，刷新令牌实现无感续登
  */
 @Slf4j
 @Component
@@ -35,17 +38,11 @@ public class JwtTokenServiceImpl implements TokenService {
 
     private SecretKey secretKey;
 
-    /**
-     * 初始化密钥 / Initialize secret key
-     */
     @PostConstruct
     public void init() {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    /**
-     * 生成访问令牌和刷新令牌对 / Generate access and refresh token pair
-     */
     @Override
     public TokenPair generateTokenPair(String userId) {
         String accessToken = generateToken(userId, accessTokenExpiration);
@@ -58,7 +55,6 @@ public class JwtTokenServiceImpl implements TokenService {
                 .build();
     }
 
-    // 生成单个令牌 / Generate a single token
     private String generateToken(String userId, long expiration) {
         final Date now = new Date();
         final Date expiry = new Date(now.getTime() + expiration);
@@ -71,9 +67,6 @@ public class JwtTokenServiceImpl implements TokenService {
                 .compact();
     }
 
-    /**
-     * 从令牌中提取用户 ID / Extract user ID from token
-     */
     @Override
     public String getUserIdFromToken(String token) {
         return Jwts.parser()
@@ -84,9 +77,6 @@ public class JwtTokenServiceImpl implements TokenService {
                 .getSubject();
     }
 
-    /**
-     * 验证令牌有效性 / Validate token
-     */
     @Override
     public boolean validateToken(String token) {
         try {
@@ -98,10 +88,6 @@ public class JwtTokenServiceImpl implements TokenService {
         }
     }
 
-    /**
-     * 详细校验令牌，区分过期与无效
-     * Validate token with detailed result, distinguishing expired from invalid
-     */
     @Override
     public TokenValidationResult validateTokenDetailed(String token) {
         try {

@@ -71,7 +71,6 @@ export default function Chat() {
   const [isSending, setIsSending] = useState(false);
   const [isWaitingForReply, setIsWaitingForReply] = useState(false);
 
-  // New conversation dialog state
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [newChatTitle, setNewChatTitle] = useState('');
   const [resumes, setResumes] = useState<ResumeGroup[]>([]);
@@ -119,7 +118,8 @@ export default function Chat() {
       const data = await resumeService.getResumeGroups();
       setResumes(data);
     } catch {
-      // 静默处理，简历加载失败不影响聊天功能
+      // Silently degrade — resume loading failure shouldn't block chat functionality
+      // 静默降级，简历加载失败不应阻塞聊天功能
     }
   }, []);
 
@@ -128,23 +128,21 @@ export default function Chat() {
       const data = await jobService.getJobs();
       setJobs(data);
     } catch {
-      // 静默处理，职位加载失败不影响聊天功能
+      // Silently degrade — job loading failure shouldn't block chat functionality
+      // 静默降级，职位加载失败不应阻塞聊天功能
     }
   }, []);
 
-  // 加载对话列表、简历列表和职位列表
   useEffect(() => {
     loadConversations();
     loadResumes();
     loadJobs();
   }, [loadConversations, loadResumes, loadJobs]);
 
-  // 滚动到底部
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // 关闭弹窗时重置表单
   useEffect(() => {
     if (!newDialogOpen) {
       setNewChatTitle('');
@@ -163,7 +161,6 @@ export default function Chat() {
     }
   };
 
-  // 创建新对话
   const handleCreateConversation = async () => {
     if (!selectedResumeVersionId) {
       toast.error(t('chat.resumeRequired'));
@@ -178,7 +175,8 @@ export default function Chat() {
     try {
       let finalTitle = newChatTitle.trim();
 
-      // 如果标题为空，按 简历名称-公司名称-职位 自动生成
+      // Auto-generate title from resume name + company + job title when left blank
+      // 标题为空时按 简历名称-公司名称-职位 自动生成
       if (!finalTitle) {
         const resumeGroup = resumes.find((group) =>
           [group.convertedVersion, group.aiOptimizedVersion]
@@ -204,8 +202,9 @@ export default function Chat() {
       setNewDialogOpen(false);
       toast.success(t('chat.createSuccess'));
 
-      // 新对话包含预设消息并已触发异步 AI 请求，开始轮询等待回复
-      // New conversation has a preset message and async AI request fired; start polling
+      // New conversations include a preset message that triggers an async AI request;
+      // poll until the assistant reply appears.
+      // 新对话包含预设消息并已触发异步 AI 请求，轮询等待回复
       const newMessages = normalizeMessages(newConversation);
       if (!newMessages.some((message) => message.role === 'ASSISTANT')) {
         setIsWaitingForReply(true);
@@ -246,7 +245,6 @@ export default function Chat() {
     return false;
   };
 
-  // 发送消息
   const handleSendMessage = async () => {
     console.log('Chat send clicked', {
       inputMessage,
@@ -311,7 +309,6 @@ export default function Chat() {
     }
   };
 
-  // 删除对话
   const handleDeleteConversation = async (conversationId: string) => {
     try {
       await chatService.deleteConversation(conversationId);
@@ -326,7 +323,6 @@ export default function Chat() {
     }
   };
 
-  // 渲染消息
   const renderMessage = (message: Message) => {
     const isUser = message.role === 'USER';
     return (
@@ -369,7 +365,6 @@ export default function Chat() {
     );
   };
 
-  // 渲染加载状态
   if (isLoading) {
     return (
       <div className="h-[calc(100vh-8rem)] flex gap-6">
@@ -385,7 +380,6 @@ export default function Chat() {
 
   return (
     <div className="h-[calc(100vh-8rem)] flex gap-6">
-      {/* 侧边栏 - 对话列表 */}
       <div className="w-64 hidden lg:flex flex-col bg-white rounded-xl border shadow-sm">
         <div className="p-4 border-b">
           <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
@@ -401,7 +395,6 @@ export default function Chat() {
                 <DialogDescription>{t('chat.newChatDesc')}</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-2">
-                {/* 标题输入 */}
                 <div>
                   <label className="text-sm font-medium mb-2 block">
                     {t('chat.chatTitlePlaceholder')}
@@ -415,7 +408,6 @@ export default function Chat() {
                   <p className="text-xs text-gray-500 mt-1">{t('chat.titleAutoHint')}</p>
                 </div>
 
-                {/* 简历选择 */}
                 <div>
                   <label className="text-sm font-medium mb-2 block">
                     {t('chat.selectResume')}
@@ -451,7 +443,6 @@ export default function Chat() {
                   </Select>
                 </div>
 
-                {/* 职位选择 */}
                 <div>
                   <label className="text-sm font-medium mb-2 block">
                     {t('chat.selectJob')}
@@ -553,11 +544,9 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* 主聊天区域 */}
       <div className="flex-1 flex flex-col bg-white rounded-xl border shadow-sm overflow-hidden">
         {activeConversation ? (
           <>
-            {/* 聊天头部 */}
             <div className="border-b p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
@@ -590,7 +579,6 @@ export default function Chat() {
               </div>
             </div>
 
-            {/* 消息列表 */}
             <div className="flex-1 overflow-y-auto p-4">
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-gray-500">
@@ -613,7 +601,6 @@ export default function Chat() {
               )}
             </div>
 
-            {/* 输入框 */}
             <div className="border-t p-4">
               <div className="flex space-x-2">
                 <Input

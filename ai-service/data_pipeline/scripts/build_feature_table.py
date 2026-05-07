@@ -40,6 +40,9 @@ def build_experience_text(experience_items: list[dict]) -> str:
 
 
 def build_feature_row(row: dict) -> dict:
+    """Transform a training pair into a normalized feature row for baseline model training.
+    将训练样本转换为特征行：提取技能重叠率、标题关键词重叠、经验描述重叠三个可解释特征，
+    作为后续加权基线模型的输入，避免直接依赖黑盒 LLM 评分。"""
     resume_skills = normalize_items(row.get("resume_skills", []))
     job_requirements = normalize_items(row.get("job_requirements", []))
 

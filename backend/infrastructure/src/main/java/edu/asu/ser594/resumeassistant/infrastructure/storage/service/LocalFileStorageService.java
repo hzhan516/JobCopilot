@@ -20,8 +20,9 @@ import java.time.Instant;
 import java.util.Optional;
 
 /**
- * 本地文件存储服务实现
- * Local file storage service implementation - activated when storage.type=local
+ * File storage implementation using the local filesystem.
+ * Activated when storage.type=local, suitable for single-node deployments or development environments.
+ * 基于本地文件系统的存储实现，在 storage.type=local 时激活，适用于单节点部署或开发环境
  */
 @Slf4j
 @Service
@@ -100,40 +101,29 @@ public class LocalFileStorageService implements FileStorageService {
 
     @Override
     public String generatePresignedUrl(String objectKey, Duration expiration) {
-        // 对于本地存储，我们生成一个带有过期时间戳的临时访问 URL
-        // For local storage, we generate a temporary access URL with expiration timestamp
-        // 在生产环境中，您可能需要实现基于令牌的访问机制
-        // In production, you might want to implement a token-based access mechanism
+        // Local storage cannot generate real presigned URLs; return a time-limited proxy URL instead.
+        // In production behind a CDN or nginx, configure urlPrefix to emit valid external links.
+        // 本地存储无法生成真正的预签名 URL，返回带过期时间的代理地址；生产环境配置 urlPrefix 可发出有效外链
         StorageProperties.Local local = storageProperties.getLocal();
         String urlPrefix = local.getUrlPrefix();
 
         if (urlPrefix == null || urlPrefix.isEmpty()) {
-            // 如果未配置 URL 前缀，则返回带有过期信息的占位符
-            // If no URL prefix configured, return a placeholder with expiration info
             Instant expiryTime = Instant.now().plus(expiration);
             return String.format("/api/storage/download?key=%s&expiry=%s", objectKey, expiryTime.toEpochMilli());
         }
 
-        // 如果配置了 URL 前缀（例如，位于 CDN 或 nginx 之后），则使用它
-        // If URL prefix is configured (e.g., behind a CDN or nginx), use it
         Instant expiryTime = Instant.now().plus(expiration);
         return String.format("%s/%s?expiry=%s", urlPrefix, objectKey, expiryTime.toEpochMilli());
     }
 
-    /**
-     * 解析文件路径
-     * Resolve file path based on configuration
-     */
     private Path resolvePath(String objectKey) {
-        // 清理 objectKey 以防止目录遍历
-        // Sanitize objectKey to prevent directory traversal
+        // Sanitize objectKey to prevent directory traversal attacks
+        // 清理 objectKey 防止目录遍历攻击
         String sanitizedKey = objectKey.replace("..", "")
                 .replaceAll("[:*?\"<>|]", "_");
 
         StorageProperties.Local local = storageProperties.getLocal();
         if (local.isDateSubdirectory()) {
-            // 创建基于日期的子目录：basePath/YYYY/MM/DD/objectKey
-            // Create date-based subdirectory: basePath/YYYY/MM/DD/objectKey
             java.time.LocalDate now = java.time.LocalDate.now();
             String datePath = String.format("%d/%02d/%02d", now.getYear(), now.getMonthValue(), now.getDayOfMonth());
             return basePath.resolve(datePath).resolve(sanitizedKey);
@@ -142,10 +132,6 @@ public class LocalFileStorageService implements FileStorageService {
         return basePath.resolve(sanitizedKey);
     }
 
-    /**
-     * 获取文件的绝对路径（用于调试或其他用途）
-     * Get absolute path of a file
-     */
     public Path getAbsolutePath(String objectKey) {
         return resolvePath(objectKey);
     }

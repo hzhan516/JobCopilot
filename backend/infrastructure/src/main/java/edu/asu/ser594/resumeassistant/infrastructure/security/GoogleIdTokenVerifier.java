@@ -11,11 +11,10 @@ import org.springframework.web.client.RestTemplate;
 import java.util.Map;
 
 /**
- * Google ID Token 验证器
- * Google ID Token verifier
- * <p>
- * 调用 Google tokeninfo 端点验证 ID Token 的真实性
- * Calls Google tokeninfo endpoint to verify ID Token authenticity
+ * Verifies Google ID Tokens by calling the Google tokeninfo endpoint.
+ * This is a lightweight alternative to the full Google API client library, trading
+ * rich feature support for a smaller dependency footprint in the backend.
+ * 通过调用 Google tokeninfo 端点验证 ID Token；相比完整 Google API 客户端库，以较小的依赖体积换取核心验证能力
  */
 @Slf4j
 @Component
@@ -26,13 +25,6 @@ public class GoogleIdTokenVerifier implements GoogleTokenVerifierPort {
 
     private final RestTemplate restTemplate;
 
-    /**
-     * 验证 Google ID Token
-     * Verify Google ID Token
-     *
-     * @param idToken Google ID Token
-     * @return 解析后的 Google 用户信息 / Parsed Google user info
-     */
     @Override
     public GoogleUserInfo verify(String idToken) {
         try {
@@ -47,8 +39,6 @@ public class GoogleIdTokenVerifier implements GoogleTokenVerifierPort {
                 throw new AuthException(AuthException.ErrorType.INVALID_CREDENTIALS);
             }
 
-            // 检查错误字段（无效令牌）
-            // Check for error field (invalid token)
             if (response.containsKey("error")) {
                 log.warn("Google tokeninfo returned error: {}", response.get("error"));
                 throw new AuthException(AuthException.ErrorType.INVALID_CREDENTIALS);

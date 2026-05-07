@@ -4,97 +4,41 @@ import { jobService } from '@/services/jobService';
 import i18n from '@/i18n';
 import { toast } from 'sonner';
 
-/**
- * Job 筛选条件类型
- * Job filter conditions type
- */
 interface JobFilters {
   searchQuery: string;
   sortBy: 'date' | 'status';
 }
 
-/**
- * Job Store 状态接口
- * Job Store state interface
- */
 interface JobStore {
-  /** 原始职位列表 / Raw job list */
   jobs: Job[];
-  /** 筛选后的职位列表 / Filtered job list */
   filteredJobs: Job[];
-  /** 加载状态 / Loading state */
   loading: boolean;
-  /** 错误信息 / Error message */
   error: string | null;
 
-  /** 当前筛选条件 / Current filters */
   filters: JobFilters;
 
-  /** 评分结果缓存（key: `${jobId}_${resumeVersionId}`） */
+  // Composite key format: `${jobId}_${resumeVersionId}`
+  // 复合键格式：${jobId}_${resumeVersionId}
   scoreResults: Record<string, JobScoreResponse>;
-  /** 评分进行中状态（key: `${jobId}_${resumeVersionId}`） */
   scoringState: Record<string, boolean>;
-  /** 每个职位当前选中的简历版本 / Selected resume version per job */
   selectedResumes: Record<string, string>;
 
-  /**
-   * 获取职位列表
-   * Fetch job list
-   */
   fetchJobs: () => Promise<void>;
-
-  /**
-   * 提交新职位
-   * Submit a new job
-   */
   submitJob: (url: string, screenshot: File) => Promise<void>;
-
-  /**
-   * 隐藏职位
-   * Hide a job from user-facing lists
-   */
   deleteJob: (jobId: string) => Promise<void>;
-
-  /**
-   * 对职位进行简历评分
-   * Score a job against a resume
-   */
   scoreJob: (jobId: string, resumeVersionId: string) => Promise<void>;
-
-  /**
-   * 加载评分历史
-   * Load score history
-   */
   loadScoreHistory: () => Promise<void>;
-
-  /**
-   * 设置搜索关键词（自动触发筛选）
-   * Set search query (auto triggers filtering)
-   */
   setSearchQuery: (query: string) => void;
-
-  /**
-   * 设置排序方式（自动触发筛选）
-   * Set sort criteria (auto triggers filtering)
-   */
   setSortBy: (sortBy: 'date' | 'status') => void;
-
-  /**
-   * 设置职位对应的选中简历版本
-   * Set selected resume version for a job
-   */
   setSelectedResume: (jobId: string, versionId: string) => void;
-
-  /**
-   * 清除错误状态
-   * Clear error state
-   */
   resetError: () => void;
 }
 
 /**
- * 应用筛选和排序逻辑
- * Apply filter and sort logic
+ * Derives filtered and sorted results from the raw job list.
+ * Performs case-insensitive matching across title, company, and description.
+ *
+ * 从原始职位列表派生筛选与排序结果，支持标题、公司、描述的不区分大小写匹配
  */
 function applyFilters(jobs: Job[], filters: JobFilters): Job[] {
   let result = [...jobs];
@@ -126,8 +70,12 @@ function applyFilters(jobs: Job[], filters: JobFilters): Job[] {
 }
 
 /**
- * 从评分历史记录构建 scoreResults 和 selectedResumes 初始值
- * Build scoreResults and selectedResumes from history records
+ * Hydrates scoreResults and selectedResumes from persisted history.
+ * History is pre-sorted by createdAt descending, so the first record per jobId
+ * represents the most recent scoring.
+ *
+ * 从历史记录恢复评分结果与选中简历。历史已按时间降序排列，
+ * 每个职位的首条记录即为最新评分。
  */
 function buildScoreStateFromHistory(
   history: JobScoreHistoryResponse[]
@@ -147,7 +95,8 @@ function buildScoreStateFromHistory(
         overallScore: record.overallScore,
       },
     };
-    // 只设置一次：取该职位最新的评分简历（history 已按 createdAt 降序）
+    // Use first-seen record per job as the default selected resume since history is sorted desc
+    // 每个职位只设置一次：取该职位最新的评分简历（history 已按 createdAt 降序）
     if (!selectedResumes[record.jobId]) {
       selectedResumes[record.jobId] = record.resumeVersionId;
     }
@@ -197,7 +146,6 @@ export const useJobStore = create<JobStore>((set, get) => ({
     try {
       await jobService.submitJob(url, screenshot);
       toast.success(i18n.t('jobList.submitSuccess') ?? 'Job submitted successfully');
-      // 提交成功后刷新列表
       await get().fetchJobs();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -279,7 +227,8 @@ export const useJobStore = create<JobStore>((set, get) => ({
         selectedResumes: { ...state.selectedResumes, ...selectedResumes },
       }));
     } catch {
-      // 评分历史非关键数据，静默处理
+      // Score history is non-critical; silently degrade to avoid blocking UI
+      // 评分历史非关键数据，静默降级以避免阻塞界面
     }
   },
 
@@ -308,28 +257,22 @@ export const useJobStore = create<JobStore>((set, get) => ({
   resetError: () => set({ error: null }),
 }));
 
-// ====== Selector helpers for performance optimization ======
+// ===== Selector helpers to prevent re-renders from non-targeted state changes =====
+// ===== 选择器辅助函数，避免非相关状态变更触发组件重渲染 =====
 
-/** 选择职位列表数据（派生状态） */
 export const selectJobs = (state: JobStore): Job[] => state.filteredJobs;
 
-/** 选择加载状态 */
 export const selectLoading = (state: JobStore): boolean => state.loading;
 
-/** 选择错误状态 */
 export const selectError = (state: JobStore): string | null => state.error;
 
-/** 选择筛选条件 */
 export const selectFilters = (state: JobStore): JobFilters => state.filters;
 
-/** 选择评分结果 */
 export const selectScoreResults = (state: JobStore): Record<string, JobScoreResponse> =>
   state.scoreResults;
 
-/** 选择评分进行中状态 */
 export const selectScoringState = (state: JobStore): Record<string, boolean> =>
   state.scoringState;
 
-/** 选择每个职位对应的简历版本 */
 export const selectSelectedResumes = (state: JobStore): Record<string, string> =>
   state.selectedResumes;

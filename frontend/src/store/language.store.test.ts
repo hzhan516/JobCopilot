@@ -10,7 +10,8 @@ vi.mock('@/i18n', () => ({
   },
 }))
 
-// Need to access the mock after hoisting; re-assign via import
+// Vitest hoists vi.mock to the top; import the hoisted mock to re-assign it
+// Vitest 将 vi.mock 提升到顶部，需导入提升后的 mock 进行重新赋值
 import mockI18n from '@/i18n'
 
 import { useLanguageStore } from './language.store'
@@ -18,8 +19,7 @@ import { useLanguageStore } from './language.store'
 describe('useLanguageStore', () => {
   beforeEach(() => {
     mockChangeLanguage.mockClear()
-    // Re-assign the mock function on the imported mock object
-    ;(mockI18n.changeLanguage as ReturnType<typeof vi.fn>) = mockChangeLanguage
+        ;(mockI18n.changeLanguage as ReturnType<typeof vi.fn>) = mockChangeLanguage
     useLanguageStore.setState({ lng: 'en' })
   })
 
