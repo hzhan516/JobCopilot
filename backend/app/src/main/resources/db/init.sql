@@ -5,6 +5,13 @@
 -- This script merges all Flyway migrations (V1-V12) into a single init file
 -- for development environments where Flyway is disabled.
 -- 本脚本将所有 Flyway 迁移（V1-V12）合并为单个初始化文件，用于禁用 Flyway 的开发环境。
+--
+-- ⚠️ IMPORTANT: The vector dimension "vector(1536)" below is dynamically
+--    substituted by init-db.sh using LLM_EMBEDDING_MODEL_DIMENSION.
+--    DO NOT reformat it into multiple lines or change the default value.
+-- ⚠️ 重要提示：下面的向量维度 "vector(1536)" 将由 init-db.sh 根据环境变量
+--    LLM_EMBEDDING_MODEL_DIMENSION 动态替换。请勿将其格式化为多行，
+--    也不要更改默认值。
 -- ============================================================================
 
 -- ==========================================
@@ -495,18 +502,12 @@ CREATE TABLE IF NOT EXISTS resume_vectors
 (
     64
 ) NOT NULL UNIQUE,
-    embedding vector
-(
-    1536
-),
-    status VARCHAR
-(
-    32
-) NOT NULL,
-    error_message TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
+    embedding         vector(1536),
+    status            VARCHAR(32) NOT NULL,
+    error_message     TEXT,
+    created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE INDEX IF NOT EXISTS idx_resume_vectors_version_id ON resume_vectors (resume_version_id);
 CREATE INDEX IF NOT EXISTS idx_resume_vectors_status ON resume_vectors (status);
@@ -522,20 +523,12 @@ CREATE TABLE IF NOT EXISTS job_vectors
 (
     64
 ) NOT NULL UNIQUE,
-    embedding vector
-(
-    1536
-),
-    status VARCHAR
-(
-    32
-) NOT NULL,
-    error_message TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    description VARCHAR
-(
-    255
+    embedding         vector(1536),
+    status            VARCHAR(32) NOT NULL,
+    error_message     TEXT,
+    created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    description       VARCHAR(255
 )
     );
 
