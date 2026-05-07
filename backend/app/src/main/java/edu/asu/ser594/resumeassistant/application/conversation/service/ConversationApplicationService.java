@@ -143,14 +143,18 @@ public class ConversationApplicationService {
         log.info("Saving AI reply for conversation: {}", conversationId);
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new ConversationException("conversation.not.found"));
-        conversation.addMessage(MessageRole.ASSISTANT, content, fileUrl);
-        conversationRepository.save(conversation);
 
-        // 保存 AI 优化版本 / Save AI optimized version
+        // 将 AI 优化后的简历内容追加到消息中，确保用户在对话中能看到修改后的简历
+        // Append AI optimized resume content to the message so users can see it in the conversation
+        String finalContent = content;
         if (aiOptimizedMarkdown != null && !aiOptimizedMarkdown.isBlank()
                 && conversation.getResumeVersionId() != null) {
             saveOrUpdateAiOptimizedResume(conversation, aiOptimizedMarkdown);
+            finalContent = content + "\n\n---\n\n" + aiOptimizedMarkdown;
         }
+
+        conversation.addMessage(MessageRole.ASSISTANT, finalContent, fileUrl);
+        conversationRepository.save(conversation);
 
         log.info("AI reply saved for conversation: {}", conversationId);
     }

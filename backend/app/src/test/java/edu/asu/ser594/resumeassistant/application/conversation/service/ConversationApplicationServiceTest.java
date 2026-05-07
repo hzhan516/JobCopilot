@@ -398,6 +398,11 @@ class ConversationApplicationServiceTest {
 
         // 验证 / Then
         assertEquals(1, conversation.getMessages().size());
+        // 验证消息内容包含 AI 回复和修改后的简历
+        String messageContent = conversation.getMessages().get(0).getContent();
+        assertTrue(messageContent.contains("AI reply"));
+        assertTrue(messageContent.contains("---"));
+        assertTrue(messageContent.contains("# Optimized Resume"));
         // 验证使用了 group.addVersion（而不是直接 repository.save）
         verify(group).addVersion(any(ResumeVersion.class));
         verify(resumeGroupRepository).save(any(ResumeGroup.class));
@@ -437,6 +442,11 @@ class ConversationApplicationServiceTest {
 
         // 验证 / Then
         assertEquals(1, conversation.getMessages().size());
+        // 验证消息内容包含 AI 回复和修改后的简历
+        String messageContent = conversation.getMessages().get(0).getContent();
+        assertTrue(messageContent.contains("AI reply"));
+        assertTrue(messageContent.contains("---"));
+        assertTrue(messageContent.contains("# Updated Resume"));
         // 验证直接编辑了现有版本（没有创建新的）
         verify(workingVersion).editContent("# Updated Resume");
         verify(resumeVersionRepository).save(workingVersion);
@@ -475,6 +485,11 @@ class ConversationApplicationServiceTest {
 
         // 验证 / Then
         assertEquals(1, conversation.getMessages().size());
+        // 验证消息内容包含 AI 回复和修改后的简历
+        String messageContent = conversation.getMessages().get(0).getContent();
+        assertTrue(messageContent.contains("AI reply"));
+        assertTrue(messageContent.contains("---"));
+        assertTrue(messageContent.contains("# Re-created Resume"));
         // 验证重新创建了 AI_OPTIMIZED（因为旧的被归档了）
         verify(group).addVersion(any(ResumeVersion.class));
         verify(resumeGroupRepository).save(any(ResumeGroup.class));
