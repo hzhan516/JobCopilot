@@ -381,7 +381,7 @@
       "versionHistory": "Version History",
       "selectVersion": "Select a version to view details",
       "versionDetail": "Version Details",
-      "manualEdit": "Manual Edit",
+      "manualEdit": "Duplicate & Edit",
       "manualEditDesc": "Create a copy and edit manually",
       "createCopySuccess": "Copy created successfully",
       "createCopyError": "Failed to create copy",

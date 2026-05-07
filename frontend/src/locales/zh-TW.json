@@ -381,7 +381,7 @@
       "versionHistory": "版本歷史",
       "selectVersion": "選擇一個版本查看詳情",
       "versionDetail": "版本詳情",
-      "manualEdit": "手動修改",
+      "manualEdit": "複製並編輯",
       "manualEditDesc": "建立副本並手動編輯",
       "createCopySuccess": "副本建立成功",
       "createCopyError": "建立副本失敗",
