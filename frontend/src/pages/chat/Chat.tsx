@@ -203,6 +203,26 @@ export default function Chat() {
       syncConversation(newConversation);
       setNewDialogOpen(false);
       toast.success(t('chat.createSuccess'));
+
+      // 新对话包含预设消息并已触发异步 AI 请求，开始轮询等待回复
+      // New conversation has a preset message and async AI request fired; start polling
+      const newMessages = normalizeMessages(newConversation);
+      if (!newMessages.some((message) => message.role === 'ASSISTANT')) {
+        setIsWaitingForReply(true);
+        void (async () => {
+          try {
+            const hasReply = await pollForAiReply(newConversation.conversationId, newMessages.length);
+            if (!hasReply) {
+              toast.info(t('chat.aiPending'));
+            }
+          } catch (error) {
+            console.error('Failed to poll AI reply after creation', error);
+            toast.info(t('chat.aiPending'));
+          } finally {
+            setIsWaitingForReply(false);
+          }
+        })();
+      }
     } catch {
       toast.error(t('chat.createFailed'));
     } finally {
