@@ -20,6 +20,9 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
 
     defaults:
       run:
@@ -100,7 +103,7 @@ jobs:
         cache: maven
     
     - name: Run Architecture Tests
-      run: mvn test -Dtest=**/architecture/*Test -B --file pom.xml
+      run: mvn test -pl app,domain -Dtest=**/architecture/*Test -B --file pom.xml
 
   build:
     name: Build Application
@@ -199,6 +202,8 @@ jobs:
 
     - name: Run Tests
       run: pytest
+      env:
+        PYTHONPATH: .
 
   code-quality:
     name: Code Quality Check
