@@ -478,6 +478,7 @@ CREATE TABLE IF NOT EXISTS application_trackings
     32
 ) NOT NULL,
     applied_at DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     notes TEXT,
     events JSONB

@@ -17,6 +17,7 @@ import java.util.List;
  * @param jobTitle    职位标题 / Job title
  * @param status      状态 / Status
  * @param appliedAt   投递日期 / Applied date
+ * @param createdAt   创建时间 / Created at
  * @param updatedAt   更新时间 / Updated at
  * @param notes       备注 / Notes
  * @param events      事件历史 / Event history
@@ -29,6 +30,7 @@ public record TrackingResponse(
         String jobTitle,
         String status,
         LocalDate appliedAt,
+        OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
         String notes,
         List<TrackingEventResponse> events

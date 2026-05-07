@@ -59,7 +59,7 @@ class TrackingControllerTest {
         // 给定
         // Given
         when(trackingFacade.createTracking(eq(USER_ID), any(CreateTrackingRequest.class)))
-                .thenReturn(new TrackingResponse(TRACKING_ID, USER_ID.toString(), null, "Company", "Title", "PENDING", null, null, null, null));
+                .thenReturn(new TrackingResponse(TRACKING_ID, USER_ID.toString(), null, "Company", "Title", "PENDING", null, null, null, null, null));
 
         // 当&那么
         // When&Then
@@ -77,7 +77,7 @@ class TrackingControllerTest {
         // Given
         when(trackingFacade.listTrackings(USER_ID, null))
                 .thenReturn(List.of(
-                        new TrackingResponse(TRACKING_ID, USER_ID.toString(), null, "C1", "J1", "PENDING", null, null, null, null)
+                        new TrackingResponse(TRACKING_ID, USER_ID.toString(), null, "C1", "J1", "PENDING", null, null, null, null, null)
                 ));
 
         // 当&那么

@@ -61,6 +61,8 @@ class TrackingFacadeImplTest {
         // Then
         assertThat(response.companyName()).isEqualTo("Tech Corp");
         assertThat(response.jobTitle()).isEqualTo("Developer");
+        assertThat(response.createdAt()).isNotNull();
+        assertThat(response.updatedAt()).isNotNull();
     }
 
     @Test

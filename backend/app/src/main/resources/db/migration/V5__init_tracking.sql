@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS application_trackings
     job_title    VARCHAR(200),
     status       VARCHAR(32) NOT NULL,
     applied_at   DATE,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     notes        TEXT,
     events       JSONB

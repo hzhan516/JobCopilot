@@ -66,6 +66,8 @@ class TrackingApplicationServiceTest {
         assertThat(result.getCompanyName()).isEqualTo("Tech Corp");
         assertThat(result.getJobTitle()).isEqualTo("Java Developer");
         assertThat(result.getUserId()).isEqualTo(USER_ID);
+        assertThat(result.getCreatedAt()).isNotNull();
+        assertThat(result.getUpdatedAt()).isNotNull();
         verify(trackingRepository).save(any(ApplicationTracking.class));
     }
 
@@ -76,6 +78,9 @@ class TrackingApplicationServiceTest {
         // Given
         ApplicationTracking tracking = createTestTracking();
         UpdateTrackingCommand updateCmd = UpdateTrackingCommand.builder()
+                .companyName("Updated Company")
+                .jobTitle("Updated Job")
+                .appliedAt(LocalDate.of(2026, 5, 7))
                 .notes("Updated notes")
                 .build();
         ChangeTrackingStatusCommand statusCmd = ChangeTrackingStatusCommand.builder()
@@ -92,6 +97,9 @@ class TrackingApplicationServiceTest {
 
         // 那么
         // Then
+        assertThat(result.getCompanyName()).isEqualTo("Updated Company");
+        assertThat(result.getJobTitle()).isEqualTo("Updated Job");
+        assertThat(result.getAppliedAt()).isEqualTo(LocalDate.of(2026, 5, 7));
         assertThat(result.getNotes()).isEqualTo("Updated notes");
         assertThat(result.getStatus()).isEqualTo(ApplicationStatus.APPLIED);
         verify(trackingRepository).save(tracking);
@@ -104,6 +112,8 @@ class TrackingApplicationServiceTest {
         // Given
         ApplicationTracking tracking = createTestTracking();
         UpdateTrackingCommand updateCmd = UpdateTrackingCommand.builder()
+                .companyName("Info Company")
+                .jobTitle("Info Job")
                 .notes("Only notes updated")
                 .build();
         when(trackingRepository.findByIdAndUserId(TRACKING_ID, USER_ID))
@@ -117,6 +127,8 @@ class TrackingApplicationServiceTest {
 
         // 那么
         // Then
+        assertThat(result.getCompanyName()).isEqualTo("Info Company");
+        assertThat(result.getJobTitle()).isEqualTo("Info Job");
         assertThat(result.getNotes()).isEqualTo("Only notes updated");
     }
 

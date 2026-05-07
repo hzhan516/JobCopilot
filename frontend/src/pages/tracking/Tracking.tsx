@@ -1,7 +1,8 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import type { Tracking, TrackingStatsResponse } from '@/types';
 import { useTranslation } from 'react-i18next';
-import { formatDate } from '@/utils/i18n';
+import { useSearchParams } from 'react-router-dom';
+import { formatDate, formatDateTime } from '@/utils/i18n';
 import { trackingService } from '@/services/trackingService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -30,7 +31,9 @@ import {
   Building2,
   Briefcase,
   Calendar,
+  Clock,
   MoreHorizontal,
+  Pencil,
   Trash2,
 } from 'lucide-react';
 import {
@@ -43,13 +46,25 @@ import { toast } from 'sonner';
 
 export default function TrackingPage() {
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const dismissedEditTrackingIdRef = useRef<string | null>(null);
   const [trackings, setTrackings] = useState<Tracking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingTrackingId, setEditingTrackingId] = useState<string | null>(null);
   const [newTracking, setNewTracking] = useState({
     jobTitle: '',
     companyName: '',
     status: 'APPLIED' as Tracking['status'],
+    appliedAt: '',
+    notes: '',
+  });
+  const [editTracking, setEditTracking] = useState({
+    jobTitle: '',
+    companyName: '',
+    status: 'APPLIED' as Tracking['status'],
+    appliedAt: '',
     notes: '',
   });
   const [stats, setStats] = useState<TrackingStatsResponse | null>(null);
@@ -99,6 +114,30 @@ export default function TrackingPage() {
     loadStats();
   }, [loadTrackings, loadStats]);
 
+  const updateEditSearchParam = useCallback((trackingId: string) => {
+    dismissedEditTrackingIdRef.current = null;
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      next.set('edit', trackingId);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const clearEditSearchParam = useCallback(() => {
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      next.delete('edit');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const closeEditDialog = useCallback(() => {
+    dismissedEditTrackingIdRef.current = editingTrackingId ?? searchParams.get('edit');
+    setEditDialogOpen(false);
+    setEditingTrackingId(null);
+    clearEditSearchParam();
+  }, [clearEditSearchParam, editingTrackingId, searchParams]);
+
   // 添加投递记录
   const handleAddTracking = async () => {
     if (!newTracking.jobTitle || !newTracking.companyName) {
@@ -110,14 +149,54 @@ export default function TrackingPage() {
         jobTitle: newTracking.jobTitle,
         companyName: newTracking.companyName,
         status: newTracking.status,
+        appliedAt: newTracking.appliedAt || undefined,
         notes: newTracking.notes || undefined,
       });
       await Promise.all([loadTrackings(), loadStats()]);
-      setNewTracking({ jobTitle: '', companyName: '', status: 'APPLIED', notes: '' });
+      setNewTracking({ jobTitle: '', companyName: '', status: 'APPLIED', appliedAt: '', notes: '' });
       setAddDialogOpen(false);
       toast.success(t('tracking.addSuccess'));
     } catch {
       toast.error(t('tracking.addFailed'));
+    }
+  };
+
+  const openEditDialog = useCallback((tracking: Tracking) => {
+    setEditingTrackingId(tracking.trackingId);
+    setEditTracking({
+      jobTitle: tracking.jobTitle,
+      companyName: tracking.companyName,
+      status: tracking.status,
+      appliedAt: tracking.appliedAt ?? '',
+      notes: tracking.notes ?? '',
+    });
+    updateEditSearchParam(tracking.trackingId);
+    setEditDialogOpen(true);
+  }, [updateEditSearchParam]);
+
+  const handleEditTracking = async () => {
+    if (!editingTrackingId) return;
+
+    const jobTitle = editTracking.jobTitle.trim();
+    const companyName = editTracking.companyName.trim();
+    if (!jobTitle || !companyName) {
+      toast.error(t('tracking.fillRequired'));
+      return;
+    }
+
+    try {
+      await trackingService.updateTracking(editingTrackingId, {
+        jobTitle,
+        companyName,
+        status: editTracking.status,
+        appliedAt: editTracking.appliedAt || undefined,
+        notes: editTracking.notes,
+      });
+      await Promise.all([loadTrackings(), loadStats()]);
+      closeEditDialog();
+      toast.success(t('tracking.editSuccess'));
+    } catch {
+      toast.error(t('tracking.editFailed'));
     }
   };
 
@@ -142,6 +221,20 @@ export default function TrackingPage() {
       toast.error(t('tracking.deleteFailed'));
     }
   };
+
+  useEffect(() => {
+    const editTrackingId = searchParams.get('edit');
+    if (!editTrackingId) {
+      dismissedEditTrackingIdRef.current = null;
+      return;
+    }
+    if (dismissedEditTrackingIdRef.current === editTrackingId || isLoading || editDialogOpen) return;
+
+    const tracking = trackings.find((item) => item.trackingId === editTrackingId);
+    if (tracking) {
+      openEditDialog(tracking);
+    }
+  }, [editDialogOpen, isLoading, openEditDialog, searchParams, trackings]);
 
   // 统计各状态数量（作为 stats API 失败时的回退）
   // Count statuses locally (fallback when stats API fails)
@@ -306,14 +399,22 @@ export default function TrackingPage() {
                         );
                       })()}
                     </div>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500 mb-2">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500 mb-2">
                       <span className="flex items-center">
                         <Building2 className="w-4 h-4 mr-1" />
                         {tracking.companyName}
                       </span>
+                      {tracking.appliedAt && (
+                        <span className="flex items-center">
+                          <Calendar className="w-4 h-4 mr-1" />
+                          {formatDate(tracking.appliedAt)}
+                        </span>
+                      )}
                       <span className="flex items-center">
-                        <Calendar className="w-4 h-4 mr-1" />
-                        {tracking.appliedAt ? formatDate(tracking.appliedAt) : '-'}
+                        <Clock className="w-4 h-4 mr-1" />
+                        {t('tracking.lastEditedAt', {
+                          time: formatDateTime(tracking.updatedAt || tracking.createdAt),
+                        })}
                       </span>
                     </div>
                     {tracking.notes && (
@@ -345,6 +446,10 @@ export default function TrackingPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEditDialog(tracking)}>
+                          <Pencil className="w-4 h-4 mr-2" />
+                          {t('common.edit')}
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleDeleteTracking(tracking.trackingId)}
                           className="text-red-600"
@@ -414,6 +519,16 @@ export default function TrackingPage() {
               </Select>
             </div>
             <div className="space-y-2">
+              <Label>{t('tracking.appliedAt')}</Label>
+              <Input
+                type="date"
+                value={newTracking.appliedAt}
+                onChange={(e) =>
+                  setNewTracking({ ...newTracking, appliedAt: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
               <Label>{t('tracking.notes')}</Label>
               <Input
                 placeholder={t('tracking.notesPlaceholder')}
@@ -429,6 +544,93 @@ export default function TrackingPage() {
               {t('common.cancel')}
             </Button>
             <Button onClick={handleAddTracking}>{t('tracking.add')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 编辑记录对话框 */}
+      <Dialog
+        open={editDialogOpen}
+        onOpenChange={(open) => {
+          if (open) setEditDialogOpen(true);
+          else closeEditDialog();
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('tracking.editRecordTitle')}</DialogTitle>
+            <DialogDescription>{t('tracking.editRecordDesc')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>{t('tracking.jobTitle')}</Label>
+              <Input
+                placeholder={t('tracking.jobTitlePlaceholder')}
+                value={editTracking.jobTitle}
+                onChange={(e) =>
+                  setEditTracking({ ...editTracking, jobTitle: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('tracking.company')}</Label>
+              <Input
+                placeholder={t('tracking.companyPlaceholder')}
+                value={editTracking.companyName}
+                onChange={(e) =>
+                  setEditTracking({ ...editTracking, companyName: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('tracking.currentStatus')}</Label>
+              <Select
+                value={editTracking.status}
+                onValueChange={(value) =>
+                  setEditTracking({
+                    ...editTracking,
+                    status: value as Tracking['status'],
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(statusConfig).map(([key, { labelKey }]) => (
+                    <SelectItem key={key} value={key}>
+                      {t(labelKey)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{t('tracking.appliedAt')}</Label>
+              <Input
+                type="date"
+                value={editTracking.appliedAt}
+                onChange={(e) =>
+                  setEditTracking({ ...editTracking, appliedAt: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('tracking.notes')}</Label>
+              <Input
+                placeholder={t('tracking.notesPlaceholder')}
+                value={editTracking.notes}
+                onChange={(e) =>
+                  setEditTracking({ ...editTracking, notes: e.target.value })
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeEditDialog}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={handleEditTracking}>{t('common.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

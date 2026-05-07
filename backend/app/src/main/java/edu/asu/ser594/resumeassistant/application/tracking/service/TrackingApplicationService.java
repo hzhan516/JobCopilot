@@ -55,11 +55,16 @@ public class TrackingApplicationService {
 
         if (updateCmd != null) {
             tracking.updateInfo(updateCmd.companyName(), updateCmd.jobTitle(), updateCmd.notes());
+            if (updateCmd.appliedAt() != null) {
+                tracking.setAppliedAt(updateCmd.appliedAt());
+            }
         }
 
         if (statusCmd != null && statusCmd.status() != null) {
             final ApplicationStatus newStatus = ApplicationStatus.valueOf(statusCmd.status());
-            tracking.changeStatus(newStatus, statusCmd.note());
+            if (newStatus != tracking.getStatus()) {
+                tracking.changeStatus(newStatus, statusCmd.note());
+            }
         }
 
         return trackingRepository.save(tracking);

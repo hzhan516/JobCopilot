@@ -18,9 +18,11 @@ import edu.asu.ser594.resumeassistant.domain.tracking.entity.ApplicationTracking
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
-import java.time.ZoneOffset;
 import java.util.stream.Collectors;
 
 /**
@@ -53,6 +55,9 @@ public class TrackingFacadeImpl implements TrackingFacade {
     @Override
     public TrackingResponse updateTracking(final UUID userId, final String trackingId, final UpdateTrackingRequest request) {
         final UpdateTrackingCommand updateCmd = UpdateTrackingCommand.builder()
+                .companyName(request.companyName())
+                .jobTitle(request.jobTitle())
+                .appliedAt(request.appliedAt())
                 .notes(request.notes())
                 .build();
         final ChangeTrackingStatusCommand statusCmd = request.status() != null
@@ -110,6 +115,16 @@ public class TrackingFacadeImpl implements TrackingFacade {
                 ))
                 .collect(Collectors.toList());
 
+        final LocalDateTime createdAt = tracking.getCreatedAt() != null
+                ? tracking.getCreatedAt()
+                : tracking.getUpdatedAt();
+        final OffsetDateTime createdAtResponse = createdAt != null
+                ? createdAt.atOffset(ZoneOffset.UTC)
+                : null;
+        final OffsetDateTime updatedAtResponse = tracking.getUpdatedAt() != null
+                ? tracking.getUpdatedAt().atOffset(ZoneOffset.UTC)
+                : null;
+
         return new TrackingResponse(
                 tracking.getId(),
                 tracking.getUserId().toString(),
@@ -118,7 +133,8 @@ public class TrackingFacadeImpl implements TrackingFacade {
                 tracking.getJobTitle(),
                 tracking.getStatus().name(),
                 tracking.getAppliedAt(),
-                tracking.getUpdatedAt().atOffset(ZoneOffset.UTC),
+                createdAtResponse,
+                updatedAtResponse,
                 tracking.getNotes(),
                 events
         );

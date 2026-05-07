@@ -9,7 +9,7 @@ import { resumeService } from '@/services/resumeService';
 import { jobService } from '@/services/jobService';
 import { trackingService } from '@/services/trackingService';
 import { chatService } from '@/services/chatService';
-import { formatDate } from '@/utils/i18n';
+import { formatDate, formatDateTime } from '@/utils/i18n';
 import type { Tracking } from '@/types';
 import {
   FileText,
@@ -21,6 +21,7 @@ import {
   TrendingUp,
   Building2,
   Calendar,
+  Clock,
 } from 'lucide-react';
 
 interface StatItem {
@@ -96,7 +97,7 @@ export default function Dashboard() {
       titleKey: 'dashboard.quickActions.tracking',
       descKey: 'dashboard.quickActions.trackingDesc',
       icon: ClipboardList,
-      path: '/tracking',
+      path: '/applications',
       color: 'bg-orange-100 text-orange-600',
     },
   ];
@@ -354,7 +355,7 @@ export default function Dashboard() {
                 <TrendingUp className="w-5 h-5 mr-2 text-green-500" />
                 {t('dashboard.applicationProgress.title')}
               </CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/tracking')}>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/applications')}>
                 {t('common.viewAll')}
               </Button>
             </div>
@@ -370,7 +371,7 @@ export default function Dashboard() {
               <div className="text-center py-8 text-gray-500">
                 <ClipboardList className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                 <p>{t('tracking.emptyTitle')}</p>
-                <Button variant="link" onClick={() => navigate('/tracking')}>
+                <Button variant="link" onClick={() => navigate('/applications')}>
                   {t('tracking.addRecord')}
                 </Button>
               </div>
@@ -378,7 +379,11 @@ export default function Dashboard() {
               <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                 {trackings
                   .slice()
-                  .sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime())
+                  .sort((a, b) => {
+                    const dateA = new Date(a.updatedAt || a.createdAt || a.appliedAt || 0).getTime();
+                    const dateB = new Date(b.updatedAt || b.createdAt || b.appliedAt || 0).getTime();
+                    return dateB - dateA;
+                  })
                   .map((tracking) => {
                     const config = statusConfig[tracking.status] || {
                       labelKey: 'tracking.status.UNKNOWN',
@@ -388,7 +393,7 @@ export default function Dashboard() {
                       <div
                         key={tracking.trackingId}
                         className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-                        onClick={() => navigate('/tracking')}
+                        onClick={() => navigate('/applications?edit=' + encodeURIComponent(tracking.trackingId))}
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-2 mb-1">
@@ -397,14 +402,22 @@ export default function Dashboard() {
                             </h4>
                             <Badge className={config.color}>{t(config.labelKey)}</Badge>
                           </div>
-                          <div className="flex items-center space-x-3 text-sm text-gray-500">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
                             <span className="flex items-center">
                               <Building2 className="w-3.5 h-3.5 mr-1" />
                               {tracking.companyName}
                             </span>
+                            {tracking.appliedAt && (
+                              <span className="flex items-center">
+                                <Calendar className="w-3.5 h-3.5 mr-1" />
+                                {formatDate(tracking.appliedAt)}
+                              </span>
+                            )}
                             <span className="flex items-center">
-                              <Calendar className="w-3.5 h-3.5 mr-1" />
-                              {tracking.appliedAt ? formatDate(tracking.appliedAt) : '-'}
+                              <Clock className="w-3.5 h-3.5 mr-1" />
+                              {t('tracking.lastEditedAt', {
+                                time: formatDateTime(tracking.updatedAt || tracking.createdAt),
+                              })}
                             </span>
                           </div>
                         </div>

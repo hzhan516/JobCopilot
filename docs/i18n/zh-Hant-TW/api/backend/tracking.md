@@ -67,7 +67,8 @@ Content-Type: application/json
   "jobTitle": "Senior Java Developer",
   "status": "PENDING",
   "appliedAt": "2026-04-10",
-  "updatedAt": "2026-04-16T10:00:00",
+  "createdAt": "2026-04-16T10:00:00Z",
+  "updatedAt": "2026-04-16T10:00:00Z",
   "notes": "Referral from friend",
   "events": []
 }
@@ -88,7 +89,8 @@ Content-Type: application/json
     "jobTitle": "Senior Java Developer",
     "status": "INTERVIEWING",
     "appliedAt": "2026-04-10",
-    "updatedAt": "2026-04-16T10:00:00",
+    "createdAt": "2026-04-16T10:00:00Z",
+    "updatedAt": "2026-04-16T10:00:00Z",
     "notes": "First round completed",
     "events": [
       {
@@ -120,12 +122,15 @@ Content-Type: application/json
 
 ### 2.4 更新追蹤記錄（含狀態流轉）
 **端點:** `PUT /api/v1/trackings/{id}`  
-**說明:** 更新追蹤記錄的備註和狀態。狀態變更會觸發 `TrackingEvent` 記錄。
+**說明:** 更新追蹤記錄的公司、職位名稱、投遞日期、備註和狀態。狀態變更會觸發 `TrackingEvent` 記錄。
 
 **請求主體 (`UpdateTrackingRequest`):**
 ```json
 {
+  "companyName": "Tech Corp",
+  "jobTitle": "Senior Java Developer",
   "status": "INTERVIEWING",
+  "appliedAt": "2026-04-10",
   "notes": "Technical interview scheduled"
 }
 ```

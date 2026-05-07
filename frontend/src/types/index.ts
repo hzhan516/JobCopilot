@@ -241,6 +241,7 @@ export interface Tracking {
   jobTitle: string;
   status: 'PENDING' | 'APPLIED' | 'SCREENING' | 'INTERVIEWING' | 'OFFER' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN';
   appliedAt: string;
+  createdAt: string;
   updatedAt: string;
   notes: string | null;
   events: TrackingEvent[];
@@ -256,7 +257,10 @@ export interface CreateTrackingRequest {
 }
 
 export interface UpdateTrackingRequest {
-  status: Tracking['status'];
+  companyName?: string;
+  jobTitle?: string;
+  status?: Tracking['status'];
+  appliedAt?: string;
   notes?: string;
 }
 

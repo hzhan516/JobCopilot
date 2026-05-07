@@ -67,7 +67,8 @@ Content-Type: application/json
   "jobTitle": "Senior Java Developer",
   "status": "PENDING",
   "appliedAt": "2026-04-10",
-  "updatedAt": "2026-04-16T10:00:00",
+  "createdAt": "2026-04-16T10:00:00Z",
+  "updatedAt": "2026-04-16T10:00:00Z",
   "notes": "Referral from friend",
   "events": []
 }
@@ -88,7 +89,8 @@ Content-Type: application/json
     "jobTitle": "Senior Java Developer",
     "status": "INTERVIEWING",
     "appliedAt": "2026-04-10",
-    "updatedAt": "2026-04-16T10:00:00",
+    "createdAt": "2026-04-16T10:00:00Z",
+    "updatedAt": "2026-04-16T10:00:00Z",
     "notes": "First round completed",
     "events": [
       {
@@ -120,12 +122,15 @@ Content-Type: application/json
 
 ### 2.4 更新跟踪记录（含状态流转）
 **Endpoint:** `PUT /api/v1/trackings/{id}`  
-**描述:** 更新跟踪记录的备注和状态。状态变更会触发 `TrackingEvent` 记录。
+**描述:** 更新跟踪记录的公司、职位名称、投递日期、备注和状态。状态变更会触发 `TrackingEvent` 记录。
 
 **Request Body (`UpdateTrackingRequest`):**
 ```json
 {
+  "companyName": "Tech Corp",
+  "jobTitle": "Senior Java Developer",
   "status": "INTERVIEWING",
+  "appliedAt": "2026-04-10",
   "notes": "Technical interview scheduled"
 }
 ```
