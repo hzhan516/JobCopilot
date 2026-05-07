@@ -7,8 +7,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 职位向量实体
- * Job vector domain entity
+ * Domain entity representing a job posting's embedding vector and its generation lifecycle.
+ * 表示职位嵌入向量及其生成生命周期的领域实体。
  */
 @Getter
 public class JobVector {
@@ -21,7 +21,7 @@ public class JobVector {
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
-    // 扩展字段 / Extended fields
+    // Extended fields captured at generation time for traceability | 生成时捕获的扩展字段，用于可追溯性
     private final String title;
     private final String description;
     private final List<String> requirements;
@@ -48,18 +48,10 @@ public class JobVector {
         this.modelVersion = modelVersion;
     }
 
-    /**
-     * 静态工厂方法创建完成的职位向量（基础版本，兼容现有调用）
-     * Static factory method to create completed job vector (basic version, backward compatible)
-     */
     public static JobVector createCompleted(String id, String jobId, float[] embedding) {
         return createCompleted(id, jobId, embedding, null, null, null, null, null, null);
     }
 
-    /**
-     * 静态工厂方法创建完成的职位向量（完整版本，含扩展字段）
-     * Static factory method to create completed job vector (full version with extended fields)
-     */
     public static JobVector createCompleted(String id, String jobId, float[] embedding,
                                             String title, String description, List<String> requirements,
                                             String rawContent, String sourceFile, String modelVersion) {
@@ -68,10 +60,6 @@ public class JobVector {
                 title, description, requirements, rawContent, sourceFile, modelVersion);
     }
 
-    /**
-     * 静态工厂方法创建失败的职位向量
-     * Static factory method to create failed job vector
-     */
     public static JobVector createFailed(String id, String jobId, String errorMessage) {
         LocalDateTime now = LocalDateTime.now();
         return new JobVector(id, jobId, null, VectorStatus.FAILED, errorMessage, now, now,

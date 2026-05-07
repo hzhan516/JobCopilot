@@ -13,6 +13,8 @@ OUTPUT_FILE = OUTPUT_DIR / "training_pairs_sample.jsonl"
 
 SUITABILITY_API_URL = "http://127.0.0.1:8000/api/v1/suitability"
 
+# Cap jobs per resume to keep dataset size manageable and API call cost reasonable.
+# 限制每份简历关联的职位数量：控制数据集规模与 API 调用成本。
 MAX_JOBS_PER_RESUME = 10
 
 
@@ -30,6 +32,9 @@ def load_jsonl(path: Path) -> list[dict]:
 
 
 def call_suitability_api(resume: dict, job: dict) -> dict:
+    """Call the local suitability endpoint to generate labeled training data.
+    调用本地 suitability API 生成带标签的训练数据：利用已有服务产出 ground-truth，
+    避免人工标注成本，同时保证标签与线上评分逻辑一致。"""
     payload = {
         "resume": {
             "name": resume.get("name"),

@@ -5,6 +5,7 @@ import edu.asu.ser594.resumeassistant.api.tracking.dto.response.TrackingResponse
 import edu.asu.ser594.resumeassistant.api.tracking.dto.response.TrackingStatsResponse;
 import edu.asu.ser594.resumeassistant.api.tracking.facade.TrackingFacade;
 import edu.asu.ser594.resumeassistant.trigger.http.security.CurrentUserArgumentResolver;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -114,7 +115,7 @@ class TrackingControllerTest {
         }
 
         @Override
-        public Object resolveArgument(org.springframework.core.MethodParameter parameter,
+        public Object resolveArgument(org.springframework.core.@NonNull MethodParameter parameter,
                                       org.springframework.web.method.support.ModelAndViewContainer mavContainer,
                                       org.springframework.web.context.request.NativeWebRequest webRequest,
                                       org.springframework.web.bind.support.WebDataBinderFactory binderFactory) {

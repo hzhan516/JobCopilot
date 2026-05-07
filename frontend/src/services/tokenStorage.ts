@@ -1,8 +1,11 @@
 /**
- * Token 存储管理
- * 支持 "记住我" 模式：
- * - 记住我：使用 localStorage（持久化）
- * - 不记住：使用 sessionStorage（会话级）
+ * Token storage manager with "Remember Me" support.
+ * - Remember Me: persists in localStorage across sessions
+ * - Not Remember Me: uses sessionStorage, cleared on tab close
+ *
+ * Token 存储管理，支持"记住我"模式
+ * - 记住我：使用 localStorage，跨会话持久化
+ * - 不记住：使用 sessionStorage，标签页关闭即清除
  */
 
 const ACCESS_TOKEN_KEY = 'accessToken';
@@ -21,7 +24,8 @@ function getStorage(persistent: boolean): Storage {
 }
 
 function isPersistent(): boolean {
-  // 优先读取 localStorage 中的 rememberMe 标记
+  // Read rememberMe from localStorage first to survive page refreshes
+  // 优先从 localStorage 读取 rememberMe，确保页面刷新后配置不丢失
   const rememberMe = localStorage.getItem(REMEMBER_ME_KEY);
   return rememberMe !== 'false';
 }
@@ -45,7 +49,8 @@ export const tokenStorage = {
   },
 
   getAccessToken(): string | null {
-    // sessionStorage 优先级高于 localStorage（如果用户选择了不记住我，在同一标签页里应读取 sessionStorage）
+    // sessionStorage takes precedence: if user chose not to remember, same tab should use sessionStorage
+    // sessionStorage 优先级更高：若用户选择不记住，同一标签页内应读取 sessionStorage
     return sessionStorage.getItem(ACCESS_TOKEN_KEY) || localStorage.getItem(ACCESS_TOKEN_KEY);
   },
 
@@ -78,7 +83,8 @@ export const tokenStorage = {
   isTokenExpired(): boolean {
     const expiresAt = this.getExpiresAt();
     if (!expiresAt) return true;
-    // 提前 5 分钟认为过期，预留刷新时间
+    // Consider token expired 5 minutes early to allow proactive refresh before actual expiry
+    // 提前 5 分钟标记过期，为异步刷新预留缓冲时间
     return Date.now() >= expiresAt - 5 * 60 * 1000;
   },
 

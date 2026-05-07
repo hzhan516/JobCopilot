@@ -25,10 +25,6 @@ interface JobCardProps {
   onDelete: () => void;
 }
 
-/**
- * 职位卡片组件
- * Job card component — displays job info and optional scoring panel
- */
 export default function JobCard({
   job,
   availableResumeVersions,

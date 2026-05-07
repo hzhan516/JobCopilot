@@ -29,10 +29,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 职位匹配应用服务
- * Job matching application service
- * <p>
- * 协调召回、MQ发送、结果保存 / Coordinates recall, MQ sending, and result persistence
+ * Orchestrates the two-stage job-matching pipeline: vector-based recall followed by AI-driven ranking.
+ * Persists intermediate and final results so clients can poll for asynchronous completion.
+ * 编排两阶段职位匹配流水线：基于向量的召回后接 AI 精排。持久化中间及最终结果，使客户端可轮询异步完成状态
  */
 @Slf4j
 @Service
@@ -49,11 +48,12 @@ public class MatchingApplicationService {
     private final VectorSearchPort vectorSearchPort;
 
     /**
-     * 启动异步职位匹配流程
-     * Start async job matching process
+     * Initiates the async matching workflow: recalls top-K similar jobs via pgvector cosine distance,
+     * persists the recall stage, then dispatches a ranking request to the AI service via MQ.
+     * 启动异步匹配工作流：通过 pgvector 余弦距离召回 Top-K 相似职位，持久化召回阶段，然后通过 MQ 向 AI 服务分发精排请求
      *
-     * @param command 启动命令 / Start command
-     * @return 匹配任务ID / Match task ID
+     * @param command Start match command / 启动匹配命令
+     * @return Match task ID / 匹配任务 ID
      */
     @Transactional
     public String startJobMatch(final StartJobMatchCommand command) {
@@ -72,8 +72,8 @@ public class MatchingApplicationService {
         final var resumeVectorOpt = resumeVectorRepository.findByResumeVersionId(command.resumeVersionId());
 
         if (resumeVectorOpt.isEmpty() || resumeVectorOpt.get().getEmbedding() == null) {
-            // 向量缺失或生成失败，尝试触发重新生成并提示用户稍后重试
-            // Vector missing or generation failed, trigger re-generation and ask user to retry later
+            // On-demand vector regeneration: if the vector is missing (e.g., after a resume edit), try to rebuild it before failing
+            // 按需向量再生：若向量缺失（例如简历编辑后），在报错前尝试重建
             final ResumeVersion resumeVersion = resumeVersionRepository.findById(UUID.fromString(command.resumeVersionId()))
                     .orElseThrow(() -> new IllegalArgumentException("Resume version not found: " + command.resumeVersionId()));
 
@@ -140,10 +140,11 @@ public class MatchingApplicationService {
     }
 
     /**
-     * 保存精排结果
-     * Save ranking result
+     * Persists the final ranked list produced by the AI service, transitioning the match result
+     * from PROCESSING to COMPLETED.
+     * 持久化 AI 服务产出的最终排序列表，将匹配结果从 PROCESSING 状态转为 COMPLETED
      *
-     * @param command 保存命令 / Save command
+     * @param command Save match result command / 保存匹配结果命令
      */
     @Transactional
     public void saveMatchResult(final SaveMatchResultCommand command) {
@@ -168,25 +169,11 @@ public class MatchingApplicationService {
         log.info("Match result saved successfully for matchId: {}, ranked {} jobs", command.matchId(), rankedJobs.size());
     }
 
-    /**
-     * 查询匹配结果
-     * Get match result
-     *
-     * @param query 查询对象 / Query object
-     * @return 匹配结果实体(可选) / Optional match result entity
-     */
     @Transactional(readOnly = true)
     public Optional<JobMatchResult> getMatchResult(final GetMatchResultQuery query) {
         return jobMatchResultRepository.findById(query.matchId());
     }
 
-    /**
-     * 查询用户匹配历史
-     * List match history
-     *
-     * @param query 查询对象 / Query object
-     * @return 匹配历史列表 / Match history list
-     */
     @Transactional(readOnly = true)
     public List<JobMatchResult> listMatchHistory(final ListMatchHistoryQuery query) {
         return jobMatchResultRepository.findAllByUserIdOrderByCreatedAtDesc(query.userId());

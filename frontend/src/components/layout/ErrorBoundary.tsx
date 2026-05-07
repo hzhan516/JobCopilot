@@ -14,12 +14,11 @@ interface ErrorBoundaryState {
 }
 
 /**
- * React 19 + TypeScript 兼容的全局错误边界
- * Global Error Boundary compatible with React 19 and TypeScript
+ * Global error boundary compatible with React 19 and TypeScript.
+ * Placed at the route root to prevent a single subtree crash from bringing down the entire app.
  *
- * 使用方式：包裹在路由根层级，捕获子树渲染错误并展示降级 UI。
- * Usage: wrap at the route root level to catch subtree render errors
- * and display a fallback UI.
+ * React 19 + TypeScript 兼容的全局错误边界。
+ * 置于路由根层级，防止单个子树渲染错误导致整个应用崩溃。
  */
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
@@ -32,8 +31,8 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 
   override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    // Hook for external error tracking (Sentry / LogRocket) in production
     // 生产环境可接入 Sentry / LogRocket 等监控服务
-    // In production, integrate with Sentry / LogRocket:
     console.error('[ErrorBoundary] Caught an error:', error, errorInfo);
   }
 

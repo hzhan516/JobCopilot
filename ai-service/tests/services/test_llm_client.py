@@ -92,9 +92,6 @@ def test_generate_json_from_image_prompt(mock_generate):
     assert content[1]["image_url"]["url"].startswith("data:image/png;base64,")
 
 
-# ============== _safe_json_loads tests ==============
-
-
 def test_safe_json_loads_valid_json():
     text = '{"key": "value", "num": 42}'
     result = _safe_json_loads(text)

@@ -13,13 +13,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 
 /**
- * 向量应用服务 / Vector application service
- * <p>
- * 负责调用 AI Service REST 端点同步生成嵌入向量并持久化到领域仓库。
- * 所有写操作均在事务边界内执行，遵循 CQRS 原则。
- * Responsible for calling AI Service REST endpoint to synchronously generate embeddings
- * and persist them to domain repositories.
- * All write operations are executed within transaction boundaries, following CQRS.
+ * Synchronous embedding gateway that bridges domain write operations with the AI service.
+ * Every vector write is wrapped in a transaction so failures can be recorded as FAILED rows
+ * instead of silently dropping the request.
+ * 同步嵌入网关，衔接领域写操作与 AI 服务。每次向量写入均包裹在事务中，使失败可被记录为 FAILED 行而非静默丢弃请求
  */
 @Slf4j
 @Service
@@ -33,12 +30,14 @@ public class VectorApplicationService {
     private final FailedVectorPersistenceService failedVectorPersistenceService;
 
     /**
-     * 同步生成向量并保存
-     * Synchronously generate embedding and persist.
+     * Generates an embedding for the given text, validates dimension alignment against the
+     * configured model, and persists the result. Dimension mismatches are treated as hard failures
+     * to prevent silent corruption of the vector index.
+     * 为给定文本生成嵌入向量，根据配置的模型校验维度一致性，然后持久化结果。维度不匹配被视为硬失败，以防止向量索引被静默污染
      *
-     * @param referenceId 实体 ID / Entity ID
-     * @param entityType  实体类型 ("JOB" or "RESUME") / Entity type
-     * @param text        待嵌入文本 / Text to embed
+     * @param referenceId Entity ID / 实体 ID
+     * @param entityType  Entity type ("JOB" or "RESUME") / 实体类型
+     * @param text        Text to embed / 待嵌入文本
      */
     @Transactional
     public void generateAndSaveVector(String referenceId, String entityType, String text) {
@@ -64,7 +63,6 @@ public class VectorApplicationService {
         }
     }
 
-    // 保存成功的向量 / Save completed vector
     private void saveCompletedVector(String referenceId, String entityType, float[] embedding) {
         String id = UUID.randomUUID().toString();
         if (isResumeEntity(entityType)) {
@@ -82,7 +80,6 @@ public class VectorApplicationService {
         }
     }
 
-    // 保存失败的向量 / Save failed vector
     private void saveFailedVector(String referenceId, String entityType, String errorMessage) {
         failedVectorPersistenceService.saveFailedVector(referenceId, entityType, errorMessage);
     }

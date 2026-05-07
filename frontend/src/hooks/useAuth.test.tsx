@@ -33,7 +33,8 @@ describe('useAuth', () => {
   })
 
   it('throws when used outside AuthProvider', () => {
-    // Suppress console.error for expected throw
+    // Prevent expected error from polluting test output
+    // 抑制预期的错误输出，避免污染测试日志
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     expect(() => renderHook(() => useAuth())).toThrow('useAuth must be used within an AuthProvider')
     consoleSpy.mockRestore()

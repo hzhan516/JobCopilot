@@ -13,15 +13,14 @@ import JobEmptyState from './components/JobEmptyState';
 import JobCreateModal from './components/JobCreateModal';
 
 /**
- * JobList 容器组件
- * JobList container — orchestrates data fetching, state management,
- * and assembles presentational child components.
+ * Orchestrates data fetching, state management, and composes presentational child components.
+ *
+ * 职位列表容器组件，负责数据获取、状态管理与子组件组装
  */
 export default function JobList() {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  // === Job Store（全局业务状态）===
   const jobs = useJobStore((state) => state.filteredJobs);
   const loading = useJobStore((state) => state.loading);
   const filters = useJobStore((state) => state.filters);
@@ -37,30 +36,30 @@ export default function JobList() {
   const submitJobToStore = useJobStore((state) => state.submitJob);
   const deleteJob = useJobStore((state) => state.deleteJob);
 
-  // === 局部 UI 状态（无需全局共享）===
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [matchFilter, setMatchFilter] = useState<string>('ALL');
 
-  // === 简历数据（Resume 领域，由本地管理）===
   const [resumes, setResumes] = useState<ResumeGroup[]>([]);
 
-  // === 初始化数据加载 ===
   useEffect(() => {
     fetchJobs();
     loadScoreHistory();
 
-    // 初始化加载简历列表（内联以避免 ESLint set-state-in-effect 误报）
+    // Inline async to avoid ESLint set-state-in-effect false positives
+    // 内联异步以避免 ESLint set-state-in-effect 误报
     resumeService
       .getResumeGroups()
       .then((data) => {
         setResumes(data);
       })
       .catch(() => {
-        // 简历加载非关键路径，静默处理
+        // Non-critical path — silently degrade
+        // 简历加载非关键路径，静默降级
       });
   }, [fetchJobs, loadScoreHistory]);
 
-  // === 智能轮询：简历解析状态 ===
+  // Poll resume parse status every 3s when any resume is pending
+  // 有简历正在解析时，每 3 秒轮询一次状态
   useEffect(() => {
     const hasPendingResume = resumes.some((group) =>
       [group.originalVersion, group.convertedVersion, group.aiOptimizedVersion]
@@ -76,14 +75,14 @@ export default function JobList() {
           setResumes(data);
         })
         .catch(() => {
-          // 静默处理
+          // Silently degrade
+          // 静默降级
         });
     }, 3000);
 
     return () => clearInterval(interval);
   }, [resumes]);
 
-  // === 派生数据：可用简历版本列表 ===
   const availableResumeVersions = useMemo(
     () =>
       resumes.flatMap((group) =>
@@ -98,8 +97,8 @@ export default function JobList() {
     [resumes]
   );
 
-  // === 匹配度本地过滤（基于已有评分数据）===
-  // === Local match-score filtering (based on existing score data) ===
+  // Client-side match-score filtering using cached score data
+  // 基于已有评分数据进行客户端匹配度过滤
   const displayJobs = useMemo(() => {
     if (matchFilter === 'ALL') return jobs;
     return jobs.filter((job) => {
@@ -121,7 +120,6 @@ export default function JobList() {
     });
   }, [jobs, matchFilter, selectedResumes, scoreResults]);
 
-  // === 事件处理器 ===
   const handleScoreJob = useCallback(
     async (jobId: string) => {
       const resumeVersionId = selectedResumes[jobId];
@@ -150,7 +148,6 @@ export default function JobList() {
     [deleteJob, t]
   );
 
-  // === 渲染加载态 ===
   if (loading && jobs.length === 0) {
     return (
       <JobListSkeleton

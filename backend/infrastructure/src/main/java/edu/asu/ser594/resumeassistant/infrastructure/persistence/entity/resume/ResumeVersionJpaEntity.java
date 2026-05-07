@@ -10,14 +10,20 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * 简历版本 JPA 实体
- * Resume Version JPA Entity
- * <p>
- * 注意：
- * - 不使用 @Data 注解
- * - 使用 @EqualsAndHashCode(onlyExplicitlyIncluded = true) 仅基于 ID
- * - content 和 parsedContent 为大文本/JSON 字段，避免在 toString 中输出
- * - parsed_content 使用 @JdbcTypeCode(SqlTypes.JSON) 映射 PostgreSQL JSONB 类型
+ * JPA entity for a resume version snapshot.
+ * <p>Design notes:</p>
+ * <ul>
+ *   <li>Avoids @Data to prevent accidental toString exposure of large text/JSON fields</li>
+ *   <li>@EqualsAndHashCode scoped to ID only for stable collection behavior</li>
+ *   <li>parsed_content mapped as JSONB via @JdbcTypeCode(SqlTypes.JSON)</li>
+ * </ul>
+ * 简历版本快照的 JPA 实体
+ * <p>设计注意：</p>
+ * <ul>
+ *   <li>不使用 @Data，防止 toString 意外输出大文本/JSON 字段</li>
+ *   <li>@EqualsAndHashCode 仅基于 ID，保证集合行为稳定</li>
+ *   <li>parsed_content 通过 @JdbcTypeCode(SqlTypes.JSON) 映射为 PostgreSQL JSONB</li>
+ * </ul>
  */
 @Entity
 @Table(name = "resume_versions")
@@ -60,16 +66,11 @@ public class ResumeVersionJpaEntity {
     @Column(name = "storage_path", columnDefinition = "TEXT")
     private String storagePath;
 
-    @Column(name = "storage_provider", length = 50)
-    private String storageProvider;
-
     @Column(name = "content", columnDefinition = "TEXT")
-    // 注意：不在 toString 中包含大文本内容
     private String content;
 
     @Column(name = "parsed_content")
     @JdbcTypeCode(SqlTypes.JSON)
-    // 注意：不在 toString 中包含 JSON 内容
     private String parsedContent;
 
     @Enumerated(EnumType.STRING)

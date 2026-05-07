@@ -13,10 +13,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * 安全配置
- * Security configuration
- * 允许匿名访问身份验证端点
- * Allows anonymous access to auth endpoints
+ * Configures the HTTP security filter chain for stateless JWT-based authentication.
+ * 配置基于无状态 JWT 的 HTTP 安全过滤器链
  */
 @Configuration
 @EnableWebSecurity

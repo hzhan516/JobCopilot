@@ -3,23 +3,23 @@ import i18n from '@/i18n';
 const TIMEZONE_STORAGE_KEY = 'user-timezone';
 
 /**
- * 获取用户偏好时区，若未设置则返回浏览器自动检测的本地时区
- * Get user's preferred time zone; fallback to browser-detected local time zone
+ * Returns the user's preferred time zone, falling back to the browser's detected locale.
+ * Silently degrades if localStorage is unavailable (e.g., private mode).
+ *
+ * 获取用户偏好时区；若未设置则回退到浏览器检测的本地时区。
+ * localStorage 不可用时静默降级（如隐私模式）。
  */
 export function getUserTimeZone(): string {
   try {
     const stored = localStorage.getItem(TIMEZONE_STORAGE_KEY);
     if (stored) return stored;
   } catch {
-    // localStorage 不可用时不阻塞 / Ignore if localStorage is unavailable
+    // Silently degrade when localStorage is unavailable
+    // localStorage 不可用时静默降级
   }
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-/**
- * 设置用户偏好时区
- * Set user's preferred time zone
- */
 export function setUserTimeZone(timeZone: string): void {
   try {
     localStorage.setItem(TIMEZONE_STORAGE_KEY, timeZone);
@@ -28,10 +28,6 @@ export function setUserTimeZone(timeZone: string): void {
   }
 }
 
-/**
- * 清除用户偏好时区，恢复为浏览器自动检测
- * Clear user's preferred time zone to revert to browser auto-detection
- */
 export function clearUserTimeZone(): void {
   try {
     localStorage.removeItem(TIMEZONE_STORAGE_KEY);
@@ -40,10 +36,6 @@ export function clearUserTimeZone(): void {
   }
 }
 
-/**
- * 获取当前界面 locale
- * Get current UI locale
- */
 export function getLocale(): string {
   if (i18n.language === 'zh-TW') return 'zh-TW';
   if (i18n.language === 'zh-CN') return 'zh-CN';
@@ -51,8 +43,10 @@ export function getLocale(): string {
 }
 
 /**
- * 格式化日期，按用户所在时区显示
- * Format date according to user's time zone
+ * Formats a date using the user's locale and preferred time zone.
+ * Falls back to browser defaults when no preference is stored.
+ *
+ * 按用户 locale 与偏好时区格式化日期；未设置时回退到浏览器默认值
  */
 export function formatDate(
   date: Date | string | number,
@@ -65,10 +59,6 @@ export function formatDate(
   });
 }
 
-/**
- * 格式化时间，按用户所在时区显示
- * Format time according to user's time zone
- */
 export function formatTime(
   date: Date | string | number,
   options?: Intl.DateTimeFormatOptions
@@ -82,10 +72,6 @@ export function formatTime(
   });
 }
 
-/**
- * 格式化日期时间，按用户所在时区显示
- * Format date and time according to user's time zone
- */
 export function formatDateTime(
   date: Date | string | number,
   options?: Intl.DateTimeFormatOptions

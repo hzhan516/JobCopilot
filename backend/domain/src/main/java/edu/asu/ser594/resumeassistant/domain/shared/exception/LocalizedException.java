@@ -2,8 +2,11 @@ package edu.asu.ser594.resumeassistant.domain.shared.exception;
 
 import lombok.Getter;
 
-// 支持国际化的异常
-// Exception with i18n support
+/**
+ * Base exception that carries an i18n message key instead of a rendered message,
+ * keeping the domain layer independent of presentation-layer localization infrastructure.
+ * 携带国际化消息键而非渲染后文本的异常基类，使领域层独立于展示层的本地化基础设施。
+ */
 @Getter
 public abstract class LocalizedException extends RuntimeException {
     private final String messageKey;

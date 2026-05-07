@@ -2,10 +2,10 @@ import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestCo
 import type { ApiResponse, AuthResponse, LoginRequest, RegisterRequest, LoginByGoogleRequest } from '@/types';
 import tokenStorage from './tokenStorage';
 
-// 最大重试次数（网络抖动时）
+// Maximum retry attempts for transient network failures
+// 网络抖动时的最大重试次数
 const MAX_RETRIES = 2;
 
-// 创建 axios 实例
 const apiClient: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: 30000,
@@ -14,7 +14,8 @@ const apiClient: AxiosInstance = axios.create({
   },
 });
 
-// 请求拦截器 - 添加认证 token
+// Attach JWT token to every outgoing request to ensure authenticated API access
+// 为每个请求附加 JWT，确保后端接口的认证访问
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = tokenStorage.getAccessToken();
@@ -26,7 +27,6 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 刷新 token 相关状态
 let isRefreshing = false;
 let refreshSubscribers: Array<(token: string) => void> = [];
 
@@ -44,13 +44,13 @@ function clearAuthAndRedirect() {
   window.location.href = '/login';
 }
 
-// 尝试刷新 token
 async function doRefreshToken(): Promise<string | null> {
   const refreshToken = tokenStorage.getRefreshToken();
   if (!refreshToken) return null;
 
   try {
-    // 使用独立 axios 实例避免拦截器循环
+    // Use a standalone axios instance to avoid interceptor recursion
+    // 使用独立 axios 实例，防止拦截器循环触发
     const response = await axios.post<ApiResponse<AuthResponse>>(
       `${import.meta.env.VITE_API_BASE_URL || '/api'}/v1/auth/refresh`,
       { refreshToken }
@@ -62,29 +62,34 @@ async function doRefreshToken(): Promise<string | null> {
       return accessToken;
     }
   } catch {
-    // 刷新失败，静默处理，由调用方决定如何跳转
+    // Silently fail; let the caller decide whether to redirect
+    // 刷新失败静默处理，由调用方决定跳转策略
   }
   return null;
 }
 
 /**
- * 判断是否为可重试的网络错误
- * Determine if an error is a retryable network error
+ * Retryable network errors are those without a response (network layer failure),
+ * excluding intentional timeouts to avoid masking slow server issues.
+ *
+ * 可重试错误仅限无响应的网络层失败，排除主动超时以避免掩盖服务端性能问题
  */
 function isRetryableNetworkError(error: AxiosError<unknown>): boolean {
   return (
-    !error.response && // 无响应（网络层失败）
-    error.code !== 'ECONNABORTED' // 排除主动超时（timeout）
+    !error.response &&
+    error.code !== 'ECONNABORTED'
   );
 }
 
-// 响应拦截器 - 统一错误处理、Token 自动续期、请求重试
+// Response interceptor: handles token refresh, request retry, and unified error propagation
+// 响应拦截器：统一处理 Token 续期、请求重试与错误传播
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiResponse<unknown>>) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean; _retryCount?: number };
 
-    // ========== 1. 网络错误重试机制（仅对 GET 请求） ==========
+    // ===== Retry GET requests on transient network failures using exponential backoff =====
+    // ===== 对 GET 请求使用指数退避重试，提高弱网环境下的请求成功率 =====
     if (
       originalRequest &&
       originalRequest.method?.toLowerCase() === 'get' &&
@@ -93,6 +98,7 @@ apiClient.interceptors.response.use(
       const retryCount = originalRequest._retryCount ?? 0;
       if (retryCount < MAX_RETRIES) {
         originalRequest._retryCount = retryCount + 1;
+        // Exponential backoff: 1s, 2s
         // 指数退避：1s, 2s
         const delayMs = 1000 * Math.pow(2, retryCount);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -100,9 +106,11 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // ========== 2. Token 自动续期 ==========
+    // ===== Automatic token refresh on 401 =====
+    // ===== Token 自动续期 =====
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
-      // 登录/注册失败时的 401 由调用方自行处理，不执行全局跳转
+      // Login/register 401 should be handled by callers to show field-level errors
+      // 登录/注册失败的 401 由调用方处理，以展示表单级错误提示
       if (
         originalRequest.url?.includes('/v1/auth/login/email') ||
         originalRequest.url?.includes('/v1/auth/register/email')
@@ -110,7 +118,8 @@ apiClient.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      // 避免在刷新接口本身出错时进入死循环
+      // Prevent infinite loop when the refresh endpoint itself returns 401
+      // 避免刷新接口返回 401 时进入死循环
       if (originalRequest.url?.includes('/v1/auth/refresh')) {
         clearAuthAndRedirect();
         return Promise.reject(error);
@@ -119,7 +128,8 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
 
       if (isRefreshing) {
-        // 等待刷新完成后重试
+        // Queue subsequent requests until refresh completes
+        // 刷新期间将后续请求入队，避免并发触发多次刷新
         return new Promise((resolve) => {
           addRefreshSubscriber((token: string) => {
             originalRequest.headers.Authorization = `Bearer ${token}`;
@@ -138,7 +148,6 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       }
 
-      // 刷新失败，强制登出
       clearAuthAndRedirect();
     }
 
@@ -146,11 +155,13 @@ apiClient.interceptors.response.use(
   }
 );
 
-// ========== AbortController 工具函数 ==========
-
 /**
- * 创建一个可取消的请求包装器
- * Creates an abortable request wrapper
+ * Creates an abortable request wrapper that superseds previous pending requests.
+ * Useful when rapid user interactions (e.g., typing, switching tabs) may trigger
+ * overlapping API calls.
+ *
+ * 创建可取消请求包装器，新请求自动取消前一个_pending_请求。
+ * 适用于用户高频操作（如输入、切换标签）可能产生重叠请求的场景。
  *
  * @example
  * const { execute, abort } = createAbortableRequest();
@@ -160,14 +171,12 @@ apiClient.interceptors.response.use(
  *   return jobs;
  * });
  *
- * // 取消当前请求
  * abort();
  */
 export function createAbortableRequest() {
   let controller: AbortController | null = null;
 
   const execute = <T>(fn: (signal: AbortSignal) => Promise<T>): Promise<T> => {
-    // 取消之前的请求
     controller?.abort();
     controller = new AbortController();
 
@@ -186,9 +195,7 @@ export function createAbortableRequest() {
   return { execute, abort };
 }
 
-// 认证服务
 export const authService = {
-  // 邮箱注册
   register: async (data: RegisterRequest, rememberMe = false): Promise<AuthResponse> => {
     const response = await apiClient.post<ApiResponse<AuthResponse>>('/v1/auth/register/email', data);
     if (response.data.code === 200) {
@@ -200,7 +207,6 @@ export const authService = {
     throw new Error(response.data.message);
   },
 
-  // 邮箱登录
   login: async (data: LoginRequest, rememberMe = false): Promise<AuthResponse> => {
     const response = await apiClient.post<ApiResponse<AuthResponse>>('/v1/auth/login/email', data);
     if (response.data.code === 200) {
@@ -212,7 +218,6 @@ export const authService = {
     throw new Error(response.data.message);
   },
 
-  // Google 登录
   loginByGoogle: async (data: LoginByGoogleRequest, rememberMe = false): Promise<AuthResponse> => {
     const response = await apiClient.post<ApiResponse<AuthResponse>>('/v1/auth/login/google', data);
     if (response.data.code === 200) {
@@ -224,22 +229,18 @@ export const authService = {
     throw new Error(response.data.message);
   },
 
-  // 登出
   logout: () => {
     tokenStorage.clear();
   },
 
-  // 获取当前用户
   getCurrentUser: (): { userId: string; email: string } | null => {
     return tokenStorage.getUser();
   },
 
-  // 检查是否已登录
   isAuthenticated: (): boolean => {
     return !!tokenStorage.getAccessToken();
   },
 
-  // Token 是否即将过期
   isTokenExpired: (): boolean => {
     return tokenStorage.isTokenExpired();
   },

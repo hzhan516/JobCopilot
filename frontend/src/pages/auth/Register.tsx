@@ -139,7 +139,6 @@ export default function Register() {
         <LanguageSwitcher />
       </div>
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="flex justify-center mb-8">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -333,7 +332,6 @@ export default function Register() {
           </CardFooter>
         </Card>
 
-        {/* 页脚 */}
         <p className="text-center text-sm text-gray-500 mt-8">
           © 2024 {t('common.appName')}. All rights reserved.
         </p>

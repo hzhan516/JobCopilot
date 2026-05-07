@@ -21,10 +21,6 @@ interface JobCreateModalProps {
   onSubmit: (url: string, screenshot: File) => Promise<void>;
 }
 
-/**
- * 创建职位弹窗
- * Job creation modal — URL + screenshot upload form
- */
 export default function JobCreateModal({ open, onOpenChange, onSubmit }: JobCreateModalProps) {
   const { t } = useTranslation();
   const [jobUrl, setJobUrl] = useState('');
@@ -79,6 +75,7 @@ export default function JobCreateModal({ open, onOpenChange, onSubmit }: JobCrea
       await onSubmit(jobUrl.trim(), screenshotFile);
       resetForm();
     } catch {
+      // Errors are handled by the caller (toast)
       // 错误已由调用方处理（toast）
     } finally {
       setIsSubmitting(false);

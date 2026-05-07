@@ -15,6 +15,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Rehydrate user from storage on mount to preserve auth state across page refreshes
+  // 从存储中恢复用户状态，确保页面刷新后认证信息不丢失
   const [user, setUser] = useState<{ userId: string; email: string } | null>(() => {
     return authService.getCurrentUser();
   });

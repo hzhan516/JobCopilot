@@ -3,7 +3,8 @@ import { render, screen } from '@testing-library/react'
 import { ParseStatusBadge } from './ParseStatusBadge'
 import type { ResumeVersion } from '@/types/resume'
 
-// Mock react-i18next useTranslation
+// Isolate component from i18n dependencies for deterministic assertions
+// 隔离组件与 i18n 依赖，确保断言结果确定可控
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,

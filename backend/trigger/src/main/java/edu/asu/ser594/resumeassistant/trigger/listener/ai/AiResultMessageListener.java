@@ -18,14 +18,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * AI 结果消息监听器 / AI result message listener
- * <p>
- * 严格遵循 DDD 分层规范：仅依赖 API 层 Facade 接口，不直接触碰 Domain 或 Infrastructure。
- * 队列名称通过 ${...} 占位符从配置文件中读取，解除对 RabbitMqConfig 配置类的直接依赖。
- * Strictly follows DDD layering: only depends on API-layer Facade interfaces,
- * never directly touches Domain or Infrastructure.
- * Queue names are read from configuration files via ${...} placeholders,
- * decoupling from the RabbitMqConfig class.
+ * Async inbound gateway for AI service results. Decouples the AI worker from business workflows by
+ * delegating outcomes to API-layer facades while swallowing exceptions to avoid poisonous messages.
+ * AI 服务结果的异步入口网关。通过将处理结果委托给 API 层门面来解耦 AI 工作线程与业务流，同时捕获异常以避免毒消息
  */
 @Slf4j
 @Component
@@ -38,9 +33,6 @@ public class AiResultMessageListener {
     private final VectorFacade vectorFacade;
     private final MatchingFacade matchingFacade;
 
-    /**
-     * 监听职位解析结果 / Listen for job parse results
-     */
     @RabbitListener(queues = "${app.rabbitmq.queue.res.job-parse}")
     public void onJobParseResult(AiResultEvent event) {
         log.info("Received AiResultEvent for JOB_PARSE, referenceId: {}, status: {}", event.referenceId(), event.status());
@@ -51,9 +43,6 @@ public class AiResultMessageListener {
         }
     }
 
-    /**
-     * 监听简历解析结果 / Listen for resume parse results
-     */
     @RabbitListener(queues = "${app.rabbitmq.queue.res.resume-parse}")
     public void onResumeParseResult(AiResultEvent event) {
         log.info("Received AiResultEvent for RESUME_PARSE, referenceId: {}, status: {}", event.referenceId(), event.status());
@@ -64,9 +53,6 @@ public class AiResultMessageListener {
         }
     }
 
-    /**
-     * 监听对话回复结果 / Listen for conversation reply results
-     */
     @RabbitListener(queues = "${app.rabbitmq.queue.res.conversation}")
     public void onConversationReply(AiResultEvent event) {
         log.info("Received AiResultEvent for CONVERSATION_REPLY, referenceId: {}, status: {}", event.referenceId(), event.status());
@@ -80,12 +66,10 @@ public class AiResultMessageListener {
                         null,
                         null
                 );
-                // 释放等待中的流连接 / Release pending stream connection
                 conversationFacade.failAiReply(event.referenceId(), errorContent);
                 return;
             }
 
-            // 提取回复内容、文件 URL 和 AI 优化简历 / Extract reply content, file URL and AI optimized resume
             String content = extractReplyContent(event);
             String fileUrl = extractFileUrl(event);
             String aiOptimizedMarkdown = extractAiOptimizedMarkdown(event);
@@ -93,7 +77,6 @@ public class AiResultMessageListener {
             conversationFacade.saveAiReply(event.referenceId(), content, fileUrl, aiOptimizedMarkdown);
             log.info("Saved AI reply for conversation: {}", event.referenceId());
 
-            // 唤醒等待中的流请求 / Wake up pending stream request
             conversationFacade.completeAiReply(event.referenceId(), content);
         } catch (Exception e) {
             log.error("Error processing AiResultEvent for CONVERSATION_REPLY referenceId: {}", event.referenceId(), e);
@@ -101,9 +84,6 @@ public class AiResultMessageListener {
         }
     }
 
-    /**
-     * 监听职位精排结果 / Listen for job rank results
-     */
     @RabbitListener(queues = "${app.rabbitmq.queue.res.job-rank}")
     public void onJobRankResult(AiResultEvent event) {
         log.info("Received AiResultEvent for JOB_RANK, referenceId: {}, status: {}",
@@ -171,7 +151,6 @@ public class AiResultMessageListener {
         return 0.0;
     }
 
-    // 提取回复内容 / Extract reply content
     private String extractReplyContent(AiResultEvent event) {
         if (event.data() != null && event.data().containsKey("content")) {
             return (String) event.data().get("content");
@@ -179,7 +158,6 @@ public class AiResultMessageListener {
         return "";
     }
 
-    // 提取文件 URL / Extract file URL
     private String extractFileUrl(AiResultEvent event) {
         if (event.data() != null && event.data().containsKey("fileUrl")) {
             return (String) event.data().get("fileUrl");
@@ -187,7 +165,6 @@ public class AiResultMessageListener {
         return null;
     }
 
-    // 提取 AI 优化后的 Markdown / Extract AI optimized markdown
     private String extractAiOptimizedMarkdown(AiResultEvent event) {
         if (event.data() == null) {
             return null;

@@ -5,16 +5,15 @@ import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Component;
 
 /**
- * BCrypt 密码编码器实现 / BCrypt password encoder implementation
+ * Domain PasswordEncoder adapter delegating to Spring Security's BCrypt implementation.
+ * Truncates passwords exceeding 72 bytes because BCrypt silently ignores trailing bytes beyond that limit.
+ * 领域 PasswordEncoder 适配器，委托给 Spring Security BCrypt；对超过 72 字节的密码做截断，因为 BCrypt 会静默忽略尾部字节
  */
 @Component
 public class BCryptPasswordEncoderImpl implements PasswordEncoder {
 
     private static final int STRENGTH = 10;
 
-    /**
-     * 编码密码 / Encode password
-     */
     @Override
     public String encode(String rawPassword) {
         if (rawPassword == null) {
@@ -24,9 +23,6 @@ public class BCryptPasswordEncoderImpl implements PasswordEncoder {
         return BCrypt.hashpw(truncatedPassword, BCrypt.gensalt(STRENGTH));
     }
 
-    /**
-     * 校验密码是否匹配 / Check if password matches
-     */
     @Override
     public boolean matches(String rawPassword, String encodedPassword) {
         if (rawPassword == null || encodedPassword == null) {
@@ -36,7 +32,8 @@ public class BCryptPasswordEncoderImpl implements PasswordEncoder {
         return BCrypt.checkpw(truncatedPassword, encodedPassword);
     }
 
-    // BCrypt 最大支持 72 字节，超长密码需要截断 / BCrypt supports max 72 bytes, truncate if necessary
+    // BCrypt silently truncates input at 72 bytes; pre-truncation ensures consistent behavior across implementations
+    // BCrypt 在 72 字节处静默截断输入，预截断确保跨实现行为一致
     private String truncatePassword(String password) {
         byte[] bytes = password.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         if (bytes.length > 72) {

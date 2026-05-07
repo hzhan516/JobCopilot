@@ -7,8 +7,10 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * Word 转换器：DOCX ↔ MD/PDF，由 Pandoc 和 LibreOffice 提供支持
- * Word converter: DOCX ↔ MD/PDF, powered by Pandoc and LibreOffice
+ * DOCX converter delegating to Pandoc for markup formats and LibreOffice for PDF output.
+ * Pandoc handles structural fidelity better for MD/HTML, while LibreOffice preserves
+ * visual layout when producing PDFs from Word documents.
+ * DOCX 转换器，Pandoc 处理 MD/HTML 以保持结构保真，LibreOffice 处理 PDF 以保留视觉布局
  */
 @Slf4j
 @Component
@@ -26,20 +28,14 @@ public class WordConverter extends AbstractDocumentConverter {
         String sf = sourceFormat.toLowerCase();
         String tf = targetFormat.toLowerCase();
 
-        // DOCX 转 MD / TXT / HTML
-        // DOCX to MD / TXT / HTML
         if ((sf.equals("docx") || sf.equals("doc")) && (tf.equals("md") || tf.equals("txt") || tf.equals("html"))) {
             return ExternalCommandUtils.runPandoc(source, sf, tf, null);
         }
 
-        // MD / HTML / TXT 转 DOCX
-        // MD / HTML / TXT to DOCX
         if ((sf.equals("md") || sf.equals("markdown") || sf.equals("html") || sf.equals("txt")) && tf.equals("docx")) {
             return ExternalCommandUtils.runPandoc(source, sf, "docx", null);
         }
 
-        // DOCX 转 PDF
-        // DOCX to PDF
         if ((sf.equals("docx") || sf.equals("doc")) && tf.equals("pdf")) {
             return ExternalCommandUtils.runLibreOffice(source, sf, "pdf");
         }

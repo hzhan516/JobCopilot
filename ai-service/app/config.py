@@ -38,7 +38,8 @@ VERTEX_PROJECT_ID = os.getenv("VERTEX_PROJECT_ID", "ser594-ai-service")
 VERTEX_LOCATION = os.getenv("VERTEX_LOCATION", "global")
 VERTEX_CREDENTIALS = os.getenv("VERTEX_CREDENTIALS")
 
-# Export standard variables required by LiteLLM for Vertex AI routing
+# LiteLLM requires these exact environment variables to route requests to Vertex AI.
+# LiteLLM 依赖这些特定的环境变量完成 Vertex AI 请求路由。
 os.environ["VERTEXAI_PROJECT"] = VERTEX_PROJECT_ID
 os.environ["VERTEX_PROJECT"] = VERTEX_PROJECT_ID
 os.environ["VERTEX_LOCATION"] = VERTEX_LOCATION
@@ -46,8 +47,9 @@ os.environ["VERTEX_LOCATION"] = VERTEX_LOCATION
 if VERTEX_CREDENTIALS:
     creds_path = Path(VERTEX_CREDENTIALS)
 
-    # If the path is relative and doesn't exist from CWD, resolve against the
-    # project root (the directory containing the ai-service/ folder).
+    # When running inside Docker, relative paths may not resolve from CWD.
+    # Fall back to the project root (parent of ai-service/) to keep credentials portable.
+    # Docker 内运行时相对路径可能无法从当前工作目录解析，因此以项目根目录为基准进行二次查找，保证凭据路径可移植。
     if not creds_path.is_file() and not creds_path.is_absolute():
         project_root = Path(__file__).resolve().parent.parent.parent
         alt_path = project_root / creds_path
@@ -55,12 +57,12 @@ if VERTEX_CREDENTIALS:
             creds_path = alt_path
 
     if creds_path.is_file():
-        # Read the service account JSON key from the file path
         creds_content = creds_path.read_text()
         os.environ["VERTEX_CREDENTIALS"] = creds_content
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(creds_path)
     else:
-        # Backward compatibility: value may be a raw JSON string
+        # Support raw JSON string for environments without a mounted file.
+        # 无文件挂载的环境支持直接传入 JSON 字符串作为凭据。
         os.environ["VERTEX_CREDENTIALS"] = VERTEX_CREDENTIALS
 
 LLM_TEXT_MODEL = os.getenv("LLM_TEXT_MODEL", "gemini/gemini-2.5-flash")

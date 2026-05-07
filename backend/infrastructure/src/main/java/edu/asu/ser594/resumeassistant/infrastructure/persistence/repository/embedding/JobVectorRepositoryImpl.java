@@ -15,7 +15,9 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 职位向量仓库实现 / Job vector repository implementation
+ * Infrastructure implementation of JobVectorRepository bridging domain operations
+ * to pgvector-backed JPA queries and JSON field handling.
+ * JobVectorRepository 的基础设施实现，桥接领域操作与 pgvector 原生查询及 JSON 字段处理
  */
 @Slf4j
 @Repository
@@ -25,20 +27,14 @@ public class JobVectorRepositoryImpl implements JobVectorRepository {
     private final JobVectorJpaRepository jpaRepository;
     private final ObjectMapper objectMapper;
 
-    /**
-     * 保存向量（存在则更新） / Save vector (update if exists)
-     */
     @Override
     public void save(JobVector vector) {
         Optional<JobVectorJpaEntity> existing = jpaRepository.findByJobId(vector.getJobId());
         JobVectorJpaEntity entity = toEntity(vector);
-        existing.ifPresent(e -> entity.setId(e.getId())); // 复用已有 id，JPA 就会执行 UPDATE / Reuse existing id for JPA UPDATE
+        existing.ifPresent(e -> entity.setId(e.getId())); // Reuse ID to trigger JPA UPDATE | 复用已有 ID 使 JPA 执行更新
         jpaRepository.save(entity);
     }
 
-    /**
-     * 批量保存向量（逐条判断存在性后保存） / Save vectors in batch (check existence per item)
-     */
     @Override
     public void saveAll(List<JobVector> vectors) {
         List<JobVectorJpaEntity> entities = new ArrayList<>(vectors.size());
@@ -51,18 +47,12 @@ public class JobVectorRepositoryImpl implements JobVectorRepository {
         jpaRepository.saveAll(entities);
     }
 
-    /**
-     * 根据职位 ID 查询向量 / Find vector by job ID
-     */
     @Override
     public Optional<JobVector> findByJobId(String jobId) {
         return jpaRepository.findByJobId(jobId)
                 .map(this::toDomain);
     }
 
-    /**
-     * 向量近似最近邻搜索 / Vector approximate nearest neighbor search
-     */
     @Override
     public List<JobVectorSearchResult> findNearestNeighbors(String vectorStr, int limit) {
         List<Object[]> results = jpaRepository.findNearestNeighbors(vectorStr, limit);
@@ -79,7 +69,6 @@ public class JobVectorRepositoryImpl implements JobVectorRepository {
         return searchResults;
     }
 
-    // 将 requirements 字段转为 JSON 字符串 / Convert requirements field to JSON string
     private String convertRequirementsToJson(Object requirementsObj) {
         if (requirementsObj == null) {
             return null;
@@ -95,7 +84,6 @@ public class JobVectorRepositoryImpl implements JobVectorRepository {
         }
     }
 
-    // 领域对象转 JPA 实体 / Domain object to JPA entity
     private JobVectorJpaEntity toEntity(JobVector domain) {
         return JobVectorJpaEntity.builder()
                 .id(domain.getId())
@@ -114,7 +102,6 @@ public class JobVectorRepositoryImpl implements JobVectorRepository {
                 .build();
     }
 
-    // JPA 实体转领域对象 / JPA entity to domain object
     private JobVector toDomain(JobVectorJpaEntity entity) {
         return new JobVector(
                 entity.getId(),

@@ -1,7 +1,9 @@
 package edu.asu.ser594.resumeassistant.domain.shared.service;
 
-// 国际化消息提供接口
-// Message provider interface for i18n
+/**
+ * Anti-corruption interface that lets the domain layer resolve i18n messages without depending on infrastructure.
+ * 防腐层接口，使领域层能够解析国际化消息而不依赖基础设施实现。
+ */
 public interface MessageProvider {
     String getMessage(String key);
 

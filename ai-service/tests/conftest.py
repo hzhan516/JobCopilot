@@ -10,6 +10,8 @@ import app.main as main_module
 
 @pytest.fixture(autouse=True)
 def configure_test_environment(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Pin environment variables and suppress real MQ startup for the entire test session.
+    全局测试环境配置：固定环境变量并屏蔽真实的 MQ 启动，确保测试可重复且无外网依赖。"""
     monkeypatch.setenv("RABBITMQ_HOST", "localhost")
     monkeypatch.setenv("RABBITMQ_PORT", "5672")
     monkeypatch.setenv("RABBITMQ_USERNAME", "guest")
@@ -37,6 +39,8 @@ def test_client() -> Iterator[TestClient]:
 
 @pytest.fixture
 def mock_litellm(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    """Provide a mocked LiteLLM completion that returns deterministic JSON.
+    提供确定性返回的 LiteLLM mock：固定 JSON 输出，使 LLM 相关测试不依赖真实模型。"""
     mock_response = MagicMock()
     mock_choice = MagicMock()
     mock_message = MagicMock()
@@ -52,6 +56,8 @@ def mock_litellm(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 
 @pytest.fixture
 def mock_httpx(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock, MagicMock]:
+    """Stub both sync and async httpx clients with a default success response.
+    同时 mock 同步与异步 httpx 客户端：覆盖 AI 服务内所有 HTTP 调用场景。"""
     response = MagicMock()
     response.status_code = 200
     response.json.return_value = {}
@@ -79,6 +85,8 @@ def mock_httpx(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock, MagicMock]:
 
 @pytest.fixture
 def mock_rabbitmq(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock, MagicMock]:
+    """Stub RabbitMQ connection and channel for MQ-related tests.
+    mock RabbitMQ 连接与频道：避免测试期间建立真实 TCP 连接。"""
     channel = MagicMock()
     connection = MagicMock()
     connection.channel.return_value = channel

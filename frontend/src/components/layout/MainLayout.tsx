@@ -47,17 +47,14 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     navigate('/login');
   };
 
-  // 如果未认证，不渲染布局
   if (!isAuthenticated) {
     return <>{children}</>;
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 顶部导航栏 */}
       <header className="sticky top-0 z-50 w-full border-b bg-white shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <FileText className="w-5 h-5 text-white" />
@@ -65,7 +62,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             <span className="text-xl font-bold text-gray-900">{t('common.appName')}</span>
           </Link>
 
-          {/* 桌面端导航 */}
           <nav className="hidden md:flex items-center space-x-1">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -87,11 +83,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             })}
           </nav>
 
-          {/* 用户菜单 */}
           <div className="flex items-center space-x-2">
             <LanguageSwitcher />
 
-            {/* 移动端菜单 */}
             <Sheet>
               <SheetTrigger asChild className="md:hidden">
                 <Button variant="ghost" size="icon">
@@ -117,7 +111,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               </SheetContent>
             </Sheet>
 
-            {/* 用户下拉菜单 */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center space-x-2">
@@ -146,7 +139,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         </div>
       </header>
 
-      {/* 主内容区 */}
       <main className="container mx-auto px-4 py-6">{children}</main>
     </div>
   );

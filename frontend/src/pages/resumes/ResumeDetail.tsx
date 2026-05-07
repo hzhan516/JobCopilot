@@ -65,6 +65,7 @@ export default function ResumeDetail() {
 
   const selectedVersion = currentGroup.versions.find(v => v.versionId === selectedVersionId);
 
+  // Locate Original and AI Optimized versions for side-by-side comparison
   // 找到 Original 和 AI Optimized 版本用于对比
   const originalVersion = currentGroup.versions.find(
     (v) => v.versionType === 'ORIGINAL'
@@ -134,7 +135,6 @@ export default function ResumeDetail() {
         </div>
 
         <div className="w-full md:w-3/4 space-y-4">
-          {/* Tab 切换 */}
           <div className="flex items-center space-x-1 border-b">
             <button
               onClick={() => setActiveTab('detail')}
@@ -162,7 +162,6 @@ export default function ResumeDetail() {
             )}
           </div>
 
-          {/* Tab 内容 */}
           {activeTab === 'detail' && selectedVersion ? (
             <VersionDetail
               version={selectedVersion}

@@ -16,12 +16,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 职位向量搜索服务
- * Job vector search service
- * <p>
- * 提供基于向量的近似最近邻搜索，支持外部传入向量或由服务内部生成。
- * Provides vector-based approximate nearest neighbor search, supporting externally provided vectors
- * or internally generated ones.
+ * Executes approximate nearest neighbor search against pgvector using either a client-provided
+ * embedding or a text query that is internally embedded via the AI service.
+ * 使用客户端提供的嵌入向量或经由 AI 服务内部生成的文本查询，对 pgvector 执行近似最近邻搜索
  */
 @Slf4j
 @Service
@@ -36,11 +33,12 @@ public class JobVectorSearchService {
     private int maxSearchLimit;
 
     /**
-     * 执行向量搜索
-     * Execute vector search
+     * Performs vector similarity search with an upper bound to prevent unbounded result sets
+     * from degrading database performance.
+     * 执行向量相似度搜索并设置上限，防止无限制的结果集降低数据库性能
      *
-     * @param request 搜索请求 / Search request
-     * @return 搜索结果列表 / List of search results
+     * @param request Search request / 搜索请求
+     * @return List of search results / 搜索结果列表
      */
     public List<VectorSearchResponse> search(VectorSearchRequest request) {
         float[] embedding;
@@ -67,7 +65,6 @@ public class JobVectorSearchService {
                 .toList();
     }
 
-    // 将 List<Float> 转为 float[] / Convert List<Float> to float[]
     private float[] convertListToArray(List<Float> list) {
         float[] array = new float[list.size()];
         for (int i = 0; i < list.size(); i++) {
@@ -76,7 +73,8 @@ public class JobVectorSearchService {
         return array;
     }
 
-    // 构建 pgvector 字符串格式 / Build pgvector literal string
+    // pgvector requires the literal format [a,b,c] for native queries
+    // pgvector 原生查询要求字面量格式 [a,b,c]
     private String buildPgVectorLiteral(float[] vector) {
         StringBuilder sb = new StringBuilder();
         sb.append('[');
@@ -90,18 +88,19 @@ public class JobVectorSearchService {
         return sb.toString();
     }
 
-    // 将搜索结果映射为响应 DTO / Map search result to response DTO
     private VectorSearchResponse mapToResponse(JobVectorSearchResult result) {
         List<String> requirements = parseRequirements(result.requirementsJson());
 
-        // matchFactors 目前仅包含相似度，预留扩展 / matchFactors currently only contains similarity, reserved for extension
+        // matchFactors is intentionally minimal now; additional signals (e.g., keyword overlap) can be appended later
+        // matchFactors 当前有意保持最小化，后续可追加额外信号（如关键词重叠度）
         Map<String, Object> matchFactors = Map.of("similarity", result.similarity());
 
-        // company 信息目前从 raw_content 或 description 中无法直接提取，留空 / company info not directly available, left empty
+        // Company name is not indexed in the vector table; it must be resolved from the job domain if needed
+        // 公司名称未在向量表中索引，如需使用需从职位领域解析
         return new VectorSearchResponse(
                 result.jobId(),
                 result.title(),
-                "", // company 字段暂无直接来源 / company field not directly available
+                "",
                 result.description(),
                 requirements,
                 result.similarity().floatValue(),
@@ -109,7 +108,6 @@ public class JobVectorSearchService {
         );
     }
 
-    // 解析 requirements JSON 字符串 / Parse requirements JSON string
     private List<String> parseRequirements(String requirementsJson) {
         if (requirementsJson == null || requirementsJson.isBlank()) {
             return Collections.emptyList();

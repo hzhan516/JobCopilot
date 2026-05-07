@@ -11,8 +11,9 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * PDF 转换器：PDF ↔ MD/TXT（由 Pandoc 和 LibreOffice 提供支持）
- * PDF converter: PDF ↔ MD/TXT (powered by Pandoc and LibreOffice)
+ * PDF converter backed by PDFBox for text extraction and Pandoc for format generation.
+ * Uses weasyprint with CJK font support when rendering PDFs from markup to handle Chinese characters.
+ * PDF 转换器，PDFBox 负责文本提取，Pandoc 负责格式生成；渲染时启用 weasyprint + CJK 字体以支持中文
  */
 @Slf4j
 @Component
@@ -34,8 +35,6 @@ public class PdfConverter extends AbstractDocumentConverter {
             return new ByteArrayInputStream(source.readAllBytes());
         }
 
-        // PDF 转 TXT / MD / DOCX
-        // PDF to TXT / MD / DOCX
         if (sf.equals("pdf") && tf.equals("txt")) {
             return pdfToText(source);
         }
@@ -48,16 +47,10 @@ public class PdfConverter extends AbstractDocumentConverter {
             return ExternalCommandUtils.runPandoc(source, "pdf", "docx", null);
         }
 
-        // MD 转 PDF（Pandoc 使用 weasyprint 和 CJK 主字体）
-        // MD to PDF (Pandoc with weasyprint and CJK mainfont)
         if ((sf.equals("md") || sf.equals("markdown")) && tf.equals("pdf")) {
             return ExternalCommandUtils.runPandoc(source, sf, tf, "--pdf-engine=weasyprint -V CJKmainfont=\"Noto Sans SC\"");
         }
 
-        // HTML/TXT 转 PDF（根据简单标记可使用 LibreOffice 或 Pandoc）
-        // HTML/TXT to PDF (can use LibreOffice or Pandoc depending on simple markup)
-        // 由于 HTML 可能包含样式，weasyprint 是理想选择。
-        // Since HTML might be styled, weasyprint is ideal.
         if ((sf.equals("txt") || sf.equals("html")) && tf.equals("pdf")) {
             return ExternalCommandUtils.runPandoc(source, sf, tf, "--pdf-engine=weasyprint -V CJKmainfont=\"Noto Sans SC\"");
         }
@@ -65,10 +58,6 @@ public class PdfConverter extends AbstractDocumentConverter {
         throw new IOException("Unsupported conversion in PdfConverter: " + sourceFormat + " -> " + targetFormat);
     }
 
-    /**
-     * 使用 PDFBox 提取 PDF 文本
-     * Extract text from PDF using PDFBox
-     */
     private InputStream pdfToText(InputStream pdfStream) throws IOException {
         return toStream(pdfToTextAsString(pdfStream));
     }

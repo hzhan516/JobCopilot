@@ -19,7 +19,8 @@ declare module 'react-i18next' {
   }
 }
 
-// Override TFunction to accept any string key for dynamic lookups
+// Allow dynamic string keys (e.g., from backend-driven labels) beyond static JSON keys
+// 允许动态字符串键（如后端驱动的标签），超出静态 JSON 键的范围
 declare module 'i18next' {
   export interface TFunction {
     (

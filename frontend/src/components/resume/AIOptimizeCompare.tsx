@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ResumeVersion } from '../../types/resume';
+import type { ResumeVersion } from '@/types/resume.ts';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -100,7 +100,6 @@ export const AIOptimizeCompare: React.FC<AIOptimizeCompareProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* 视图切换 */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">{t('resume.compare.title')}</h3>
         <div className="flex items-center space-x-2">
@@ -131,7 +130,6 @@ export const AIOptimizeCompare: React.FC<AIOptimizeCompareProps> = ({
         </div>
       </div>
 
-      {/* 对比内容 */}
       {viewMode === 'split' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {renderContent(originalVersion, t('resume.versionDetail.original'), 'original')}

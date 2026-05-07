@@ -34,11 +34,10 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 简历申请服务
- * Resume Application Service
- * <p>
- * 职责：编排用例，协调领域对象
- * Responsibility: Orchestrate use cases, coordinate domain objects
+ * Orchestrates resume use cases by coordinating domain aggregates, file storage, format conversion,
+ * AI-driven parsing, and vector generation. Serves as the primary application-service boundary
+ * for the resume bounded context.
+ * 编排简历相关用例，协调领域聚合、文件存储、格式转换、AI 解析及向量生成，作为简历限界上下文的主要应用服务边界
  */
 @Slf4j
 @Service
@@ -46,10 +45,8 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class ResumeApplicationService {
 
-    /**
-     * 版本链最大长度限制
-     * Maximum version chain length limit
-     */
+    // Version chain is capped to prevent unbounded growth and excessive storage costs
+    // 限制版本链长度以防止无限增长及存储成本失控
     private static final int MAX_VERSION_CHAIN_LENGTH = 50;
     private final ResumeGroupRepository groupRepository;
     private final ResumeVersionRepository versionRepository;
@@ -63,28 +60,21 @@ public class ResumeApplicationService {
 
     @Transactional
     public ResumeGroup handleUpload(ResumeUploadCommand command, UUID userId) {
-        // 1. 创建简历组
-        // 1. Create a resume group
         ResumeGroup group = ResumeGroup.create(userId, command.title());
 
-        // 2. 存储文件，获取路径（这让底层基础设施去决定真实存的位置，但如果接口设计需要传入Path，则生成随机键）
-        // 2. Store the file and obtain the path (this lets the underlying infrastructure determine the actual storage location, but if the interface design requires passing in the Path, a random key will be generated)
+        // Use a random UUID prefix to avoid storage key collisions across users
+        // 使用随机 UUID 前缀防止不同用户间的存储键冲突
         String storagePath = UUID.randomUUID().toString() + "_" + command.fileName();
 
         fileStorageService.upload(storagePath, command.inputStream(),
                 command.fileSize(), command.contentType());
 
-        // 3. 将原版添加进简历组（包含创建衍生版本等生命周期都在聚合内）
-        // 3. Add the original version to the resume group (the life cycle including creating derivative versions is all within the aggregation)
         group.uploadOriginalVersion(command.fileName(), command.contentType(),
                 command.fileSize(), storagePath);
-
-        // 4. 保存聚合
-        // 4. Save the aggregation
         groupRepository.save(group);
 
-        // 4.5 本地转换为 Markdown 并填充 CONVERTED 版本
-        // 4.5 Auto-convert to Markdown and populate the CONVERTED version
+        // Auto-convert to Markdown so users can immediately edit without waiting for AI parsing
+        // 自动转换为 Markdown，使用户无需等待 AI 解析即可立即编辑
         ResumeVersion converted = group.getActiveVersionByType(ResumeVersion.VersionType.CONVERTED);
         if (converted != null) {
             DocumentFormat sourceFormat = DocumentFormat.fromMimeType(command.contentType());
@@ -104,8 +94,8 @@ public class ResumeApplicationService {
                     versionRepository.save(converted);
                     log.info("Auto-converted uploaded file to markdown for groupId={}", group.getId());
 
-                    // 同步生成 CONVERTED 版本向量
-                    // Synchronously generate vector for CONVERTED version
+                    // Generate vector synchronously so semantic search works immediately after upload
+                    // 同步生成向量，确保上传后立即可进行语义搜索
                     try {
                         vectorFacade.generateAndSaveVector(converted.getId().toString(), "RESUME", markdown);
                         log.info("Vector generated and saved for converted versionId={}", converted.getId());
@@ -122,8 +112,6 @@ public class ResumeApplicationService {
             }
         }
 
-        // 5. 触发 AI 异步解析
-        // 5. Trigger AI asynchronous parsing
         ResumeVersion originalVersion = group.getVersions().stream()
                 .filter(v -> v.getVersionType() == ResumeVersion.VersionType.ORIGINAL)
                 .findFirst()
@@ -165,15 +153,13 @@ public class ResumeApplicationService {
             throw new StorageException("access.denied");
         }
 
-        // 调用领域方法
-        // Calling domain methods
         version.editContent(command.content());
         versionRepository.save(version);
 
         log.info("Resume edited: versionId={}", version.getId());
 
-        // 对可编辑版本（CONVERTED / AI_OPTIMIZED）自动触发向量重新生成
-        // Auto-trigger vector re-generation for editable versions (CONVERTED / AI_OPTIMIZED)
+        // Editable versions drive semantic search, so re-generate vectors on every content change
+        // 可编辑版本是语义搜索的数据源，内容变更后需重新生成向量
         if (version.getVersionType() == ResumeVersion.VersionType.CONVERTED
                 || version.getVersionType() == ResumeVersion.VersionType.AI_OPTIMIZED) {
             try {
@@ -181,8 +167,8 @@ public class ResumeApplicationService {
                 log.info("Vector generated and saved for resume versionId={}", version.getId());
             } catch (Exception e) {
                 log.error("Failed to generate vector for versionId={}", version.getId(), e);
-                // 编辑已持久化，向量同步生成失败但不阻塞用户
-                // Edit is already persisted; vector generation failed but do not block user
+                // Vector generation failure is non-blocking: the edit is already persisted
+                // 向量生成失败不阻塞用户：编辑内容已持久化
             }
         }
 
@@ -191,19 +177,15 @@ public class ResumeApplicationService {
 
     @Transactional
     public ResumeVersion handleCreateVersion(CreateVersionCommand command) {
-        // 1. 查询简历组并校验所有权
-        // 1. Query resume group and verify ownership
         ResumeGroup group = groupRepository.findByIdAndUserId(command.groupId(), command.userId())
                 .orElseThrow(() -> new StorageException("group.not.found"));
 
-        // 2. 确定源版本内容
-        // 2. Determine source version content
         String sourceContent = "";
         if (command.sourceVersionId() != null) {
             ResumeVersion sourceVersion = versionRepository.findById(command.sourceVersionId())
                     .orElseThrow(() -> new StorageException("version.not.found"));
-            // 校验源版本是否属于当前组
-            // Verify source version belongs to current group
+            // Ensure the source version belongs to the same group to prevent cross-group data leakage
+            // 确保源版本属于同一组，防止跨组数据泄露
             if (!sourceVersion.getGroupId().equals(command.groupId())) {
                 throw new StorageException("version.group.mismatch");
             }
@@ -215,8 +197,8 @@ public class ResumeApplicationService {
             }
         }
 
-        // 3. 版本链长度限制：若 CONVERTED 版本数量超过上限，轮询删除最旧的 ARCHIVED 版本
-        // 3. Version chain length limit: if CONVERTED count exceeds limit, delete oldest ARCHIVED
+        // When the version chain exceeds the limit, purge the oldest archived version to reclaim space
+        // 版本链超出上限时清理最早归档的版本以回收空间
         List<ResumeVersion> convertedVersions = versionRepository.findAllByGroupIdAndType(
                 command.groupId(), ResumeVersion.VersionType.CONVERTED);
         if (convertedVersions.size() >= MAX_VERSION_CHAIN_LENGTH) {
@@ -230,18 +212,15 @@ public class ResumeApplicationService {
                     });
         }
 
-        // 4. 创建新的 CONVERTED 版本并写入源内容
-        // 4. Create new CONVERTED version and write source content
         ResumeVersion newVersion = ResumeVersion.createConverted(command.groupId());
         newVersion.editContent(sourceContent);
-        // 如果同组 original 已解析完成，直接复制其 parsedContent
+        // If the original has already been parsed, propagate structured data to the new version immediately
+        // 若原始版本已解析完成，立即将结构化数据同步到新版本
         ResumeVersion original = group.getActiveVersionByType(ResumeVersion.VersionType.ORIGINAL);
         if (original != null && original.getParsedContent() != null && !original.getParsedContent().isEmpty()) {
             newVersion.markParseCompleted(original.getParsedContent());
         }
 
-        // 4.5 同步生成向量（内容非空时）
-        // 4.5 Synchronously generate vector if content is not empty
         if (sourceContent != null && !sourceContent.isEmpty()) {
             try {
                 vectorFacade.generateAndSaveVector(newVersion.getId().toString(), "RESUME", sourceContent);
@@ -251,12 +230,9 @@ public class ResumeApplicationService {
             }
         }
 
-        // 5. 添加到组（自动归档旧的 ACTIVE CONVERTED）并持久化
-        // 5. Add to group (auto-archives old ACTIVE CONVERTED) and persist
-        // 注意：只通过 groupRepository.save 级联保存，避免独立 save(newVersion) 导致
-        // JPA flush 时序问题：INSERT 先于旧版本的 UPDATE，违反 partial unique index
-        // Note: only cascade-save via groupRepository.save to avoid JPA flush ordering issue
-        // where INSERT runs before the old version's UPDATE, violating the partial unique index
+        // Only cascade-save via groupRepository.save to avoid JPA flush ordering issues:
+        // an independent save(newVersion) could cause INSERT-before-UPDATE, violating the partial unique index
+        // 仅通过 groupRepository.save 级联保存，避免独立 save(newVersion) 导致 JPA flush 时 INSERT 先于旧版本 UPDATE，违反局部唯一索引
         group.addVersion(newVersion);
         groupRepository.save(group);
 
@@ -273,8 +249,6 @@ public class ResumeApplicationService {
 
         List<ResumeVersion> versions = versionRepository.findAllByGroupId(groupId);
 
-        // 删除文件
-        // Delete files
         for (ResumeVersion v : versions) {
             if (v.getStoragePath() != null) {
                 try {
@@ -303,14 +277,12 @@ public class ResumeApplicationService {
             throw new StorageException("access.denied");
         }
 
-        // 如果是 ORIGINAL 版本，不允许单独删除（必须通过删除组来删除）
-        // If it is an ORIGINAL version, individual deletion is not allowed (must be deleted by deleting the group)
+        // Original version is protected because it anchors the version chain and stores the raw upload
+        // 原始版本受保护，因为它是版本链的锚点并保存了原始上传文件
         if (version.getVersionType() == ResumeVersion.VersionType.ORIGINAL) {
             throw new StorageException("version.original.cannot.delete");
         }
 
-        // 删除文件（如果有存储路径）
-        // Delete the file (if there is a storage path)
         if (version.getStoragePath() != null) {
             try {
                 fileStorageService.delete(version.getStoragePath());
@@ -336,8 +308,6 @@ public class ResumeApplicationService {
             throw new StorageException("access.denied");
         }
 
-        // 调用领域方法
-        // Call domain method
         group.activateVersion(versionId);
         groupRepository.save(group);
 
@@ -360,8 +330,8 @@ public class ResumeApplicationService {
         }
 
         try {
-            // 提取 parsedContent，避免保存包装对象 {"parsedContent": {...}, "summary": ""}
-            // Extract parsedContent to avoid saving the wrapper object
+            // Unwrap nested wrapper object {"parsedContent": {...}, "summary": ""} to avoid storing redundant structure
+            // 解包嵌套包装对象，避免存储冗余结构
             @SuppressWarnings("unchecked")
             Map<String, Object> data = event.data();
             Object parsedContentObj = data != null ? data.get("parsedContent") : null;
@@ -370,7 +340,8 @@ public class ResumeApplicationService {
             versionRepository.save(originalVersion);
             log.info("Resume parsing completed for versionId={}", originalVersion.getId());
 
-            // 同步解析结果到同组所有衍生版本（CONVERTED / AI_OPTIMIZED）
+            // Propagate parsed structured data to all derived versions so they share the same AI extraction
+            // 将解析后的结构化数据同步到所有衍生版本，使其共享同一份 AI 提取结果
             ResumeGroup group = groupRepository.findById(originalVersion.getGroupId()).orElse(null);
             if (group != null) {
                 for (ResumeVersion v : group.getVersions()) {
@@ -383,8 +354,6 @@ public class ResumeApplicationService {
                 }
             }
 
-            // 同步生成向量
-            // Synchronously generate vector
             vectorFacade.generateAndSaveVector(originalVersion.getId().toString(), "RESUME", parsedJsonStr);
             log.info("Vector generated and saved for resume versionId={}", originalVersion.getId());
 
@@ -436,8 +405,6 @@ public class ResumeApplicationService {
             sourceFormat = DocumentFormat.fromFormatString("md");
         }
 
-        // 格式转换
-        // format conversion
         DocumentFormat targetFormat = DocumentFormat.fromFormatString(query.targetFormat());
         InputStream resultStream = sourceStream;
         DocumentFormat resultFormat = sourceFormat;

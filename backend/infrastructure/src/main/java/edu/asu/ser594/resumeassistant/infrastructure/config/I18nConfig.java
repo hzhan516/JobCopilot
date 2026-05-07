@@ -15,8 +15,6 @@ import java.util.Locale;
 @Configuration
 public class I18nConfig implements WebMvcConfigurer {
 
-    // 默认语言：英语
-    // Default locate: English
     @Bean
     public LocaleResolver localeResolver() {
         AcceptHeaderLocaleResolver localeResolver = new AcceptHeaderLocaleResolver();
@@ -29,8 +27,6 @@ public class I18nConfig implements WebMvcConfigurer {
         return localeResolver;
     }
 
-    // i18n 消息源
-    // Message source for i18n
     @Bean
     public MessageSource messageSource() {
         ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
@@ -40,8 +36,6 @@ public class I18nConfig implements WebMvcConfigurer {
         return messageSource;
     }
 
-    // 语言变更拦截器
-    // Locale change interceptor
     @Bean
     public LocaleChangeInterceptor localeChangeInterceptor() {
         LocaleChangeInterceptor localeChangeInterceptor = new LocaleChangeInterceptor();

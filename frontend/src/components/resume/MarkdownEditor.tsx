@@ -10,13 +10,7 @@ interface MarkdownEditorProps {
   versionId: string;
   onSave: (content: string) => void;
   onCancel: () => void;
-  /**
-   * 自动保存回调 / Auto-save callback
-   */
   onAutoSave?: (content: string) => Promise<void>;
-  /**
-   * 是否只读 / Read-only mode
-   */
   readOnly?: boolean;
 }
 
@@ -43,7 +37,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSaveEnabledRef = useRef<boolean>(true);
 
-  // 本地自动备份到 localStorage / Local auto-backup to localStorage
+  // Local backup to localStorage to prevent data loss on accidental refresh
+  // 本地自动备份到 localStorage，防止意外刷新导致数据丢失
   useEffect(() => {
     if (readOnly) return;
     const timeoutId = setTimeout(() => {
@@ -52,13 +47,13 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     return () => clearTimeout(timeoutId);
   }, [content, storageKey, readOnly]);
 
-  // Debounce 自动保存到后端 / Debounce auto-save to backend
+  // Debounce auto-save to backend; disable on conflict to prevent overwrite loops
+  // Debounce 自动保存到后端；冲突时自动禁用，防止覆盖循环
   useEffect(() => {
     if (!onAutoSave || readOnly || !autoSaveEnabledRef.current) return;
     if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current);
     }
-    // 重置自动保存状态 / Reset auto-save status
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setAutoSaveStatus('idle');
     autoSaveTimerRef.current = setTimeout(async () => {

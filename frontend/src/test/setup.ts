@@ -6,7 +6,8 @@ afterEach(() => {
   cleanup()
 })
 
-// Mock matchMedia for shadcn/ui components that rely on it
+// shadcn/ui components rely on matchMedia for responsive behavior
+// shadcn/ui 组件依赖 matchMedia 实现响应式行为
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation((query: string) => ({
@@ -21,7 +22,8 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 })
 
-// Mock IntersectionObserver
+// Lazy-loaded components and infinite-scroll hooks depend on IntersectionObserver
+// 懒加载组件与无限滚动钩子依赖 IntersectionObserver
 class MockIntersectionObserver {
   observe = vi.fn()
   disconnect = vi.fn()
@@ -33,7 +35,8 @@ Object.defineProperty(window, 'IntersectionObserver', {
   value: MockIntersectionObserver,
 })
 
-// Mock localStorage / sessionStorage for isolated tests
+// Isolated in-memory storage to prevent test cross-contamination
+// 内存隔离存储，防止测试间交叉污染
 function createStorageMock() {
   let store: Record<string, string> = {}
   return {

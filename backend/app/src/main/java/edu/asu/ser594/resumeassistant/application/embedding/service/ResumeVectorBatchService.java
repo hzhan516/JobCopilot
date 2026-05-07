@@ -9,19 +9,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 /**
- * 简历向量批量服务
- * Resume vector batch service
- * <p>
- * 供 AI 层调用，批量 Upsert 简历向量数据。
- * 支持数据库级去重：内容完全相同的记录会被跳过，避免冗余写入。
- * Exposed for AI layer to batch upsert resume vector data with deduplication.
+ * Exposed to the AI layer for batch upserting resume vectors with embedding-level deduplication.
+ * Skipping unchanged embeddings avoids unnecessary index churn in pgvector.
+ * 向 AI 层暴露，支持带嵌入层级去重的简历向量批量 Upsert。跳过未变更的嵌入以避免 pgvector 不必要的索引扰动
  */
 @Slf4j
 @Service
@@ -31,11 +24,12 @@ public class ResumeVectorBatchService {
     private final ResumeVectorRepository resumeVectorRepository;
 
     /**
-     * 批量 Upsert 简历向量（带数据库去重）
-     * Batch upsert resume vectors with database deduplication
+     * Upserts resume vectors in batch. Compares embeddings byte-by-byte to skip records
+     * that have not changed since the last ingestion cycle.
+     * 批量 Upsert 简历向量。逐字节比对嵌入向量以跳过自上次摄入周期以来未发生变更的记录
      *
-     * @param items 简历向量条目列表 / List of resume vector items
-     * @return 批量操作结果 / Batch operation result
+     * @param items List of resume vector items / 简历向量条目列表
+     * @return Batch operation result / 批量操作结果
      */
     @Transactional
     public BatchResumeVectorUpsertResponse batchUpsert(List<ResumeVectorItem> items) {
@@ -98,7 +92,6 @@ public class ResumeVectorBatchService {
         return new BatchResumeVectorUpsertResponse(items.size(), success, failed, skipped, failedResumeVersionIds);
     }
 
-    // 将 List<Float> 转为 float[] / Convert List<Float> to float[]
     private float[] convertListToArray(List<Float> list) {
         if (list == null || list.isEmpty()) {
             throw new IllegalArgumentException("Embedding list must not be null or empty");

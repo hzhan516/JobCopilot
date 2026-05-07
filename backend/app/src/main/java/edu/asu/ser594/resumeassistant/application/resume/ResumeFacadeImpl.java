@@ -24,19 +24,20 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import java.time.ZoneOffset;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * 简历门面实现
- * Resume Facade Implementation
+ * Anti-corruption layer implementation that bridges REST API contracts with application commands,
+ * handling file validation, DTO mapping, and HTTP response assembly for the resume domain.
+ * 防腐层实现，衔接 REST API 契约与应用命令，处理简历领域的文件校验、DTO 映射及 HTTP 响应组装
  */
 @Slf4j
 @Component
@@ -67,8 +68,6 @@ public class ResumeFacadeImpl implements ResumeFacade {
 
             ResumeGroup group = applicationService.handleUpload(command, userId);
 
-            // 获取原始版本ID
-            // Get the original version ID
             ResumeVersion originalVersion = group.getActiveVersionByType(ResumeVersion.VersionType.ORIGINAL);
             UUID originalVersionId = originalVersion != null ? originalVersion.getId() : null;
 
