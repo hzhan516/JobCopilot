@@ -66,6 +66,9 @@ public class ResumeVersionJpaEntity {
     @Column(name = "storage_path", columnDefinition = "TEXT")
     private String storagePath;
 
+    @Column(name = "storage_provider", length = 50)
+    private String storageProvider;
+
     @Column(name = "content", columnDefinition = "TEXT")
     private String content;
 
