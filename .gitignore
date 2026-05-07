@@ -200,3 +200,4 @@
 /.env
 /vertex.json
 /ai-service/coverage.xml
+/backend/app/uploads/
