@@ -19,7 +19,7 @@
     "viewDetails": "View Details",
     "enter": "Enter",
     "viewAll": "View All",
-    "viewMore": "View More",
+    "viewMore": "View Details",
     "notSpecified": "Not specified",
     "notAvailable": "Not available",
     "optional": "Optional",
@@ -122,7 +122,7 @@
       "trackingDesc": "Track applications and interviews"
     },
     "recommendedJobs": {
-      "title": "Recommended for You",
+      "title": "AI Scores",
       "matchLabel": "Match"
     },
     "applicationProgress": {
