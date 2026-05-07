@@ -199,3 +199,4 @@
 !/backend/logs/README.md
 /.env
 /vertex.json
+/ai-service/coverage.xml

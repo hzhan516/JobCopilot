@@ -103,7 +103,7 @@ jobs:
         cache: maven
     
     - name: Run Architecture Tests
-      run: mvn test -pl app,domain -Dtest=**/architecture/*Test -B --file pom.xml
+      run: mvn test -pl app,domain -am -Dtest=**/architecture/*Test -B --file pom.xml
 
   build:
     name: Build Application
