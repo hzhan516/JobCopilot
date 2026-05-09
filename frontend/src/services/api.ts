@@ -1,5 +1,5 @@
 import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig } from 'axios';
-import type { ApiResponse, AuthResponse, LoginRequest, RegisterRequest, LoginByGoogleRequest } from '@/types';
+import type { ApiResponse, AuthResponse, LoginRequest, RegisterRequest, SendVerificationCodeRequest, LoginByGoogleRequest } from '@/types';
 import tokenStorage from './tokenStorage';
 import i18n from '@/i18n';
 
@@ -208,6 +208,18 @@ export const authService = {
       return response.data.data;
     }
     throw new Error(response.data.message);
+  },
+
+  sendVerificationCode: async (data: SendVerificationCodeRequest): Promise<void> => {
+    const response = await apiClient.post<ApiResponse<null>>('/v1/auth/send-verification-code', data);
+    if (response.data.code !== 200) {
+      throw new Error(response.data.message);
+    }
+  },
+
+  isEmailVerificationEnabled: async (): Promise<boolean> => {
+    const response = await apiClient.get<ApiResponse<boolean>>('/v1/auth/email-verification-enabled');
+    return response.data.code === 200 ? response.data.data : false;
   },
 
   login: async (data: LoginRequest, rememberMe = false): Promise<AuthResponse> => {

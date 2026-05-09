@@ -3,6 +3,7 @@ package edu.asu.ser594.resumeassistant.api.user.facade;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.LoginByEmailRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.LoginByGoogleRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.RegisterByEmailRequest;
+import edu.asu.ser594.resumeassistant.api.user.dto.request.SendVerificationCodeRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.response.AuthResponse;
 
 /**
@@ -32,4 +33,18 @@ public interface AuthFacade {
      * @param accessToken the token to revoke / 待注销的访问令牌
      */
     void logout(String accessToken);
+
+    /**
+     * 发送邮箱验证码 / Send email verification code
+     *
+     * @param request 发送验证码请求 / Send verification code request
+     */
+    void sendVerificationCode(SendVerificationCodeRequest request);
+
+    /**
+     * 查询邮箱验证功能是否开启 / Check if email verification is enabled
+     *
+     * @return true if enabled / 是否开启
+     */
+    boolean isEmailVerificationEnabled();
 }

@@ -20,6 +20,7 @@ This document describes every environment variable used by the Resume Assistant 
 - [L. AI Service Connection](#l-ai-service-connection)
 - [M. File Storage](#m-file-storage)
 - [N. Backend Logging](#n-backend-logging)
+- [O. Email Verification Configuration](#o-email-verification-configuration)
 - [F. AI Provider Keys](#f-ai-provider-keys)
 - [G. Model Parameters](#g-model-parameters)
 - [H. AI Service Logging](#h-ai-service-logging)
@@ -868,6 +869,100 @@ If left empty, both the backend interceptor and the AI service middleware skip t
 | **Valid values** | Any valid Aliyun KMS key ID |
 | **Security notes** | Using a customer-managed key provides better access control than the default service key. |
 | **Common mistakes** | Specifying a key from a different region or without proper RAM permissions. |
+
+---
+
+## O. Email Verification Configuration
+
+### `EMAIL_VERIFICATION_ENABLED`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Master switch for email verification during user registration. When enabled, new users must enter a 6-digit code sent to their email before registration succeeds. |
+| **Default** | `false` |
+| **Valid values** | `true`, `false` |
+| **Security notes** | Even if SMTP credentials are configured, verification is only enforced when this flag is `true`. This ensures backward compatibility and safe gradual rollouts. |
+| **Common mistakes** | Setting to `true` without configuring `SMTP_HOST`, `SMTP_USERNAME`, and `SMTP_PASSWORD` causes all verification requests to fail at runtime. |
+
+### `EMAIL_FROM`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Sender address displayed in verification emails. |
+| **Default** | `noreply@resume-assistant.local` |
+| **Valid values** | Any valid email address |
+| **Security notes** | Some SMTP providers require the `From` address to be verified or registered in their console. Using an unverified address may cause emails to be rejected or land in spam. |
+| **Common mistakes** | Using a personal Gmail address without enabling "App Passwords" or without configuring SPF/DKIM for the domain. |
+
+### `SMTP_HOST`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Hostname of the SMTP relay server used to send verification emails. |
+| **Default** | *(empty)* |
+| **Valid values** | Any reachable SMTP hostname (e.g., `smtp.gmail.com`, `smtp.office365.com`, `smtp.mailgun.org`) |
+| **Security notes** | Prefer SMTP providers that enforce TLS (port 587 with STARTTLS). Avoid plain-text SMTP on port 25. |
+| **Common mistakes** | Using `localhost` inside a container; containers do not share the host's loopback. Use the Docker host-gateway address if running a local relay: `host.docker.internal`. |
+
+### `SMTP_PORT`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | TCP port for the SMTP relay. |
+| **Default** | `587` |
+| **Valid values** | `25`, `465` (SSL), `587` (STARTTLS), `2525` (alternative) |
+| **Security notes** | Port 587 with STARTTLS is the modern standard. Port 465 is legacy SSL. Port 25 is often blocked by cloud providers. |
+| **Common mistakes** | Using port `465` with STARTTLS or port `587` with implicit SSL; mismatched encryption and port causes connection hangs. |
+
+### `SMTP_USERNAME`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Username for SMTP authentication. Often the full email address. |
+| **Default** | *(empty)* |
+| **Valid values** | Any string accepted by the SMTP server |
+| **Security notes** | Treat this as sensitive configuration. Do not commit real credentials to version control. |
+| **Common mistakes** | For Gmail, using the regular Google password instead of an App Password (which is required when 2FA is enabled). |
+
+### `SMTP_PASSWORD`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Password or app-specific password for SMTP authentication. |
+| **Default** | *(empty)* |
+| **Valid values** | Any string |
+| **Security notes** | Store this in `.env` only. Rotate periodically. If the credential is leaked, an attacker can send emails on your behalf. |
+| **Common mistakes** | Committing `.env` to Git. Using a weak or reused password. Not rotating credentials after a team member departs. |
+
+### `EMAIL_CODE_EXPIRY`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Lifetime of a verification code in seconds before it expires. |
+| **Default** | `300` (5 minutes) |
+| **Valid values** | Positive integer, recommended range `60–900` |
+| **Security notes** | Shorter expiry windows reduce the brute-force window. Too short (< 60s) causes UX friction. |
+| **Common mistakes** | Setting a very long expiry (e.g., 1 hour) makes brute-force attacks more feasible. |
+
+### `EMAIL_RESEND_COOLDOWN`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Minimum seconds a user must wait before requesting another verification code for the same email. |
+| **Default** | `60` (1 minute) |
+| **Valid values** | Positive integer, recommended range `30–300` |
+| **Security notes** | Prevents rapid resend abuse. Pair with the existing check that rejects codes for already-registered emails. |
+| **Common mistakes** | Setting to `0` removes protection against accidental double-clicks and deliberate abuse. |
+
+### `EMAIL_MAX_ATTEMPTS`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Maximum number of failed validation attempts before the verification code is invalidated. |
+| **Default** | `3` |
+| **Valid values** | Positive integer, recommended range `3–5` |
+| **Security notes** | Limits brute-force guessing. After exceeding this threshold, the user must request a new code. |
+| **Common mistakes** | Setting to a high value (e.g., 10) makes 6-digit numeric codes easier to brute-force within the 5-minute expiry window. |
 
 ---
 

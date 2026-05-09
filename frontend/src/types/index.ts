@@ -55,6 +55,11 @@ export interface LoginRequest {
 export interface RegisterRequest {
   email: string;
   password: string;
+  verificationCode?: string;
+}
+
+export interface SendVerificationCodeRequest {
+  email: string;
 }
 
 export interface LoginByGoogleRequest {

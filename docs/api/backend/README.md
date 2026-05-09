@@ -83,13 +83,15 @@ All API responses follow a unified format:
 |-------|------|----------|-------------|
 | `email` | String | Yes | Email address; must conform to email format |
 | `password` | String | Yes | Password; 6-32 characters |
+| `verificationCode` | String | No | 6-digit code; required when email verification is enabled |
 
 **Request Example**:
 
 ```json
 {
   "email": "user@example.com",
-  "password": "password123"
+  "password": "password123",
+  "verificationCode": "123456"
 }
 ```
 
@@ -449,6 +451,8 @@ This module provides application status flow, event recording, and statistical a
 | Email Registration | POST | `/api/v1/auth/register/email` | User email registration | No |
 | Email Login | POST | `/api/v1/auth/login/email` | User email login | No |
 | Google Login | POST | `/api/v1/auth/login/google` | Google OAuth login | No |
+| Send Verification Code | POST | `/api/v1/auth/send-verification-code` | Send email verification code | No |
+| Check Verification Enabled | GET | `/api/v1/auth/email-verification-enabled` | Check if email verification is enabled | No |
 | Upload Resume | POST | `/api/v1/resumes` | Upload resume file | Yes |
 | Download Resume | GET | `/api/v1/resumes/{versionId}/download` | Download resume file (supports format conversion) | Yes |
 | Get All Groups | GET | `/api/v1/resumes/groups` | Get all resume groups for user | Yes |
@@ -490,8 +494,17 @@ This module provides application status flow, event recording, and statistical a
 
 ```java
 {
-  "email": String,      // Required, email format
-  "password": String    // Required, 6-32 characters
+  "email": String,              // Required, email format
+  "password": String,           // Required, 6-32 characters
+  "verificationCode": String    // Optional, 6 digits; required when email verification is enabled
+}
+```
+
+#### SendVerificationCodeRequest (Send Verification Code Request)
+
+```java
+{
+  "email": String      // Required, email format
 }
 ```
 
@@ -693,6 +706,7 @@ This module provides application status flow, event recording, and statistical a
 |-------|------|
 | `email` | Required, must conform to email format |
 | `password` | Required, length 6-32 characters (for registration) |
+| `verificationCode` | Optional when disabled; Required (6 digits) when email verification is enabled |
 
 ### Resume Upload
 

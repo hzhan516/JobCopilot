@@ -449,6 +449,10 @@ Authorization: Bearer <access_token>
 | 邮箱注册 | POST | `/api/v1/auth/register/email` | 用户邮箱注册 | 否 |
 | 邮箱登录 | POST | `/api/v1/auth/login/email` | 用户邮箱登录 | 否 |
 | Google 登录 | POST | `/api/v1/auth/login/google` | Google OAuth 登录 | 否 |
+| 发送验证码 | POST | `/api/v1/auth/send-verification-code` | 发送邮箱验证码 | 否 |
+| 查询验证开关 | GET | `/api/v1/auth/email-verification-enabled` | 查询邮箱验证是否开启 | 否 |
+| 发送验证码 | POST | `/api/v1/auth/send-verification-code` | 发送邮箱验证码 | 否 |
+| 查询验证开关 | GET | `/api/v1/auth/email-verification-enabled` | 查询邮箱验证是否开启 | 否 |
 | 上传简历 | POST | `/api/v1/resumes` | 上传简历文件 | 是 |
 | 下载简历 | GET | `/api/v1/resumes/{versionId}/download` | 下载简历文件（支持格式转换） | 是 |
 | 获取所有组 | GET | `/api/v1/resumes/groups` | 获取用户所有简历组 | 是 |
@@ -490,8 +494,17 @@ Authorization: Bearer <access_token>
 
 ```java
 {
-  "email": String,      // 必填，邮箱格式
-  "password": String    // 必填，6-32 字符
+  "email": String,              // 必填，邮箱格式
+  "password": String,           // 必填，6-32 字符
+  "verificationCode": String    // 可选，6 位数字；开启邮箱验证时必填
+}
+```
+
+#### SendVerificationCodeRequest (发送验证码请求)
+
+```java
+{
+  "email": String      // 必填，邮箱格式
 }
 ```
 
@@ -693,6 +706,7 @@ Authorization: Bearer <access_token>
 |------|------|
 | `email` | 必填，必须符合邮箱格式 |
 | `password` | 必填，长度 6-32 字符（注册时） |
+| `verificationCode` | 关闭时可选；开启时必须填写（6 位数字） |
 
 ### 简历上传
 

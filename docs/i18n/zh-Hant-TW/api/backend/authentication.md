@@ -12,6 +12,8 @@
 1. [郵箱註冊](#1-郵箱註冊)
 2. [郵箱登入](#2-郵箱登入)
 3. [Google 登入](#3-google-登入)
+4. [傳送驗證碼](#4-傳送驗證碼)
+5. [查詢郵箱驗證開關](#5-查詢郵箱驗證開關)
 
 ---
 
@@ -33,13 +35,15 @@
 |------|------|------|------|------|
 | `email` | String | 是 | 郵箱格式 | 使用者郵箱地址 |
 | `password` | String | 是 | 6-32位 | 使用者密碼 |
+| `verificationCode` | String | 否 | 6位數字 | 開啟郵箱驗證時必填 |
 
 #### 請求範例
 
 ```json
 {
   "email": "user@example.com",
-  "password": "123456"
+  "password": "123456",
+  "verificationCode": "123456"
 }
 ```
 
@@ -86,6 +90,16 @@
 }
 ```
 
+#### 400 - 驗證碼無效或已過期
+
+```json
+{
+  "code": 400,
+  "message": "Invalid or expired verification code",
+  "data": null
+}
+```
+
 #### 409 - 郵箱已存在
 
 ```json
@@ -103,7 +117,8 @@ curl -X POST http://localhost:8080/api/v1/auth/register/email \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
-    "password": "123456"
+    "password": "123456",
+    "verificationCode": "123456"
   }'
 ```
 
@@ -275,6 +290,124 @@ curl -X POST http://localhost:8080/api/v1/auth/login/google \
 
 ---
 
+## 4. 傳送驗證碼
+
+### 基本資訊
+
+| 項目 | 值 |
+|------|-----|
+| **介面名稱** | 傳送驗證碼 |
+| **介面路徑** | `POST /api/v1/auth/send-verification-code` |
+| **是否需要認證** | 否 |
+
+### 請求結構
+
+#### Request Body
+
+| 欄位 | 類型 | 必填 | 限制 | 說明 |
+|------|------|------|------|------|
+| `email` | String | 是 | 郵箱格式 | 目標郵箱地址 |
+
+#### 請求範例
+
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+### 回應結構
+
+#### 成功回應 (200)
+
+```json
+{
+  "code": 200,
+  "message": "驗證碼已傳送，請查收郵件",
+  "data": null
+}
+```
+
+### 錯誤回應
+
+#### 400 - 郵箱格式不合法
+
+```json
+{
+  "code": 400,
+  "message": "請求參數無效",
+  "data": null
+}
+```
+
+#### 409 - 郵箱已被註冊
+
+```json
+{
+  "code": 409,
+  "message": "該郵箱已被註冊",
+  "data": null
+}
+```
+
+#### 429 - 冷卻中
+
+```json
+{
+  "code": 429,
+  "message": "請稍後再重新取得驗證碼",
+  "data": null
+}
+```
+
+### cURL 範例
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/send-verification-code \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com"
+  }'
+```
+
+---
+
+## 5. 查詢郵箱驗證開關
+
+### 基本資訊
+
+| 項目 | 值 |
+|------|-----|
+| **介面名稱** | 查詢郵箱驗證開關 |
+| **介面路徑** | `GET /api/v1/auth/email-verification-enabled` |
+| **是否需要認證** | 否 |
+
+### 回應結構
+
+#### 成功回應 (200)
+
+| 欄位 | 類型 | 說明 |
+|------|------|------|
+| `data` | Boolean | `true` 表示郵箱驗證已開啟，`false` 表示已關閉 |
+
+#### 回應範例
+
+```json
+{
+  "code": 200,
+  "message": "成功",
+  "data": true
+}
+```
+
+### cURL 範例
+
+```bash
+curl -X GET http://localhost:8080/api/v1/auth/email-verification-enabled
+```
+
+---
+
 ## Token 使用說明
 
 ### Access Token
@@ -312,3 +445,5 @@ Payload 包含以下欄位：
 | 郵箱註冊 | POST | `/api/v1/auth/register/email` | 否 |
 | 郵箱登入 | POST | `/api/v1/auth/login/email` | 否 |
 | Google 登入 | POST | `/api/v1/auth/login/google` | 否 |
+| 傳送驗證碼 | POST | `/api/v1/auth/send-verification-code` | 否 |
+| 查詢驗證開關 | GET | `/api/v1/auth/email-verification-enabled` | 否 |

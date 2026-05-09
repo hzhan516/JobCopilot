@@ -12,6 +12,8 @@
 1. [邮箱注册](#1-邮箱注册)
 2. [邮箱登录](#2-邮箱登录)
 3. [Google 登录](#3-google-登录)
+4. [发送验证码](#4-发送验证码)
+5. [查询邮箱验证开关](#5-查询邮箱验证开关)
 
 ---
 
@@ -33,13 +35,15 @@
 |------|------|------|------|------|
 | `email` | String | 是 | 邮箱格式 | 用户邮箱地址 |
 | `password` | String | 是 | 6-32位 | 用户密码 |
+| `verificationCode` | String | 否 | 6位数字 | 开启邮箱验证时必填 |
 
 #### 请求示例
 
 ```json
 {
   "email": "user@example.com",
-  "password": "123456"
+  "password": "123456",
+  "verificationCode": "123456"
 }
 ```
 
@@ -86,6 +90,16 @@
 }
 ```
 
+#### 400 - 验证码无效或已过期
+
+```json
+{
+  "code": 400,
+  "message": "Invalid or expired verification code",
+  "data": null
+}
+```
+
 #### 409 - 邮箱已存在
 
 ```json
@@ -103,7 +117,8 @@ curl -X POST http://localhost:8080/api/v1/auth/register/email \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
-    "password": "123456"
+    "password": "123456",
+    "verificationCode": "123456"
   }'
 ```
 
@@ -275,6 +290,124 @@ curl -X POST http://localhost:8080/api/v1/auth/login/google \
 
 ---
 
+## 4. 发送验证码
+
+### 基本信息
+
+| 项目 | 值 |
+|------|-----|
+| **接口名称** | 发送验证码 |
+| **接口路径** | `POST /api/v1/auth/send-verification-code` |
+| **是否需要认证** | 否 |
+
+### 请求结构
+
+#### Request Body
+
+| 字段 | 类型 | 必填 | 约束 | 说明 |
+|------|------|------|------|------|
+| `email` | String | 是 | 邮箱格式 | 目标邮箱地址 |
+
+#### 请求示例
+
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+### 响应结构
+
+#### 成功响应 (200)
+
+```json
+{
+  "code": 200,
+  "message": "验证码已发送，请查收邮件",
+  "data": null
+}
+```
+
+### 错误响应
+
+#### 400 - 邮箱格式不合法
+
+```json
+{
+  "code": 400,
+  "message": "请求参数无效",
+  "data": null
+}
+```
+
+#### 409 - 邮箱已被注册
+
+```json
+{
+  "code": 409,
+  "message": "该邮箱已被注册",
+  "data": null
+}
+```
+
+#### 429 - 冷却中
+
+```json
+{
+  "code": 429,
+  "message": "请稍后再重新获取验证码",
+  "data": null
+}
+```
+
+### cURL 示例
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/send-verification-code \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com"
+  }'
+```
+
+---
+
+## 5. 查询邮箱验证开关
+
+### 基本信息
+
+| 项目 | 值 |
+|------|-----|
+| **接口名称** | 查询邮箱验证开关 |
+| **接口路径** | `GET /api/v1/auth/email-verification-enabled` |
+| **是否需要认证** | 否 |
+
+### 响应结构
+
+#### 成功响应 (200)
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `data` | Boolean | `true` 表示邮箱验证已开启，`false` 表示已关闭 |
+
+#### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "成功",
+  "data": true
+}
+```
+
+### cURL 示例
+
+```bash
+curl -X GET http://localhost:8080/api/v1/auth/email-verification-enabled
+```
+
+---
+
 ## Token 使用说明
 
 ### Access Token
@@ -312,3 +445,5 @@ Payload 包含以下字段：
 | 邮箱注册 | POST | `/api/v1/auth/register/email` | 否 |
 | 邮箱登录 | POST | `/api/v1/auth/login/email` | 否 |
 | Google 登录 | POST | `/api/v1/auth/login/google` | 否 |
+| 发送验证码 | POST | `/api/v1/auth/send-verification-code` | 否 |
+| 查询验证开关 | GET | `/api/v1/auth/email-verification-enabled` | 否 |

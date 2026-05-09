@@ -34,6 +34,22 @@ spring:
   flyway:
     enabled: ${SPRING_FLYWAY_ENABLED:false}
 
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
 # 应用级配置 / Application-level configuration
 app:
   embedding:
@@ -41,6 +57,12 @@ app:
     model-version: ${LLM_EMBEDDING_MODEL:gemini/gemini-embedding-001}
   search:
     max-limit: ${SEARCH_MAX_LIMIT:100}
+  email:
+    enabled: ${EMAIL_VERIFICATION_ENABLED:false}
+    from: ${EMAIL_FROM:noreply@resume-assistant.local}
+    code-expiry-seconds: ${EMAIL_CODE_EXPIRY:300}
+    resend-cooldown-seconds: ${EMAIL_RESEND_COOLDOWN:60}
+    max-attempts: ${EMAIL_MAX_ATTEMPTS:3}
   rabbitmq:
     queue:
       res:

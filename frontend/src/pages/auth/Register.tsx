@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { GoogleLogin } from '@react-oauth/google';
@@ -15,6 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { FileText, Loader2, Eye, EyeOff } from 'lucide-react';
 import type { AxiosError } from 'axios';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { authService } from '@/services/api';
 
 type Strength = 'weak' | 'medium' | 'strong';
 
@@ -33,7 +34,7 @@ function getPasswordStrength(password: string): Strength {
   return 'strong';
 }
 
-function useRegisterSchema() {
+function useRegisterSchema(emailVerificationEnabled: boolean) {
   const { t } = useTranslation();
   return useMemo(
     () =>
@@ -46,19 +47,25 @@ function useRegisterSchema() {
             .min(6, t('auth.register.errors.passwordMin'))
             .max(32, t('auth.register.errors.passwordMax')),
           confirmPassword: z.string().min(1, t('auth.register.errors.confirmPasswordRequired')),
-          agreeTerms: z.boolean().refine((val) => val === true, {
+          agreeTerms: z.boolean().refine((val) => val, {
             message: t('auth.register.errors.agreeTermsRequired'),
           }),
+          verificationCode: emailVerificationEnabled
+            ? z.string().min(1, t('auth.register.errors.verificationCodeRequired')).regex(/^\d{6}$/, t('auth.register.errors.verificationCodeInvalid'))
+            : z.string().optional(),
         })
         .refine((data) => data.password === data.confirmPassword, {
           message: t('auth.register.errors.passwordMismatch'),
           path: ['confirmPassword'],
         }),
-    [t]
+    [t, emailVerificationEnabled]
   );
 }
 
 type RegisterFormValues = z.infer<ReturnType<typeof useRegisterSchema>>;
+
+const COOLDOWN_SECONDS = 60;
+const STORAGE_KEY = 'verificationCodeSentAt';
 
 export default function Register() {
   const { t } = useTranslation();
@@ -68,8 +75,12 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [emailVerificationEnabled, setEmailVerificationEnabled] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [sendError, setSendError] = useState('');
 
-  const registerSchema = useRegisterSchema();
+  const registerSchema = useRegisterSchema(emailVerificationEnabled);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -78,12 +89,52 @@ export default function Register() {
       password: '',
       confirmPassword: '',
       agreeTerms: false,
+      verificationCode: '',
     },
   });
 
   const { isSubmitting } = form.formState;
   const passwordValue = useWatch({ control: form.control, name: 'password' });
   const strength = useMemo(() => getPasswordStrength(passwordValue || ''), [passwordValue]);
+
+  // 恢复倒计时状态（页面刷新后） / Restore countdown state after page refresh
+  useEffect(() => {
+    const sentAt = sessionStorage.getItem(STORAGE_KEY);
+    if (sentAt) {
+      const elapsed = Math.floor((Date.now() - parseInt(sentAt, 10)) / 1000);
+      const remaining = COOLDOWN_SECONDS - elapsed;
+      if (remaining > 0) {
+        setCountdown(remaining);
+      } else {
+        sessionStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }, []);
+
+  // 倒计时逻辑 / Countdown logic
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          sessionStorage.removeItem(STORAGE_KEY);
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
+
+  // 查询邮箱验证开关状态 / Check email verification toggle
+  useEffect(() => {
+    authService.isEmailVerificationEnabled().then((enabled) => {
+      setEmailVerificationEnabled(enabled);
+    }).catch(() => {
+      setEmailVerificationEnabled(false);
+    });
+  }, []);
 
   const strengthConfig: Record<
     Strength,
@@ -98,8 +149,16 @@ export default function Register() {
 
   const onSubmit = async (values: RegisterFormValues) => {
     setError('');
+    setSendError('');
     try {
-      await register({ email: values.email, password: values.password }, false);
+      const payload: { email: string; password: string; verificationCode?: string } = {
+        email: values.email,
+        password: values.password,
+      };
+      if (emailVerificationEnabled && values.verificationCode) {
+        payload.verificationCode = values.verificationCode;
+      }
+      await register(payload, false);
       navigate('/resumes', { replace: true });
     } catch (err) {
       const axiosErr = err as AxiosError<{ message?: string }>;
@@ -115,6 +174,31 @@ export default function Register() {
       }
     }
   };
+
+  const handleSendCode = useCallback(async () => {
+    setSendError('');
+    setError('');
+
+    // 先校验邮箱格式 / Validate email format first
+    const emailResult = await form.trigger('email');
+    if (!emailResult) {
+      return;
+    }
+
+    const email = form.getValues('email');
+    setIsSendingCode(true);
+    try {
+      await authService.sendVerificationCode({ email });
+      sessionStorage.setItem(STORAGE_KEY, Date.now().toString());
+      setCountdown(COOLDOWN_SECONDS);
+    } catch (err) {
+      const axiosErr = err as AxiosError<{ message?: string }>;
+      const message = axiosErr.response?.data?.message || axiosErr.message;
+      setSendError(message || t('auth.register.errors.sendCodeFailed'));
+    } finally {
+      setIsSendingCode(false);
+    }
+  }, [form, t]);
 
   const handleGoogleSuccess = async (credentialResponse: { credential?: string }) => {
     if (!credentialResponse.credential) {
@@ -155,9 +239,9 @@ export default function Register() {
           </CardHeader>
 
           <CardContent>
-            {error && (
+            {(error || sendError) && (
               <Alert variant="destructive" className="mb-4">
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>{error || sendError}</AlertDescription>
               </Alert>
             )}
 
@@ -182,6 +266,46 @@ export default function Register() {
                     </FormItem>
                   )}
                 />
+
+                {emailVerificationEnabled && (
+                  <FormField
+                    control={form.control}
+                    name="verificationCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('auth.register.verificationCodeLabel')}</FormLabel>
+                        <FormControl>
+                          <div className="flex gap-2">
+                            <Input
+                              type="text"
+                              placeholder={t('auth.register.verificationCodePlaceholder')}
+                              disabled={isSubmitting}
+                              maxLength={6}
+                              className="h-11 flex-1"
+                              {...field}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleSendCode}
+                              disabled={countdown > 0 || isSendingCode}
+                              className="h-11 whitespace-nowrap px-4"
+                            >
+                              {isSendingCode ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : countdown > 0 ? (
+                                `${countdown}s`
+                              ) : (
+                                t('auth.register.sendCode')
+                              )}
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <FormField
                   control={form.control}

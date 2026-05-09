@@ -77,6 +77,12 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- Spring Boot Mail - 邮件发送 / Email sending -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
         <!-- JWT - Token生成与验证 -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

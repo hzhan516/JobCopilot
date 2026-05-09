@@ -16,7 +16,7 @@ The **Resume Assistant** is an AI-powered platform designed to streamline the jo
 
 ## Features
 
-- **Authentication**: Email/password registration plus Google OAuth 2.0 login
+- **Authentication**: Email/password registration (with optional email verification) plus Google OAuth 2.0 login
 - **Resume Management**: Upload, parse, version, and export resumes in multiple formats
 - **AI-Powered Parsing**: Extract structured information from resumes and job posts using LiteLLM-compatible models
 - **Job Matching**: Intelligent job recommendations based on resume content and vector similarity

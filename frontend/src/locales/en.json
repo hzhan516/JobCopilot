@@ -81,6 +81,11 @@
       "errorEmailExists": "Email already registered",
       "errorValidation": "Validation failed, please check your input",
       "errorGeneric": "Registration failed, please try again later",
+      "verificationCodeLabel": "Verification Code",
+      "verificationCodePlaceholder": "Enter 6-digit code",
+      "sendCode": "Send Code",
+      "resendCode": "Resend",
+      "sendCodeSuccess": "Verification code sent",
       "errors": {
         "emailRequired": "Please enter your email address",
         "emailInvalid": "Please enter a valid email address",

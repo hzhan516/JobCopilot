@@ -4,6 +4,7 @@ import edu.asu.ser594.resumeassistant.api.user.dto.TokenPair;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.LoginByEmailRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.LoginByGoogleRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.RegisterByEmailRequest;
+import edu.asu.ser594.resumeassistant.api.user.dto.request.SendVerificationCodeRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.response.AuthResponse;
 import edu.asu.ser594.resumeassistant.api.user.facade.AuthFacade;
 import edu.asu.ser594.resumeassistant.application.user.command.LoginByEmailCommand;
@@ -30,6 +31,7 @@ public class AuthFacadeImpl implements AuthFacade {
         RegisterByEmailCommand command = RegisterByEmailCommand.builder()
                 .email(request.getEmail())
                 .password(request.getPassword())
+                .verificationCode(request.getVerificationCode())
                 .build();
 
         User user = authService.registerByEmail(command);
@@ -89,5 +91,15 @@ public class AuthFacadeImpl implements AuthFacade {
     @Override
     public void logout(String accessToken) {
         authService.logout(accessToken);
+    }
+
+    @Override
+    public void sendVerificationCode(SendVerificationCodeRequest request) {
+        authService.sendVerificationCode(request.getEmail());
+    }
+
+    @Override
+    public boolean isEmailVerificationEnabled() {
+        return authService.isEmailVerificationEnabled();
     }
 }

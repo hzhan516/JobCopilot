@@ -95,6 +95,12 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Caffeine - 本地缓存 / Local cache for verification codes -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
         <!-- ArchUnit - 架构测试 / Architecture tests -->
         <dependency>
             <groupId>com.tngtech.archunit</groupId>

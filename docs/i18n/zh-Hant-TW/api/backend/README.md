@@ -449,6 +449,10 @@ Authorization: Bearer <access_token>
 | 郵箱註冊 | POST | `/api/v1/auth/register/email` | 使用者郵箱註冊 | 否 |
 | 郵箱登入 | POST | `/api/v1/auth/login/email` | 使用者郵箱登入 | 否 |
 | Google 登入 | POST | `/api/v1/auth/login/google` | Google OAuth 登入 | 否 |
+| 傳送驗證碼 | POST | `/api/v1/auth/send-verification-code` | 傳送郵箱驗證碼 | 否 |
+| 查詢驗證開關 | GET | `/api/v1/auth/email-verification-enabled` | 查詢郵箱驗證是否開啟 | 否 |
+| 傳送驗證碼 | POST | `/api/v1/auth/send-verification-code` | 傳送郵箱驗證碼 | 否 |
+| 查詢驗證開關 | GET | `/api/v1/auth/email-verification-enabled` | 查詢郵箱驗證是否開啟 | 否 |
 | 上傳履歷 | POST | `/api/v1/resumes` | 上傳履歷檔案 | 是 |
 | 下載履歷 | GET | `/api/v1/resumes/{versionId}/download` | 下載履歷檔案（支援格式轉換） | 是 |
 | 取得所有組 | GET | `/api/v1/resumes/groups` | 取得使用者所有履歷組 | 是 |
@@ -490,8 +494,17 @@ Authorization: Bearer <access_token>
 
 ```java
 {
-  "email": String,      // 必填，郵箱格式
-  "password": String    // 必填，6-32 字元
+  "email": String,              // 必填，郵箱格式
+  "password": String,           // 必填，6-32 字元
+  "verificationCode": String    // 可選，6 位數字；開啟郵箱驗證時必填
+}
+```
+
+#### SendVerificationCodeRequest (傳送驗證碼請求)
+
+```java
+{
+  "email": String      // 必填，郵箱格式
 }
 ```
 
@@ -614,6 +627,7 @@ Authorization: Bearer <access_token>
 |------|------|
 | `email` | 必填，必須符合郵箱格式 |
 | `password` | 必填，長度 6-32 字元（註冊時） |
+| `verificationCode` | 關閉時可選；開啟時必須填寫（6 位數字） |
 
 ### 履歷上傳
 

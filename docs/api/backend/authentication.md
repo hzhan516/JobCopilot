@@ -12,6 +12,8 @@
 1. [Email Registration](#1-email-registration)
 2. [Email Login](#2-email-login)
 3. [Google Login](#3-google-login)
+4. [Send Verification Code](#4-send-verification-code)
+5. [Check Email Verification Enabled](#5-check-email-verification-enabled)
 
 ---
 
@@ -33,13 +35,15 @@
 |-------|------|----------|-------------|-------------|
 | `email` | String | Yes | Email format | User email address |
 | `password` | String | Yes | 6-32 chars | User password |
+| `verificationCode` | String | No | 6 digits | Required when email verification is enabled |
 
 #### Request Example
 
 ```json
 {
   "email": "user@example.com",
-  "password": "123456"
+  "password": "123456",
+  "verificationCode": "123456"
 }
 ```
 
@@ -86,6 +90,16 @@
 }
 ```
 
+#### 400 - Invalid or Expired Verification Code
+
+```json
+{
+  "code": 400,
+  "message": "Invalid or expired verification code",
+  "data": null
+}
+```
+
 #### 409 - Email Already Exists
 
 ```json
@@ -103,7 +117,8 @@ curl -X POST http://localhost:8080/api/v1/auth/register/email \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
-    "password": "123456"
+    "password": "123456",
+    "verificationCode": "123456"
   }'
 ```
 
@@ -275,6 +290,124 @@ curl -X POST http://localhost:8080/api/v1/auth/login/google \
 
 ---
 
+## 4. Send Verification Code
+
+### Basic Information
+
+| Item | Value |
+|------|-------|
+| **Interface Name** | Send Verification Code |
+| **Interface Path** | `POST /api/v1/auth/send-verification-code` |
+| **Authentication Required** | No |
+
+### Request Structure
+
+#### Request Body
+
+| Field | Type | Required | Constraints | Description |
+|-------|------|----------|-------------|-------------|
+| `email` | String | Yes | Email format | Target email address |
+
+#### Request Example
+
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+### Response Structure
+
+#### Success Response (200)
+
+```json
+{
+  "code": 200,
+  "message": "Verification code sent, please check your inbox",
+  "data": null
+}
+```
+
+### Error Responses
+
+#### 400 - Invalid Email Format
+
+```json
+{
+  "code": 400,
+  "message": "Invalid request parameters",
+  "data": null
+}
+```
+
+#### 409 - Email Already Registered
+
+```json
+{
+  "code": 409,
+  "message": "This email is already registered",
+  "data": null
+}
+```
+
+#### 429 - Resend Cooldown
+
+```json
+{
+  "code": 429,
+  "message": "Please wait before requesting a new code",
+  "data": null
+}
+```
+
+### cURL Example
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/send-verification-code \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com"
+  }'
+```
+
+---
+
+## 5. Check Email Verification Enabled
+
+### Basic Information
+
+| Item | Value |
+|------|-------|
+| **Interface Name** | Check Email Verification Enabled |
+| **Interface Path** | `GET /api/v1/auth/email-verification-enabled` |
+| **Authentication Required** | No |
+
+### Response Structure
+
+#### Success Response (200)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data` | Boolean | `true` if email verification is enabled, `false` otherwise |
+
+#### Response Example
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": true
+}
+```
+
+### cURL Example
+
+```bash
+curl -X GET http://localhost:8080/api/v1/auth/email-verification-enabled
+```
+
+---
+
 ## Token Usage
 
 ### Access Token
@@ -312,3 +445,5 @@ Payload contains the following fields:
 | Email Registration | POST | `/api/v1/auth/register/email` | No |
 | Email Login | POST | `/api/v1/auth/login/email` | No |
 | Google Login | POST | `/api/v1/auth/login/google` | No |
+| Send Verification Code | POST | `/api/v1/auth/send-verification-code` | No |
+| Check Verification Enabled | GET | `/api/v1/auth/email-verification-enabled` | No |
