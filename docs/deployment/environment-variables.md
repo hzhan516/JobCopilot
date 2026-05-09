@@ -370,6 +370,16 @@ You only need to configure **one** provider. The choice is determined by the pre
 | **Security notes** | Long timeouts can exhaust worker threads under heavy load. Short timeouts improve resilience but may cause unnecessary retries for slow models. |
 | **Common mistakes** | Setting this too low (< 10s) for large resume files or batch embedding jobs. |
 
+### `LLM_MAX_TOKENS`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Maximum number of output tokens the LLM is allowed to generate for a single request. |
+| **Default** | `8192` |
+| **Valid values** | Positive integer |
+| **Security notes** | Higher values increase cost per request and may increase latency. However, setting this too low causes the model to truncate structured JSON responses (e.g. conversation replies, resume optimization), leading to `JSONDecodeError` downstream. |
+| **Common mistakes** | <ul><li>Leaving the value at a provider-specific default (e.g. 1024 or 2048) without realizing it truncates long outputs.</li><li>Setting an extremely high value (> 32k) with a model that does not support it, causing provider errors.</li><li>Not correlating `json.decoder.JSONDecodeError` logs in the AI service with insufficient `max_tokens`.</li></ul> |
+
 ### `BACKEND_SERVICE_URL`
 
 | Field | Value |
