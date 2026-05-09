@@ -29,6 +29,9 @@ public class AuthException extends DomainException {
         VERIFICATION_CODE_EXPIRED,
         VERIFICATION_CODE_REQUIRED,
         VERIFICATION_COOLDOWN,
-        EMAIL_ALREADY_REGISTERED
+        EMAIL_ALREADY_REGISTERED,
+        CAPTCHA_REQUIRED,
+        CAPTCHA_INVALID,
+        CAPTCHA_EXPIRED
     }
 }

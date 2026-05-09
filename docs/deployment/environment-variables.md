@@ -21,6 +21,7 @@ This document describes every environment variable used by the Resume Assistant 
 - [M. File Storage](#m-file-storage)
 - [N. Backend Logging](#n-backend-logging)
 - [O. Email Verification Configuration](#o-email-verification-configuration)
+- [P. CAPTCHA Configuration](#p-captcha-configuration)
 - [F. AI Provider Keys](#f-ai-provider-keys)
 - [G. Model Parameters](#g-model-parameters)
 - [H. AI Service Logging](#h-ai-service-logging)
@@ -963,6 +964,58 @@ If left empty, both the backend interceptor and the AI service middleware skip t
 | **Valid values** | Positive integer, recommended range `3–5` |
 | **Security notes** | Limits brute-force guessing. After exceeding this threshold, the user must request a new code. |
 | **Common mistakes** | Setting to a high value (e.g., 10) makes 6-digit numeric codes easier to brute-force within the 5-minute expiry window. |
+
+## P. CAPTCHA Configuration
+
+### `CAPTCHA_ENABLED`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Master switch for the slider CAPTCHA challenge. When enabled, registration and login endpoints require a completed CAPTCHA verification. |
+| **Default** | `true` |
+| **Valid values** | `true`, `false` |
+| **Security notes** | Disabling CAPTCHA removes a layer of bot protection. Only set to `false` in trusted internal networks or automated test environments. |
+| **Common mistakes** | Setting to `false` on public-facing instances without alternative bot mitigation (e.g., rate limiting or WAF rules). |
+
+### `CAPTCHA_TOLERANCE`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Pixel tolerance when validating the slider position. A higher value makes the puzzle easier to solve. |
+| **Default** | `8` |
+| **Valid values** | Non-negative integer, recommended range `4–20` |
+| **Security notes** | Excessive tolerance (e.g., `50`) effectively disables the challenge because any drop position is accepted. |
+| **Common mistakes** | Setting to `0` requires pixel-perfect alignment, causing legitimate users to fail repeatedly and abandon registration. |
+
+### `CAPTCHA_TOKEN_EXPIRY`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Lifetime of a captchaToken in seconds before it expires. |
+| **Default** | `300` (5 minutes) |
+| **Valid values** | Positive integer, recommended range `60–600` |
+| **Security notes** | Shorter expiry windows reduce replay-attack windows. Too short (< 30 s) causes UX friction on slow networks. |
+| **Common mistakes** | Setting a very long expiry (e.g., 1 hour) allows attackers to reuse a single solved challenge for multiple requests. |
+
+### `CAPTCHA_TRACK_WIDTH`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Width of the slider track in pixels. Determines the difficulty range of the challenge. |
+| **Default** | `300` |
+| **Valid values** | Positive integer, recommended range `200–500` |
+| **Security notes** | Narrow tracks (< 150 px) are easier for bots to brute-force because the search space is smaller. |
+| **Common mistakes** | Setting a width that does not match the frontend CSS, causing visual misalignment and failed drops. |
+
+### `CAPTCHA_MAX_ATTEMPTS`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Maximum number of validation attempts allowed for a single challenge before the captchaToken is invalidated. |
+| **Default** | `5` |
+| **Valid values** | Positive integer, recommended range `3–10` |
+| **Security notes** | Limits brute-force guessing of the slider position. After exceeding this threshold, the user must request a new challenge. |
+| **Common mistakes** | Setting to a high value (e.g., 50) defeats the purpose of the challenge by allowing unlimited guesses within the token expiry window. |
 
 ---
 

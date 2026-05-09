@@ -16,7 +16,7 @@ The **Resume Assistant** is an AI-powered platform designed to streamline the jo
 
 ## Features
 
-- **Authentication**: Email/password registration (with optional email verification) plus Google OAuth 2.0 login
+- **Authentication**: Email/password registration (with optional email verification) plus Google OAuth 2.0 login, protected by slider CAPTCHA bot protection
 - **Resume Management**: Upload, parse, version, and export resumes in multiple formats
 - **AI-Powered Parsing**: Extract structured information from resumes and job posts using LiteLLM-compatible models
 - **Job Matching**: Intelligent job recommendations based on resume content and vector similarity
@@ -50,7 +50,7 @@ This project adopts a microservices architecture with the following components:
 | Service       | Technology                | Port         | Description                          |
 |---------------|---------------------------|--------------|--------------------------------------|
 | Frontend      | React 19 + Vite 7         | `${FRONTEND_HOST_PORT:-80}` -> 80 | Web user interface and Nginx reverse proxy |
-| Backend       | Java 21 + Spring Boot 3.5 | 8080 internal | REST API and business logic          |
+| Backend       | Java 21 + Spring Boot 3.5 | 8080 internal | REST API, business logic, and slider CAPTCHA protection |
 | AI Service    | Python 3 + FastAPI + LiteLLM | 8000 internal | AI processing through configured providers |
 | Database      | PostgreSQL 15 + pgvector  | 5432 internal | Business data and vector storage     |
 | Message Queue | RabbitMQ 3                | 5672 internal | Async message processing             |
@@ -136,6 +136,11 @@ Key environment variables:
 | `LLM_EMBEDDING_MODEL_DIMENSION` | No       | Embedding output dimension (must match the model) |
 | `SPRING_PROFILES_ACTIVE`        | No       | Spring profile: `dev` (default) or `prod` |
 | `LOG_LEVEL`              | No       | AI service log level: `INFO` (default) or `DEBUG` |
+| `CAPTCHA_ENABLED`        | No       | Enable slider CAPTCHA. Default: `true` |
+| `CAPTCHA_TOLERANCE`      | No       | CAPTCHA drag tolerance in pixels. Default: `8` |
+| `CAPTCHA_TOKEN_EXPIRY`   | No       | CAPTCHA token expiry in seconds. Default: `300` |
+| `CAPTCHA_TRACK_WIDTH`    | No       | CAPTCHA track width in pixels. Default: `300` |
+| `CAPTCHA_MAX_ATTEMPTS`   | No       | Maximum CAPTCHA attempts per IP. Default: `5` |
 
 For local development, copy `.env.example` to `.env` and provide one API key that matches the LiteLLM model prefix you choose. For example, the default Gemini models use `GEMINI_API_KEY`.
 

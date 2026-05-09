@@ -14,6 +14,8 @@
 3. [Google 登录](#3-google-登录)
 4. [发送验证码](#4-发送验证码)
 5. [查询邮箱验证开关](#5-查询邮箱验证开关)
+6. [获取滑动验证码挑战](#6-获取滑动验证码挑战)
+7. [验证滑动验证码](#7-验证滑动验证码)
 
 ---
 
@@ -36,6 +38,7 @@
 | `email` | String | 是 | 邮箱格式 | 用户邮箱地址 |
 | `password` | String | 是 | 6-32位 | 用户密码 |
 | `verificationCode` | String | 否 | 6位数字 | 开启邮箱验证时必填 |
+| `captchaToken` | String | 是 | 非空 | 滑动验证码验证 token（从 `/v1/auth/captcha/verify` 获取） |
 
 #### 请求示例
 
@@ -43,7 +46,8 @@
 {
   "email": "user@example.com",
   "password": "123456",
-  "verificationCode": "123456"
+  "verificationCode": "123456",
+  "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -118,7 +122,8 @@ curl -X POST http://localhost:8080/api/v1/auth/register/email \
   -d '{
     "email": "user@example.com",
     "password": "123456",
-    "verificationCode": "123456"
+    "verificationCode": "123456",
+    "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
   }'
 ```
 
@@ -142,13 +147,15 @@ curl -X POST http://localhost:8080/api/v1/auth/register/email \
 |------|------|------|------|------|
 | `email` | String | 是 | 邮箱格式 | 用户邮箱地址 |
 | `password` | String | 是 | 非空 | 用户密码 |
+| `captchaToken` | String | 是 | 非空 | 滑动验证码验证 token |
 
 #### 请求示例
 
 ```json
 {
   "email": "user@example.com",
-  "password": "123456"
+  "password": "123456",
+  "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -212,7 +219,8 @@ curl -X POST http://localhost:8080/api/v1/auth/login/email \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
-    "password": "123456"
+    "password": "123456",
+    "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
   }'
 ```
 
@@ -235,12 +243,14 @@ curl -X POST http://localhost:8080/api/v1/auth/login/email \
 | 字段 | 类型 | 必填 | 约束 | 说明 |
 |------|------|------|------|------|
 | `idToken` | String | 是 | 非空 | Google ID Token |
+| `captchaToken` | String | 是 | 非空 | 滑动验证码验证 token |
 
 #### 请求示例
 
 ```json
 {
-  "idToken": "eyJhbGciOiJSUzI1NiIs..."
+  "idToken": "eyJhbGciOiJSUzI1NiIs...",
+  "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -284,7 +294,8 @@ curl -X POST http://localhost:8080/api/v1/auth/login/email \
 curl -X POST http://localhost:8080/api/v1/auth/login/google \
   -H "Content-Type: application/json" \
   -d '{
-    "idToken": "eyJhbGciOiJSUzI1NiIs..."
+    "idToken": "eyJhbGciOiJSUzI1NiIs...",
+    "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
   }'
 ```
 
@@ -307,12 +318,14 @@ curl -X POST http://localhost:8080/api/v1/auth/login/google \
 | 字段 | 类型 | 必填 | 约束 | 说明 |
 |------|------|------|------|------|
 | `email` | String | 是 | 邮箱格式 | 目标邮箱地址 |
+| `captchaToken` | String | 是 | 非空 | 滑动验证码验证 token（预检，不消耗） |
 
 #### 请求示例
 
 ```json
 {
-  "email": "user@example.com"
+  "email": "user@example.com",
+  "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -366,7 +379,8 @@ curl -X POST http://localhost:8080/api/v1/auth/login/google \
 curl -X POST http://localhost:8080/api/v1/auth/send-verification-code \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "user@example.com"
+    "email": "user@example.com",
+    "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
   }'
 ```
 
@@ -438,6 +452,143 @@ Payload 包含以下字段：
 
 ---
 
+## 6. 获取滑动验证码挑战
+
+### 基本信息
+
+| 项目 | 值 |
+|------|-----|
+| **接口名称** | 获取滑动验证码挑战 |
+| **接口路径** | `GET /api/v1/auth/captcha` |
+| **是否需要认证** | 否 |
+
+### 响应结构
+
+#### 成功响应 (200)
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `captchaId` | String (UUID) | 挑战唯一标识 |
+| `targetX` | Integer | 滑轨上的目标位置（像素） |
+
+#### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": {
+    "captchaId": "550e8400-e29b-41d4-a716-446655440000",
+    "targetX": 156
+  }
+}
+```
+
+### 错误响应
+
+#### 429 - 速率限制
+
+同一 IP 请求过多挑战时返回（默认：每分钟超过 20 次）。
+
+```json
+{
+  "code": 429,
+  "message": "Too many requests, please try again later",
+  "data": null
+}
+```
+
+### cURL 示例
+
+```bash
+curl -X GET http://localhost:8080/api/v1/auth/captcha
+```
+
+---
+
+## 7. 验证滑动验证码
+
+### 基本信息
+
+| 项目 | 值 |
+|------|-----|
+| **接口名称** | 验证滑动验证码 |
+| **接口路径** | `POST /api/v1/auth/captcha/verify` |
+| **是否需要认证** | 否 |
+
+### 请求结构
+
+#### Request Body
+
+| 字段 | 类型 | 必填 | 约束 | 说明 |
+|------|------|------|------|------|
+| `captchaId` | String | 是 | 非空 | 从 `GET /v1/auth/captcha` 获取的挑战 ID |
+| `offsetX` | Integer | 是 | ≥0 | 用户拖动偏移量（滑块中心位置，像素） |
+
+#### 请求示例
+
+```json
+{
+  "captchaId": "550e8400-e29b-41d4-a716-446655440000",
+  "offsetX": 156
+}
+```
+
+### 响应结构
+
+#### 成功响应 (200)
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `captchaToken` | String (UUID) | 一次性 token，有效期 5 分钟（300 秒） |
+
+#### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": {
+    "captchaToken": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+  }
+}
+```
+
+### 错误响应
+
+#### 400 - 验证码无效或已过期
+
+```json
+{
+  "code": 400,
+  "message": "CAPTCHA has expired or too many failed attempts",
+  "data": null
+}
+```
+
+#### 400 - 偏移量不匹配
+
+```json
+{
+  "code": 400,
+  "message": "CAPTCHA verification failed, please try again",
+  "data": null
+}
+```
+
+### cURL 示例
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/captcha/verify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "captchaId": "550e8400-e29b-41d4-a716-446655440000",
+    "offsetX": 156
+  }'
+```
+
+---
+
 ## 接口汇总
 
 | 接口 | 方法 | 路径 | 认证 |
@@ -447,3 +598,5 @@ Payload 包含以下字段：
 | Google 登录 | POST | `/api/v1/auth/login/google` | 否 |
 | 发送验证码 | POST | `/api/v1/auth/send-verification-code` | 否 |
 | 查询验证开关 | GET | `/api/v1/auth/email-verification-enabled` | 否 |
+| 获取滑动验证码挑战 | GET | `/api/v1/auth/captcha` | 否 |
+| 验证滑动验证码 | POST | `/api/v1/auth/captcha/verify` | 否 |

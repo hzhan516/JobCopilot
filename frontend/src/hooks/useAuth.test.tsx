@@ -93,7 +93,7 @@ describe('useAuth', () => {
     const { result } = renderHook(() => useAuth(), { wrapper })
 
     await act(async () => {
-      await result.current.loginByGoogle('id-token-string', true)
+      await result.current.loginByGoogle({ idToken: 'id-token-string' }, true)
     })
 
     expect(mockLoginByGoogle).toHaveBeenCalledWith({ idToken: 'id-token-string' }, true)

@@ -28,6 +28,10 @@ Required variables:
 - A LiteLLM-compatible model service key, e.g. `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GROQ_API_KEY`
 - `LLM_TEXT_MODEL`, `LLM_VISION_MODEL`, and `LLM_EMBEDDING_MODEL`: model names matching the selected service prefix
 - `LLM_EMBEDDING_MODEL_DIMENSION`: embedding output dimension (must match the selected model, default 1536)
+- `CAPTCHA_ENABLED`: Enable CAPTCHA verification for auth endpoints (`true`/`false`, default `true`)
+- `CAPTCHA_TOLERANCE`: Slider tolerance in pixels (default `8`)
+- `CAPTCHA_MAX_ATTEMPTS`: Maximum verification attempts per challenge (default `5`)
+- `CAPTCHA_TOKEN_EXPIRY`: Token cache TTL in seconds (default `300`)
 
 By default the project can use Gemini models via LiteLLM, so local development only needs `GEMINI_API_KEY` unless you choose another provider.
 
@@ -290,6 +294,14 @@ docker system prune -a --volumes
 # Rebuild
 docker-compose up -d --build --force-recreate
 ```
+
+### CAPTCHA Rate Limit Triggered
+
+**Symptom**: `429 Too Many Requests` when requesting a CAPTCHA challenge.
+
+**Cause**: The same IP has exceeded 20 CAPTCHA requests per minute.
+
+**Fix**: Wait 1 minute for the rate-limit cache to expire, or set `CAPTCHA_ENABLED=false` in `.env` to disable CAPTCHA for local testing.
 
 ## Production Deployment
 

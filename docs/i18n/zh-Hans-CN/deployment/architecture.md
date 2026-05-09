@@ -65,7 +65,7 @@ Resume Assistant（智能求职助手）是一个以**三层 Docker 网络架构
 |------|-----|
 | **网络** | `resume-network`（公网 + 内网 + 数据库网） |
 | **宿主机端口** | 生产环境无（模板暴露 `8080:8080` 用于开发） |
-| **职责** | REST API 网关、JWT 身份验证、业务逻辑编排、RabbitMQ 生产者。 |
+| **职责** | REST API 网关、JWT 身份验证、CAPTCHA 验证、业务逻辑编排、RabbitMQ 生产者。 |
 | **安全说明** | 唯一跨越三层网络的服务。通过 Docker DNS 与 PostgreSQL（`postgres:5432`）和 RabbitMQ（`rabbitmq:5672`）通信。所有发往 `ai-service` 的出站 REST 请求均携带 `X-Internal-API-Key` 请求头。 |
 
 ### 3.3 AI 服务（FastAPI）
@@ -97,7 +97,7 @@ Resume Assistant（智能求职助手）是一个以**三层 Docker 网络架构
 
 ## 4. 纵深防御（Defense in Depth）
 
-本部署实现了四层独立的安全层。攻破一层不会自动导致下一层失守。
+本部署实现了五层独立的安全层。攻破一层不会自动导致下一层失守。
 
 ### 第一层：网络隔离
 
@@ -116,6 +116,10 @@ Resume Assistant（智能求职助手）是一个以**三层 Docker 网络架构
 ### 第四层：RabbitMQ 凭据
 
 AMQP 连接需要用户名和密码。默认的 `guest/guest` 通过环境变量覆盖。即使某个容器被攻破，访问消息代理仍需要独立的凭据。
+
+### 第五层：人机验证（CAPTCHA）
+
+所有认证端点（注册、登录）均要求有效的 CAPTCHA 挑战-响应。后端维护前缀隔离的 Caffeine 缓存用于存储挑战和一次性 token，并实施基于 IP 的速率限制（每分钟 20 次请求）。即使攻击者绕过网络隔离并持有有效凭据，也无法在不解决 CAPTCHA 挑战的情况下以编程方式完成认证。
 
 ## 5. 快速开始
 

@@ -14,6 +14,8 @@
 3. [Google 登入](#3-google-登入)
 4. [傳送驗證碼](#4-傳送驗證碼)
 5. [查詢郵箱驗證開關](#5-查詢郵箱驗證開關)
+6. [取得滑動驗證碼挑戰](#6-取得滑動驗證碼挑戰)
+7. [驗證滑動驗證碼](#7-驗證滑動驗證碼)
 
 ---
 
@@ -36,6 +38,7 @@
 | `email` | String | 是 | 郵箱格式 | 使用者郵箱地址 |
 | `password` | String | 是 | 6-32位 | 使用者密碼 |
 | `verificationCode` | String | 否 | 6位數字 | 開啟郵箱驗證時必填 |
+| `captchaToken` | String | 是 | 非空 | 滑動驗證碼驗證 token（從 `/v1/auth/captcha/verify` 獲取） |
 
 #### 請求範例
 
@@ -43,7 +46,8 @@
 {
   "email": "user@example.com",
   "password": "123456",
-  "verificationCode": "123456"
+  "verificationCode": "123456",
+  "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -118,7 +122,8 @@ curl -X POST http://localhost:8080/api/v1/auth/register/email \
   -d '{
     "email": "user@example.com",
     "password": "123456",
-    "verificationCode": "123456"
+    "verificationCode": "123456",
+    "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
   }'
 ```
 
@@ -142,13 +147,15 @@ curl -X POST http://localhost:8080/api/v1/auth/register/email \
 |------|------|------|------|------|
 | `email` | String | 是 | 郵箱格式 | 使用者郵箱地址 |
 | `password` | String | 是 | 非空 | 使用者密碼 |
+| `captchaToken` | String | 是 | 非空 | 滑動驗證碼驗證 token |
 
 #### 請求範例
 
 ```json
 {
   "email": "user@example.com",
-  "password": "123456"
+  "password": "123456",
+  "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -212,7 +219,8 @@ curl -X POST http://localhost:8080/api/v1/auth/login/email \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
-    "password": "123456"
+    "password": "123456",
+    "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
   }'
 ```
 
@@ -235,12 +243,14 @@ curl -X POST http://localhost:8080/api/v1/auth/login/email \
 | 欄位 | 類型 | 必填 | 限制 | 說明 |
 |------|------|------|------|------|
 | `idToken` | String | 是 | 非空 | Google ID Token |
+| `captchaToken` | String | 是 | 非空 | 滑動驗證碼驗證 token |
 
 #### 請求範例
 
 ```json
 {
-  "idToken": "eyJhbGciOiJSUzI1NiIs..."
+  "idToken": "eyJhbGciOiJSUzI1NiIs...",
+  "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -284,7 +294,8 @@ curl -X POST http://localhost:8080/api/v1/auth/login/email \
 curl -X POST http://localhost:8080/api/v1/auth/login/google \
   -H "Content-Type: application/json" \
   -d '{
-    "idToken": "eyJhbGciOiJSUzI1NiIs..."
+    "idToken": "eyJhbGciOiJSUzI1NiIs...",
+    "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
   }'
 ```
 
@@ -307,12 +318,14 @@ curl -X POST http://localhost:8080/api/v1/auth/login/google \
 | 欄位 | 類型 | 必填 | 限制 | 說明 |
 |------|------|------|------|------|
 | `email` | String | 是 | 郵箱格式 | 目標郵箱地址 |
+| `captchaToken` | String | 是 | 非空 | 滑動驗證碼驗證 token（預檢，不消耗） |
 
 #### 請求範例
 
 ```json
 {
-  "email": "user@example.com"
+  "email": "user@example.com",
+  "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -366,7 +379,8 @@ curl -X POST http://localhost:8080/api/v1/auth/login/google \
 curl -X POST http://localhost:8080/api/v1/auth/send-verification-code \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "user@example.com"
+    "email": "user@example.com",
+    "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
   }'
 ```
 
@@ -438,6 +452,143 @@ Payload 包含以下欄位：
 
 ---
 
+## 6. 取得滑動驗證碼挑戰
+
+### 基本資訊
+
+| 項目 | 值 |
+|------|-----|
+| **介面名稱** | 取得滑動驗證碼挑戰 |
+| **介面路徑** | `GET /api/v1/auth/captcha` |
+| **是否需要認證** | 否 |
+
+### 回應結構
+
+#### 成功回應 (200)
+
+| 欄位 | 類型 | 說明 |
+|------|------|------|
+| `captchaId` | String (UUID) | 挑戰唯一識別 |
+| `targetX` | Integer | 滑軌上的目標位置（像素） |
+
+#### 回應範例
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": {
+    "captchaId": "550e8400-e29b-41d4-a716-446655440000",
+    "targetX": 156
+  }
+}
+```
+
+### 錯誤回應
+
+#### 429 - 速率限制
+
+同一 IP 請求過多挑戰時回傳（預設：每分鐘超過 20 次）。
+
+```json
+{
+  "code": 429,
+  "message": "Too many requests, please try again later",
+  "data": null
+}
+```
+
+### cURL 範例
+
+```bash
+curl -X GET http://localhost:8080/api/v1/auth/captcha
+```
+
+---
+
+## 7. 驗證滑動驗證碼
+
+### 基本資訊
+
+| 項目 | 值 |
+|------|-----|
+| **介面名稱** | 驗證滑動驗證碼 |
+| **介面路徑** | `POST /api/v1/auth/captcha/verify` |
+| **是否需要認證** | 否 |
+
+### 請求結構
+
+#### Request Body
+
+| 欄位 | 類型 | 必填 | 限制 | 說明 |
+|------|------|------|------|------|
+| `captchaId` | String | 是 | 非空 | 從 `GET /v1/auth/captcha` 獲取的挑戰 ID |
+| `offsetX` | Integer | 是 | ≥0 | 使用者拖動偏移量（滑塊中心位置，像素） |
+
+#### 請求範例
+
+```json
+{
+  "captchaId": "550e8400-e29b-41d4-a716-446655440000",
+  "offsetX": 156
+}
+```
+
+### 回應結構
+
+#### 成功回應 (200)
+
+| 欄位 | 類型 | 說明 |
+|------|------|------|
+| `captchaToken` | String (UUID) | 一次性 token，有效期 5 分鐘（300 秒） |
+
+#### 回應範例
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": {
+    "captchaToken": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+  }
+}
+```
+
+### 錯誤回應
+
+#### 400 - 驗證碼無效或已過期
+
+```json
+{
+  "code": 400,
+  "message": "CAPTCHA has expired or too many failed attempts",
+  "data": null
+}
+```
+
+#### 400 - 偏移量不匹配
+
+```json
+{
+  "code": 400,
+  "message": "CAPTCHA verification failed, please try again",
+  "data": null
+}
+```
+
+### cURL 範例
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/captcha/verify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "captchaId": "550e8400-e29b-41d4-a716-446655440000",
+    "offsetX": 156
+  }'
+```
+
+---
+
 ## 介面彙總
 
 | 介面 | 方法 | 路徑 | 認證 |
@@ -447,3 +598,5 @@ Payload 包含以下欄位：
 | Google 登入 | POST | `/api/v1/auth/login/google` | 否 |
 | 傳送驗證碼 | POST | `/api/v1/auth/send-verification-code` | 否 |
 | 查詢驗證開關 | GET | `/api/v1/auth/email-verification-enabled` | 否 |
+| 取得滑動驗證碼挑戰 | GET | `/api/v1/auth/captcha` | 否 |
+| 驗證滑動驗證碼 | POST | `/api/v1/auth/captcha/verify` | 否 |

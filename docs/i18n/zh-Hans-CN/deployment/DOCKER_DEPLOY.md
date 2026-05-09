@@ -28,6 +28,10 @@ vim .env
 - 一个兼容 LiteLLM 的模型服务密钥，例如 `GEMINI_API_KEY`、`OPENAI_API_KEY`、`ANTHROPIC_API_KEY` 或 `GROQ_API_KEY`
 - `LLM_TEXT_MODEL`、`LLM_VISION_MODEL` 和 `LLM_EMBEDDING_MODEL`: 与所选模型服务前缀匹配的模型名称
 - `LLM_EMBEDDING_MODEL_DIMENSION`: 嵌入模型输出维度（必须与所选模型一致，默认 1536）
+- `CAPTCHA_ENABLED`: 是否启用 CAPTCHA 验证（`true`/`false`，默认 `true`）
+- `CAPTCHA_TOLERANCE`: 滑动容差像素（默认 `8`）
+- `CAPTCHA_MAX_ATTEMPTS`: 每个挑战最大验证次数（默认 `5`）
+- `CAPTCHA_TOKEN_EXPIRY`: Token 缓存 TTL，单位秒（默认 `300`）
 
 默认情况下，项目可以通过 LiteLLM 使用 Gemini 模型，因此本地开发只需要配置 `GEMINI_API_KEY`，除非您选择其他模型服务。
 
@@ -183,6 +187,14 @@ docker system prune -a --volumes
 # 重新构建
 docker-compose up -d --build --force-recreate
 ```
+
+### CAPTCHA 速率限制触发
+
+**现象**：请求 CAPTCHA 挑战时返回 `429 Too Many Requests`。
+
+**原因**：同一 IP 在 1 分钟内超过 20 次 CAPTCHA 请求。
+
+**解决**：等待 1 分钟让速率限制缓存过期，或在 `.env` 中设置 `CAPTCHA_ENABLED=false` 以在本地测试时禁用 CAPTCHA。
 
 ### 406 PRECONDITION_FAILED（RabbitMQ）
 

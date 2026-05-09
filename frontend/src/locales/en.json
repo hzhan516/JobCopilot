@@ -53,6 +53,7 @@
       "errorInvalidCredentials": "Invalid email or password",
       "or": "or",
       "googleLoginFailed": "Google login failed, please try again",
+      "googleLogin": "Sign in with Google",
       "errors": {
         "emailRequired": "Please enter your email address",
         "emailInvalid": "Please enter a valid email address",
@@ -102,6 +103,14 @@
         "strong": "Strong",
         "hint": "Recommend including uppercase, lowercase, numbers and special characters, 8+ chars"
       }
+    },
+    "captcha": {
+      "dragHint": "Drag the slider to the target",
+      "success": "Verification passed",
+      "fail": "Verification failed, please try again",
+      "required": "Please complete the security verification",
+      "modalTitle": "Security Verification",
+      "modalDesc": "Please complete the verification to continue"
     }
   },
   "dashboard": {

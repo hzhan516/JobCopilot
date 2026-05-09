@@ -30,4 +30,6 @@ public class RegisterByEmailRequest {
     private String password;
 
     private String verificationCode;
+
+    private String captchaToken;
 }

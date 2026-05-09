@@ -123,7 +123,7 @@ job seekers.
 │                                          │                                          │
 │  ┌───────────────────────────────────────▼──────────────────────────────────────┐   │
 │  │                        Application Service Layer                               │   │
-│  │  Resume | Job | Conversation | Tracking Application Services                │   │
+│  │  Resume | Job | Conversation | Tracking | Captcha Application Services       │   │
 │  └───────────────────────────────────────▼──────────────────────────────────────┘   │
 │                                          │                                          │
 │  ┌───────────────────────────────────────▼──────────────────────────────────────┐   │
@@ -380,6 +380,7 @@ job seekers.
 | **Job**          | Job, JobRequirement, JobMatch                          | JobService, JobMatchingService     | JobRepository, JobEmbeddingRepository       |
 | **Conversation** | Conversation, Message, SuggestedChange                 | ConversationService, ChatService   | ConversationRepository                      |
 | **Tracking**     | JobApplication, Interview, ApplicationStatus           | TrackingService                    | TrackingRepository                          |
+| **CAPTCHA**      | CaptchaChallenge, CaptchaToken                         | CaptchaService                     | -                                           |
 
 #### 4.2.3 API Controllers
 
@@ -436,6 +437,16 @@ public class TrackingController {
 
     @PutMapping("/applications/{id}/status")
     public ResponseEntity<ApplicationDTO> updateStatus(@PathVariable Long id, @RequestBody StatusUpdateRequest request);
+}
+
+@RestController
+@RequestMapping("/api/v1")
+public class CaptchaController {
+    @GetMapping("/auth/captcha")
+    public ResponseEntity<CaptchaChallengeResponse> getCaptcha();
+
+    @PostMapping("/auth/captcha/verify")
+    public ResponseEntity<CaptchaVerifyResponse> verifyCaptcha(@RequestBody CaptchaVerifyRequest request);
 }
 ```
 
@@ -908,6 +919,25 @@ LIMIT 10;
 Frontend ──▶ POST /api/v1/resumes ──▶ Store in shared-storage volume ──▶ Publish MQ task ──▶ AI service reads file
 ```
 
+### 5.5 Caffeine Dual-Cache Design (CAPTCHA)
+
+The CAPTCHA subsystem uses Caffeine for high-performance in-memory caching with prefix-isolated stores:
+
+| Cache Name | Purpose | Key Prefix | Eviction Policy |
+| ---------- | ------- | ---------- | --------------- |
+| **Challenge Cache** | Stores slider CAPTCHA challenges (target positions) | `CAPTCHA_CHALLENGE:` | 5 minutes after write |
+| **Token Cache** | Stores one-time verification tokens | `CAPTCHA_TOKEN:` | 5 minutes after write |
+| **Rate Limit Cache** | Tracks request timestamps per IP | `RATE_LIMIT:` | 1 minute after write |
+
+**IP Rate Limiting**: Each IP address is limited to **20 CAPTCHA requests per minute**. Excess requests receive HTTP 429.
+
+**Security Features**:
+- Prefix isolation prevents cache key collisions between challenge, token, and rate-limit entries
+- One-time token: Each `captchaToken` can only be redeemed once (consumed on validation)
+- Max attempts: 5 verification attempts per challenge before invalidation
+- V1 DOM-level verification: Frontend performs challenge solving without exposing the answer
+- V2 Graphics2D puzzle evolution: Image-based challenges rendered server-side with Java 2D
+
 ---
 
 ## 6. Integration Architecture
@@ -1041,6 +1071,8 @@ Frontend ──▶ POST /api/v1/resumes ──▶ Store in shared-storage volume
 | `/api/v1/auth/login/google`                 | POST   | Google login                                  | No            |
 | `/api/v1/auth/refresh`                      | POST   | Refresh access token                          | Yes           |
 | `/api/v1/auth/logout`                       | POST   | Logout                                        | Yes           |
+| `/api/v1/auth/captcha`                      | GET    | Get CAPTCHA challenge                         | No            |
+| `/api/v1/auth/captcha/verify`               | POST   | Verify CAPTCHA and exchange for token         | No            |
 | `/api/v1/profile`                           | GET    | Get current user profile                      | Yes           |
 | `/api/v1/profile`                           | PUT    | Update user profile                           | Yes           |
 | `/api/v1/profile/avatar`                    | PUT    | Update avatar URL                             | Yes           |
@@ -1533,6 +1565,7 @@ The actual cost depends on the configured LiteLLM provider and model. The curren
 | **SQL Injection**     | Parameterized Queries | JPA/Hibernate prepared statements                   |
 | **XSS Prevention**    | Output Encoding       | React automatic escaping                            |
 | **Rate Limiting**     | Bucket Algorithm      | 100 requests/minute per IP                          |
+| **Human Verification**| CAPTCHA (Caffeine)    | Challenge-response with IP rate limit (20/min)      |
 
 ### 8.3 Data Protection
 

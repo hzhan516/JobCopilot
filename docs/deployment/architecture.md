@@ -65,7 +65,7 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
 |-----------|-------|
 | **Networks** | `resume-network` (public + internal + db) |
 | **Host ports** | None in production (template exposes `8080:8080` for dev) |
-| **Role** | REST API gateway, JWT authentication, business logic orchestration, and RabbitMQ producer. |
+| **Role** | REST API gateway, JWT authentication, CAPTCHA verification, business logic orchestration, and RabbitMQ producer. |
 | **Security notes** | The only service that spans all three network tiers. Communicates with PostgreSQL via Docker DNS (`postgres:5432`) and with RabbitMQ (`rabbitmq:5672`). All outbound REST calls to `ai-service` include the `X-Internal-API-Key` header. |
 
 ### 3.3 AI Service (FastAPI)
@@ -97,7 +97,7 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
 
 ## 4. Defense in Depth
 
-The deployment implements four independent security layers. Breaching one does not automatically compromise the next.
+The deployment implements five independent security layers. Breaching one does not automatically compromise the next.
 
 ### Layer 1: Network Isolation
 
@@ -116,6 +116,10 @@ All user-facing API calls (registration, login, resume upload, job matching) car
 ### Layer 4: RabbitMQ Credentials
 
 AMQP connections require a username and password. The default `guest/guest` is overridden via environment variables. Even if a container is compromised, accessing the message broker requires separate credentials.
+
+### Layer 5: Human Verification (CAPTCHA)
+
+All authentication endpoints (registration, login) require a valid CAPTCHA challenge-response. The backend maintains prefix-isolated Caffeine caches for challenges and one-time tokens, with IP-based rate limiting (20 requests/minute). Even if an attacker bypasses network isolation and possesses valid credentials, they cannot programmatically authenticate without solving the CAPTCHA challenge.
 
 ## 5. Quick Start
 

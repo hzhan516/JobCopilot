@@ -65,7 +65,7 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 |------|-----|
 | **網路** | `resume-network`（公網 + 內網 + 資料庫網） |
 | **主機連接埠** | 生產環境無（範本暴露 `8080:8080` 用於開發） |
-| **職責** | REST API 閘道、JWT 身分驗證、業務邏輯編排、RabbitMQ 生產者。 |
+| **職責** | REST API 閘道、JWT 身分驗證、CAPTCHA 驗證、業務邏輯編排、RabbitMQ 生產者。 |
 | **安全說明** | 唯一跨越三層網路的服務。透過 Docker DNS 與 PostgreSQL（`postgres:5432`）和 RabbitMQ（`rabbitmq:5672`）通信。所有發往 `ai-service` 的出站 REST 請求均攜帶 `X-Internal-API-Key` 標頭。 |
 
 ### 3.3 AI 服務（FastAPI）
@@ -97,7 +97,7 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 
 ## 4. 縱深防禦（Defense in Depth）
 
-本部署實作了四層獨立的安全層。攻破一層不會自動導致下一層失守。
+本部署實作了五層獨立的安全層。攻破一層不會自動導致下一層失守。
 
 ### 第一層：網路隔離
 
@@ -116,6 +116,10 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 ### 第四層：RabbitMQ 憑證
 
 AMQP 連線需要使用者名稱和密碼。預設的 `guest/guest` 透過環境變數覆蓋。即使某個容器被攻破，存取訊息代理仍需要獨立的憑證。
+
+### 第五層：人機驗證（CAPTCHA）
+
+所有認證端點（註冊、登入）均要求有效的 CAPTCHA 挑戰-回應。後端維護前綴隔離的 Caffeine 快取用於儲存挑戰和一次性 token，並實施基於 IP 的速率限制（每分鐘 20 次請求）。即使攻擊者繞過網路隔離並持有有效憑證，也無法在不解決 CAPTCHA 挑戰的情況下以程式設計方式完成認證。
 
 ## 5. 快速開始
 

@@ -63,6 +63,12 @@ app:
     code-expiry-seconds: ${EMAIL_CODE_EXPIRY:300}
     resend-cooldown-seconds: ${EMAIL_RESEND_COOLDOWN:60}
     max-attempts: ${EMAIL_MAX_ATTEMPTS:3}
+  captcha:
+    enabled: ${CAPTCHA_ENABLED:true}
+    tolerance: ${CAPTCHA_TOLERANCE:8}
+    token-expiry-seconds: ${CAPTCHA_TOKEN_EXPIRY:300}
+    track-width: ${CAPTCHA_TRACK_WIDTH:300}
+    max-attempts: ${CAPTCHA_MAX_ATTEMPTS:5}
   rabbitmq:
     queue:
       res:

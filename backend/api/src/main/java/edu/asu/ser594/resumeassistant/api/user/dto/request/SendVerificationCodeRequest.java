@@ -20,4 +20,6 @@ public class SendVerificationCodeRequest {
     @NotBlank(message = "{validation.email.required}")
     @Email(message = "{validation.email.invalid}")
     private String email;
+
+    private String captchaToken;
 }

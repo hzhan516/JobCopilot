@@ -4,6 +4,7 @@ import edu.asu.ser594.resumeassistant.api.user.dto.TokenPair;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.LoginByEmailRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.RegisterByEmailRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.response.AuthResponse;
+import edu.asu.ser594.resumeassistant.app.config.CaptchaProperties;
 import edu.asu.ser594.resumeassistant.application.user.service.AuthApplicationService;
 import edu.asu.ser594.resumeassistant.domain.user.entity.User;
 import edu.asu.ser594.resumeassistant.types.enums.UserRole;
@@ -48,11 +49,17 @@ class AuthFacadeImplTest {
     @InjectMocks
     private AuthFacadeImpl authFacade;
 
+    private CaptchaProperties captchaProperties;
+
     private User testUser;
     private TokenPair testTokenPair;
 
     @BeforeEach
     void setUp() {
+        captchaProperties = new CaptchaProperties();
+        captchaProperties.setEnabled(false);
+        authFacade = new AuthFacadeImpl(authService, null, captchaProperties);
+
         testUser = User.builder()
                 .id(UUID.randomUUID())
                 .email(TEST_EMAIL)

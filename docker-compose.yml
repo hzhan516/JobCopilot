@@ -191,6 +191,14 @@ services:
       # requests with missing or mismatched keys (HTTP 401).
       # If left empty, both sides skip the check (convenient for local dev).
       - INTERNAL_API_KEY=${INTERNAL_API_KEY:-}
+
+      # --- CAPTCHA / Human Verification ---
+      # Slider CAPTCHA settings consumed by CaptchaProperties in the backend.
+      - CAPTCHA_ENABLED=${CAPTCHA_ENABLED:-true}
+      - CAPTCHA_TOLERANCE=${CAPTCHA_TOLERANCE:-8}
+      - CAPTCHA_TOKEN_EXPIRY=${CAPTCHA_TOKEN_EXPIRY:-300}
+      - CAPTCHA_TRACK_WIDTH=${CAPTCHA_TRACK_WIDTH:-300}
+      - CAPTCHA_MAX_ATTEMPTS=${CAPTCHA_MAX_ATTEMPTS:-5}
     volumes:
       # Named volume shared with ai-service. Backend writes uploaded resumes
       # here; ai-service reads them (read-only mount on its side).

@@ -1,5 +1,5 @@
 import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig } from 'axios';
-import type { ApiResponse, AuthResponse, LoginRequest, RegisterRequest, SendVerificationCodeRequest, LoginByGoogleRequest } from '@/types';
+import type { ApiResponse, AuthResponse, LoginRequest, RegisterRequest, SendVerificationCodeRequest, LoginByGoogleRequest, CaptchaChallengeResponse, CaptchaVerifyRequest } from '@/types';
 import tokenStorage from './tokenStorage';
 import i18n from '@/i18n';
 
@@ -199,6 +199,22 @@ export function createAbortableRequest() {
 }
 
 export const authService = {
+  getCaptchaChallenge: async (): Promise<CaptchaChallengeResponse> => {
+    const response = await apiClient.get<ApiResponse<CaptchaChallengeResponse>>('/v1/auth/captcha');
+    if (response.data.code === 200) {
+      return response.data.data;
+    }
+    throw new Error(response.data.message);
+  },
+
+  verifyCaptcha: async (data: CaptchaVerifyRequest): Promise<{ captchaToken: string }> => {
+    const response = await apiClient.post<ApiResponse<{ captchaToken: string }>>('/v1/auth/captcha/verify', data);
+    if (response.data.code === 200) {
+      return response.data.data;
+    }
+    throw new Error(response.data.message);
+  },
+
   register: async (data: RegisterRequest, rememberMe = false): Promise<AuthResponse> => {
     const response = await apiClient.post<ApiResponse<AuthResponse>>('/v1/auth/register/email', data);
     if (response.data.code === 200) {

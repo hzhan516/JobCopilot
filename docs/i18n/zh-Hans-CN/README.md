@@ -15,7 +15,7 @@
 
 ## 功能特性
 
-- **身份认证**：邮箱/密码注册（支持可选邮件验证码验证）与 Google OAuth 2.0 登录
+- **身份认证**：邮箱/密码注册（支持可选邮件验证码验证）与 Google OAuth 2.0 登录，带滑块 CAPTCHA 人机验证保护
 - **简历管理**：上传、解析和管理多种格式的简历
 - **AI智能解析**：使用 LiteLLM 兼容模型从简历和职位中提取结构化信息
 - **职位匹配**：基于简历内容和向量相似度的智能职位推荐
@@ -50,7 +50,7 @@
 | 服务   | 技术栈                       | 端口           | 说明            |
 |------|---------------------------|--------------|---------------|
 | 前端   | React 18 + Vite           | 80           | Nginx托管的Web界面 |
-| 后端   | Java 21 + Spring Boot 3.5 | 8080         | REST API和业务逻辑 |
+| 后端   | Java 21 + Spring Boot 3.5 | 8080         | REST API、业务逻辑及滑块 CAPTCHA 人机验证 |
 | AI服务 | Python 3 + FastAPI        | 8000         | AI处理和OpenAI集成 |
 | 数据库  | PostgreSQL 15 + pgvector  | 5432         | 业务数据和向量存储     |
 | 消息队列 | RabbitMQ 3                | 5672 / 15672 | 异步消息处理        |
@@ -132,6 +132,11 @@ cp .env.example .env
 | `LLM_EMBEDDING_MODEL_DIMENSION` | 是   | 嵌入模型输出维度（必须与所选模型一致） |
 | `SPRING_PROFILES_ACTIVE` | 否   | Spring profile：`dev`（默认）或 `prod` |
 | `LOG_LEVEL`              | 否   | AI service 日志级别：`INFO`（默认）或 `DEBUG` |
+| `CAPTCHA_ENABLED`        | 否   | 是否启用滑块 CAPTCHA。默认：`true` |
+| `CAPTCHA_TOLERANCE`      | 否   | CAPTCHA 拖动容差（像素）。默认：`8` |
+| `CAPTCHA_TOKEN_EXPIRY`   | 否   | CAPTCHA token 过期时间（秒）。默认：`300` |
+| `CAPTCHA_TRACK_WIDTH`    | 否   | CAPTCHA 滑轨宽度（像素）。默认：`300` |
+| `CAPTCHA_MAX_ATTEMPTS`   | 否   | 每 IP 最大 CAPTCHA 尝试次数。默认：`5` |
 
 本地开发时，请将 `.env.example` 复制为 `.env`，并提供一个与所选 LiteLLM 模型前缀匹配的 API key。例如，默认 Gemini 模型使用 `GEMINI_API_KEY`。
 
