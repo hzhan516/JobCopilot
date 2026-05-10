@@ -22,6 +22,7 @@ This document describes every environment variable used by the Resume Assistant 
 - [N. Backend Logging](#n-backend-logging)
 - [O. Email Verification Configuration](#o-email-verification-configuration)
 - [P. CAPTCHA Configuration](#p-captcha-configuration)
+- [R. Redis / Shared State](#r-redis--shared-state)
 - [F. AI Provider Keys](#f-ai-provider-keys)
 - [G. Model Parameters](#g-model-parameters)
 - [H. AI Service Logging](#h-ai-service-logging)
@@ -975,6 +976,42 @@ If left empty, both the backend interceptor and the AI service middleware skip t
 | **Valid values** | Positive integer, recommended range `3–5` |
 | **Security notes** | Limits brute-force guessing. After exceeding this threshold, the user must request a new code. |
 | **Common mistakes** | Setting to a high value (e.g., 10) makes 6-digit numeric codes easier to brute-force within the 5-minute expiry window. |
+
+## R. Redis / Shared State
+
+Redis serves as the shared state layer for distributed caching, distributed locks (ShedLock), deduplication sets, and Pub/Sub cross-instance messaging. It does NOT replace RabbitMQ; MQ handles communication, Redis handles state.
+
+### `REDIS_HOST`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Hostname used by backend and AI service to connect to Redis. |
+| **Default** | `redis` (Docker service name) / `localhost` (non-Docker) |
+| **Valid values** | Docker service name, container IP, or external hostname |
+| **Security notes** | Using the Docker service name (`redis`) ensures traffic stays on the internal bridge network. |
+| **Common mistakes** | Using `localhost` from inside a container. |
+
+### `REDIS_PORT`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Redis listener port. |
+| **Default** | `6379` |
+| **Valid values** | `1024–65535` |
+| **Security notes** | Network isolation is the primary defense. Changing the port provides minimal benefit. |
+| **Common mistakes** | Changing this without updating the Redis service `ports` mapping in `docker-compose.yml`. |
+
+### `REDIS_PASSWORD`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Redis AUTH password. |
+| **Default** | *(empty)* |
+| **Valid values** | Any string; leave empty for no-auth (development default) |
+| **Security notes** | In production, set a strong password and configure Redis with `requirepass`. Even with network isolation, password auth is a mandatory defense-in-depth layer. |
+| **Common mistakes** | Leaving the password empty in production deployments. |
+
+---
 
 ## P. CAPTCHA Configuration
 

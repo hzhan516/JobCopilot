@@ -1,7 +1,4 @@
 import json
-import tempfile
-from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -10,11 +7,13 @@ from app.services.incremental_model_service import (
     _normalize_items,
     _tokenize_text,
     _build_experience_text,
-    DedupManager,
     IncrementalModelService,
     FEATURE_KEYS,
-    INCREMENTAL_STATS_FILE,
-    MODEL_VERSION_DIR,
+    REDIS_STATS_KEY,
+    REDIS_DEDUP_SET,
+    REDIS_MODEL_VERSION_KEY,
+    OBJECT_STORAGE_BUCKET,
+    LATEST_MODEL_KEY,
 )
 
 
@@ -48,119 +47,91 @@ class TestFeatureExtraction:
         assert features["skill_overlap_ratio"] == 0.0
 
 
-class TestDedupManager:
-    def test_is_processed_and_mark(self, tmp_path):
-        stats_file = tmp_path / "stats.json"
-        dedup = DedupManager(stats_file)
-        assert not dedup.is_processed("msg1", "job1", "res1")
-        dedup.mark_processed("msg1", "job1", "res1")
-        assert dedup.is_processed("msg1", "job1", "res1")
-
-    def test_persisted_signatures(self, tmp_path):
-        stats_file = tmp_path / "stats.json"
-        with stats_file.open("w") as f:
-            json.dump({"processed_signatures": ["abc123"]}, f)
-        dedup = DedupManager(stats_file)
-        assert dedup.is_processed("any", "any", "any") is False  # 不同输入产生不同签名
-        # 但 abc123 不在内存中因为输入不同
-
-
 class TestIncrementalModelService:
-    def test_update_statistics_positive_sample(self, tmp_path):
-        stats_file = tmp_path / "incremental_stats.json"
-        model_dir = tmp_path / "models"
-        with patch.object(
-            __import__("app.services.incremental_model_service", fromlist=["INCREMENTAL_STATS_FILE"]),
-            "INCREMENTAL_STATS_FILE",
-            stats_file,
-        ):
-            with patch.object(
-                __import__("app.services.incremental_model_service", fromlist=["MODEL_VERSION_DIR"]),
-                "MODEL_VERSION_DIR",
-                model_dir,
-            ):
-                with patch.object(
-                    __import__("app.services.incremental_model_service", fromlist=["LEGACY_MODEL_FILE"]),
-                    "LEGACY_MODEL_FILE",
-                    model_dir / "baseline_model.json",
-                ):
-                    service = IncrementalModelService()
-                    payload = {
-                        "messageId": "msg-1",
-                        "jobId": "job-1",
-                        "resumeVersionId": "res-1",
-                        "resume": {
-                            "skills": ["Python", "AWS"],
-                            "experience": [{"title": "Dev", "summary": "Build apps", "company": "X"}],
-                        },
-                        "job": {
-                            "title": "Python Developer",
-                            "description": "Need Python and AWS",
-                            "requirements": ["Python", "AWS"],
-                        },
-                        "suitable": True,
-                        "finalScore": 0.85,
-                    }
-                    service.update_statistics(payload)
-                    stats = service._stats
-                    assert stats["positive"]["skill_overlap_ratio"]["count"] == 1
-                    assert stats["negative"]["skill_overlap_ratio"]["count"] == 0
+    @pytest.fixture(autouse=True)
+    def setup_service(self, mock_redis, mock_object_storage):
+        self.service = IncrementalModelService()
 
-    def test_recompute_weights(self, tmp_path):
-        stats_file = tmp_path / "incremental_stats.json"
-        model_dir = tmp_path / "models"
-        with patch.object(
-            __import__("app.services.incremental_model_service", fromlist=["INCREMENTAL_STATS_FILE"]),
-            "INCREMENTAL_STATS_FILE",
-            stats_file,
-        ):
-            with patch.object(
-                __import__("app.services.incremental_model_service", fromlist=["MODEL_VERSION_DIR"]),
-                "MODEL_VERSION_DIR",
-                model_dir,
-            ):
-                with patch.object(
-                    __import__("app.services.incremental_model_service", fromlist=["LEGACY_MODEL_FILE"]),
-                    "LEGACY_MODEL_FILE",
-                    model_dir / "baseline_model.json",
-                ):
-                    service = IncrementalModelService()
-                    # 手动填充统计
-                    service._stats["positive"]["skill_overlap_ratio"] = {"sum": 1.0, "count": 1}
-                    service._stats["negative"]["skill_overlap_ratio"] = {"sum": 0.0, "count": 1}
-                    for key in FEATURE_KEYS:
-                        if key != "skill_overlap_ratio":
-                            service._stats["positive"][key] = {"sum": 1.0, "count": 1}
-                            service._stats["negative"][key] = {"sum": 0.0, "count": 1}
+    def test_update_statistics_positive_sample(self):
+        payload = {
+            "messageId": "msg-1",
+            "jobId": "job-1",
+            "resumeVersionId": "res-1",
+            "resume": {
+                "skills": ["Python", "AWS"],
+                "experience": [{"title": "Dev", "summary": "Build apps", "company": "X"}],
+            },
+            "job": {
+                "title": "Python Developer",
+                "description": "Need Python and AWS",
+                "requirements": ["Python", "AWS"],
+            },
+            "suitable": True,
+            "finalScore": 0.85,
+        }
+        self.service.update_statistics(payload)
+        pos_count = self.service._redis.hget(
+            f"{REDIS_STATS_KEY}:positive:skill_overlap_ratio", "count"
+        )
+        neg_count = self.service._redis.hget(
+            f"{REDIS_STATS_KEY}:negative:skill_overlap_ratio", "count"
+        )
+        assert float(pos_count) == 1.0
+        assert float(neg_count or 0) == 0.0
 
-                    result = service.recompute_weights()
-                    assert result["version"] == "v1"
-                    assert "feature_weights" in result
-                    assert (model_dir / "baseline_model_v1.json").exists()
-                    assert (model_dir / "baseline_model_latest.json").exists()
+    def test_dedup_prevents_duplicate(self):
+        payload = {
+            "messageId": "msg-dup",
+            "jobId": "job-dup",
+            "resumeVersionId": "res-dup",
+            "resume": {"skills": ["Python"], "experience": []},
+            "job": {"title": "Job", "description": "Desc", "requirements": ["Python"]},
+            "suitable": True,
+            "finalScore": 0.85,
+        }
+        self.service.update_statistics(payload)
+        self.service.update_statistics(payload)
+        pos_count = self.service._redis.hget(
+            f"{REDIS_STATS_KEY}:positive:skill_overlap_ratio", "count"
+        )
+        # 第二次应被去重忽略 / Second should be ignored by dedup
+        assert float(pos_count) == 1.0
 
-    def test_soft_cap(self, tmp_path):
-        stats_file = tmp_path / "incremental_stats.json"
-        model_dir = tmp_path / "models"
-        with patch.object(
-            __import__("app.services.incremental_model_service", fromlist=["INCREMENTAL_STATS_FILE"]),
-            "INCREMENTAL_STATS_FILE",
-            stats_file,
-        ):
-            with patch.object(
-                __import__("app.services.incremental_model_service", fromlist=["MODEL_VERSION_DIR"]),
-                "MODEL_VERSION_DIR",
-                model_dir,
-            ):
-                with patch.object(
-                    __import__("app.services.incremental_model_service", fromlist=["LEGACY_MODEL_FILE"]),
-                    "LEGACY_MODEL_FILE",
-                    model_dir / "baseline_model.json",
-                ):
-                    service = IncrementalModelService()
-                    # 设置 count 超过 cap
-                    service._stats["positive"]["skill_overlap_ratio"] = {"sum": 5000.0, "count": 5000}
-                    service._apply_soft_cap("positive", "skill_overlap_ratio", 0.5)
-                    # 衰减后 count 应略小于 5001
-                    assert service._stats["positive"]["skill_overlap_ratio"]["count"] < 5001
-                    assert service._stats["positive"]["skill_overlap_ratio"]["count"] > 5000
+    def test_recompute_weights(self):
+        # 手动填充统计 / Manually seed statistics
+        for key in FEATURE_KEYS:
+            self.service._redis.hset(
+                f"{REDIS_STATS_KEY}:positive:{key}",
+                mapping={"sum": "1.0", "count": "1"},
+            )
+            self.service._redis.hset(
+                f"{REDIS_STATS_KEY}:negative:{key}",
+                mapping={"sum": "0.0", "count": "1"},
+            )
+
+        result = self.service.recompute_weights()
+        assert result["version"] == "v1"
+        assert "feature_weights" in result
+
+        # 验证对象存储写入 / Verify object storage writes
+        latest = self.service._storage.get_object(OBJECT_STORAGE_BUCKET, LATEST_MODEL_KEY)
+        assert latest is not None
+        payload = json.loads(latest)
+        assert payload["model_artifact"]["version"] == "v1"
+
+        # 验证 Redis 版本号 / Verify Redis version
+        version = self.service._redis.get(REDIS_MODEL_VERSION_KEY)
+        assert version == "1"
+
+    def test_soft_cap(self):
+        key = f"{REDIS_STATS_KEY}:positive:skill_overlap_ratio"
+        # 设置 count 超过 cap
+        self.service._redis.hset(key, mapping={"sum": "5000.0", "count": "5000"})
+        self.service._ensure_lua_loaded()
+        self.service._redis.evalsha(
+            self.service._lua_sha, 1, key, "0.5", str(5000)
+        )
+        count = float(self.service._redis.hget(key, "count"))
+        # 衰减后 count 应略小于 5001
+        assert count < 5001
+        assert count > 5000

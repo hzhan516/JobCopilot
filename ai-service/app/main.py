@@ -5,6 +5,7 @@ Resume Assistant - Python AI service entry point.
 
 import logging
 import os
+import socket
 import threading
 
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
@@ -12,6 +13,7 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
 from app.config import LOG_LEVEL, LLM_EMBEDDING_MODEL, LLM_EMBEDDING_MODEL_DIMENSION
+from app.infrastructure.redis_client import get_redis
 from app.mq.consumer import create_connection, setup_all_queues, start_all_consumers
 
 from app.schemas import (
@@ -37,15 +39,33 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+# MQ connection reference for graceful shutdown
+_mq_connection = None
+_mq_channel = None
+
 
 def _start_sync_thread() -> None:
     """Launch a background thread to sync offline job embeddings into the backend vector store on startup.
-    启动后台线程，在应用启动时将离线职位 embedding 同步到后端向量库，避免冷启动时向量检索为空。"""
+    启动后台线程，在应用启动时将离线职位 embedding 同步到后端向量库，避免冷启动时向量检索为空。
+    使用 Redis 分布式锁确保多实例下仅一个实例执行同步。"""
     def _run_sync() -> None:
+        redis = get_redis()
+        lock_key = "ra:ai:startup_sync_lock"
+        lock_value = f"{os.getpid()}@{socket.gethostname()}"
+        acquired = redis.set(lock_key, lock_value, nx=True, ex=600)
+        if not acquired:
+            logger.info("Startup sync already running on another instance, skipping.")
+            return
         try:
             sync_existing_job_embeddings()
         except Exception:
             logger.exception("Background embedding sync failed")
+        finally:
+            lua = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end"
+            try:
+                redis.eval(lua, 1, lock_key, lock_value)
+            except Exception:
+                logger.exception("Failed to release startup sync lock")
 
     sync_thread = threading.Thread(target=_run_sync, name="embedding-sync-thread", daemon=True)
     sync_thread.start()
@@ -57,6 +77,21 @@ async def lifespan(app: FastAPI):
     _start_mq_consumer_once()
     _start_sync_thread()
     yield
+    # Shutdown / 优雅关闭
+    logger.info("Shutting down MQ consumers...")
+    global _mq_connection, _mq_channel
+    if _mq_channel and _mq_channel.is_open:
+        try:
+            _mq_channel.stop_consuming()
+        except Exception:
+            pass
+    if _mq_connection and _mq_connection.is_open:
+        try:
+            _mq_connection.close()
+        except Exception:
+            pass
+    logger.info("MQ consumers shut down.")
+
 
 app = FastAPI(
     title="Resume Assistant AI Service",
@@ -162,7 +197,7 @@ async def status():
 
 
 def initialize_mq() -> None:
-    global _mq_is_connected
+    global _mq_is_connected, _mq_connection, _mq_channel
     import time
     
     retry_delay = 5
@@ -178,6 +213,8 @@ def initialize_mq() -> None:
             setup_all_queues(channel)
             logger.info("RabbitMQ consumers are ready.")
             _mq_is_connected = True
+            _mq_connection = connection
+            _mq_channel = channel
             start_all_consumers(channel)
             break
         except Exception as e:

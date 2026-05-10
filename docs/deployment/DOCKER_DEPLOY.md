@@ -120,6 +120,7 @@ docker-compose logs -f
 docker-compose logs -f backend
 docker-compose logs -f ai-service
 docker-compose logs -f postgres
+docker-compose logs -f redis
 ```
 
 ### Restart Services
@@ -158,6 +159,7 @@ Data is persisted via Docker volumes:
 
 - `postgres-data`: PostgreSQL database data
 - `rabbitmq-data`: RabbitMQ message queue data
+- `redis-data`: Redis cache and state data
 - `shared-storage`: Uploaded resume files (shared between backend and AI service)
 
 ```bash

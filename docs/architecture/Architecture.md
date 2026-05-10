@@ -86,6 +86,7 @@ job seekers.
 | **AI Service**    | Python FastAPI + LiteLLM            | Python 3.11+            | Parsing, embeddings, ranking, chat |
 | **Database**      | PostgreSQL + pgvector               | PostgreSQL 15           | Business data + vector data     |
 | **Message Queue** | RabbitMQ                            | RabbitMQ 3              | Async AI task processing        |
+| **Cache**         | Redis                               | Redis 7                 | Distributed state, locks, Pub/Sub |
 | **Deployment**    | Docker Compose + Nginx              | Compose v2              | Containerized local deployment  |
 
 ---
@@ -178,6 +179,12 @@ job seekers.
 │  ┌─────────────────────────────────────────────────────────────────────────────┐   │
 │  │                              RabbitMQ                                         │   │
 │  │  - Message Broker for Async Communication                                     │   │
+│  └─────────────────────────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐   │
+│  │                              Redis 7                                          │   │
+│  │  - Distributed Caching (CAPTCHA, verification codes)                          │   │
+│  │  - Pub/Sub (conversation streaming, model invalidation)                       │   │
+│  │  - Distributed Locks (ShedLock, startup sync)                                 │   │
 │  └─────────────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -301,9 +308,9 @@ job seekers.
 
 1. **Dual Write**: Parsed jobs are written to both the `jobs` table (user-facing, soft-deletable) and the `job_dataset` table (training corpus, persistent).
 2. **Fire-and-Forget MQ**: Score labels are sent via Outbox to `ai.queue.model.incremental`. Delivery failures do not block the scoring response.
-3. **Soft-Cap Moving Average**: The incremental statistics use a soft cap (`FEATURE_COUNT_CAP=5000`) with decay to prevent historical data from drowning out new feedback.
-4. **Atomic Model Switching**: New model versions are written to temp files and moved atomically. A symlink (`baseline_model_latest.json`) points to the newest version.
-5. **Memory Cache**: `suitability_service` uses `ModelCache` with mtime-based lazy refresh, avoiding disk I/O on every scoring request.
+3. **Soft-Cap Moving Average**: The incremental statistics are stored in Redis Hashes with a soft cap (`FEATURE_COUNT_CAP=5000`) using a Lua script for atomic accumulation, preventing historical data from drowning out new feedback.
+4. **Object Storage Model Artifacts**: New model weights are computed from Redis statistics and written to object storage. A Redis version number tracks the latest model artifact.
+5. **Redis-Driven Cache Invalidation**: `suitability_service` uses `ModelCache` with a hot-path memory read. A background Pub/Sub listener on `ra:ai:model_invalidate` and a periodic version check mark the cache stale, triggering a reload from object storage without disk I/O on every scoring request.
 
 ---
 
@@ -982,15 +989,15 @@ LIMIT 10;
 Frontend ──▶ POST /api/v1/resumes ──▶ Store in shared-storage volume ──▶ Publish MQ task ──▶ AI service reads file
 ```
 
-### 5.5 Caffeine Dual-Cache Design (CAPTCHA)
+### 5.5 Redis Cache Design (CAPTCHA)
 
-The CAPTCHA subsystem uses Caffeine for high-performance in-memory caching with prefix-isolated stores:
+The CAPTCHA subsystem uses Redis for distributed caching with prefix-isolated keys, enabling cross-instance consistency and horizontal scalability:
 
-| Cache Name | Purpose | Key Prefix | Eviction Policy |
-| ---------- | ------- | ---------- | --------------- |
-| **Challenge Cache** | Stores slider CAPTCHA challenges (target positions) | `CAPTCHA_CHALLENGE:` | 5 minutes after write |
-| **Token Cache** | Stores one-time verification tokens | `CAPTCHA_TOKEN:` | 5 minutes after write |
-| **Rate Limit Cache** | Tracks request timestamps per IP | `RATE_LIMIT:` | 1 minute after write |
+| Cache Name | Purpose | Redis Key | Type | TTL |
+| ---------- | ------- | --------- | ---- | --- |
+| **Challenge Store** | Stores slider CAPTCHA challenges (target positions) | `ra:captcha:challenge:{id}` | String | 5 minutes |
+| **Token Store** | Stores one-time verification tokens | `ra:captcha:token:{id}` | String | 5 minutes |
+| **Rate Limit Window** | Tracks request timestamps per IP | `ra:captcha:ratelimit:{ip}` | Sorted Set | 1 minute |
 
 **IP Rate Limiting**: Each IP address is limited to **20 CAPTCHA requests per minute**. Excess requests receive HTTP 429.
 
@@ -1628,7 +1635,7 @@ The actual cost depends on the configured LiteLLM provider and model. The curren
 | **SQL Injection**     | Parameterized Queries | JPA/Hibernate prepared statements                   |
 | **XSS Prevention**    | Output Encoding       | React automatic escaping                            |
 | **Rate Limiting**     | Bucket Algorithm      | 100 requests/minute per IP                          |
-| **Human Verification**| CAPTCHA (Caffeine)    | Challenge-response with IP rate limit (20/min)      |
+| **Human Verification**| CAPTCHA (Redis)       | Challenge-response with IP rate limit (20/min)      |
 
 ### 8.3 Data Protection
 

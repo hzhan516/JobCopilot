@@ -145,11 +145,19 @@
 └─────────┘     └─────────────┘     └──────┬──────┘     └─────────────┘
                                            │
                                            │ RabbitMQ
+                                           │
                                            ▼
                                     ┌─────────────┐
                                     │ Python AI   │
                                     │ 服務        │
                                     │ (FastAPI)   │
+                                    └──────┬──────┘
+                                           │
+                                           │ Redis
+                                           ▼
+                                    ┌─────────────┐
+                                    │   Redis 7   │
+                                    │ (快取與鎖)  │
                                     └─────────────┘
 ```
 
@@ -212,9 +220,9 @@
 
 1. **雙寫**：剖析完成的職位同時寫入 `jobs` 資料表（面向用戶、可軟刪除）與 `job_dataset` 資料表（訓練語料庫、永久保存）。
 2. **發送後即忘 MQ**：評分標籤透過 Outbox 發送至 `ai.queue.model.incremental`。投遞失敗不會阻塞評分回應。
-3. **軟上限移動平均**：增量統計採用軟上限（`FEATURE_COUNT_CAP=5000`）與衰減機制，防止歷史資料淹沒新反饋。
-4. **原子模型切換**：新版本模型寫入臨時檔案後原子移動。符號連結（`baseline_model_latest.json`）指向最新版本。
-5. **記憶體快取**：`suitability_service` 使用基於 mtime 的懶刷新 `ModelCache`，避免每次評分請求都進行磁碟 I/O。
+3. **軟上限移動平均**：增量統計儲存在 Redis Hash 中，使用 Lua 腳本實現軟上限（`FEATURE_COUNT_CAP=5000`）的原子累加，防止歷史資料淹沒新反饋。
+4. **物件儲存模型產物**：新模型權重從 Redis 統計中計算並寫入物件儲存。Redis 版本號追蹤最新的模型產物。
+5. **Redis 驅動快取失效**：`suitability_service` 使用 `ModelCache`，熱路徑為記憶體讀取。背景 Pub/Sub 監聽器監聽 `ra:ai:model_invalidate` 通道，配合定期版本檢查標記快取失效，觸發從物件儲存重新載入，避免每次評分請求都進行磁碟 I/O。
 
 ---
 
@@ -534,15 +542,15 @@ LIMIT 5;
 AI服務 / 前端 ──▶ 呼叫後端上傳API ──▶ 轉存MinIO ──▶ 返回預簽名URL ──▶ 更新Message記錄(fileUrl)
 ```
 
-### 5.4 Caffeine 雙快取設計（CAPTCHA）
+### 5.4 Redis 快取設計（CAPTCHA）
 
-CAPTCHA 子系統使用 Caffeine 實現高效能記憶體快取，並透過前綴隔離不同儲存：
+CAPTCHA 子系統使用 Redis 實現分散式快取，透過前綴隔離不同鍵，支援跨實例一致性和水平擴展：
 
-| 快取名稱 | 用途 | 鍵前綴 | 驅逐策略 |
-|----------|------|--------|----------|
-| **Challenge Cache** | 儲存滑動驗證碼挑戰（目標位置） | `CAPTCHA_CHALLENGE:` | 寫入後 5 分鐘 |
-| **Token Cache** | 儲存一次性驗證 token | `CAPTCHA_TOKEN:` | 寫入後 5 分鐘 |
-| **Rate Limit Cache** | 按 IP 記錄請求時間戳 | `RATE_LIMIT:` | 寫入後 1 分鐘 |
+| 快取名稱 | 用途 | Redis 鍵 | 類型 | TTL |
+|----------|------|---------|------|-----|
+| **Challenge Store** | 儲存滑動驗證碼挑戰（目標位置） | `ra:captcha:challenge:{id}` | String | 5 分鐘 |
+| **Token Store** | 儲存一次性驗證 token | `ra:captcha:token:{id}` | String | 5 分鐘 |
+| **Rate Limit Window** | 按 IP 記錄請求時間戳 | `ra:captcha:ratelimit:{ip}` | Sorted Set | 1 分鐘 |
 
 **IP 速率限制**：每個 IP 位址每分鐘最多 **20 次** CAPTCHA 請求，防止濫用。超限行求回傳 HTTP 429。
 

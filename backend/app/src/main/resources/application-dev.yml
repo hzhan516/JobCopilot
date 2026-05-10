@@ -5,6 +5,18 @@ spring:
   application:
     name: ${SPRING_APPLICATION_NAME:resume-assistant-backend}
 
+  # Redis 配置 / Redis configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 4
+
   # RabbitMQ 配置 / RabbitMQ configuration
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}

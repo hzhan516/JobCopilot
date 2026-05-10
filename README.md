@@ -36,11 +36,10 @@ This project adopts a microservices architecture with the following components:
 │   (React)   │      │  (Spring    │      │             │
 │             │      │   Boot)     │      └──────┬──────┘
 └─────────────┘      └──────┬──────┘             │
-                            │                    ▼
-                            │             ┌─────────────┐
-                            │             │    AI       │
-                            │             │  (FastAPI)  │
-                            │             └──────┬──────┘
+                            │      ┌─────────┐   │
+                            │◀────▶│  Redis  │   │
+                            │      │   :6379 │◀──┘
+                            │      └─────────┘   │
                             ▼                    ▼
                      ┌─────────────────────────────┐
                      │ PostgreSQL 15 + pgvector    │
@@ -55,6 +54,7 @@ This project adopts a microservices architecture with the following components:
 | AI Service    | Python 3 + FastAPI + LiteLLM | 8000 internal | AI processing, embedding generation, ranking, chat, and incremental model training |
 | Database      | PostgreSQL 15 + pgvector  | 5432 internal | Business data and vector storage     |
 | Message Queue | RabbitMQ 3                | 5672 internal | Async message processing             |
+| Cache         | Redis 7                   | 6379 internal | Distributed state, locks, Pub/Sub    |
 
 ## Project Structure
 
@@ -141,6 +141,9 @@ Key environment variables:
 | `CAPTCHA_TOLERANCE`      | No       | CAPTCHA drag tolerance in pixels. Default: `8` |
 | `CAPTCHA_TOKEN_EXPIRY`   | No       | CAPTCHA token expiry in seconds. Default: `300` |
 | `CAPTCHA_TRACK_WIDTH`    | No       | CAPTCHA track width in pixels. Default: `300` |
+| `REDIS_HOST`             | No       | Redis hostname. Default: `redis` (Docker) or `localhost` |
+| `REDIS_PORT`             | No       | Redis port. Default: `6379` |
+| `REDIS_PASSWORD`         | No       | Redis AUTH password. Leave empty for no-auth (dev default) |
 | `CAPTCHA_MAX_ATTEMPTS`   | No       | Maximum CAPTCHA attempts per IP. Default: `5` |
 
 For local development, copy `.env.example` to `.env` and provide one API key that matches the LiteLLM model prefix you choose. For example, the default Gemini models use `GEMINI_API_KEY`.
@@ -182,7 +185,7 @@ If you run the AI service locally instead of in Docker, source the root `.env`�
 | Backend API         | http://localhost/api                  | REST endpoints through Nginx   |
 | System Health       | http://localhost/health               | Global health check            |
 
-*Note: In the three-tier network architecture, only the configured Frontend port is exposed to the host. Backend, AI, RabbitMQ, and DB services are safely isolated by Docker networks.*
+*Note: In the three-tier network architecture, only the configured Frontend port is exposed to the host. Backend, AI, RabbitMQ, Redis, and DB services are safely isolated by Docker networks.*
 
 *Note: If `FRONTEND_HOST_PORT` is changed in `.env`, replace `http://localhost` with `http://localhost:${FRONTEND_HOST_PORT}`.*
 
@@ -354,6 +357,7 @@ See [docs/deployment/DOCKER_DEPLOY.md](docs/deployment/DOCKER_DEPLOY.md) for det
 
 - Docker & Docker Compose
 - Nginx
+- Redis 7 (distributed state, locks, Pub/Sub)
 - Flyway (database migration)
 
 ## Contributing

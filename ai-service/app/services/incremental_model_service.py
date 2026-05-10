@@ -2,11 +2,11 @@ import hashlib
 import json
 import logging
 import re
-import shutil
 import threading
-from collections import OrderedDict
 from datetime import datetime, timezone
-from pathlib import Path
+
+from app.infrastructure.object_storage import get_object_storage
+from app.infrastructure.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
 
@@ -19,68 +19,39 @@ FEATURE_KEYS = [
 FEATURE_COUNT_CAP = 5000
 MIN_SAMPLES_TO_RECOMPUTE = 10
 
-INCREMENTAL_STATS_FILE = (
-    Path(__file__).resolve().parents[2] / "data_pipeline" / "output" / "incremental_stats.json"
-)
-MODEL_VERSION_DIR = (
-    Path(__file__).resolve().parents[2] / "data_pipeline" / "output" / "models"
-)
-LEGACY_MODEL_FILE = (
-    Path(__file__).resolve().parents[2] / "data_pipeline" / "output" / "baseline_model.json"
-)
+REDIS_KEY_PREFIX = "ra:ai:incremental"
+REDIS_STATS_KEY = f"{REDIS_KEY_PREFIX}:stats"
+REDIS_DEDUP_SET = f"{REDIS_KEY_PREFIX}:dedup"
+REDIS_MODEL_VERSION_KEY = f"{REDIS_KEY_PREFIX}:model_version"
+MAX_DEDUP_SIZE = 100000
 
-MAX_MEMORY_DEDUP = 10000
+OBJECT_STORAGE_BUCKET = "resume-assistant-models"
+LATEST_MODEL_KEY = "baseline_model_latest.json"
+
+# Lua script for atomic soft-cap accumulation in Redis
+# KEYS[1] = hash key, ARGV[1] = new_value, ARGV[2] = cap
+LUA_SOFT_CAP = """
+local sum = tonumber(redis.call('hget', KEYS[1], 'sum') or '0')
+local count = tonumber(redis.call('hget', KEYS[1], 'count') or '0')
+local cap = tonumber(ARGV[2])
+local new_val = tonumber(ARGV[1])
+if count >= cap then
+    local ratio = cap / (cap + 1)
+    sum = sum * ratio
+    count = count * ratio
+end
+sum = sum + new_val
+count = count + 1
+redis.call('hset', KEYS[1], 'sum', tostring(sum))
+redis.call('hset', KEYS[1], 'count', tostring(count))
+return {tostring(sum), tostring(count)}
+"""
 
 
-class DedupManager:
-    """评分消息去重管理器。
-
-    消息签名 = SHA256(messageId + jobId + resumeVersionId)
-    内存 LRU 处理热数据，持久化文件处理冷启动恢复。
-    """
-
-    def __init__(self, stats_file: Path):
-        self._memory: OrderedDict[str, bool] = OrderedDict()
-        self._stats_file = stats_file
-        self._lock = threading.Lock()
-        self._load_persisted()
-
-    def _load_persisted(self):
-        """启动时从 incremental_stats.json 恢复已处理签名。"""
-        if not self._stats_file.exists():
-            return
-        try:
-            with self._stats_file.open("r", encoding="utf-8") as f:
-                data = json.load(f)
-            signatures = data.get("processed_signatures", [])
-            for sig in signatures[-MAX_MEMORY_DEDUP:]:
-                self._memory[sig] = True
-        except Exception:
-            logger.exception("Failed to load persisted dedup signatures")
-
-    def is_processed(self, message_id: str, job_id: str, resume_version_id: str) -> bool:
-        signature = hashlib.sha256(
-            f"{message_id}:{job_id}:{resume_version_id}".encode()
-        ).hexdigest()[:16]
-        with self._lock:
-            return signature in self._memory
-
-    def mark_processed(self, message_id: str, job_id: str, resume_version_id: str):
-        signature = hashlib.sha256(
-            f"{message_id}:{job_id}:{resume_version_id}".encode()
-        ).hexdigest()[:16]
-        with self._lock:
-            if signature in self._memory:
-                self._memory.move_to_end(signature)
-            else:
-                self._memory[signature] = True
-                while len(self._memory) > MAX_MEMORY_DEDUP:
-                    self._memory.popitem(last=False)
-
-    def get_persisted_signatures(self) -> list[str]:
-        """返回应持久化到磁盘的签名列表（供 _save_stats 调用）。"""
-        with self._lock:
-            return list(self._memory.keys())
+def _signature(message_id: str, job_id: str, resume_version_id: str) -> str:
+    return hashlib.sha256(
+        f"{message_id}:{job_id}:{resume_version_id}".encode()
+    ).hexdigest()[:16]
 
 
 def _normalize_items(items: list[str]) -> set[str]:
@@ -139,75 +110,35 @@ def _extract_features(score_payload: dict) -> dict[str, float]:
 
 
 class IncrementalModelService:
-    """增量模型统计与权重重算服务。
+    """增量模型统计与权重重算服务（Redis 分布式版）。
 
-    维护运行时增量统计（正负样本特征累加和与计数），
-    定时触发权重重算并生成版本化模型文件。
+    维护运行时增量统计（正负样本特征累加和与计数）于 Redis Hash，
+    使用 Redis Set 做跨实例去重，定时触发权重重算并写入对象存储。
     """
 
     def __init__(self):
-        self._stats = self._load_stats()
-        self._dedup = DedupManager(INCREMENTAL_STATS_FILE)
-        self._ensure_model_dir()
+        self._redis = get_redis()
+        self._storage = get_object_storage()
         self._lock = threading.Lock()
+        self._lua_sha: str | None = None
 
-    def _ensure_model_dir(self):
-        MODEL_VERSION_DIR.mkdir(parents=True, exist_ok=True)
+    def _ensure_lua_loaded(self):
+        if self._lua_sha is None:
+            self._lua_sha = self._redis.script_load(LUA_SOFT_CAP)
 
-    def _load_stats(self) -> dict:
-        if not INCREMENTAL_STATS_FILE.exists():
-            return {
-                "positive": {k: {"sum": 0.0, "count": 0} for k in FEATURE_KEYS},
-                "negative": {k: {"sum": 0.0, "count": 0} for k in FEATURE_KEYS},
-                "version": 0,
-                "last_updated": None,
-                "processed_signatures": [],
-            }
-        try:
-            with INCREMENTAL_STATS_FILE.open("r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            logger.exception("Failed to load incremental stats, starting fresh")
-            return {
-                "positive": {k: {"sum": 0.0, "count": 0} for k in FEATURE_KEYS},
-                "negative": {k: {"sum": 0.0, "count": 0} for k in FEATURE_KEYS},
-                "version": 0,
-                "last_updated": None,
-                "processed_signatures": [],
-            }
+    def _stats_hash_key(self, target: str, feature_key: str) -> str:
+        return f"{REDIS_STATS_KEY}:{target}:{feature_key}"
 
-    def _save_stats(self):
-        try:
-            INCREMENTAL_STATS_FILE.parent.mkdir(parents=True, exist_ok=True)
-            temp_file = INCREMENTAL_STATS_FILE.with_suffix(".tmp")
-            self._stats["processed_signatures"] = self._dedup.get_persisted_signatures()
-            with temp_file.open("w", encoding="utf-8") as f:
-                json.dump(self._stats, f, indent=2)
-            shutil.move(str(temp_file), str(INCREMENTAL_STATS_FILE))
-        except Exception:
-            logger.exception("Failed to save incremental stats")
+    def is_processed(self, message_id: str, job_id: str, resume_version_id: str) -> bool:
+        sig = _signature(message_id, job_id, resume_version_id)
+        return self._redis.sismember(REDIS_DEDUP_SET, sig)
 
-    def _apply_soft_cap(self, target: str, key: str, new_value: float):
-        """将新样本以软上限方式合并到统计中。
-
-        当 count < CAP 时：正常累加。
-        当 count >= CAP 时：旧统计先衰减，再合并新样本，
-        保证模型始终对近期数据敏感。
-        """
-        stat = self._stats[target][key]
-        current_sum = stat["sum"]
-        current_count = stat["count"]
-
-        if current_count >= FEATURE_COUNT_CAP:
-            shrink_ratio = FEATURE_COUNT_CAP / (FEATURE_COUNT_CAP + 1)
-            current_sum = current_sum * shrink_ratio
-            current_count = current_count * shrink_ratio
-
-        current_sum += new_value
-        current_count += 1
-
-        stat["sum"] = current_sum
-        stat["count"] = current_count
+    def mark_processed(self, message_id: str, job_id: str, resume_version_id: str):
+        sig = _signature(message_id, job_id, resume_version_id)
+        self._redis.sadd(REDIS_DEDUP_SET, sig)
+        cardinality = self._redis.scard(REDIS_DEDUP_SET)
+        if cardinality and cardinality > MAX_DEDUP_SIZE:
+            self._redis.spop(REDIS_DEDUP_SET, cardinality - MAX_DEDUP_SIZE)
 
     def update_statistics(self, score_payload: dict):
         """接收一次评分结果，提取特征并累加到对应类别（正/负样本）。"""
@@ -215,45 +146,52 @@ class IncrementalModelService:
         job_id = score_payload.get("jobId", "")
         resume_id = score_payload.get("resumeVersionId", "")
 
-        if self._dedup.is_processed(message_id, job_id, resume_id):
+        if self.is_processed(message_id, job_id, resume_id):
             logger.info("Duplicate incremental message ignored: messageId=%s", message_id)
             return
 
         features = _extract_features(score_payload)
-
         is_positive = score_payload.get("suitable", False) and score_payload.get("finalScore", 0) >= 0.6
         target = "positive" if is_positive else "negative"
 
-        with self._lock:
-            for key in FEATURE_KEYS:
-                self._apply_soft_cap(target, key, features.get(key, 0.0))
+        self._ensure_lua_loaded()
+        pipe = self._redis.pipeline()
+        for key in FEATURE_KEYS:
+            value = features.get(key, 0.0)
+            hash_key = self._stats_hash_key(target, key)
+            pipe.evalsha(self._lua_sha, 1, hash_key, str(value), str(FEATURE_COUNT_CAP))
+        pipe.execute()
 
-            self._stats["last_updated"] = datetime.now(timezone.utc).isoformat()
-            self._dedup.mark_processed(message_id, job_id, resume_id)
-            self._save_stats()
+        self.mark_processed(message_id, job_id, resume_id)
+        self._redis.set(
+            f"{REDIS_KEY_PREFIX}:last_updated",
+            datetime.now(timezone.utc).isoformat(),
+        )
 
-            # 触发阈值检查
-            total_new = sum(self._stats["positive"][k]["count"] for k in FEATURE_KEYS)
-            if total_new >= MIN_SAMPLES_TO_RECOMPUTE:
-                logger.info(
-                    "Incremental sample threshold reached (%d), triggering weight recomputation",
-                    total_new,
-                )
-                self.recompute_weights()
+        # 触发阈值检查
+        total_new = sum(
+            int(float(self._redis.hget(self._stats_hash_key("positive", k), "count") or 0))
+            for k in FEATURE_KEYS
+        )
+        if total_new >= MIN_SAMPLES_TO_RECOMPUTE:
+            logger.info("Incremental sample threshold reached (%d), triggering weight recomputation", total_new)
+            self.recompute_weights()
 
     def recompute_weights(self) -> dict:
-        """基于增量统计重新计算特征权重，生成新版本模型文件。"""
+        """基于增量统计重新计算特征权重，生成新版本模型文件并写入对象存储。"""
         with self._lock:
             positive_avgs = {}
             negative_avgs = {}
             normalizations = {}
 
             for key in FEATURE_KEYS:
-                pos = self._stats["positive"][key]
-                neg = self._stats["negative"][key]
+                pos_sum = float(self._redis.hget(self._stats_hash_key("positive", key), "sum") or 0)
+                pos_count = int(self._redis.hget(self._stats_hash_key("positive", key), "count") or 0)
+                neg_sum = float(self._redis.hget(self._stats_hash_key("negative", key), "sum") or 0)
+                neg_count = int(self._redis.hget(self._stats_hash_key("negative", key), "count") or 0)
 
-                positive_avgs[key] = pos["sum"] / max(pos["count"], 1)
-                negative_avgs[key] = neg["sum"] / max(neg["count"], 1)
+                positive_avgs[key] = pos_sum / max(pos_count, 1)
+                negative_avgs[key] = neg_sum / max(neg_count, 1)
 
                 all_values = [positive_avgs[key], negative_avgs[key]]
                 normalizations[key] = max(max(all_values), 1.0)
@@ -269,7 +207,7 @@ class IncrementalModelService:
             else:
                 feature_weights = {k: round(raw_weights[k] / total_weight, 4) for k in FEATURE_KEYS}
 
-            new_version = self._stats["version"] + 1
+            new_version = int(self._redis.get(REDIS_MODEL_VERSION_KEY) or 0) + 1
 
             model_artifact = {
                 "model_type": "weighted_feature_baseline",
@@ -278,32 +216,40 @@ class IncrementalModelService:
                 "normalization": normalizations,
                 "bias": 0.0,
                 "stats": {
-                    "positive_counts": {k: self._stats["positive"][k]["count"] for k in FEATURE_KEYS},
-                    "negative_counts": {k: self._stats["negative"][k]["count"] for k in FEATURE_KEYS},
+                    "positive_counts": {
+                        k: int(self._redis.hget(self._stats_hash_key("positive", k), "count") or 0)
+                        for k in FEATURE_KEYS
+                    },
+                    "negative_counts": {
+                        k: int(self._redis.hget(self._stats_hash_key("negative", k), "count") or 0)
+                        for k in FEATURE_KEYS
+                    },
                 },
                 "generated_at": datetime.now(timezone.utc).isoformat(),
             }
 
-            # 原子写入新版本文件
-            new_file = MODEL_VERSION_DIR / f"baseline_model_v{new_version}.json"
-            temp_file = MODEL_VERSION_DIR / f".tmp_baseline_model_v{new_version}.json"
+            payload = json.dumps({"model_artifact": model_artifact}, indent=2).encode("utf-8")
 
-            with temp_file.open("w", encoding="utf-8") as f:
-                json.dump({"model_artifact": model_artifact}, f, indent=2)
-            shutil.move(str(temp_file), str(new_file))
+            # 写入对象存储（版本化 + latest）
+            self._storage.put_object(
+                OBJECT_STORAGE_BUCKET,
+                f"baseline_model_v{new_version}.json",
+                payload,
+            )
+            self._storage.put_object(
+                OBJECT_STORAGE_BUCKET,
+                LATEST_MODEL_KEY,
+                payload,
+            )
 
-            # 更新符号链接指向最新版本
-            latest_link = MODEL_VERSION_DIR / "baseline_model_latest.json"
-            if latest_link.exists() or latest_link.is_symlink():
-                latest_link.unlink()
-            latest_link.symlink_to(new_file.name)
+            self._redis.set(REDIS_MODEL_VERSION_KEY, str(new_version))
+            self._redis.set(
+                f"{REDIS_KEY_PREFIX}:model_updated_at",
+                datetime.now(timezone.utc).isoformat(),
+            )
 
-            # 同时覆盖传统 baseline_model.json 保持兼容
-            shutil.copy2(str(new_file), str(LEGACY_MODEL_FILE))
-
-            # 更新统计版本号
-            self._stats["version"] = new_version
-            self._save_stats()
+            # 广播缓存失效通知
+            self._redis.publish("ra:ai:model_invalidate", str(new_version))
 
             logger.info(
                 "Model weights recomputed: version=%s, weights=%s",

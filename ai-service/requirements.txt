@@ -29,6 +29,12 @@ pytest==8.3.4
 # 日志 / Logging
 structlog==24.4.0
 
+# Redis / 分布式缓存、锁、Pub/Sub
+redis[hiredis]>=5.0.0
+
+# 对象存储 / Object Storage (S3/MinIO兼容)
+boto3>=1.35.0
+
 # LLM网关 / LLM Gateway
 litellm==1.61.11
 tenacity==8.4.1

@@ -5,6 +5,18 @@ spring:
   application:
     name: ${SPRING_APPLICATION_NAME:resume-assistant-backend}
 
+  # Redis 配置 / Redis configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      lettuce:
+        pool:
+          max-active: 32
+          max-idle: 16
+          min-idle: 8
+
   # 数据库（从环境变量读取）/ Database (read from environment variables)
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/resume_assistant}

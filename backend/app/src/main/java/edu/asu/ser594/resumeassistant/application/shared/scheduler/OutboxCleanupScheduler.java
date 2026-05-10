@@ -4,6 +4,7 @@ import edu.asu.ser594.resumeassistant.domain.shared.repository.OutboxMessageRepo
 import edu.asu.ser594.resumeassistant.types.enums.OutboxStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ public class OutboxCleanupScheduler {
      * Cleanup at 3:00 AM every day
      */
     @Scheduled(cron = "0 0 3 * * ?")
+    @SchedulerLock(name = "OutboxCleanup", lockAtMostFor = "30m", lockAtLeastFor = "1m")
     @Transactional
     public void cleanup() {
         LocalDateTime cutoff = LocalDateTime.now().minusDays(RETENTION_DAYS);

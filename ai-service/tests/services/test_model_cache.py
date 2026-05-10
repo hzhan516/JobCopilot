@@ -1,58 +1,69 @@
 import json
-import tempfile
-from pathlib import Path
+from unittest.mock import MagicMock
 
-from app.services.suitability_service import ModelCache, _get_current_model_file, invalidate_model_cache
+import pytest
+
+from app.services.suitability_service import ModelCache, invalidate_model_cache, _model_cache
 
 
 class TestModelCache:
-    def test_loads_artifact_when_file_exists(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            legacy = Path(tmp) / "baseline_model.json"
-            with legacy.open("w") as f:
-                json.dump({"model_artifact": {"version": "v1", "feature_weights": {"a": 0.5}}}, f)
+    @pytest.fixture(autouse=True)
+    def setup_cache(self, mock_redis, mock_object_storage):
+        # Reset singleton state for each test
+        _model_cache._artifact = None
+        _model_cache._version = 0
+        self.cache = ModelCache()
 
-            cache = ModelCache()
-            cache._model_file = legacy
-            cache._mtime = 0.0
-            result = cache.get()
-            assert result is not None
-            assert result["version"] == "v1"
+    def test_loads_artifact_when_object_exists(self, mock_redis, mock_object_storage):
+        artifact = {"version": "v1", "feature_weights": {"a": 0.5}}
+        payload = json.dumps({"model_artifact": artifact}).encode("utf-8")
+        mock_object_storage.put_object("resume-assistant-models", "baseline_model_latest.json", payload)
+        mock_redis.set("ra:ai:incremental:model_version", "1")
 
-    def test_returns_none_when_file_missing(self):
-        cache = ModelCache()
-        # get() 会重新调用 _get_current_model_file()，所以需要 mock
-        from unittest.mock import patch
-        with patch("app.services.suitability_service._get_current_model_file", return_value=Path("/nonexistent/path/model.json")):
-            result = cache.get()
+        result = self.cache.get()
+        assert result is not None
+        assert result["version"] == "v1"
+
+    def test_returns_none_when_object_missing(self, mock_redis, mock_object_storage):
+        mock_redis.set("ra:ai:incremental:model_version", "1")
+        result = self.cache.get()
+        # 当对象存储无数据时应返回 None / Should return None when no data in storage
         assert result is None
 
-    def test_invalidate_resets_mtime(self):
-        from app.services.suitability_service import _model_cache
-        _model_cache._mtime = 12345.0
-        invalidate_model_cache()
-        assert _model_cache._mtime == 0.0
+    def test_invalidate_resets_version(self):
+        self.cache._version = 5
+        self.cache.invalidate()
+        assert self.cache._version == 0
 
+    def test_uses_memory_cache_on_second_get(self, mock_redis, mock_object_storage):
+        artifact = {"version": "v2", "feature_weights": {"b": 0.8}}
+        payload = json.dumps({"model_artifact": artifact}).encode("utf-8")
+        mock_object_storage.put_object("resume-assistant-models", "baseline_model_latest.json", payload)
+        mock_redis.set("ra:ai:incremental:model_version", "2")
 
-class TestGetCurrentModelFile:
-    def test_prefers_latest_when_exists(self, tmp_path):
-        latest = tmp_path / "baseline_model_latest.json"
-        legacy = tmp_path / "baseline_model.json"
-        latest.write_text("{}")
-        legacy.write_text("{}")
+        # First get triggers load
+        result1 = self.cache.get()
+        # Second get should be from memory (no extra storage calls)
+        result2 = self.cache.get()
+        assert result1 == result2
+        assert result1["version"] == "v2"
 
-        from unittest.mock import patch
-        with patch("app.services.suitability_service.LATEST_MODEL_FILE", latest):
-            with patch("app.services.suitability_service.BASELINE_MODEL_FILE", legacy):
-                result = _get_current_model_file()
-                assert result == latest
+    def test_reload_on_version_change(self, mock_redis, mock_object_storage):
+        artifact_v1 = {"version": "v1", "feature_weights": {"a": 0.5}}
+        payload_v1 = json.dumps({"model_artifact": artifact_v1}).encode("utf-8")
+        mock_object_storage.put_object("resume-assistant-models", "baseline_model_latest.json", payload_v1)
+        mock_redis.set("ra:ai:incremental:model_version", "1")
 
-    def test_falls_back_to_legacy_when_latest_missing(self, tmp_path):
-        legacy = tmp_path / "baseline_model.json"
-        legacy.write_text("{}")
+        result1 = self.cache.get()
+        assert result1["version"] == "v1"
 
-        from unittest.mock import patch
-        with patch("app.services.suitability_service.LATEST_MODEL_FILE", tmp_path / "missing.json"):
-            with patch("app.services.suitability_service.BASELINE_MODEL_FILE", legacy):
-                result = _get_current_model_file()
-                assert result == legacy
+        # Simulate version bump + new artifact
+        artifact_v2 = {"version": "v2", "feature_weights": {"a": 0.9}}
+        payload_v2 = json.dumps({"model_artifact": artifact_v2}).encode("utf-8")
+        mock_object_storage.put_object("resume-assistant-models", "baseline_model_latest.json", payload_v2)
+        mock_redis.set("ra:ai:incremental:model_version", "2")
+
+        # Invalidate to force reload
+        self.cache.invalidate()
+        result2 = self.cache.get()
+        assert result2["version"] == "v2"

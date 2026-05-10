@@ -120,6 +120,7 @@ docker-compose logs -f
 docker-compose logs -f backend
 docker-compose logs -f ai-service
 docker-compose logs -f postgres
+docker-compose logs -f redis
 ```
 
 ### 重新啟動服務
@@ -158,6 +159,7 @@ docker-compose exec postgres psql -U resume_user -d resume_assistant
 
 - `postgres-data`: PostgreSQL 資料庫資料
 - `rabbitmq-data`: RabbitMQ 訊息佇列資料
+- `redis-data`: Redis 快取與狀態資料
 - `shared-storage`: 上傳的履歷檔案（後端和 AI 服務共享）
 
 ```bash

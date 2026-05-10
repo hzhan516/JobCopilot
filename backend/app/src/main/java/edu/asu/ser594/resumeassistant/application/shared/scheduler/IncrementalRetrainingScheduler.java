@@ -2,6 +2,7 @@ package edu.asu.ser594.resumeassistant.application.shared.scheduler;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -34,6 +35,7 @@ public class IncrementalRetrainingScheduler {
      * Calls AI Service to force model weight recomputation at 2 AM daily
      */
     @Scheduled(cron = "0 0 2 * * ?")
+    @SchedulerLock(name = "IncrementalRetraining", lockAtMostFor = "1h", lockAtLeastFor = "5m")
     public void triggerIncrementalRetraining() {
         String url = aiServiceBaseUrl + "/api/v1/admin/recompute-model";
         log.info("Triggering incremental model retraining at URL: {}", url);

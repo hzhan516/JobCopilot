@@ -58,6 +58,7 @@
 | **AI服务** | Python FastAPI                       | 简历解析、匹配计算、对话处理    |
 | **数据库**  | PostgreSQL 15 + pgvector             | 业务数据 + 向量数据（统一存储） |
 | **消息队列** | RabbitMQ                             | 异步服务通信            |
+| **缓存**     | Redis 7                              | 分布式状态、锁、Pub/Sub  |
 | **对象存储** | MinIO                                | 文件存储（简历、对话附件） |
 | **部署**   | Docker Compose                       | 5服务架构             |
 
@@ -145,11 +146,19 @@
 └─────────┘     └─────────────┘     └──────┬──────┘     └─────────────┘
                                            │
                                            │ RabbitMQ
+                                           │
                                            ▼
                                     ┌─────────────┐
                                     │ Python AI   │
                                     │ 服务        │
                                     │ (FastAPI)   │
+                                    └──────┬──────┘
+                                           │
+                                           │ Redis
+                                           ▼
+                                    ┌─────────────┐
+                                    │   Redis 7   │
+                                    │ (缓存与锁)  │
                                     └─────────────┘
 ```
 
@@ -212,9 +221,9 @@
 
 1. **双写**：解析后的职位同时写入 `jobs` 表（面向用户，支持软删除）和 `job_dataset` 表（训练语料，持久保存）。
 2. **发后即忘 MQ**：评分标签通过 Outbox 发送到 `ai.queue.model.incremental`。投递失败不会阻塞评分响应。
-3. **软上限移动平均**：增量统计使用软上限（`FEATURE_COUNT_CAP=5000`）配合衰减机制，防止历史数据淹没新反馈。
-4. **原子模型切换**：新模型版本先写入临时文件再原子移动。符号链接（`baseline_model_latest.json`）始终指向最新版本。
-5. **内存缓存**：`suitability_service` 使用基于 mtime 的懒刷新内存缓存 `ModelCache`，避免每次评分请求都进行磁盘 I/O。
+3. **软上限移动平均**：增量统计存储在 Redis Hash 中，使用 Lua 脚本实现软上限（`FEATURE_COUNT_CAP=5000`）的原子累加，防止历史数据淹没新反馈。
+4. **对象存储模型产物**：新模型权重从 Redis 统计中计算并写入对象存储。Redis 版本号追踪最新的模型产物。
+5. **Redis 驱动缓存失效**：`suitability_service` 使用 `ModelCache`，热路径为内存读取。后台 Pub/Sub 监听器监听 `ra:ai:model_invalidate` 通道，配合定期版本检查标记缓存失效，触发从对象存储重新加载，避免每次评分请求都进行磁盘 I/O。
 
 ---
 
@@ -534,15 +543,15 @@ LIMIT 5;
 AI服务 / 前端 ──▶ 调用后端上传API ──▶ 转存MinIO ──▶ 返回预签名URL ──▶ 更新Message记录(fileUrl)
 ```
 
-### 5.4 Caffeine 双缓存设计（CAPTCHA）
+### 5.4 Redis 缓存设计（CAPTCHA）
 
-CAPTCHA 子系统使用 Caffeine 实现高性能内存缓存，并通过前缀隔离不同存储：
+CAPTCHA 子系统使用 Redis 实现分布式缓存，通过前缀隔离不同键，支持跨实例一致性和水平扩展：
 
-| 缓存名称 | 用途 | 键前缀 | 驱逐策略 |
-|----------|------|--------|----------|
-| **Challenge Cache** | 存储滑动验证码挑战（目标位置） | `CAPTCHA_CHALLENGE:` | 写入后 5 分钟 |
-| **Token Cache** | 存储一次性验证 token | `CAPTCHA_TOKEN:` | 写入后 5 分钟 |
-| **Rate Limit Cache** | 按 IP 记录请求时间戳 | `RATE_LIMIT:` | 写入后 1 分钟 |
+| 缓存名称 | 用途 | Redis 键 | 类型 | TTL |
+|----------|------|---------|------|-----|
+| **Challenge Store** | 存储滑动验证码挑战（目标位置） | `ra:captcha:challenge:{id}` | String | 5 分钟 |
+| **Token Store** | 存储一次性验证 token | `ra:captcha:token:{id}` | String | 5 分钟 |
+| **Rate Limit Window** | 按 IP 记录请求时间戳 | `ra:captcha:ratelimit:{ip}` | Sorted Set | 1 分钟 |
 
 **IP 速率限制**：每个 IP 地址每分钟最多 **20 次** CAPTCHA 请求，防止滥用。超限请求返回 HTTP 429。
 

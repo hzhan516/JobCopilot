@@ -2,66 +2,101 @@ import json
 import logging
 import re
 import threading
-from pathlib import Path
+import time
 
+from app.infrastructure.object_storage import get_object_storage
+from app.infrastructure.redis_client import get_redis
 from app.schemas import SuitabilityBreakdown, SuitabilityRequest, SuitabilityResponse
 from app.services.llm_client import generate_json_from_text_prompt
 
 
-BASELINE_MODEL_FILE = Path(__file__).resolve().parents[2] / "data_pipeline" / "output" / "baseline_model.json"
-LATEST_MODEL_FILE = (
-    Path(__file__).resolve().parents[2] / "data_pipeline" / "output" / "models" / "baseline_model_latest.json"
-)
 logger = logging.getLogger(__name__)
 
-
-def _get_current_model_file() -> Path:
-    """获取当前应加载的模型文件。
-    优先使用 latest 符号链接，回退到 legacy 文件。
-    """
-    if LATEST_MODEL_FILE.exists():
-        return LATEST_MODEL_FILE
-    return BASELINE_MODEL_FILE
+OBJECT_STORAGE_BUCKET = "resume-assistant-models"
+LATEST_MODEL_KEY = "baseline_model_latest.json"
+REDIS_MODEL_VERSION_KEY = "ra:ai:incremental:model_version"
 
 
 class ModelCache:
-    """线程安全的模型内存缓存，基于文件 mtime 实现惰性刷新。"""
+    """线程安全的分布式模型内存缓存。
+
+    热路径（get）纯内存读取，零网络 I/O。
+    版本失效通过 Redis Pub/Sub 即时通知 + 60 秒兜底轮询实现。
+    模型数据从对象存储拉取，支持多实例一致性。
+    """
 
     def __init__(self):
         self._artifact: dict | None = None
-        self._mtime: float = 0.0
+        self._version: int = 0
         self._lock = threading.RLock()
-        self._model_file = _get_current_model_file()
+        self._redis = get_redis()
+        self._storage = get_object_storage()
+
+        # 订阅模型失效频道
+        self._pubsub = self._redis.pubsub()
+        self._pubsub.subscribe("ra:ai:model_invalidate")
+        threading.Thread(target=self._listen_invalidation, daemon=True).start()
+
+        # 兜底：每 60 秒主动检查 Redis 版本号
+        threading.Thread(target=self._periodic_refresh, daemon=True).start()
+
+    def _listen_invalidation(self):
+        if self._pubsub is None:
+            return
+        try:
+            for message in self._pubsub.listen():
+                if message["type"] == "message":
+                    try:
+                        new_version = int(message["data"])
+                        with self._lock:
+                            if new_version > self._version:
+                                self._version = 0
+                                logger.info("Model invalidation received: version=%d", new_version)
+                    except (ValueError, TypeError):
+                        pass
+        except Exception:
+            logger.exception("Pub/Sub listener exited")
+
+    def _periodic_refresh(self):
+        while True:
+            time.sleep(60)
+            try:
+                redis_version = int(self._redis.get(REDIS_MODEL_VERSION_KEY) or 0)
+                with self._lock:
+                    if redis_version > self._version:
+                        self._version = 0
+                        logger.info("Periodic refresh triggered: new_version=%d", redis_version)
+            except Exception:
+                logger.exception("Periodic model version check failed")
 
     def get(self) -> dict | None:
+        """热路径：纯内存读取，零网络 I/O。"""
         with self._lock:
-            current_file = _get_current_model_file()
-            if current_file != self._model_file:
-                self._model_file = current_file
-                self._mtime = 0.0
-
-            current_mtime = self._model_file.stat().st_mtime if self._model_file.exists() else 0.0
-            if current_mtime > self._mtime:
+            if self._version == 0:
                 self._reload()
             return self._artifact
 
     def _reload(self):
-        if not self._model_file.exists():
-            self._artifact = None
-            return
         try:
-            with self._model_file.open("r", encoding="utf-8") as f:
-                payload = json.load(f)
+            redis_version = int(self._redis.get(REDIS_MODEL_VERSION_KEY) or 0)
+            data = self._storage.get_object(OBJECT_STORAGE_BUCKET, LATEST_MODEL_KEY)
+            if data is None:
+                logger.warning("Model object not found in storage: %s/%s", OBJECT_STORAGE_BUCKET, LATEST_MODEL_KEY)
+                # 保留旧缓存，不降级到 None
+                if self._artifact is not None:
+                    self._version = redis_version if redis_version else 1
+                return
+            payload = json.loads(data)
             self._artifact = payload.get("model_artifact")
-            self._mtime = self._model_file.stat().st_mtime
+            self._version = redis_version if redis_version else 1
+            logger.info("Model reloaded from object storage: version=%d", self._version)
         except Exception:
-            logger.exception("Failed to reload model artifact from %s", self._model_file)
-            self._artifact = None
+            logger.exception("Failed to load model from object storage")
+            # 拉取失败时保留旧缓存
 
     def invalidate(self):
-        """权重重算完成后主动调用，强制下次请求刷新。"""
         with self._lock:
-            self._mtime = 0.0
+            self._version = 0
 
 
 _model_cache = ModelCache()

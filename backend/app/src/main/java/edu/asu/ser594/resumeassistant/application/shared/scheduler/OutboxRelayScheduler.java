@@ -6,6 +6,7 @@ import edu.asu.ser594.resumeassistant.domain.shared.repository.OutboxMessageRepo
 import edu.asu.ser594.resumeassistant.types.enums.OutboxStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -33,6 +34,7 @@ public class OutboxRelayScheduler {
      * 每 2 秒轮询 PENDING 状态的 Outbox 行并尝试投递。失败消息会被标记，以便下游监控对持续投递失败发出告警
      */
     @Scheduled(fixedDelay = 2000)
+    @SchedulerLock(name = "OutboxRelay", lockAtMostFor = "5m", lockAtLeastFor = "1s")
     @Transactional
     public void relayPendingMessages() {
         List<OutboxMessage> pendingMessages = outboxMessageRepository.findByStatus(OutboxStatus.PENDING);

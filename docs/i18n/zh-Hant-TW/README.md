@@ -35,7 +35,10 @@
 │   (React)   │      │ (Spring    │      │ (FastAPI)  │
 │             │      │   Boot)     │      │            │
 └─────────────┘      └──────┬──────┘      └──────▲──────┘
-                            │                      │
+                            │      ┌─────────┐   │
+                            │◀────▶│  Redis  │   │
+                            │      │  :6379  │◀──┘
+                            │      └─────────┘   │
                             ▼                      │
                      ┌─────────────┐               │
                      │  PostgreSQL │               │
@@ -55,6 +58,7 @@
 | AI 服務 | Python 3 + FastAPI        | 8000         | AI 處理、嵌入生成、排序、對話與增量模型訓練 |
 | 資料庫  | PostgreSQL 15 + pgvector  | 5432         | 業務資料和向量儲存     |
 | 訊息佇列 | RabbitMQ 3                | 5672 / 15672 | 非同步訊息處理        |
+| 快取     | Redis 7                   | 6379         | 分散式狀態、鎖、Pub/Sub |
 
 ## 專案結構
 
@@ -138,6 +142,9 @@ cp .env.example .env
 | `CAPTCHA_TOLERANCE`      | 否   | CAPTCHA 拖動容差（像素）。預設：`8` |
 | `CAPTCHA_TOKEN_EXPIRY`   | 否   | CAPTCHA token 過期時間（秒）。預設：`300` |
 | `CAPTCHA_TRACK_WIDTH`    | 否   | CAPTCHA 滑軌寬度（像素）。預設：`300` |
+| `REDIS_HOST`             | 否   | Redis 主機名。預設：`redis`（Docker）或 `localhost` |
+| `REDIS_PORT`             | 否   | Redis 埠。預設：`6379` |
+| `REDIS_PASSWORD`         | 否   | Redis 認證密碼。開發環境可留空 |
 | `CAPTCHA_MAX_ATTEMPTS`   | 否   | 每 IP 最大 CAPTCHA 嘗試次數。預設：`5` |
 
 本地開發時，請將 `.env.example` 複製為 `.env`，並提供一個與所選 LiteLLM 模型前綴匹配的 API key。例如，預設 Gemini 模型使用 `GEMINI_API_KEY`。
@@ -174,7 +181,7 @@ podman compose up -d
 | 前端介面   | http://localhost | 唯一存取入口 (包含 Web 與 API) |
 | 系統健康   | http://localhost/health | 整體健康狀態探測端點          |
 
-*註：本專案採用三層網路隔離架構，僅對外暴露前端 80 連接埠，底層服務（後端、AI、資料庫）均不可從宿主機直接存取。*
+*註：本專案採用三層網路隔離架構，僅對外暴露前端 80 連接埠，底層服務（後端、AI、RabbitMQ、Redis、資料庫）均不可從宿主機直接存取。*
 
 *註：要尋找 AI 服務的 URL，請執行 `docker compose port ai-service 8000`。*
 
@@ -326,6 +333,7 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 - Docker & Docker Compose
 - Nginx
+- Redis 7（分散式狀態、鎖、Pub/Sub）
 - Flyway（資料庫遷移）
 
 ## 貢獻指南
