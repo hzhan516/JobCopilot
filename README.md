@@ -115,6 +115,14 @@ cd resume-assistant
 
 ### 2. Configure Environment Variables
 
+**Recommended: Use the Web Configurator**
+
+Open `docs/deployment/env-setup.html` directly in your browser (no server needed):
+1. Select your language and fill in the required fields (marked with *)
+2. Click **Generate** next to secret fields for secure random values
+3. Click **Download .env** and save it to the project root
+
+**Alternative (CLI):**
 ```bash
 cp .env.example .env
 # Edit .env and fill in the required values

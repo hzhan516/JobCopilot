@@ -5,6 +5,8 @@
 本文档描述 Resume Assistant 技术栈使用的所有环境变量。变量按功能区域组织，与 `.env.example` 中的注释区块一一对应。
 
 > **快速提示**：编辑前先执行 `cp .env.example .env`。切勿将 `.env` 提交到版本控制。
+>
+> 如需引导式配置，请直接用浏览器打开 `docs/deployment/env-setup.html`。该工具实时解析 `.env.example` 并生成可直接使用的 `.env` 文件，无需启动任何服务器。
 
 ---
 

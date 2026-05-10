@@ -5,6 +5,8 @@
 本文件描述 Resume Assistant 技術堆疊使用的所有環境變數。變數依功能區域組織，與 `.env.example` 中的註解區塊一一對應。
 
 > **快速提示**：編輯前先執行 `cp .env.example .env`。切勿將 `.env` 提交到版本控制。
+>
+> 如需引導式配置，請直接用瀏覽器開啟 `docs/deployment/env-setup.html`。該工具即時解析 `.env.example` 並生成可直接使用的 `.env` 檔案，無需啟動任何伺服器。
 
 ---
 

@@ -8,6 +8,9 @@ on:
       - 'frontend/**'
       - 'ai-service/**'
       - '.github/workflows/**'
+      - '.env.example'
+      - 'docs/deployment/env-setup.html'
+      - 'scripts/generate-env-setup.py'
   pull_request:
     branches: [ master, develop ]
     paths:
@@ -15,8 +18,32 @@ on:
       - 'frontend/**'
       - 'ai-service/**'
       - '.github/workflows/**'
+      - '.env.example'
+      - 'docs/deployment/env-setup.html'
+      - 'scripts/generate-env-setup.py'
 
 jobs:
+  env-setup-check:
+    name: Check env-setup.html is up-to-date
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify env-setup.html matches .env.example
+        run: |
+          python scripts/generate-env-setup.py
+          git diff --exit-code docs/deployment/env-setup.html || (
+            echo "Error: docs/deployment/env-setup.html is out of date."
+            echo "Please run 'python scripts/generate-env-setup.py' and commit the changes."
+            exit 1
+          )
+
   test:
     name: Run Tests
     runs-on: ubuntu-latest

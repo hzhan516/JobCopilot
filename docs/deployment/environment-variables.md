@@ -5,6 +5,8 @@
 This document describes every environment variable used by the Resume Assistant stack. Variables are organized by functional area, matching the comment blocks in `.env.example`.
 
 > **Quick tip**: Run `cp .env.example .env` before editing. Never commit `.env` to version control.
+>
+> For a guided setup experience, open `docs/deployment/env-setup.html` directly in your browser. It parses `.env.example` in real time and generates a ready-to-use `.env` file — no server required.
 
 ---
 

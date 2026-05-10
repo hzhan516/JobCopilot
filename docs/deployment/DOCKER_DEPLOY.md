@@ -14,6 +14,18 @@
 
 ### 1. Configure Environment Variables
 
+**Recommended: Use the Web Configurator**
+
+Open `docs/deployment/env-setup.html` directly in your browser (no server needed):
+
+1. Select your language (EN / 简体中文 / 繁體中文) from the top-right
+2. Fill in the required fields (marked with a red asterisk)
+3. Click **Generate** next to secret fields (e.g. `JWT_SECRET`, `INTERNAL_API_KEY`) for secure random values
+4. Review the progress indicator at the top to ensure all required variables are set
+5. Click **Download .env** and save it to the project root directory
+
+**Alternative (CLI):**
+
 ```bash
 # Copy the environment template
 cp .env.example .env
