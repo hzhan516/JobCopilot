@@ -20,6 +20,7 @@ The **Resume Assistant** is an AI-powered platform designed to streamline the jo
 - **Resume Management**: Upload, parse, version, and export resumes in multiple formats
 - **AI-Powered Parsing**: Extract structured information from resumes and job posts using LiteLLM-compatible models
 - **Job Matching**: Intelligent job recommendations based on resume content and vector similarity
+- **Incremental Job Training Loop**: User scoring behavior feeds back into the AI baseline model via incremental learning, improving match accuracy over time without full retraining
 - **Application Tracking**: Track job application status and manage your job search pipeline
 - **AI Conversation**: Interactive chat assistant for job search advice and resume optimization
 - **Internationalization**: English, Simplified Chinese, and Traditional Chinese UI support
@@ -51,7 +52,7 @@ This project adopts a microservices architecture with the following components:
 |---------------|---------------------------|--------------|--------------------------------------|
 | Frontend      | React 19 + Vite 7         | `${FRONTEND_HOST_PORT:-80}` -> 80 | Web user interface and Nginx reverse proxy |
 | Backend       | Java 21 + Spring Boot 3.5 | 8080 internal | REST API, business logic, and slider CAPTCHA protection |
-| AI Service    | Python 3 + FastAPI + LiteLLM | 8000 internal | AI processing through configured providers |
+| AI Service    | Python 3 + FastAPI + LiteLLM | 8000 internal | AI processing, embedding generation, ranking, chat, and incremental model training |
 | Database      | PostgreSQL 15 + pgvector  | 5432 internal | Business data and vector storage     |
 | Message Queue | RabbitMQ 3                | 5672 internal | Async message processing             |
 

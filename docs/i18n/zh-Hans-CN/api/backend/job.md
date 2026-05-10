@@ -269,6 +269,48 @@ Content-Type: application/json
 - `401` — 未认证（JWT Token 无效或缺失）
 - `503` — AI 服务不可用（提供了 `queryText` 但嵌入生成失败）
 
+### 1.9 职位评分 (Score Job)
+**Endpoint:** `POST /api/v1/jobs/{jobId}/score`
+**描述:** 针对单个职位调用 AI 服务 suitability 端点进行简历匹配评分。评分结果会保存到历史记录，同时后端会异步发送评分标签到 AI 服务用于增量模型训练。
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+Content-Type: application/json
+```
+
+**Request Body (`JobScoreRequest`):**
+```json
+{
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002"
+}
+```
+
+**Response Body (`JobScoreResponse`):**
+```json
+{
+  "suitable": true,
+  "summary": "简历与职位关键要求（如 Java、Spring Boot）匹配度较高。",
+  "finalScore": 0.85,
+  "breakdown": {
+    "skillScore": 0.9,
+    "experienceScore": 0.8,
+    "overallScore": 0.85
+  }
+}
+```
+
+**响应字段说明:**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `suitable` | Boolean | 候选人整体是否适合该职位 |
+| `summary` | String | 1-2 句简洁的评分说明 |
+| `finalScore` | Float | 最终融合得分（0.0-1.0）；70% LLM + 30% 数据集模型 |
+| `breakdown.skillScore` | Float | 技能匹配得分 |
+| `breakdown.experienceScore` | Float | 经验匹配得分 |
+| `breakdown.overallScore` | Float | LLM 综合得分 |
+
 ---
 
 ## 2. 后端与 AI 服务层交互接口 (Backend to Python AI Service via MQ)
@@ -310,6 +352,50 @@ Content-Type: application/json
   "eventType": "JOB"
 }
 ```
+
+### 2.3 评分标签请求 (Backend -> AI Service)
+**Exchange:** `ai.direct.exchange`
+**Routing Key:** `ai.req.model.incremental`
+**Queue:** `ai.queue.model.incremental`
+
+**描述:** `scoreJob()` 完成后，后端将评分结果异步发送到 AI 服务用于增量模型训练。此消息为**发后即忘**（fire-and-forget），不期待结果回调。
+
+**Message Body:**
+```json
+{
+  "messageId": "msg-uuid-v4",
+  "jobId": "job-uuid",
+  "resumeVersionId": "resume-uuid",
+  "resume": {
+    "skills": ["Python", "AWS", "Kubernetes"],
+    "experience": [
+      {"title": "Senior Engineer", "summary": "Built microservices...", "company": "TechCorp"}
+    ]
+  },
+  "job": {
+    "title": "Software Engineer",
+    "description": "We are looking for...",
+    "requirements": ["Python", "AWS"]
+  },
+  "suitable": true,
+  "finalScore": 0.85,
+  "timestamp": "2026-05-09T16:00:00Z"
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `messageId` | String | 唯一消息 ID，用于去重 |
+| `jobId` | String | 职位唯一标识 |
+| `resumeVersionId` | String | 简历版本唯一标识 |
+| `resume.skills` | List<String> | 解析后的简历技能 |
+| `resume.experience` | List<Map> | 解析后的简历经验条目 |
+| `job.title` | String | 职位标题 |
+| `job.description` | String | 职位描述 |
+| `job.requirements` | List<String> | 职位要求 |
+| `suitable` | Boolean | 简历是否适合该职位 |
+| `finalScore` | Float | 最终融合得分（0.0-1.0） |
+| `timestamp` | String | ISO 8601 时间戳 |
 
 > **注意：**
 > - 如果 `status` 为 `FAILED`，则 `errorMessage` 必须包含导致失败的具体原因文本，且 `data` 可以为空。

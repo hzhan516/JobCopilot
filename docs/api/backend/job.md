@@ -329,6 +329,50 @@ Content-Type: application/json
 
 ---
 
+### 1.9 Score Job
+**Endpoint:** `POST /api/v1/jobs/{jobId}/score`
+**Description:** Scores a single job against a resume by calling the AI service suitability endpoint. The scoring result is saved to history, and an asynchronous score label is sent to the AI service for incremental model training.
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+Content-Type: application/json
+```
+
+**Request Body (`JobScoreRequest`):**
+```json
+{
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002"
+}
+```
+
+**Response Body (`JobScoreResponse`):**
+```json
+{
+  "suitable": true,
+  "summary": "The resume matches key requirements such as Java, Spring Boot.",
+  "finalScore": 0.85,
+  "breakdown": {
+    "skillScore": 0.9,
+    "experienceScore": 0.8,
+    "overallScore": 0.85
+  }
+}
+```
+
+**Response Field Descriptions:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `suitable` | Boolean | Whether the candidate is generally a good fit |
+| `summary` | String | 1-2 concise sentences explaining the decision |
+| `finalScore` | Float | Final fused score (0.0-1.0); 70% LLM + 30% dataset model |
+| `breakdown.skillScore` | Float | Skill match score |
+| `breakdown.experienceScore` | Float | Experience match score |
+| `breakdown.overallScore` | Float | LLM overall score |
+
+---
+
 ## 2. Backend to AI Service Interfaces (Backend to Python AI Service via MQ)
 
 To comply with the system architecture, the Java backend no longer directly calls the AI service via HTTP synchronously; instead, it publishes asynchronous task requests via **RabbitMQ** and listens for processing result callbacks from the AI service.
@@ -372,3 +416,47 @@ To comply with the system architecture, the Java backend no longer directly call
 > **Notes:**
 > - If `status` is `FAILED`, then `errorMessage` must contain the specific reason text causing the failure, and `data` can be empty.
 > - After the AI service finishes processing, it must send the result to the `backend.res.job.parse` routing key, received by `AiResultMessageListener` and handled by `JobFacade.handleJobProcessResult`.
+
+### 2.3 Score Label Request (Backend -> AI Service)
+**Exchange:** `ai.direct.exchange`
+**Routing Key:** `ai.req.model.incremental`
+**Queue:** `ai.queue.model.incremental`
+
+**Description:** After `scoreJob()` completes, the backend asynchronously sends the scoring result to the AI service for incremental model training. This is a **fire-and-forget** message; no result callback is expected.
+
+**Message Body:**
+```json
+{
+  "messageId": "msg-uuid-v4",
+  "jobId": "job-uuid",
+  "resumeVersionId": "resume-uuid",
+  "resume": {
+    "skills": ["Python", "AWS", "Kubernetes"],
+    "experience": [
+      {"title": "Senior Engineer", "summary": "Built microservices...", "company": "TechCorp"}
+    ]
+  },
+  "job": {
+    "title": "Software Engineer",
+    "description": "We are looking for...",
+    "requirements": ["Python", "AWS"]
+  },
+  "suitable": true,
+  "finalScore": 0.85,
+  "timestamp": "2026-05-09T16:00:00Z"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `messageId` | String | Unique message ID for deduplication |
+| `jobId` | String | Job unique identifier |
+| `resumeVersionId` | String | Resume version unique identifier |
+| `resume.skills` | List<String> | Parsed resume skills |
+| `resume.experience` | List<Map> | Parsed resume experience items |
+| `job.title` | String | Job title |
+| `job.description` | String | Job description |
+| `job.requirements` | List<String> | Job requirements |
+| `suitable` | Boolean | Whether the resume is suitable for the job |
+| `finalScore` | Float | Final fused score (0.0-1.0) |
+| `timestamp` | String | ISO 8601 timestamp |

@@ -475,6 +475,8 @@ This module provides application status flow, event recording, and statistical a
 | Query Match Results | GET | `/api/v1/jobs/match/{matchId}` | Query match task results | Yes |
 | Get Match History | GET | `/api/v1/jobs/match/history` | Get historical match records | Yes |
 | Vector Search Jobs | POST | `/api/v1/jobs/vector-search` | ANN vector search for jobs | Yes |
+| Score Job | POST | `/api/v1/jobs/{jobId}/score` | Score a job against a resume | Yes |
+| Get Job Dataset | GET | `/api/v1/job-dataset` | Query training dataset (internal) | No |
 | Batch Upsert Job Vectors | POST | `/api/v1/job-vectors/batch` | Batch upsert job vectors (AI layer) | No |
 | Create Conversation | POST | `/api/v1/conversations` | Create new conversation | Yes |
 | Send Message | POST | `/api/v1/conversations/{conversationId}/messages` | Send conversation message | Yes |

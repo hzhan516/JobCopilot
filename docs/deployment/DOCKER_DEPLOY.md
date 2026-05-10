@@ -94,6 +94,20 @@ curl http://localhost/health
 | Backend API      | http://localhost/api                 | REST API (Proxied)   |
 | System Health    | http://localhost/health              | Global health check  |
 
+## Service Responsibilities
+
+### AI Service (Python FastAPI)
+
+In addition to resume/job parsing, embedding generation, ranking, and conversation, the AI service now includes an **incremental model training loop**:
+
+1. **Job Dataset Sync**: When a job is successfully parsed, the backend writes it to the `job_dataset` table (training corpus).
+2. **Score Label Consumption**: When a user scores a job, the backend sends a score label message to the `ai.queue.model.incremental` queue.
+3. **Incremental Statistics**: The AI service maintains `incremental_stats.json` to accumulate positive/negative sample feature statistics.
+4. **Weight Recomputation**: When the sample threshold (`MIN_SAMPLES_TO_RECOMPUTE=10`) is reached, the service automatically recomputes feature weights and generates a new model version (`baseline_model_v{N}.json`).
+5. **Hot Reload**: The `suitability_service` loads the latest model through a memory cache without requiring a restart.
+
+Administrators can also manually trigger weight recomputation via `POST /api/v1/admin/recompute-model`.
+
 ## Common Commands
 
 ### View Logs

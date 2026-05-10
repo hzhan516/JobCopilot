@@ -58,6 +58,7 @@
 | Response ← AI | 對話回覆結果 | `backend.res.conversation` | `backend.queue.conversation` | Python AI | Java Backend |
 | Request → AI | 職位精排 | `ai.req.job.rank` | `ai.queue.job.rank` | Java Backend | Python AI |
 | Response ← AI | 職位精排結果 | `backend.res.job.rank` | `backend.queue.job.rank` | Python AI | Java Backend |
+| Request → AI | 模型增量更新 | `ai.req.model.incremental` | `ai.queue.model.incremental` | Java Backend | Python AI |
 | DLX → DLQ | 死信 | `dlq.routing.key` | `ai.dlq.queue` | 業務佇列（自動轉發） | 維運/監控（可手動消費） |
 
 > **Outbox 說明**：上表中的 "Java Backend" 生產者實際上是 `OutboxRelayScheduler`，它從 `outbox_message` 表讀取記錄後轉發到 RabbitMQ。原始業務方法（如 `JobApplicationService.submitJob`）僅寫入 Outbox 表。
@@ -133,6 +134,50 @@
 | `currentMessage` | String | 當前使用者發送的最新訊息 |
 | `fileUrls` | List<String> | 使用者引用的外部檔案 URL 列表 |
 | `resumeVersionId` | String | 關聯履歷版本 ID（選用） |
+
+---
+
+### 3.5 ScoreLabelCommand — 評分標籤（增量訓練）
+
+**發送時機**: `JobApplicationService.scoreJob()` 完成後，將評分結果序列化並寫入 Outbox 表，路由鍵為 `ai.req.model.incremental`。
+
+**說明**: 此為 **發送後即忘（fire-and-forget）** 訊息。AI 服務消費後更新增量統計並重新計算模型權重，無需向後端回傳結果。
+
+```json
+{
+  "messageId": "msg-uuid-v4",
+  "jobId": "job-uuid",
+  "resumeVersionId": "resume-uuid",
+  "resume": {
+    "skills": ["Python", "AWS", "Kubernetes"],
+    "experience": [
+      {"title": "Senior Engineer", "summary": "Built microservices...", "company": "TechCorp"}
+    ]
+  },
+  "job": {
+    "title": "Software Engineer",
+    "description": "We are looking for...",
+    "requirements": ["Python", "AWS"]
+  },
+  "suitable": true,
+  "finalScore": 0.85,
+  "timestamp": "2026-05-09T16:00:00Z"
+}
+```
+
+| 欄位 | 類型 | 說明 |
+|------|------|------|
+| `messageId` | String | 唯一訊息 ID，用於去重 |
+| `jobId` | String | 職位唯一識別 |
+| `resumeVersionId` | String | 履歷版本唯一識別 |
+| `resume.skills` | List<String> | 解析後的履歷技能 |
+| `resume.experience` | List<Map> | 解析後的履歷經驗項目 |
+| `job.title` | String | 職位標題 |
+| `job.description` | String | 職位描述 |
+| `job.requirements` | List<String> | 職位要求 |
+| `suitable` | Boolean | 履歷是否適合該職位 |
+| `finalScore` | Float | 最終融合得分（0.0-1.0） |
+| `timestamp` | String | ISO 8601 時間戳 |
 
 ---
 

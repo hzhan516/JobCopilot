@@ -537,6 +537,8 @@ Authorization: Bearer <access_token>
 | 查询匹配结果 | GET | `/api/v1/jobs/match/{matchId}` | 查询匹配任务结果 | 是 |
 | 获取匹配历史 | GET | `/api/v1/jobs/match/history` | 获取历史匹配记录 | 是 |
 | 向量搜索职位 | POST | `/api/v1/jobs/vector-search` | ANN 向量搜索职位 | 是 |
+| 职位评分 | POST | `/api/v1/jobs/{jobId}/score` | 对职位进行简历匹配评分 | 是 |
+| 获取职位数据集 | GET | `/api/v1/job-dataset` | 查询训练数据集（内部接口） | 否 |
 | 批量 Upsert 职位向量 | POST | `/api/v1/job-vectors/batch` | 批量 Upsert 职位向量（AI 层） | 否 |
 | 创建对话 | POST | `/api/v1/conversations` | 创建新对话 | 是 |
 | 发送消息 | POST | `/api/v1/conversations/{conversationId}/messages` | 发送对话消息 | 是 |

@@ -93,6 +93,20 @@ curl http://localhost/health
 | 前端界面   | http://localhost | 统一入口 (包含 Web 与 API 代理) |
 | 系统健康   | http://localhost/health | 整体服务状态                |
 
+## 服务职责
+
+### AI 服务（Python FastAPI）
+
+除简历/职位解析、嵌入生成、排序和对话外，AI 服务现在还包含**增量模型训练闭环**：
+
+1. **职位数据集同步**：职位成功解析后，后端将其写入 `job_dataset` 表（训练语料库）。
+2. **评分标签消费**：用户对职位进行评分时，后端将评分标签消息发送到 `ai.queue.model.incremental` 队列。
+3. **增量统计**：AI 服务维护 `incremental_stats.json`，累积正/负样本的特征统计量。
+4. **权重重新计算**：当样本达到阈值（`MIN_SAMPLES_TO_RECOMPUTE=10`）时，服务自动重新计算特征权重并生成新的模型版本（`baseline_model_v{N}.json`）。
+5. **热加载**：`suitability_service` 通过内存缓存加载最新模型，无需重启服务。
+
+管理员也可以通过 `POST /api/v1/admin/recompute-model` 手动触发权重重新计算。
+
 ## 常用命令
 
 ### 查看日志

@@ -271,6 +271,50 @@ Content-Type: application/json
 
 ---
 
+### 1.9 職位評分 (Score Job)
+**Endpoint:** `POST /api/v1/jobs/{jobId}/score`
+**描述:** 針對單一職位與履歷進行匹配評分，呼叫 AI 服務的適配度端點。評分結果會儲存至歷史記錄，並非同步發送評分標籤給 AI 服務以供增量模型訓練。
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+Content-Type: application/json
+```
+
+**Request Body (`JobScoreRequest`):**
+```json
+{
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002"
+}
+```
+
+**Response Body (`JobScoreResponse`):**
+```json
+{
+  "suitable": true,
+  "summary": "履歷符合 Java、Spring Boot 等關鍵要求。",
+  "finalScore": 0.85,
+  "breakdown": {
+    "skillScore": 0.9,
+    "experienceScore": 0.8,
+    "overallScore": 0.85
+  }
+}
+```
+
+**回應欄位說明：**
+
+| 欄位 | 類型 | 說明 |
+|------|------|------|
+| `suitable` | Boolean | 候選人是否整體適合該職位 |
+| `summary` | String | 1-2 句簡潔的評估說明 |
+| `finalScore` | Float | 最終融合得分（0.0-1.0）；70% LLM + 30% 資料集模型 |
+| `breakdown.skillScore` | Float | 技能匹配得分 |
+| `breakdown.experienceScore` | Float | 經驗匹配得分 |
+| `breakdown.overallScore` | Float | LLM 綜合得分 |
+
+---
+
 ## 2. 後端與 AI 服務層互動介面 (Backend to Python AI Service via MQ)
 
 為了遵循系統架構，Java 後端不再直接透過 HTTP 同步呼叫 AI 服務，而是透過 **RabbitMQ** 發佈非同步任務請求，並監聽 AI 服務的處理結果回呼。
@@ -310,6 +354,50 @@ Content-Type: application/json
   "eventType": "JOB"
 }
 ```
+
+### 2.3 評分標籤請求 (Backend -> AI Service)
+**Exchange:** `ai.direct.exchange`
+**Routing Key:** `ai.req.model.incremental`
+**Queue:** `ai.queue.model.incremental`
+
+**描述:** 當 `scoreJob()` 完成後，後端將評分結果非同步發送至 AI 服務進行增量模型訓練。此為 **發送後即忘（fire-and-forget）** 訊息，不期望結果回呼。
+
+**Message Body:**
+```json
+{
+  "messageId": "msg-uuid-v4",
+  "jobId": "job-uuid",
+  "resumeVersionId": "resume-uuid",
+  "resume": {
+    "skills": ["Python", "AWS", "Kubernetes"],
+    "experience": [
+      {"title": "Senior Engineer", "summary": "Built microservices...", "company": "TechCorp"}
+    ]
+  },
+  "job": {
+    "title": "Software Engineer",
+    "description": "We are looking for...",
+    "requirements": ["Python", "AWS"]
+  },
+  "suitable": true,
+  "finalScore": 0.85,
+  "timestamp": "2026-05-09T16:00:00Z"
+}
+```
+
+| 欄位 | 類型 | 說明 |
+|------|------|------|
+| `messageId` | String | 唯一訊息 ID，用於去重 |
+| `jobId` | String | 職位唯一識別 |
+| `resumeVersionId` | String | 履歷版本唯一識別 |
+| `resume.skills` | List<String> | 解析後的履歷技能 |
+| `resume.experience` | List<Map> | 解析後的履歷經驗項目 |
+| `job.title` | String | 職位標題 |
+| `job.description` | String | 職位描述 |
+| `job.requirements` | List<String> | 職位要求 |
+| `suitable` | Boolean | 履歷是否適合該職位 |
+| `finalScore` | Float | 最終融合得分（0.0-1.0） |
+| `timestamp` | String | ISO 8601 時間戳 |
 
 > **注意：**
 > - 如果 `status` 為 `FAILED`，則 `errorMessage` 必須包含導致失敗的具體原因文本，且 `data` 可以為空。

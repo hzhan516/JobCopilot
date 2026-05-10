@@ -402,6 +402,17 @@ You only need to configure **one** provider. The choice is determined by the pre
 | **Security notes** | Short timeouts prevent the AI service from hanging if the backend is overloaded. |
 | **Common mistakes** | Setting this too low for batch vector upserts, causing partial data insertion. |
 
+### Incremental Model Training Parameters
+
+The following parameters control the incremental job training loop. They are currently **hard-coded** in `ai-service/app/services/incremental_model_service.py` and are not configurable via environment variables.
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `FEATURE_COUNT_CAP` | `5000` | Soft cap for per-feature per-class sample count. When exceeded, old statistics decay to make room for new feedback. |
+| `MIN_SAMPLES_TO_RECOMPUTE` | `10` | Minimum number of new samples required to trigger automatic model weight recomputation. |
+
+> **Future work**: These parameters may be exposed as environment variables in a future release for finer operational control.
+
 ---
 
 ## H. AI Service Logging

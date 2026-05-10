@@ -537,6 +537,8 @@ Authorization: Bearer <access_token>
 | 查詢配對結果 | GET | `/api/v1/jobs/match/{matchId}` | 查詢配對任務結果 | 是 |
 | 取得配對歷史 | GET | `/api/v1/jobs/match/history` | 取得歷史配對記錄 | 是 |
 | 向量搜尋職位 | POST | `/api/v1/jobs/vector-search` | ANN 向量搜尋職位 | 是 |
+| 職位評分 | POST | `/api/v1/jobs/{jobId}/score` | 對職位進行履歷匹配評分 | 是 |
+| 獲取職位數據集 | GET | `/api/v1/job-dataset` | 查詢訓練數據集（內部接口） | 否 |
 | 批次 Upsert 職位向量 | POST | `/api/v1/job-vectors/batch` | 批次 Upsert 職位向量（AI 層） | 否 |
 | 建立對話 | POST | `/api/v1/conversations` | 建立新對話 | 是 |
 | 發送訊息 | POST | `/api/v1/conversations/{conversationId}/messages` | 發送對話訊息 | 是 |
