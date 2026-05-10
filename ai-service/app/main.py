@@ -7,7 +7,7 @@ import logging
 import os
 import threading
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
@@ -23,6 +23,7 @@ from app.schemas import (
     SuitabilityResponse,
 )
 
+from app.services.incremental_model_service import incremental_service
 from app.services.job_matching_service import find_job_matches
 from app.services.suitability_service import evaluate_suitability_with_vertex
 from app.services.vector_service import generate_embedding
@@ -63,6 +64,22 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+admin_router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@admin_router.post("/recompute-model")
+def recompute_model(
+    x_internal_api_key: str | None = Header(None, alias="X-Internal-API-Key"),
+):
+    """强制触发增量模型权重重算 / Force incremental model weight recomputation."""
+    if INTERNAL_API_KEY and x_internal_api_key != INTERNAL_API_KEY:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    result = incremental_service.recompute_weights()
+    return {"status": "ok", "version": result["version"]}
+
+
+app.include_router(admin_router, prefix="/api/v1")
 
 # ---------------------------------------------------------------------------
 # Internal API Key Middleware (Defense in Depth)

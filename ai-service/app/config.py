@@ -32,6 +32,9 @@ JOB_RANK_RESULT_QUEUE = "backend.queue.job.rank"
 JOB_RANK_REQUEST_ROUTING_KEY = "ai.req.job.rank"
 JOB_RANK_RESULT_ROUTING_KEY = "backend.res.job.rank"
 
+MODEL_INCREMENTAL_QUEUE = "ai.queue.model.incremental"
+MODEL_INCREMENTAL_ROUTING_KEY = "ai.req.model.incremental"
+
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 VERTEX_PROJECT_ID = os.getenv("VERTEX_PROJECT_ID", "ser594-ai-service")

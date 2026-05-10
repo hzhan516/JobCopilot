@@ -15,6 +15,8 @@ import edu.asu.ser594.resumeassistant.domain.job.exception.JobException;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobScoreRepository;
 import edu.asu.ser594.resumeassistant.domain.job.valueobject.ParsedJobContent;
+import edu.asu.ser594.resumeassistant.domain.matching.entity.JobDataset;
+import edu.asu.ser594.resumeassistant.domain.matching.repository.JobDatasetRepository;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeGroupRepository;
@@ -56,6 +58,7 @@ public class JobApplicationService {
     private final JobScoreRepository jobScoreRepository;
     private final ResumeVersionRepository resumeVersionRepository;
     private final ResumeGroupRepository resumeGroupRepository;
+    private final JobDatasetRepository jobDatasetRepository;
     private final AiMessagePublisherPort aiMessagePublisherPort;
     private final VectorFacade vectorFacade;
     private final RestTemplate restTemplate;
@@ -146,6 +149,27 @@ public class JobApplicationService {
                 log.info("Vector generated and saved for job: {}", job.getId());
             } catch (Exception e) {
                 log.error("Failed to generate vector for job: {}", job.getId(), e);
+            }
+
+            // 写入训练数据集（非阻塞）/ Write to training dataset (non-blocking)
+            try {
+                ParsedJobContent pc = job.getParsedContent();
+                JobDataset dataset = JobDataset.builder()
+                        .externalId(job.getId())
+                        .title(pc.title())
+                        .company(pc.company())
+                        .description(pc.description())
+                        .requirements(pc.requirements())
+                        .location(pc.location())
+                        .experienceLevel(null)
+                        .source("USER_SUBMITTED")
+                        .rawData(objectMapper.convertValue(event.data(), Map.class))
+                        .build();
+                jobDatasetRepository.save(dataset);
+                log.info("Job {} saved to training dataset", job.getId());
+            } catch (Exception e) {
+                log.error("Failed to save job to dataset: {}", job.getId(), e);
+                // 非阻塞：训练数据写入失败不应影响主流程
             }
         } else {
             job.markFailed(event.errorMessage() != null ? event.errorMessage() : "Unknown AI processing error");
@@ -387,6 +411,29 @@ public class JobApplicationService {
                     summary
             );
             jobScoreRepository.save(record);
+
+            // 异步发送评分标签到 AI Service 用于增量训练
+            // Asynchronously send score label to AI service for incremental training
+            try {
+                Map<String, Object> scoreLabelPayload = Map.of(
+                        "messageId", java.util.UUID.randomUUID().toString(),
+                        "jobId", jobId,
+                        "resumeVersionId", request.resumeVersionId(),
+                        "resume", Map.of(
+                                "skills", resumeMap.get("skills") != null ? resumeMap.get("skills") : java.util.List.of(),
+                                "experience", resumeMap.get("experience") != null ? resumeMap.get("experience") : java.util.List.of()
+                        ),
+                        "job", jobMap,
+                        "suitable", suitable,
+                        "finalScore", finalScore,
+                        "timestamp", java.time.Instant.now().toString()
+                );
+                aiMessagePublisherPort.sendScoreLabel(scoreLabelPayload);
+                log.info("Score label sent to outbox for jobId={}, resumeVersionId={}", jobId, request.resumeVersionId());
+            } catch (Exception e) {
+                log.error("Failed to send score label to outbox for jobId={}: {}", jobId, e.getMessage());
+                // 非阻塞：标签发送失败不应影响主流程
+            }
 
             return new JobScoreResponse(
                     suitable,

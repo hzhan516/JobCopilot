@@ -1,6 +1,8 @@
 package edu.asu.ser594.resumeassistant.infrastructure.messaging.publisher;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
+
 import edu.asu.ser594.resumeassistant.domain.shared.entity.OutboxMessage;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ConversationRequestCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
@@ -58,6 +60,16 @@ public class AiMessagePublisherAdapter implements AiMessagePublisherPort {
     public void sendJobForRanking(JobRankCommand command) {
         log.info("Saving JobRankCommand to outbox for match: {}", command.matchId());
         saveToOutbox(RabbitMqConfig.ROUTING_KEY_REQ_JOB_RANK, command);
+    }
+
+    /**
+     * 发送评分标签到 AI 服务用于增量模型训练
+     * Send score label to AI service for incremental model training
+     */
+    @Override
+    public void sendScoreLabel(Map<String, Object> payload) {
+        log.info("Saving score label to outbox for job: {}", payload.get("jobId"));
+        saveToOutbox(RabbitMqConfig.ROUTING_KEY_REQ_MODEL_INCREMENTAL, payload);
     }
 
     private void saveToOutbox(String routingKey, Object command) {

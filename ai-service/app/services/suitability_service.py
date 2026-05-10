@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import threading
 from pathlib import Path
 
 from app.schemas import SuitabilityBreakdown, SuitabilityRequest, SuitabilityResponse
@@ -8,7 +9,67 @@ from app.services.llm_client import generate_json_from_text_prompt
 
 
 BASELINE_MODEL_FILE = Path(__file__).resolve().parents[2] / "data_pipeline" / "output" / "baseline_model.json"
+LATEST_MODEL_FILE = (
+    Path(__file__).resolve().parents[2] / "data_pipeline" / "output" / "models" / "baseline_model_latest.json"
+)
 logger = logging.getLogger(__name__)
+
+
+def _get_current_model_file() -> Path:
+    """获取当前应加载的模型文件。
+    优先使用 latest 符号链接，回退到 legacy 文件。
+    """
+    if LATEST_MODEL_FILE.exists():
+        return LATEST_MODEL_FILE
+    return BASELINE_MODEL_FILE
+
+
+class ModelCache:
+    """线程安全的模型内存缓存，基于文件 mtime 实现惰性刷新。"""
+
+    def __init__(self):
+        self._artifact: dict | None = None
+        self._mtime: float = 0.0
+        self._lock = threading.RLock()
+        self._model_file = _get_current_model_file()
+
+    def get(self) -> dict | None:
+        with self._lock:
+            current_file = _get_current_model_file()
+            if current_file != self._model_file:
+                self._model_file = current_file
+                self._mtime = 0.0
+
+            current_mtime = self._model_file.stat().st_mtime if self._model_file.exists() else 0.0
+            if current_mtime > self._mtime:
+                self._reload()
+            return self._artifact
+
+    def _reload(self):
+        if not self._model_file.exists():
+            self._artifact = None
+            return
+        try:
+            with self._model_file.open("r", encoding="utf-8") as f:
+                payload = json.load(f)
+            self._artifact = payload.get("model_artifact")
+            self._mtime = self._model_file.stat().st_mtime
+        except Exception:
+            logger.exception("Failed to reload model artifact from %s", self._model_file)
+            self._artifact = None
+
+    def invalidate(self):
+        """权重重算完成后主动调用，强制下次请求刷新。"""
+        with self._lock:
+            self._mtime = 0.0
+
+
+_model_cache = ModelCache()
+
+
+def invalidate_model_cache():
+    """使模型缓存失效，供 incremental_model_service 在权重重算后调用。"""
+    _model_cache.invalidate()
 
 
 def _normalize_items(items: list[str]) -> set[str]:
@@ -41,13 +102,7 @@ def _calculate_experience_score(experience_items: list[dict]) -> float:
 
 
 def _load_dataset_model_artifact() -> dict | None:
-    if not BASELINE_MODEL_FILE.exists():
-        return None
-
-    with BASELINE_MODEL_FILE.open("r", encoding="utf-8") as file:
-        payload = json.load(file)
-
-    return payload.get("model_artifact")
+    return _model_cache.get()
 
 
 def _tokenize_text(text: str) -> set[str]:
