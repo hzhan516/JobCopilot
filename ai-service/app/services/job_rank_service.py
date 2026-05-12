@@ -99,6 +99,8 @@ def _safe_llm_call(prompt: str) -> str:
         max_tokens=150,
         timeout=min(10.0, LLM_REQUEST_TIMEOUT_SECONDS),
     )
+    if not response.choices:
+        raise ValueError("LiteLLM returned no choices.")
     return response.choices[0].message.content.strip()
 
 

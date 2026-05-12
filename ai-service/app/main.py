@@ -244,17 +244,17 @@ def _start_mq_consumer_once() -> None:
 
 
 @app.post("/api/v1/suitability", response_model=SuitabilityResponse)
-async def evaluate_suitability(request: SuitabilityRequest) -> SuitabilityResponse:
+def evaluate_suitability(request: SuitabilityRequest) -> SuitabilityResponse:
     return evaluate_suitability_with_vertex(request)
 
 
 @app.post("/api/v1/match", response_model=JobMatchResponse)
-async def match_jobs(request: JobMatchRequest) -> JobMatchResponse:
+def match_jobs(request: JobMatchRequest) -> JobMatchResponse:
     return find_job_matches(request)
 
 
 @app.post("/api/v1/ai/embeddings", response_model=EmbeddingResponse)
-async def batch_embeddings(request: EmbeddingRequest) -> EmbeddingResponse:
+def batch_embeddings(request: EmbeddingRequest) -> EmbeddingResponse:
     if not request.texts:
         return EmbeddingResponse(
             embeddings=[],

@@ -457,7 +457,7 @@ services:
   #   - pgvector extension is pre-installed in the ankane/pgvector image.
   # ============================================================================
   postgres:
-    image: docker.io/ankane/pgvector:latest
+    image: docker.io/pgvector/pgvector:pq15
     container_name: resume-assistant-postgres
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the line below if you need to connect with a local database

@@ -31,31 +31,33 @@ class ModelCache:
         self._lock = threading.RLock()
         self._redis = get_redis()
         self._storage = get_object_storage()
+        self._pubsub = None
 
-        # 订阅模型失效频道
-        self._pubsub = self._redis.pubsub()
-        self._pubsub.subscribe("ra:ai:model_invalidate")
+        # 订阅模型失效频道（在后台线程中延迟建立，避免导入时因 Redis 不可用而崩溃）
         threading.Thread(target=self._listen_invalidation, daemon=True).start()
 
         # 兜底：每 60 秒主动检查 Redis 版本号
         threading.Thread(target=self._periodic_refresh, daemon=True).start()
 
     def _listen_invalidation(self):
-        if self._pubsub is None:
-            return
-        try:
-            for message in self._pubsub.listen():
-                if message["type"] == "message":
-                    try:
-                        new_version = int(message["data"])
-                        with self._lock:
-                            if new_version > self._version:
-                                self._version = 0
-                                logger.info("Model invalidation received: version=%d", new_version)
-                    except (ValueError, TypeError):
-                        pass
-        except Exception:
-            logger.exception("Pub/Sub listener exited")
+        while True:
+            try:
+                pubsub = self._redis.pubsub()
+                pubsub.subscribe("ra:ai:model_invalidate")
+                self._pubsub = pubsub
+                for message in pubsub.listen():
+                    if message["type"] == "message":
+                        try:
+                            new_version = int(message["data"])
+                            with self._lock:
+                                if new_version > self._version:
+                                    self._version = 0
+                                    logger.info("Model invalidation received: version=%d", new_version)
+                        except (ValueError, TypeError):
+                            pass
+            except Exception:
+                logger.exception("Pub/Sub listener encountered error, retrying in 5s")
+            time.sleep(5)
 
     def _periodic_refresh(self):
         while True:

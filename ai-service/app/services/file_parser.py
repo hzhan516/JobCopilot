@@ -1,3 +1,5 @@
+import glob
+import ipaddress
 import logging
 import os
 from io import BytesIO
@@ -20,12 +22,51 @@ def _resolve_local_path(object_key: str) -> Path | None:
         logger.warning("Local storage base path does not exist: %s", base)
         return None
 
-    for path in base.rglob(object_key):
-        if path.is_file():
-            logger.debug("Resolved local path: %s", path)
-            return path
+    # Prevent path traversal and glob injection.
+    # 防止路径遍历与 glob 注入：拒绝包含路径分隔符、父目录引用或 glob 元字符的 key。
+    if ".." in object_key or any(c in object_key for c in ("/", "\\", "*", "?", "[")):
+        return None
 
+    # Try direct path first (支持子目录结构)
+    direct = base / object_key
+    try:
+        direct.resolve().relative_to(base.resolve())
+        if direct.is_file():
+            return direct
+    except ValueError:
+        return None
+    except OSError:
+        pass
+
+    # Fallback: search by exact basename under base directory.
+    # 兜底：按精确文件名递归查找。
+    basename = Path(object_key).name
+    for path in base.rglob(glob.escape(basename)):
+        if path.is_file():
+            try:
+                path.resolve().relative_to(base.resolve())
+                return path
+            except ValueError:
+                continue
     return None
+
+
+def _is_dangerous_url(url: str) -> bool:
+    """Block HTTP requests to internal / private IP addresses to mitigate SSRF.
+    阻止对内部/私有 IP 地址的 HTTP 请求，降低 SSRF 攻击面。"""
+    parsed = urlparse(url)
+    hostname = parsed.hostname
+    if not hostname:
+        return True
+    if hostname.lower() in {"localhost", "127.0.0.1", "0.0.0.0", "::1"}:
+        return True
+    try:
+        addr = ipaddress.ip_address(hostname)
+        if addr.is_private or addr.is_loopback or addr.is_reserved or addr.is_link_local or addr.is_multicast:
+            return True
+    except ValueError:
+        pass
+    return False
 
 
 def download_file_bytes(file_url: str) -> bytes:
@@ -35,8 +76,13 @@ def download_file_bytes(file_url: str) -> bytes:
     stripped = file_url.strip()
 
     if stripped.startswith(("http://", "https://")):
+        if _is_dangerous_url(stripped):
+            raise ValueError(f"URL resolves to internal address and is not allowed: {stripped}")
         logger.debug("Downloading file via HTTP: %s", stripped)
         response = httpx.get(stripped, timeout=30.0, follow_redirects=True)
+        response_url_str = str(response.url)
+        if response_url_str.startswith(("http://", "https://")) and _is_dangerous_url(response_url_str):
+            raise ValueError(f"Redirected to disallowed URL: {response.url}")
         response.raise_for_status()
         return response.content
 

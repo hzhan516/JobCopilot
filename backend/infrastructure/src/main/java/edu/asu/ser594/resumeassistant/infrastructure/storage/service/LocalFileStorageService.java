@@ -119,17 +119,25 @@ public class LocalFileStorageService implements FileStorageService {
     private Path resolvePath(String objectKey) {
         // Sanitize objectKey to prevent directory traversal attacks
         // 清理 objectKey 防止目录遍历攻击
-        String sanitizedKey = objectKey.replace("..", "")
-                .replaceAll("[:*?\"<>|]", "_");
+        if (objectKey == null || objectKey.isBlank()) {
+            throw new StorageException("storage.invalid.path", new IllegalArgumentException("objectKey cannot be null or blank"));
+        }
+        String sanitizedKey = objectKey.replaceAll("[:*?\"<>|]", "_");
 
         StorageProperties.Local local = storageProperties.getLocal();
+        Path resolved;
         if (local.isDateSubdirectory()) {
             java.time.LocalDate now = java.time.LocalDate.now();
             String datePath = String.format("%d/%02d/%02d", now.getYear(), now.getMonthValue(), now.getDayOfMonth());
-            return basePath.resolve(datePath).resolve(sanitizedKey);
+            resolved = basePath.resolve(datePath).resolve(sanitizedKey).normalize();
+        } else {
+            resolved = basePath.resolve(sanitizedKey).normalize();
         }
 
-        return basePath.resolve(sanitizedKey);
+        if (!resolved.startsWith(basePath)) {
+            throw new StorageException("storage.invalid.path", new IllegalArgumentException("Resolved path escapes base directory: " + objectKey));
+        }
+        return resolved;
     }
 
     public Path getAbsolutePath(String objectKey) {

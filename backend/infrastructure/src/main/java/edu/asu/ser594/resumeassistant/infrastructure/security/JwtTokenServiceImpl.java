@@ -40,6 +40,13 @@ public class JwtTokenServiceImpl implements TokenService {
 
     @PostConstruct
     public void init() {
+        if (secret == null || secret.length() < 32) {
+            throw new IllegalArgumentException(
+                    "JWT secret must be at least 32 characters long. "
+                            + "Please set a strong jwt.secret in your configuration. / "
+                            + "JWT 密钥长度必须至少为 32 个字符，请在配置中设置强密钥。"
+            );
+        }
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 

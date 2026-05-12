@@ -119,6 +119,8 @@ def _generate_text(model: str, messages: list[dict[str, Any]]) -> str:
         logger.exception("LLM completion failed: model=%s", model)
         raise
 
+    if not response.choices:
+        raise ValueError("LiteLLM returned no choices.")
     choice = response.choices[0]
     finish_reason = getattr(choice, "finish_reason", None)
     if finish_reason == "length":

@@ -175,7 +175,7 @@ class IncrementalModelService:
         )
         if total_new >= MIN_SAMPLES_TO_RECOMPUTE:
             logger.info("Incremental sample threshold reached (%d), triggering weight recomputation", total_new)
-            self.recompute_weights()
+            threading.Thread(target=self.recompute_weights, daemon=True).start()
 
     def recompute_weights(self) -> dict:
         """基于增量统计重新计算特征权重，生成新版本模型文件并写入对象存储。"""

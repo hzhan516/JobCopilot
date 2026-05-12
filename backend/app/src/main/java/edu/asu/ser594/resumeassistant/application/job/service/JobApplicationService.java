@@ -80,6 +80,10 @@ public class JobApplicationService {
     public JobResponse submitJob(UUID userId, SubmitJobRequest request) {
         log.info("Submitting new job for async processing for user: {}", userId);
 
+        if (request.url() == null || request.url().isBlank()) {
+            throw new IllegalArgumentException("Job URL is required / 职位 URL 不能为空");
+        }
+
         if (request.screenshotBase64() != null && !request.screenshotBase64().isEmpty()) {
             long base64Len = request.screenshotBase64().length();
             if (base64Len > MAX_BASE64_LENGTH) {

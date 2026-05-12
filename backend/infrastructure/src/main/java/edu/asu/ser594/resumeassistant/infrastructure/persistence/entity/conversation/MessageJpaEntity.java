@@ -30,7 +30,7 @@ public class MessageJpaEntity {
     @Column(nullable = false)
     private MessageRole role;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String content;
 
     @Column(nullable = false)

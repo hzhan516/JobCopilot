@@ -8,9 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.Map;
-import java.util.Random;
 
 /**
  * 验证码服务 / Verification code service
@@ -30,7 +30,7 @@ public class VerificationCodeService {
     private static final String CODE_PREFIX = "ra:verify:code:";
     private final StringRedisTemplate redisTemplate;
 
-    private final Random random = new Random();
+    private final SecureRandom random = new SecureRandom();
 
     /**
      * 发送验证码到指定邮箱 / Send verification code to the specified email
