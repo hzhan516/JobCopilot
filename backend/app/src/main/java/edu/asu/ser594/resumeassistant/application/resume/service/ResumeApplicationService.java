@@ -63,8 +63,12 @@ public class ResumeApplicationService {
         ResumeGroup group = ResumeGroup.create(userId, command.title());
 
         // Use a random UUID prefix to avoid storage key collisions across users
-        // 使用随机 UUID 前缀防止不同用户间的存储键冲突
-        String storagePath = UUID.randomUUID().toString() + "_" + command.fileName();
+        // Sanitize the file name to prevent path traversal and invalid characters in object keys
+        // 使用随机 UUID 前缀防止不同用户间的存储键冲突；清理文件名以防止路径遍历和非法字符
+        String sanitizedFileName = command.fileName() != null
+                ? command.fileName().replaceAll("[:*?\"<>|\\\\/]", "_")
+                : "unnamed";
+        String storagePath = UUID.randomUUID().toString() + "_" + sanitizedFileName;
 
         fileStorageService.upload(storagePath, command.inputStream(),
                 command.fileSize(), command.contentType());

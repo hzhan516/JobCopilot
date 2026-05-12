@@ -44,6 +44,9 @@ public class RabbitMqConfig {
     public static final String ROUTING_KEY_RES_JOB_RANK = "backend.res.job.rank";
     public static final String QUEUE_RES_JOB_RANK = "backend.queue.job.rank";
 
+    public static final String ROUTING_KEY_REQ_MODEL_INCREMENTAL = "ai.req.model.incremental";
+    public static final String QUEUE_REQ_MODEL_INCREMENTAL = "ai.queue.model.incremental";
+
     @Bean
     public MessageConverter jackson2JsonMessageConverter() {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -188,5 +191,20 @@ public class RabbitMqConfig {
     @Bean
     public Binding resJobRankBinding(Queue resJobRankQueue, DirectExchange aiDirectExchange) {
         return BindingBuilder.bind(resJobRankQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_JOB_RANK);
+    }
+
+    // ========== Model incremental queue bindings ==========
+
+    @Bean
+    public Queue reqModelIncrementalQueue() {
+        return QueueBuilder.durable(QUEUE_REQ_MODEL_INCREMENTAL)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Binding reqModelIncrementalBinding(Queue reqModelIncrementalQueue, DirectExchange aiDirectExchange) {
+        return BindingBuilder.bind(reqModelIncrementalQueue).to(aiDirectExchange).with(ROUTING_KEY_REQ_MODEL_INCREMENTAL);
     }
 }

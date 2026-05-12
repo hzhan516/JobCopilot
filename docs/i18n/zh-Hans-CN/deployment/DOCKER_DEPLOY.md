@@ -14,6 +14,18 @@
 
 ### 1. 配置环境变量
 
+**推荐方式：使用网页配置工具**
+
+直接用浏览器打开 `docs/deployment/env-setup.html`（无需启动服务器）：
+
+1. 在页面右上角选择语言（EN / 简体中文 / 繁體中文）
+2. 填写必填项（标记为红色星号 *）
+3. 对密钥类变量（如 `JWT_SECRET`、`INTERNAL_API_KEY`）点击**生成**按钮以获取安全随机值
+4. 查看顶部进度条，确保所有必填变量已完成
+5. 点击**下载 .env**，保存到项目根目录
+
+**备选方式（命令行）：**
+
 ```bash
 # 复制环境变量模板
 cp .env.example .env
@@ -28,6 +40,10 @@ vim .env
 - 一个兼容 LiteLLM 的模型服务密钥，例如 `GEMINI_API_KEY`、`OPENAI_API_KEY`、`ANTHROPIC_API_KEY` 或 `GROQ_API_KEY`
 - `LLM_TEXT_MODEL`、`LLM_VISION_MODEL` 和 `LLM_EMBEDDING_MODEL`: 与所选模型服务前缀匹配的模型名称
 - `LLM_EMBEDDING_MODEL_DIMENSION`: 嵌入模型输出维度（必须与所选模型一致，默认 1536）
+- `CAPTCHA_ENABLED`: 是否启用 CAPTCHA 验证（`true`/`false`，默认 `true`）
+- `CAPTCHA_TOLERANCE`: 滑动容差像素（默认 `8`）
+- `CAPTCHA_MAX_ATTEMPTS`: 每个挑战最大验证次数（默认 `5`）
+- `CAPTCHA_TOKEN_EXPIRY`: Token 缓存 TTL，单位秒（默认 `300`）
 
 默认情况下，项目可以通过 LiteLLM 使用 Gemini 模型，因此本地开发只需要配置 `GEMINI_API_KEY`，除非您选择其他模型服务。
 
@@ -89,6 +105,20 @@ curl http://localhost/health
 | 前端界面   | http://localhost | 统一入口 (包含 Web 与 API 代理) |
 | 系统健康   | http://localhost/health | 整体服务状态                |
 
+## 服务职责
+
+### AI 服务（Python FastAPI）
+
+除简历/职位解析、嵌入生成、排序和对话外，AI 服务现在还包含**增量模型训练闭环**：
+
+1. **职位数据集同步**：职位成功解析后，后端将其写入 `job_dataset` 表（训练语料库）。
+2. **评分标签消费**：用户对职位进行评分时，后端将评分标签消息发送到 `ai.queue.model.incremental` 队列。
+3. **增量统计**：AI 服务维护 `incremental_stats.json`，累积正/负样本的特征统计量。
+4. **权重重新计算**：当样本达到阈值（`MIN_SAMPLES_TO_RECOMPUTE=10`）时，服务自动重新计算特征权重并生成新的模型版本（`baseline_model_v{N}.json`）。
+5. **热加载**：`suitability_service` 通过内存缓存加载最新模型，无需重启服务。
+
+管理员也可以通过 `POST /api/v1/admin/recompute-model` 手动触发权重重新计算。
+
 ## 常用命令
 
 ### 查看日志
@@ -101,6 +131,7 @@ docker-compose logs -f
 docker-compose logs -f backend
 docker-compose logs -f ai-service
 docker-compose logs -f postgres
+docker-compose logs -f redis
 ```
 
 ### 重启服务
@@ -139,6 +170,7 @@ docker-compose exec postgres psql -U resume_user -d resume_assistant
 
 - `postgres-data`: PostgreSQL 数据库数据
 - `rabbitmq-data`: RabbitMQ 消息队列数据
+- `redis-data`: Redis 缓存与状态数据
 - `shared-storage`: 上传的简历文件（后端和 AI 服务共享）
 
 ```bash
@@ -183,6 +215,14 @@ docker system prune -a --volumes
 # 重新构建
 docker-compose up -d --build --force-recreate
 ```
+
+### CAPTCHA 速率限制触发
+
+**现象**：请求 CAPTCHA 挑战时返回 `429 Too Many Requests`。
+
+**原因**：同一 IP 在 1 分钟内超过 20 次 CAPTCHA 请求。
+
+**解决**：等待 1 分钟让速率限制缓存过期，或在 `.env` 中设置 `CAPTCHA_ENABLED=false` 以在本地测试时禁用 CAPTCHA。
 
 ### 406 PRECONDITION_FAILED（RabbitMQ）
 

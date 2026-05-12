@@ -1,13 +1,13 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { authService } from '@/services/api';
-import type { LoginRequest, RegisterRequest } from '@/types';
+import type { LoginRequest, RegisterRequest, LoginByGoogleRequest } from '@/types';
 
 interface AuthContextType {
   user: { userId: string; email: string } | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (data: LoginRequest, rememberMe?: boolean) => Promise<void>;
-  loginByGoogle: (idToken: string, rememberMe?: boolean) => Promise<void>;
+  loginByGoogle: (data: LoginByGoogleRequest, rememberMe?: boolean) => Promise<void>;
   register: (data: RegisterRequest, rememberMe?: boolean) => Promise<void>;
   logout: () => void;
 }
@@ -32,10 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const loginByGoogle = useCallback(async (idToken: string, rememberMe = false) => {
+  const loginByGoogle = useCallback(async (data: LoginByGoogleRequest, rememberMe = false) => {
     setIsLoading(true);
     try {
-      const response = await authService.loginByGoogle({ idToken }, rememberMe);
+      const response = await authService.loginByGoogle(data, rememberMe);
       setUser({ userId: response.userId, email: response.email });
     } finally {
       setIsLoading(false);

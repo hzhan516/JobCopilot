@@ -107,9 +107,13 @@ public class GlobalExceptionHandler {
         String localizedMessage = exceptionResolver.resolve(ex.getErrorType());
 
         HttpStatus status = switch (ex.getErrorType()) {
-            case EMAIL_EXISTS, EMAIL_REGISTERED_WITH_PASSWORD -> HttpStatus.CONFLICT;
+            case EMAIL_EXISTS, EMAIL_REGISTERED_WITH_PASSWORD, EMAIL_ALREADY_REGISTERED -> HttpStatus.CONFLICT;
             case INVALID_CREDENTIALS, EMAIL_NOT_FOUND, EMAIL_NOT_VERIFIED, TOKEN_EXPIRED, TOKEN_INVALID ->
                     HttpStatus.UNAUTHORIZED;
+            case INVALID_VERIFICATION_CODE, VERIFICATION_CODE_EXPIRED, VERIFICATION_CODE_REQUIRED,
+                    CAPTCHA_REQUIRED, CAPTCHA_INVALID, CAPTCHA_EXPIRED ->
+                    HttpStatus.BAD_REQUEST;
+            case VERIFICATION_COOLDOWN -> HttpStatus.TOO_MANY_REQUESTS;
         };
 
         return ResponseEntity.status(status)

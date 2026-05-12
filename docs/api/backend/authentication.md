@@ -12,6 +12,10 @@
 1. [Email Registration](#1-email-registration)
 2. [Email Login](#2-email-login)
 3. [Google Login](#3-google-login)
+4. [Send Verification Code](#4-send-verification-code)
+5. [Check Email Verification Enabled](#5-check-email-verification-enabled)
+6. [Get CAPTCHA Challenge](#6-get-captcha-challenge)
+7. [Verify CAPTCHA](#7-verify-captcha)
 
 ---
 
@@ -33,13 +37,17 @@
 |-------|------|----------|-------------|-------------|
 | `email` | String | Yes | Email format | User email address |
 | `password` | String | Yes | 6-32 chars | User password |
+| `verificationCode` | String | No | 6 digits | Required when email verification is enabled |
+| `captchaToken` | String | Yes | Non-empty | CAPTCHA verification token (obtained from `/v1/auth/captcha/verify`) |
 
 #### Request Example
 
 ```json
 {
   "email": "user@example.com",
-  "password": "123456"
+  "password": "123456",
+  "verificationCode": "123456",
+  "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -86,6 +94,16 @@
 }
 ```
 
+#### 400 - Invalid or Expired Verification Code
+
+```json
+{
+  "code": 400,
+  "message": "Invalid or expired verification code",
+  "data": null
+}
+```
+
 #### 409 - Email Already Exists
 
 ```json
@@ -103,7 +121,8 @@ curl -X POST http://localhost:8080/api/v1/auth/register/email \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
-    "password": "123456"
+    "password": "123456",
+    "verificationCode": "123456"
   }'
 ```
 
@@ -127,13 +146,15 @@ curl -X POST http://localhost:8080/api/v1/auth/register/email \
 |-------|------|----------|-------------|-------------|
 | `email` | String | Yes | Email format | User email address |
 | `password` | String | Yes | Non-empty | User password |
+| `captchaToken` | String | Yes | Non-empty | CAPTCHA verification token |
 
 #### Request Example
 
 ```json
 {
   "email": "user@example.com",
-  "password": "123456"
+  "password": "123456",
+  "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -220,12 +241,14 @@ curl -X POST http://localhost:8080/api/v1/auth/login/email \
 | Field | Type | Required | Constraints | Description |
 |-------|------|----------|-------------|-------------|
 | `idToken` | String | Yes | Non-empty | Google ID Token |
+| `captchaToken` | String | Yes | Non-empty | CAPTCHA verification token |
 
 #### Request Example
 
 ```json
 {
-  "idToken": "eyJhbGciOiJSUzI1NiIs..."
+  "idToken": "eyJhbGciOiJSUzI1NiIs...",
+  "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -275,6 +298,126 @@ curl -X POST http://localhost:8080/api/v1/auth/login/google \
 
 ---
 
+## 4. Send Verification Code
+
+### Basic Information
+
+| Item | Value |
+|------|-------|
+| **Interface Name** | Send Verification Code |
+| **Interface Path** | `POST /api/v1/auth/send-verification-code` |
+| **Authentication Required** | No |
+
+### Request Structure
+
+#### Request Body
+
+| Field | Type | Required | Constraints | Description |
+|-------|------|----------|-------------|-------------|
+| `email` | String | Yes | Email format | Target email address |
+| `captchaToken` | String | Yes | Non-empty | CAPTCHA verification token (peeked, not consumed) |
+
+#### Request Example
+
+```json
+{
+  "email": "user@example.com",
+  "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+### Response Structure
+
+#### Success Response (200)
+
+```json
+{
+  "code": 200,
+  "message": "Verification code sent, please check your inbox",
+  "data": null
+}
+```
+
+### Error Responses
+
+#### 400 - Invalid Email Format
+
+```json
+{
+  "code": 400,
+  "message": "Invalid request parameters",
+  "data": null
+}
+```
+
+#### 409 - Email Already Registered
+
+```json
+{
+  "code": 409,
+  "message": "This email is already registered",
+  "data": null
+}
+```
+
+#### 429 - Resend Cooldown
+
+```json
+{
+  "code": 429,
+  "message": "Please wait before requesting a new code",
+  "data": null
+}
+```
+
+### cURL Example
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/send-verification-code \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com"
+  }'
+```
+
+---
+
+## 5. Check Email Verification Enabled
+
+### Basic Information
+
+| Item | Value |
+|------|-------|
+| **Interface Name** | Check Email Verification Enabled |
+| **Interface Path** | `GET /api/v1/auth/email-verification-enabled` |
+| **Authentication Required** | No |
+
+### Response Structure
+
+#### Success Response (200)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data` | Boolean | `true` if email verification is enabled, `false` otherwise |
+
+#### Response Example
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": true
+}
+```
+
+### cURL Example
+
+```bash
+curl -X GET http://localhost:8080/api/v1/auth/email-verification-enabled
+```
+
+---
+
 ## Token Usage
 
 ### Access Token
@@ -305,6 +448,143 @@ Payload contains the following fields:
 
 ---
 
+## 6. Get CAPTCHA Challenge
+
+### Basic Information
+
+| Item | Value |
+|------|-------|
+| **Interface Name** | Get CAPTCHA Challenge |
+| **Interface Path** | `GET /api/v1/auth/captcha` |
+| **Authentication Required** | No |
+
+### Response Structure
+
+#### Success Response (200)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `captchaId` | String (UUID) | Unique challenge identifier |
+| `targetX` | Integer | Target position on the slider track (pixels) |
+
+#### Response Example
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": {
+    "captchaId": "550e8400-e29b-41d4-a716-446655440000",
+    "targetX": 156
+  }
+}
+```
+
+### Error Responses
+
+#### 429 - Rate Limit Exceeded
+
+Returned when the same IP requests too many challenges (default: >20 per minute).
+
+```json
+{
+  "code": 429,
+  "message": "Too many requests, please try again later",
+  "data": null
+}
+```
+
+### cURL Example
+
+```bash
+curl -X GET http://localhost:8080/api/v1/auth/captcha
+```
+
+---
+
+## 7. Verify CAPTCHA
+
+### Basic Information
+
+| Item | Value |
+|------|-------|
+| **Interface Name** | Verify CAPTCHA |
+| **Interface Path** | `POST /api/v1/auth/captcha/verify` |
+| **Authentication Required** | No |
+
+### Request Structure
+
+#### Request Body
+
+| Field | Type | Required | Constraints | Description |
+|-------|------|----------|-------------|-------------|
+| `captchaId` | String | Yes | Non-empty | Challenge ID from `GET /v1/auth/captcha` |
+| `offsetX` | Integer | Yes | ≥0 | User drag offset (slider center position in pixels) |
+
+#### Request Example
+
+```json
+{
+  "captchaId": "550e8400-e29b-41d4-a716-446655440000",
+  "offsetX": 156
+}
+```
+
+### Response Structure
+
+#### Success Response (200)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `captchaToken` | String (UUID) | One-time token valid for 5 minutes (300s) |
+
+#### Response Example
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": {
+    "captchaToken": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+  }
+}
+```
+
+### Error Responses
+
+#### 400 - Invalid or Expired CAPTCHA
+
+```json
+{
+  "code": 400,
+  "message": "CAPTCHA has expired or too many failed attempts",
+  "data": null
+}
+```
+
+#### 400 - Offset Mismatch
+
+```json
+{
+  "code": 400,
+  "message": "CAPTCHA verification failed, please try again",
+  "data": null
+}
+```
+
+### cURL Example
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/captcha/verify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "captchaId": "550e8400-e29b-41d4-a716-446655440000",
+    "offsetX": 156
+  }'
+```
+
+---
+
 ## Interface Summary
 
 | Interface | Method | Path | Authentication |
@@ -312,3 +592,7 @@ Payload contains the following fields:
 | Email Registration | POST | `/api/v1/auth/register/email` | No |
 | Email Login | POST | `/api/v1/auth/login/email` | No |
 | Google Login | POST | `/api/v1/auth/login/google` | No |
+| Send Verification Code | POST | `/api/v1/auth/send-verification-code` | No |
+| Check Verification Enabled | GET | `/api/v1/auth/email-verification-enabled` | No |
+| Get CAPTCHA Challenge | GET | `/api/v1/auth/captcha` | No |
+| Verify CAPTCHA | POST | `/api/v1/auth/captcha/verify` | No |

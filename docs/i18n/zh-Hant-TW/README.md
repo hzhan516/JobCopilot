@@ -15,11 +15,14 @@
 
 ## 功能特性
 
+- **身份認證**：郵箱/密碼註冊（支援可選郵件驗證碼驗證）與 Google OAuth 2.0 登入，帶滑塊 CAPTCHA 人機驗證保護
 - **履歷管理**：上傳、解析和管理多種格式的履歷
-- **AI 智慧解析**：使用 Vertex AI Gemini 從履歷和職位中提取結構化資訊
+- **AI 智慧解析**：使用 LiteLLM 相容模型從履歷和職位中提取結構化資訊
 - **職位匹配**：基於履歷內容和向量相似度的智慧職位推薦
+- **增量式職位訓練閉環**：用戶評分行為通過增量學習反饋到 AI 基線模型，無需全量重訓練即可持續提升匹配準確度
 - **申請追蹤**：追蹤求職申請狀態並管理求職流程
 - **AI 對話**：互動式聊天助手，提供求職建議和履歷優化指導
+- **國際化**：支援英文、簡體中文和繁體中文介面
 - **向量搜尋**：基於 PostgreSQL pgvector 擴充功能的語義搜尋
 
 ## 系統架構
@@ -32,7 +35,10 @@
 │   (React)   │      │ (Spring    │      │ (FastAPI)  │
 │             │      │   Boot)     │      │            │
 └─────────────┘      └──────┬──────┘      └──────▲──────┘
-                            │                      │
+                            │      ┌─────────┐   │
+                            │◀────▶│  Redis  │   │
+                            │      │  :6379  │◀──┘
+                            │      └─────────┘   │
                             ▼                      │
                      ┌─────────────┐               │
                      │  PostgreSQL │               │
@@ -48,10 +54,11 @@
 | 服務   | 技術棧                       | 連接埠           | 說明            |
 |------|---------------------------|--------------|---------------|
 | 前端   | React 18 + Vite           | 80           | Nginx 託管的 Web 介面 |
-| 後端   | Java 21 + Spring Boot 3.5 | 8080         | REST API 和業務邏輯 |
-| AI 服務 | Python 3 + FastAPI        | 8000         | AI 處理與 Vertex AI Gemini 整合 |
+| 後端   | Java 21 + Spring Boot 3.5 | 8080         | REST API、業務邏輯及滑塊 CAPTCHA 人機驗證 |
+| AI 服務 | Python 3 + FastAPI        | 8000         | AI 處理、嵌入生成、排序、對話與增量模型訓練 |
 | 資料庫  | PostgreSQL 15 + pgvector  | 5432         | 業務資料和向量儲存     |
 | 訊息佇列 | RabbitMQ 3                | 5672 / 15672 | 非同步訊息處理        |
+| 快取     | Redis 7                   | 6379         | 分散式狀態、鎖、Pub/Sub |
 
 ## 專案結構
 
@@ -131,6 +138,14 @@ cp .env.example .env
 | `LLM_EMBEDDING_MODEL`    | 是   | LiteLLM 嵌入模型名稱 |
 | `SPRING_PROFILES_ACTIVE` | 否   | Spring profile：`dev`（預設）或 `prod` |
 | `LOG_LEVEL`              | 否   | AI service 日誌等級：`INFO`（預設）或 `DEBUG` |
+| `CAPTCHA_ENABLED`        | 否   | 是否啟用滑塊 CAPTCHA。預設：`true` |
+| `CAPTCHA_TOLERANCE`      | 否   | CAPTCHA 拖動容差（像素）。預設：`8` |
+| `CAPTCHA_TOKEN_EXPIRY`   | 否   | CAPTCHA token 過期時間（秒）。預設：`300` |
+| `CAPTCHA_TRACK_WIDTH`    | 否   | CAPTCHA 滑軌寬度（像素）。預設：`300` |
+| `REDIS_HOST`             | 否   | Redis 主機名。預設：`redis`（Docker）或 `localhost` |
+| `REDIS_PORT`             | 否   | Redis 埠。預設：`6379` |
+| `REDIS_PASSWORD`         | 否   | Redis 認證密碼。開發環境可留空 |
+| `CAPTCHA_MAX_ATTEMPTS`   | 否   | 每 IP 最大 CAPTCHA 嘗試次數。預設：`5` |
 
 本地開發時，請將 `.env.example` 複製為 `.env`，並提供一個與所選 LiteLLM 模型前綴匹配的 API key。例如，預設 Gemini 模型使用 `GEMINI_API_KEY`。
 
@@ -166,7 +181,7 @@ podman compose up -d
 | 前端介面   | http://localhost | 唯一存取入口 (包含 Web 與 API) |
 | 系統健康   | http://localhost/health | 整體健康狀態探測端點          |
 
-*註：本專案採用三層網路隔離架構，僅對外暴露前端 80 連接埠，底層服務（後端、AI、資料庫）均不可從宿主機直接存取。*
+*註：本專案採用三層網路隔離架構，僅對外暴露前端 80 連接埠，底層服務（後端、AI、RabbitMQ、Redis、資料庫）均不可從宿主機直接存取。*
 
 *註：要尋找 AI 服務的 URL，請執行 `docker compose port ai-service 8000`。*
 
@@ -318,6 +333,7 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 - Docker & Docker Compose
 - Nginx
+- Redis 7（分散式狀態、鎖、Pub/Sub）
 - Flyway（資料庫遷移）
 
 ## 貢獻指南

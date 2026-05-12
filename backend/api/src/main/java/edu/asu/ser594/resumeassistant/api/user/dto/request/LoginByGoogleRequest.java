@@ -10,6 +10,7 @@ import lombok.Builder;
 @Builder
 public record LoginByGoogleRequest(
         @NotBlank(message = "{validation.idToken.required}")
-        String idToken
+        String idToken,
+        String captchaToken
 ) {
 }

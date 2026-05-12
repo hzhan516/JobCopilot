@@ -191,6 +191,19 @@ services:
       # requests with missing or mismatched keys (HTTP 401).
       # If left empty, both sides skip the check (convenient for local dev).
       - INTERNAL_API_KEY=${INTERNAL_API_KEY:-}
+
+      # --- CAPTCHA / Human Verification ---
+      # Slider CAPTCHA settings consumed by CaptchaProperties in the backend.
+      - CAPTCHA_ENABLED=${CAPTCHA_ENABLED:-true}
+      - CAPTCHA_TOLERANCE=${CAPTCHA_TOLERANCE:-8}
+      - CAPTCHA_TOKEN_EXPIRY=${CAPTCHA_TOKEN_EXPIRY:-300}
+      - CAPTCHA_TRACK_WIDTH=${CAPTCHA_TRACK_WIDTH:-300}
+      - CAPTCHA_MAX_ATTEMPTS=${CAPTCHA_MAX_ATTEMPTS:-5}
+
+      # --- Redis Configuration (shared state layer) ---
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
     volumes:
       # Named volume shared with ai-service. Backend writes uploaded resumes
       # here; ai-service reads them (read-only mount on its side).
@@ -209,6 +222,8 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -297,6 +312,11 @@ services:
       # --- Logging ---
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
 
+      # --- Redis Configuration (shared state layer) ---
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+
       # --- Defense-in-Depth: Internal API Key ---
       # Must match the INTERNAL_API_KEY set in the backend environment.
       # If empty, the middleware skips validation (dev convenience).
@@ -316,6 +336,8 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: on-failure
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -325,7 +347,34 @@ services:
       start_period: 60s
 
   # ============================================================================
-  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 3 of 3)
+  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 3 of 4)
+  # ============================================================================
+  # Redis  serves as the shared state layer for distributed caching, locks,
+  # and Pub/Sub bridging between backend instances and AI service instances.
+  # It does NOT replace RabbitMQ; MQ handles communication, Redis handles state.
+  #
+  # Network membership:
+  #   public-network   — no
+  #   internal-network — yes (backend and ai-service read/write)
+  #   db-network       — no
+  # ============================================================================
+  redis:
+    image: docker.io/library/redis:7-alpine
+    container_name: resume-assistant-redis
+    volumes:
+      - redis-data:/data
+    networks:
+      - internal-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  # ============================================================================
+  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 4 of 4)
   # ============================================================================
   # RabbitMQ is the asynchronous message broker between backend and ai-service.
   # It implements the Outbox pattern: the backend publishes commands to
@@ -503,6 +552,10 @@ volumes:
 
   # RabbitMQ mnesia database and configuration.
   rabbitmq-data:
+    driver: local
+
+  # Redis persistent data (RDB/AOF).
+  redis-data:
     driver: local
 
   # Shared storage for uploaded resume files (PDF, DOCX).

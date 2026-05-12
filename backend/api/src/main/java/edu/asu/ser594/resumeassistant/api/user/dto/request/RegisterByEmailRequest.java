@@ -28,4 +28,8 @@ public class RegisterByEmailRequest {
     @NotBlank(message = "{validation.password.required}")
     @Size(min = 6, max = 32, message = "{validation.password.length}")
     private String password;
+
+    private String verificationCode;
+
+    private String captchaToken;
 }

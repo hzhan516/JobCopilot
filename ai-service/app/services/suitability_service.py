@@ -1,14 +1,112 @@
 import json
 import logging
 import re
-from pathlib import Path
+import threading
+import time
 
+from app.infrastructure.object_storage import get_object_storage
+from app.infrastructure.redis_client import get_redis
 from app.schemas import SuitabilityBreakdown, SuitabilityRequest, SuitabilityResponse
 from app.services.llm_client import generate_json_from_text_prompt
 
 
-BASELINE_MODEL_FILE = Path(__file__).resolve().parents[2] / "data_pipeline" / "output" / "baseline_model.json"
 logger = logging.getLogger(__name__)
+
+OBJECT_STORAGE_BUCKET = "resume-assistant-models"
+LATEST_MODEL_KEY = "baseline_model_latest.json"
+REDIS_MODEL_VERSION_KEY = "ra:ai:incremental:model_version"
+
+
+class ModelCache:
+    """线程安全的分布式模型内存缓存。
+
+    热路径（get）纯内存读取，零网络 I/O。
+    版本失效通过 Redis Pub/Sub 即时通知 + 60 秒兜底轮询实现。
+    模型数据从对象存储拉取，支持多实例一致性。
+    """
+
+    def __init__(self):
+        self._artifact: dict | None = None
+        self._version: int = 0
+        self._lock = threading.RLock()
+        self._redis = get_redis()
+        self._storage = get_object_storage()
+        self._pubsub = None
+
+        # 订阅模型失效频道（在后台线程中延迟建立，避免导入时因 Redis 不可用而崩溃）
+        threading.Thread(target=self._listen_invalidation, daemon=True).start()
+
+        # 兜底：每 60 秒主动检查 Redis 版本号
+        threading.Thread(target=self._periodic_refresh, daemon=True).start()
+
+    def _listen_invalidation(self):
+        while True:
+            try:
+                pubsub = self._redis.pubsub()
+                pubsub.subscribe("ra:ai:model_invalidate")
+                self._pubsub = pubsub
+                for message in pubsub.listen():
+                    if message["type"] == "message":
+                        try:
+                            new_version = int(message["data"])
+                            with self._lock:
+                                if new_version > self._version:
+                                    self._version = 0
+                                    logger.info("Model invalidation received: version=%d", new_version)
+                        except (ValueError, TypeError):
+                            pass
+            except Exception:
+                logger.exception("Pub/Sub listener encountered error, retrying in 5s")
+            time.sleep(5)
+
+    def _periodic_refresh(self):
+        while True:
+            time.sleep(60)
+            try:
+                redis_version = int(self._redis.get(REDIS_MODEL_VERSION_KEY) or 0)
+                with self._lock:
+                    if redis_version > self._version:
+                        self._version = 0
+                        logger.info("Periodic refresh triggered: new_version=%d", redis_version)
+            except Exception:
+                logger.exception("Periodic model version check failed")
+
+    def get(self) -> dict | None:
+        """热路径：纯内存读取，零网络 I/O。"""
+        with self._lock:
+            if self._version == 0:
+                self._reload()
+            return self._artifact
+
+    def _reload(self):
+        try:
+            redis_version = int(self._redis.get(REDIS_MODEL_VERSION_KEY) or 0)
+            data = self._storage.get_object(OBJECT_STORAGE_BUCKET, LATEST_MODEL_KEY)
+            if data is None:
+                logger.warning("Model object not found in storage: %s/%s", OBJECT_STORAGE_BUCKET, LATEST_MODEL_KEY)
+                # 保留旧缓存，不降级到 None
+                if self._artifact is not None:
+                    self._version = redis_version if redis_version else 1
+                return
+            payload = json.loads(data)
+            self._artifact = payload.get("model_artifact")
+            self._version = redis_version if redis_version else 1
+            logger.info("Model reloaded from object storage: version=%d", self._version)
+        except Exception:
+            logger.exception("Failed to load model from object storage")
+            # 拉取失败时保留旧缓存
+
+    def invalidate(self):
+        with self._lock:
+            self._version = 0
+
+
+_model_cache = ModelCache()
+
+
+def invalidate_model_cache():
+    """使模型缓存失效，供 incremental_model_service 在权重重算后调用。"""
+    _model_cache.invalidate()
 
 
 def _normalize_items(items: list[str]) -> set[str]:
@@ -41,13 +139,7 @@ def _calculate_experience_score(experience_items: list[dict]) -> float:
 
 
 def _load_dataset_model_artifact() -> dict | None:
-    if not BASELINE_MODEL_FILE.exists():
-        return None
-
-    with BASELINE_MODEL_FILE.open("r", encoding="utf-8") as file:
-        payload = json.load(file)
-
-    return payload.get("model_artifact")
+    return _model_cache.get()
 
 
 def _tokenize_text(text: str) -> set[str]:

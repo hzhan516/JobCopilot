@@ -32,6 +32,9 @@ JOB_RANK_RESULT_QUEUE = "backend.queue.job.rank"
 JOB_RANK_REQUEST_ROUTING_KEY = "ai.req.job.rank"
 JOB_RANK_RESULT_ROUTING_KEY = "backend.res.job.rank"
 
+MODEL_INCREMENTAL_QUEUE = "ai.queue.model.incremental"
+MODEL_INCREMENTAL_ROUTING_KEY = "ai.req.model.incremental"
+
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 VERTEX_PROJECT_ID = os.getenv("VERTEX_PROJECT_ID", "ser594-ai-service")
@@ -76,6 +79,7 @@ LLM_EMBEDDING_MODEL_DIMENSION = int(
 
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))
 LLM_REQUEST_TIMEOUT_SECONDS = float(os.getenv("LLM_REQUEST_TIMEOUT_SECONDS", "60"))
+LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "8192"))
 
 BACKEND_SERVICE_URL = os.getenv("BACKEND_SERVICE_URL", "http://backend:8080")
 BACKEND_QUERY_TIMEOUT = float(os.getenv("BACKEND_QUERY_TIMEOUT", "5"))

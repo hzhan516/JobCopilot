@@ -12,6 +12,7 @@ import lombok.Builder;
 @Builder
 public record RegisterByEmailCommand(
         String email,
-        String password
+        String password,
+        String verificationCode
 ) {
 }

@@ -20,6 +20,8 @@ from app.config import (
     JOB_PARSE_REQUEST_ROUTING_KEY,
     JOB_PARSE_RESULT_QUEUE,
     JOB_PARSE_RESULT_ROUTING_KEY,
+    MODEL_INCREMENTAL_QUEUE,
+    MODEL_INCREMENTAL_ROUTING_KEY,
     RESUME_PARSE_REQUEST_QUEUE,
     RESUME_PARSE_REQUEST_ROUTING_KEY,
     RESUME_PARSE_RESULT_QUEUE,
@@ -39,6 +41,7 @@ from app.schemas import (
     ResumeParseCommand,
 )
 from app.services.conversation_service import process_conversation
+from app.services.incremental_model_service import incremental_service
 from app.services.job_rank_service import rank_jobs
 from app.services.job_orchestrator import process_job
 from app.services.resume_orchestrator import process_resume
@@ -149,6 +152,13 @@ def setup_all_queues(channel: pika.adapters.blocking_connection.BlockingChannel)
         exchange=AI_DIRECT_EXCHANGE,
         queue=JOB_RANK_RESULT_QUEUE,
         routing_key=JOB_RANK_RESULT_ROUTING_KEY,
+    )
+
+    declare_queue(channel, MODEL_INCREMENTAL_QUEUE)
+    channel.queue_bind(
+        exchange=AI_DIRECT_EXCHANGE,
+        queue=MODEL_INCREMENTAL_QUEUE,
+        routing_key=MODEL_INCREMENTAL_ROUTING_KEY,
     )
 
 
@@ -273,6 +283,18 @@ def handle_job_rank_message(
         )
 
 
+def handle_model_incremental_message(
+    channel: pika.adapters.blocking_connection.BlockingChannel,
+    body: bytes,
+) -> None:
+    """处理评分标签，更新增量统计 / Process score label and update incremental statistics."""
+    payload = json.loads(body.decode("utf-8"))
+    try:
+        incremental_service.update_statistics(payload)
+    except Exception:
+        logger.exception("Incremental model statistics update failed: payload=%s", payload)
+
+
 def _async_handler(wrapped_handler, log_message_metadata: bool = False):
     """Wrap MQ message handlers with ACK/NACK logic via thread-safe RabbitMQ callbacks.
     包装 MQ 消息处理器：业务逻辑在当前线程同步执行，ACK/NACK 通过 thread-safe 回调提交，
@@ -324,6 +346,11 @@ def start_all_consumers(channel: pika.adapters.blocking_connection.BlockingChann
     channel.basic_consume(
         queue=JOB_RANK_REQUEST_QUEUE,
         on_message_callback=_async_handler(handle_job_rank_message),
+        auto_ack=False,
+    )
+    channel.basic_consume(
+        queue=MODEL_INCREMENTAL_QUEUE,
+        on_message_callback=_async_handler(handle_model_incremental_message),
         auto_ack=False,
     )
     channel.start_consuming()

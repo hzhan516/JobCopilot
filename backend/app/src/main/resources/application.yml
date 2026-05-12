@@ -19,3 +19,9 @@ spring:
 server:
   servlet:
     context-path: /api
+
+# Redis 共享状态层配置 / Redis shared-state layer config
+app:
+  redis:
+    key-prefix: "ra:"
+    default-ttl-seconds: 300

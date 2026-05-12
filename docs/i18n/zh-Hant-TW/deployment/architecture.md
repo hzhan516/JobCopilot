@@ -26,8 +26,12 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
    +------------------+           +------------------+
             |                               |
             |      +------------------+     |
-            +----->| rabbitmq : 5672  |<----+
-                   | (Message Queue)  |
+            |      | rabbitmq : 5672  |<----+
+            |      | (Message Queue)  |     |
+            |      +------------------+     |
+            |      +------------------+     |
+            +----->|  redis   : 6379  |<----+
+                   | (快取與鎖)       |
                    +------------------+
             |
             v
@@ -43,7 +47,7 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 | 網路 | 服務 | 外部暴露 | 用途 |
 |------|------|----------|------|
 | **公網（Public）** | `frontend`（Nginx） | 僅連接埠 `80` | 所有 HTTP/HTTPS 流量的單一入口 |
-| **內網（Internal）** | `backend`、`ai-service`、`rabbitmq` | 無（僅 Docker DNS） | 服務間透過容器名稱通信 |
+| **內網（Internal）** | `backend`、`ai-service`、`rabbitmq`、`redis` | 無（僅 Docker DNS） | 服務間透過容器名稱通信 |
 | **資料庫網（Database）** | `postgres` | 無（僅 Docker DNS） | 隔離的持續性資料儲存 |
 
 > **開發範本說明**：當前 `docker-compose.yml` 範本為方便本機除錯，額外映射了主機連接埠（`8080`、`8000`、`5432`、`5672`、`15672`）。在**生產部署**中，僅應將 `frontend:80` 暴露給主機。
@@ -65,7 +69,7 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 |------|-----|
 | **網路** | `resume-network`（公網 + 內網 + 資料庫網） |
 | **主機連接埠** | 生產環境無（範本暴露 `8080:8080` 用於開發） |
-| **職責** | REST API 閘道、JWT 身分驗證、業務邏輯編排、RabbitMQ 生產者。 |
+| **職責** | REST API 閘道、JWT 身分驗證、CAPTCHA 驗證、業務邏輯編排、RabbitMQ 生產者。 |
 | **安全說明** | 唯一跨越三層網路的服務。透過 Docker DNS 與 PostgreSQL（`postgres:5432`）和 RabbitMQ（`rabbitmq:5672`）通信。所有發往 `ai-service` 的出站 REST 請求均攜帶 `X-Internal-API-Key` 標頭。 |
 
 ### 3.3 AI 服務（FastAPI）
@@ -95,9 +99,18 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 | **職責** | 後端與 AI 服務之間的非同步訊息代理（Outbox 模式，訊息佇列）。 |
 | **安全說明** | 透過環境變數覆蓋預設的 `guest/guest` 憑證。管理面板（`:15672`）絕不應暴露於公網；透過 SSH 隧道存取：`ssh -L 15672:localhost:15672 <host>`。訊息大小限制設為 10 MB（`max_message_size 10485760`），以容納向量和履歷摘要。 |
 
+### 3.6 Redis（快取與鎖）
+
+| 屬性 | 值 |
+|------|-----|
+| **網路** | `resume-network`（僅內網） |
+| **主機連接埠** | 生產環境無 |
+| **職責** | 分散式狀態儲存：CAPTCHA 挑戰/token、驗證碼、對話流橋接、增量模型統計、去重集合、分散式鎖（ShedLock）。 |
+| **安全說明** | 無外部存取。開發環境密碼認證可選（`REDIS_PASSWORD` 可為空），生產環境建議啟用。資料透過 `redis-data` 命名卷持久化。 |
+
 ## 4. 縱深防禦（Defense in Depth）
 
-本部署實作了四層獨立的安全層。攻破一層不會自動導致下一層失守。
+本部署實作了五層獨立的安全層。攻破一層不會自動導致下一層失守。
 
 ### 第一層：網路隔離
 
@@ -116,6 +129,10 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 ### 第四層：RabbitMQ 憑證
 
 AMQP 連線需要使用者名稱和密碼。預設的 `guest/guest` 透過環境變數覆蓋。即使某個容器被攻破，存取訊息代理仍需要獨立的憑證。
+
+### 第五層：人機驗證（CAPTCHA）
+
+所有認證端點（註冊、登入）均要求有效的 CAPTCHA 挑戰-回應。後端維護前綴隔離的 Redis 快取（String 儲存挑戰/token，Sorted Set 儲存 IP 速率限制滑動視窗）用於儲存挑戰和一次性 token，並實施基於 IP 的速率限制（每分鐘 20 次請求）。即使攻擊者繞過網路隔離並持有有效憑證，也無法在不解決 CAPTCHA 挑戰的情況下以程式設計方式完成認證。
 
 ## 5. 快速開始
 

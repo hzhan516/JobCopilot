@@ -13,6 +13,7 @@ from app.config import (
     LLM_VISION_MODEL,
     LLM_TEMPERATURE,
     LLM_REQUEST_TIMEOUT_SECONDS,
+    LLM_MAX_TOKENS,
 )
 
 logger = logging.getLogger(__name__)
@@ -44,7 +45,13 @@ def _extract_json_text(raw_text: str) -> str:
     if not match:
         raise ValueError(f"LLM response did not contain a JSON object: {raw_text}")
 
-    return match.group(0)
+    extracted = match.group(0)
+    # Brace-mismatch is a strong signal of truncated JSON.
+    # 大括号不匹配是 JSON 被截断的典型信号，提前拦截可避免下游解析产生晦涩错误。
+    if extracted.count("{") != extracted.count("}"):
+        raise ValueError(f"Extracted JSON is incomplete: braces mismatch in {extracted[:200]}")
+
+    return extracted
 
 
 def _safe_json_loads(text: str) -> dict[str, Any]:
@@ -105,13 +112,24 @@ def _generate_text(model: str, messages: list[dict[str, Any]]) -> str:
             model=model,
             messages=messages,
             temperature=LLM_TEMPERATURE,
+            max_tokens=LLM_MAX_TOKENS,
             timeout=LLM_REQUEST_TIMEOUT_SECONDS,
         )
     except Exception:
         logger.exception("LLM completion failed: model=%s", model)
         raise
 
-    content = response.choices[0].message.content
+    if not response.choices:
+        raise ValueError("LiteLLM returned no choices.")
+    choice = response.choices[0]
+    finish_reason = getattr(choice, "finish_reason", None)
+    if finish_reason == "length":
+        raise ValueError(
+            f"LLM response was truncated due to token limit (finish_reason=length). "
+            f"Consider increasing LLM_MAX_TOKENS (current={LLM_MAX_TOKENS})."
+        )
+
+    content = choice.message.content
     if not content:
         raise ValueError("LiteLLM returned an empty response.")
 

@@ -79,6 +79,11 @@ public class MinioFileStorageService implements FileStorageService {
     }
 
     @Override
+    @SuppressWarnings("resource")
+    // GetObjectResponse 是 AutoCloseable，但此处返回 InputStream 给调用方关闭，
+    // 符合 FileStorageService 接口契约，故抑制资源泄漏警告。
+    // GetObjectResponse is AutoCloseable, but the stream is returned to the caller for closure,
+    // consistent with the FileStorageService interface contract; suppressing resource leak warning.
     public Optional<InputStream> download(String objectKey) {
         try {
             String bucketName = storageProperties.getMinio().getBucketName();

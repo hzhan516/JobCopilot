@@ -31,6 +31,14 @@ def test_extract_json_text_failure():
         _extract_json_text(raw_text)
 
 
+def test_extract_json_text_incomplete_json():
+    # Missing closing brace for the outer object — braces mismatch triggers early rejection.
+    # 外层对象的闭合大括号缺失，导致大括号数量不匹配，应被提前拦截。
+    raw_text = '{"content": "test", "nested": {"key": "val"}'
+    with pytest.raises(ValueError, match="Extracted JSON is incomplete: braces mismatch"):
+        _extract_json_text(raw_text)
+
+
 @patch("app.services.llm_client.completion")
 def test_generate_text_success(mock_completion):
     mock_response = MagicMock()
@@ -38,12 +46,15 @@ def test_generate_text_success(mock_completion):
     mock_message = MagicMock()
     mock_message.content = "generated text"
     mock_choice.message = mock_message
+    mock_choice.finish_reason = "stop"
     mock_response.choices = [mock_choice]
     mock_completion.return_value = mock_response
 
     result = _generate_text("model", [{"role": "user", "content": "prompt"}])
     assert result == "generated text"
     mock_completion.assert_called_once()
+    call_kwargs = mock_completion.call_args.kwargs
+    assert "max_tokens" in call_kwargs
 
 
 @patch("app.services.llm_client.completion")
@@ -53,10 +64,26 @@ def test_generate_text_empty_response(mock_completion):
     mock_message = MagicMock()
     mock_message.content = ""
     mock_choice.message = mock_message
+    mock_choice.finish_reason = "stop"
     mock_response.choices = [mock_choice]
     mock_completion.return_value = mock_response
 
     with pytest.raises(ValueError, match="LiteLLM returned an empty response."):
+        _generate_text("model", [{"role": "user", "content": "prompt"}])
+
+
+@patch("app.services.llm_client.completion")
+def test_generate_text_truncated_response(mock_completion):
+    mock_response = MagicMock()
+    mock_choice = MagicMock()
+    mock_message = MagicMock()
+    mock_message.content = '{"content": "truncated'
+    mock_choice.message = mock_message
+    mock_choice.finish_reason = "length"
+    mock_response.choices = [mock_choice]
+    mock_completion.return_value = mock_response
+
+    with pytest.raises(ValueError, match="truncated due to token limit"):
         _generate_text("model", [{"role": "user", "content": "prompt"}])
 
 

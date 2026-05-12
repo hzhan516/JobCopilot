@@ -50,15 +50,24 @@ export interface UpdateAvatarRequest {
 export interface LoginRequest {
   email: string;
   password: string;
+  captchaToken?: string;
 }
 
 export interface RegisterRequest {
   email: string;
   password: string;
+  verificationCode?: string;
+  captchaToken?: string;
+}
+
+export interface SendVerificationCodeRequest {
+  email: string;
+  captchaToken?: string;
 }
 
 export interface LoginByGoogleRequest {
   idToken: string;
+  captchaToken?: string;
 }
 
 export interface VersionSummary {
@@ -244,6 +253,16 @@ export interface TrackingStatsResponse {
   rejected: number;
   withdrawn: number;
   successRate: number;
+}
+
+export interface CaptchaChallengeResponse {
+  captchaId: string;
+  targetX: number;
+}
+
+export interface CaptchaVerifyRequest {
+  captchaId: string;
+  offsetX: number;
 }
 
 export interface JobScoreRequest {

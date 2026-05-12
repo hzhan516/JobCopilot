@@ -58,6 +58,7 @@ The backend uses the **Transactional Outbox** pattern to guarantee atomicity bet
 | Response ← AI | Conversation Reply | `backend.res.conversation` | `backend.queue.conversation` | Python AI | Java Backend |
 | Request → AI | Job Rank | `ai.req.job.rank` | `ai.queue.job.rank` | Java Backend | Python AI |
 | Response ← AI | Job Rank Result | `backend.res.job.rank` | `backend.queue.job.rank` | Python AI | Java Backend |
+| Request → AI | Model Incremental | `ai.req.model.incremental` | `ai.queue.model.incremental` | Java Backend | Python AI |
 | DLX → DLQ | Dead Letter | `dlq.routing.key` | `ai.dlq.queue` | Business queues (auto-forward) | Ops / monitoring |
 
 > **Note on Outbox**: The "Java Backend" producer listed above is technically the `OutboxRelayScheduler`, which reads from the `outbox_message` table and forwards to RabbitMQ. The original business methods (e.g., `JobApplicationService.submitJob`) only write to the Outbox table.
@@ -143,6 +144,50 @@ The backend uses the **Transactional Outbox** pattern to guarantee atomicity bet
 | `relatedJobTexts` | List<String> | Up to five other completed job texts for context |
 | `init` | Boolean | Whether this request is the first AI initialization for the conversation |
 | `locale` | String | User interface locale, e.g. `en`, `zh-CN`, or `zh-TW` |
+
+---
+
+### 3.5 ScoreLabelCommand — Score Label for Incremental Training
+
+**Trigger**: After `JobApplicationService.scoreJob()` completes, the scoring result is serialized and written to the Outbox table with routing key `ai.req.model.incremental`.
+
+**Note**: This is a **fire-and-forget** message. The AI service consumes it to update incremental statistics and recompute model weights. No result callback is sent back to the backend.
+
+```json
+{
+  "messageId": "msg-uuid-v4",
+  "jobId": "job-uuid",
+  "resumeVersionId": "resume-uuid",
+  "resume": {
+    "skills": ["Python", "AWS", "Kubernetes"],
+    "experience": [
+      {"title": "Senior Engineer", "summary": "Built microservices...", "company": "TechCorp"}
+    ]
+  },
+  "job": {
+    "title": "Software Engineer",
+    "description": "We are looking for...",
+    "requirements": ["Python", "AWS"]
+  },
+  "suitable": true,
+  "finalScore": 0.85,
+  "timestamp": "2026-05-09T16:00:00Z"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `messageId` | String | Unique message ID for deduplication |
+| `jobId` | String | Job unique identifier |
+| `resumeVersionId` | String | Resume version unique identifier |
+| `resume.skills` | List<String> | Parsed resume skills |
+| `resume.experience` | List<Map> | Parsed resume experience items |
+| `job.title` | String | Job title |
+| `job.description` | String | Job description |
+| `job.requirements` | List<String> | Job requirements |
+| `suitable` | Boolean | Whether the resume is suitable for the job |
+| `finalScore` | Float | Final fused score (0.0-1.0) |
+| `timestamp` | String | ISO 8601 timestamp |
 
 ---
 

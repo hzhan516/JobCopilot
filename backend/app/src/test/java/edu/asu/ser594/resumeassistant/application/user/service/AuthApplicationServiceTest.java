@@ -8,6 +8,7 @@ import edu.asu.ser594.resumeassistant.domain.user.entity.User;
 import edu.asu.ser594.resumeassistant.domain.user.entity.UserCredential;
 import edu.asu.ser594.resumeassistant.domain.user.entity.UserProfile;
 import edu.asu.ser594.resumeassistant.domain.user.exception.AuthException;
+import edu.asu.ser594.resumeassistant.app.config.EmailProperties;
 import edu.asu.ser594.resumeassistant.domain.user.port.GoogleTokenVerifierPort;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserCredentialRepository;
 import edu.asu.ser594.resumeassistant.domain.user.repository.UserOAuthBindingRepository;
@@ -79,6 +80,12 @@ class AuthApplicationServiceTest {
     @Mock
     private GoogleTokenVerifierPort googleTokenVerifierPort;
 
+    @Mock
+    private VerificationCodeService verificationCodeService;
+
+    @Mock
+    private EmailProperties emailProperties;
+
     @InjectMocks
     private AuthApplicationService authService;
 
@@ -124,6 +131,7 @@ class AuthApplicationServiceTest {
                 .build();
 
         when(userRepository.existsByEmail(TEST_EMAIL)).thenReturn(false);
+        when(emailProperties.isEnabled()).thenReturn(false);
         when(userRepository.save(any(User.class))).thenReturn(testUser);
         when(userProfileRepository.save(any(UserProfile.class))).thenReturn(testProfile);
         when(userCredentialRepository.save(any(UserCredential.class))).thenReturn(testCredential);
@@ -177,6 +185,7 @@ class AuthApplicationServiceTest {
                 .build();
 
         when(userRepository.existsByEmail(TEST_EMAIL)).thenReturn(false);
+        when(emailProperties.isEnabled()).thenReturn(false);
         when(userRepository.save(any(User.class))).thenReturn(testUser);
         when(userProfileRepository.save(any(UserProfile.class))).thenReturn(testProfile);
         when(userCredentialRepository.save(any(UserCredential.class))).thenReturn(testCredential);
@@ -203,6 +212,7 @@ class AuthApplicationServiceTest {
                 .build();
 
         when(userRepository.existsByEmail(TEST_EMAIL)).thenReturn(false);
+        when(emailProperties.isEnabled()).thenReturn(false);
         when(userRepository.save(any(User.class))).thenReturn(testUser);
         when(userProfileRepository.save(any(UserProfile.class))).thenReturn(testProfile);
         when(userCredentialRepository.save(any(UserCredential.class))).thenReturn(testCredential);

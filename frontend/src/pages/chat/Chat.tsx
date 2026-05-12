@@ -506,7 +506,7 @@ export default function Chat() {
             {conversations.map((conversation) => (
               <div
                 key={conversation.conversationId}
-                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
+                className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
                   activeConversation?.conversationId === conversation.conversationId
                     ? 'bg-blue-50 text-blue-900'
                     : 'hover:bg-gray-100'

@@ -86,6 +86,7 @@ job seekers.
 | **AI Service**    | Python FastAPI + LiteLLM            | Python 3.11+            | Parsing, embeddings, ranking, chat |
 | **Database**      | PostgreSQL + pgvector               | PostgreSQL 15           | Business data + vector data     |
 | **Message Queue** | RabbitMQ                            | RabbitMQ 3              | Async AI task processing        |
+| **Cache**         | Redis                               | Redis 7                 | Distributed state, locks, Pub/Sub |
 | **Deployment**    | Docker Compose + Nginx              | Compose v2              | Containerized local deployment  |
 
 ---
@@ -123,7 +124,7 @@ job seekers.
 │                                          │                                          │
 │  ┌───────────────────────────────────────▼──────────────────────────────────────┐   │
 │  │                        Application Service Layer                               │   │
-│  │  Resume | Job | Conversation | Tracking Application Services                │   │
+│  │  Resume | Job | Conversation | Tracking | Captcha Application Services       │   │
 │  └───────────────────────────────────────▼──────────────────────────────────────┘   │
 │                                          │                                          │
 │  ┌───────────────────────────────────────▼──────────────────────────────────────┐   │
@@ -146,7 +147,7 @@ job seekers.
 │                              PYTHON AI SERVICE LAYER                                 │
 │  ┌─────────────────────────────────────────────────────────────────────────────┐   │
 │  │                          Message Consumers                                     │   │
-│  │  Resume Parse | Job Parse | Conversation | Job Rank Consumers                │   │
+│  │  Resume Parse | Job Parse | Conversation | Job Rank | Model Incremental     │   │
 │  └───────────────────────────────────────▼──────────────────────────────────────┘   │
 │                                          │                                          │
 │  ┌───────────────────────────────────────▼──────────────────────────────────────┐   │
@@ -178,6 +179,12 @@ job seekers.
 │  ┌─────────────────────────────────────────────────────────────────────────────┐   │
 │  │                              RabbitMQ                                         │   │
 │  │  - Message Broker for Async Communication                                     │   │
+│  └─────────────────────────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐   │
+│  │                              Redis 7                                          │   │
+│  │  - Distributed Caching (CAPTCHA, verification codes)                          │   │
+│  │  - Pub/Sub (conversation streaming, model invalidation)                       │   │
+│  │  - Distributed Locks (ShedLock, startup sync)                                 │   │
 │  └─────────────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -241,6 +248,69 @@ job seekers.
 │   │                │                  │                  │              │            │
 └─────────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+### 3.3 Incremental Job Training Loop Data Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                      Incremental Job Training Loop (Job Scoring)                     │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                      │
+│  User          Frontend         Java Backend         RabbitMQ       Python AI        │
+│   │                │                  │                  │              │            │
+│   │  Submit Job    │                  │                  │              │            │
+│   │───────────────>│                  │                  │              │            │
+│   │                │  POST /api/v1/jobs                 │              │            │
+│   │                │─────────────────>│                  │              │            │
+│   │                │                  │  Parse Complete  │              │            │
+│   │                │                  │  Write job_dataset              │            │
+│   │                │                  │  (Training Corpus)              │            │
+│   │                │                  │                  │              │            │
+│   │  Score Job     │                  │                  │              │            │
+│   │───────────────>│                  │                  │              │            │
+│   │                │  POST /api/v1/jobs/{id}/score      │              │            │
+│   │                │─────────────────>│                  │              │            │
+│   │                │                  │  Call AI /suitability          │              │
+│   │                │                  │  Save ScoreRecord│              │            │
+│   │                │                  │  Publish ScoreLabel             │            │
+│   │                │                  │  ai.req.model.incremental      │              │
+│   │                │                  │─────────────────>│              │            │
+│   │                │  Return Result   │                  │              │            │
+│   │                │<─────────────────│                  │              │            │
+│   │                │                  │                  │  Consume     │            │
+│   │                │                  │                  │─────────────>│            │
+│   │                │                  │                  │              │  Update    │
+│   │                │                  │                  │              │  incremental_stats.json
+│   │                │                  │                  │              │            │
+│   │                │                  │                  │              │  Recompute │
+│   │                │                  │                  │              │  Weights   │
+│   │                │                  │                  │              │  (if threshold)
+│   │                │                  │                  │              │            │
+│   │                │                  │                  │              │  Generate  │
+│   │                │                  │                  │              │  baseline_model_v{N}.json
+│   │                │                  │                  │              │            │
+│   │                │                  │                  │              │  Invalidate│
+│   │                │                  │                  │              │  ModelCache│
+│   │                │                  │                  │              │            │
+│   │  Next Score    │                  │                  │              │  Load New  │
+│   │───────────────>│                  │                  │              │  Model     │
+│   │                │  POST /api/v1/jobs/{id}/score      │              │  (auto)    │
+│   │                │─────────────────>│  Call AI /suitability          │            │
+│   │                │                  │  (uses new weights)             │            │
+│   │                │<─────────────────│                  │              │            │
+│   │                │                  │                  │              │            │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Design Points:**
+
+1. **Dual Write**: Parsed jobs are written to both the `jobs` table (user-facing, soft-deletable) and the `job_dataset` table (training corpus, persistent).
+2. **Fire-and-Forget MQ**: Score labels are sent via Outbox to `ai.queue.model.incremental`. Delivery failures do not block the scoring response.
+3. **Soft-Cap Moving Average**: The incremental statistics are stored in Redis Hashes with a soft cap (`FEATURE_COUNT_CAP=5000`) using a Lua script for atomic accumulation, preventing historical data from drowning out new feedback.
+4. **Object Storage Model Artifacts**: New model weights are computed from Redis statistics and written to object storage. A Redis version number tracks the latest model artifact.
+5. **Redis-Driven Cache Invalidation**: `suitability_service` uses `ModelCache` with a hot-path memory read. A background Pub/Sub listener on `ra:ai:model_invalidate` and a periodic version check mark the cache stale, triggering a reload from object storage without disk I/O on every scoring request.
 
 ---
 
@@ -380,6 +450,7 @@ job seekers.
 | **Job**          | Job, JobRequirement, JobMatch                          | JobService, JobMatchingService     | JobRepository, JobEmbeddingRepository       |
 | **Conversation** | Conversation, Message, SuggestedChange                 | ConversationService, ChatService   | ConversationRepository                      |
 | **Tracking**     | JobApplication, Interview, ApplicationStatus           | TrackingService                    | TrackingRepository                          |
+| **CAPTCHA**      | CaptchaChallenge, CaptchaToken                         | CaptchaService                     | -                                           |
 
 #### 4.2.3 API Controllers
 
@@ -436,6 +507,16 @@ public class TrackingController {
 
     @PutMapping("/applications/{id}/status")
     public ResponseEntity<ApplicationDTO> updateStatus(@PathVariable Long id, @RequestBody StatusUpdateRequest request);
+}
+
+@RestController
+@RequestMapping("/api/v1")
+public class CaptchaController {
+    @GetMapping("/auth/captcha")
+    public ResponseEntity<CaptchaChallengeResponse> getCaptcha();
+
+    @PostMapping("/auth/captcha/verify")
+    public ResponseEntity<CaptchaVerifyResponse> verifyCaptcha(@RequestBody CaptchaVerifyRequest request);
 }
 ```
 
@@ -908,6 +989,25 @@ LIMIT 10;
 Frontend ──▶ POST /api/v1/resumes ──▶ Store in shared-storage volume ──▶ Publish MQ task ──▶ AI service reads file
 ```
 
+### 5.5 Redis Cache Design (CAPTCHA)
+
+The CAPTCHA subsystem uses Redis for distributed caching with prefix-isolated keys, enabling cross-instance consistency and horizontal scalability:
+
+| Cache Name | Purpose | Redis Key | Type | TTL |
+| ---------- | ------- | --------- | ---- | --- |
+| **Challenge Store** | Stores slider CAPTCHA challenges (target positions) | `ra:captcha:challenge:{id}` | String | 5 minutes |
+| **Token Store** | Stores one-time verification tokens | `ra:captcha:token:{id}` | String | 5 minutes |
+| **Rate Limit Window** | Tracks request timestamps per IP | `ra:captcha:ratelimit:{ip}` | Sorted Set | 1 minute |
+
+**IP Rate Limiting**: Each IP address is limited to **20 CAPTCHA requests per minute**. Excess requests receive HTTP 429.
+
+**Security Features**:
+- Prefix isolation prevents cache key collisions between challenge, token, and rate-limit entries
+- One-time token: Each `captchaToken` can only be redeemed once (consumed on validation)
+- Max attempts: 5 verification attempts per challenge before invalidation
+- V1 DOM-level verification: Frontend performs challenge solving without exposing the answer
+- V2 Graphics2D puzzle evolution: Image-based challenges rendered server-side with Java 2D
+
 ---
 
 ## 6. Integration Architecture
@@ -1041,6 +1141,8 @@ Frontend ──▶ POST /api/v1/resumes ──▶ Store in shared-storage volume
 | `/api/v1/auth/login/google`                 | POST   | Google login                                  | No            |
 | `/api/v1/auth/refresh`                      | POST   | Refresh access token                          | Yes           |
 | `/api/v1/auth/logout`                       | POST   | Logout                                        | Yes           |
+| `/api/v1/auth/captcha`                      | GET    | Get CAPTCHA challenge                         | No            |
+| `/api/v1/auth/captcha/verify`               | POST   | Verify CAPTCHA and exchange for token         | No            |
 | `/api/v1/profile`                           | GET    | Get current user profile                      | Yes           |
 | `/api/v1/profile`                           | PUT    | Update user profile                           | Yes           |
 | `/api/v1/profile/avatar`                    | PUT    | Update avatar URL                             | Yes           |
@@ -1533,6 +1635,7 @@ The actual cost depends on the configured LiteLLM provider and model. The curren
 | **SQL Injection**     | Parameterized Queries | JPA/Hibernate prepared statements                   |
 | **XSS Prevention**    | Output Encoding       | React automatic escaping                            |
 | **Rate Limiting**     | Bucket Algorithm      | 100 requests/minute per IP                          |
+| **Human Verification**| CAPTCHA (Redis)       | Challenge-response with IP rate limit (20/min)      |
 
 ### 8.3 Data Protection
 

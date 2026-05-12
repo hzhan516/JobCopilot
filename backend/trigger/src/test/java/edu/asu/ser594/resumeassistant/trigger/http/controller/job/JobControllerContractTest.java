@@ -8,6 +8,8 @@ import edu.asu.ser594.resumeassistant.api.job.facade.JobFacade;
 import edu.asu.ser594.resumeassistant.api.job.facade.JobVectorSearchFacade;
 import edu.asu.ser594.resumeassistant.api.matching.facade.MatchingFacade;
 import edu.asu.ser594.resumeassistant.api.shared.service.ExceptionMessageResolver;
+import edu.asu.ser594.resumeassistant.domain.matching.entity.JobDataset;
+import edu.asu.ser594.resumeassistant.domain.matching.repository.JobDatasetRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.service.MessageProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -216,6 +218,31 @@ class JobControllerContractTest {
         @Bean
         public ExceptionMessageResolver exceptionMessageResolver() {
             return errorType -> errorType != null ? errorType.name() : "UNKNOWN";
+        }
+
+        @Bean
+        public JobDatasetRepository jobDatasetRepository() {
+            return new JobDatasetRepository() {
+                @Override
+                public JobDataset save(JobDataset dataset) {
+                    return dataset;
+                }
+
+                @Override
+                public java.util.Optional<JobDataset> findById(Long id) {
+                    return java.util.Optional.empty();
+                }
+
+                @Override
+                public java.util.Optional<JobDataset> findByExternalId(String externalId) {
+                    return java.util.Optional.empty();
+                }
+
+                @Override
+                public java.util.List<JobDataset> findAll() {
+                    return java.util.List.of();
+                }
+            };
         }
     }
 }

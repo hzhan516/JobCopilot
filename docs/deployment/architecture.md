@@ -26,8 +26,12 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
    +------------------+           +------------------+
             |                               |
             |      +------------------+     |
-            +----->| rabbitmq : 5672  |<----+
-                   | (Message Queue)  |
+            |      | rabbitmq : 5672  |<----+
+            |      | (Message Queue)  |     |
+            |      +------------------+     |
+            |      +------------------+     |
+            +----->|  redis   : 6379  |<----+
+                   |  (Cache & Locks) |
                    +------------------+
             |
             v
@@ -43,7 +47,7 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
 | Network | Services | External Exposure | Purpose |
 |---------|----------|-------------------|---------|
 | **Public** | `frontend` (Nginx) | Port `80` only | Single entry point for all HTTP/HTTPS traffic |
-| **Internal** | `backend`, `ai-service`, `rabbitmq` | None (Docker DNS only) | Inter-service communication via container names |
+| **Internal** | `backend`, `ai-service`, `rabbitmq`, `redis` | None (Docker DNS only) | Inter-service communication via container names |
 | **Database** | `postgres` | None (Docker DNS only) | Isolated persistent data storage |
 
 > **Note on Development Template**: The current `docker-compose.yml` template maps additional host ports (`8080`, `8000`, `5432`, `5672`, `15672`) for local debugging convenience. In a **production deployment**, only `frontend:80` should be exposed to the host.
@@ -65,7 +69,7 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
 |-----------|-------|
 | **Networks** | `resume-network` (public + internal + db) |
 | **Host ports** | None in production (template exposes `8080:8080` for dev) |
-| **Role** | REST API gateway, JWT authentication, business logic orchestration, and RabbitMQ producer. |
+| **Role** | REST API gateway, JWT authentication, CAPTCHA verification, business logic orchestration, and RabbitMQ producer. |
 | **Security notes** | The only service that spans all three network tiers. Communicates with PostgreSQL via Docker DNS (`postgres:5432`) and with RabbitMQ (`rabbitmq:5672`). All outbound REST calls to `ai-service` include the `X-Internal-API-Key` header. |
 
 ### 3.3 AI Service (FastAPI)
@@ -95,9 +99,18 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
 | **Role** | Async message broker between backend and AI service (Outbox pattern). |
 | **Security notes** | Override the default `guest/guest` credentials via `RABBITMQ_USERNAME` and `RABBITMQ_PASSWORD`. The Management UI (`:15672`) should never be exposed to the public internet; access it via SSH tunnel: `ssh -L 15672:localhost:15672 <host>`. Message size limit is set to 10 MB (`max_message_size 10485760`) to accommodate vectors and resume summaries. |
 
+### 3.6 Redis (Cache & Locks)
+
+| Attribute | Value |
+|-----------|-------|
+| **Networks** | `resume-network` (internal only) |
+| **Host ports** | None in production |
+| **Role** | Distributed state storage: CAPTCHA challenges/tokens, verification codes, conversation streaming bridges, incremental model statistics, deduplication sets, and distributed locks (ShedLock). |
+| **Security notes** | No external access. Password auth is optional in dev (`REDIS_PASSWORD` may be empty) but recommended in production. Data persists via the `redis-data` named volume. |
+
 ## 4. Defense in Depth
 
-The deployment implements four independent security layers. Breaching one does not automatically compromise the next.
+The deployment implements five independent security layers. Breaching one does not automatically compromise the next.
 
 ### Layer 1: Network Isolation
 
@@ -116,6 +129,10 @@ All user-facing API calls (registration, login, resume upload, job matching) car
 ### Layer 4: RabbitMQ Credentials
 
 AMQP connections require a username and password. The default `guest/guest` is overridden via environment variables. Even if a container is compromised, accessing the message broker requires separate credentials.
+
+### Layer 5: Human Verification (CAPTCHA)
+
+All authentication endpoints (registration, login) require a valid CAPTCHA challenge-response. The backend maintains prefix-isolated Redis-backed caches (String for challenges/tokens, Sorted Set for IP rate-limit sliding windows) with IP-based rate limiting (20 requests/minute). Even if an attacker bypasses network isolation and possesses valid credentials, they cannot programmatically authenticate without solving the CAPTCHA challenge.
 
 ## 5. Quick Start
 

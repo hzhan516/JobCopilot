@@ -22,4 +22,6 @@ public class LoginByEmailRequest {
 
     @NotBlank(message = "{validation.password.required}")
     private String password;
+
+    private String captchaToken;
 }

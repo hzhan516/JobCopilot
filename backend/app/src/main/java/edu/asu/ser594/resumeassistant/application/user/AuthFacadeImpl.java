@@ -4,12 +4,15 @@ import edu.asu.ser594.resumeassistant.api.user.dto.TokenPair;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.LoginByEmailRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.LoginByGoogleRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.request.RegisterByEmailRequest;
+import edu.asu.ser594.resumeassistant.api.user.dto.request.SendVerificationCodeRequest;
 import edu.asu.ser594.resumeassistant.api.user.dto.response.AuthResponse;
 import edu.asu.ser594.resumeassistant.api.user.facade.AuthFacade;
 import edu.asu.ser594.resumeassistant.application.user.command.LoginByEmailCommand;
 import edu.asu.ser594.resumeassistant.application.user.command.LoginByGoogleCommand;
 import edu.asu.ser594.resumeassistant.application.user.command.RegisterByEmailCommand;
 import edu.asu.ser594.resumeassistant.application.user.service.AuthApplicationService;
+import edu.asu.ser594.resumeassistant.application.user.service.CaptchaService;
+import edu.asu.ser594.resumeassistant.app.config.CaptchaProperties;
 import edu.asu.ser594.resumeassistant.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -24,12 +27,18 @@ import org.springframework.stereotype.Component;
 public class AuthFacadeImpl implements AuthFacade {
 
     private final AuthApplicationService authService;
+    private final CaptchaService captchaService;
+    private final CaptchaProperties captchaProperties;
 
     @Override
     public AuthResponse registerByEmail(RegisterByEmailRequest request) {
+        if (captchaProperties.isEnabled()) {
+            captchaService.validateToken(request.getCaptchaToken());
+        }
         RegisterByEmailCommand command = RegisterByEmailCommand.builder()
                 .email(request.getEmail())
                 .password(request.getPassword())
+                .verificationCode(request.getVerificationCode())
                 .build();
 
         User user = authService.registerByEmail(command);
@@ -46,6 +55,9 @@ public class AuthFacadeImpl implements AuthFacade {
 
     @Override
     public AuthResponse loginByEmail(LoginByEmailRequest request) {
+        if (captchaProperties.isEnabled()) {
+            captchaService.validateToken(request.getCaptchaToken());
+        }
         LoginByEmailCommand command = LoginByEmailCommand.builder()
                 .email(request.getEmail())
                 .password(request.getPassword())
@@ -65,6 +77,9 @@ public class AuthFacadeImpl implements AuthFacade {
 
     @Override
     public AuthResponse loginByGoogle(LoginByGoogleRequest request) {
+        if (captchaProperties.isEnabled()) {
+            captchaService.validateToken(request.captchaToken());
+        }
         LoginByGoogleCommand command = LoginByGoogleCommand.builder()
                 .idToken(request.idToken())
                 .build();
@@ -89,5 +104,20 @@ public class AuthFacadeImpl implements AuthFacade {
     @Override
     public void logout(String accessToken) {
         authService.logout(accessToken);
+    }
+
+    @Override
+    public void sendVerificationCode(SendVerificationCodeRequest request) {
+        if (captchaProperties.isEnabled()) {
+            // 发送验证码只校验 token 存在性，不消耗，留到注册时再消耗
+            // Only peek token validity for sending code; consume it at registration
+            captchaService.validateToken(request.getCaptchaToken(), false);
+        }
+        authService.sendVerificationCode(request.getEmail());
+    }
+
+    @Override
+    public boolean isEmailVerificationEnabled() {
+        return authService.isEmailVerificationEnabled();
     }
 }

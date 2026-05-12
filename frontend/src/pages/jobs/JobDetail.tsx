@@ -79,13 +79,17 @@ export default function JobDetail() {
       setResumes(data);
       // Prefer converted over aiOptimized for scoring; original version is fallback-only
       // 默认选择第一个可用的非原版简历（优先 converted，其次 aiOptimized）
-      if (data.length > 0) {
-        const firstAvailable =
-          data[0].convertedVersion ?? data[0].aiOptimizedVersion ?? null;
-        if (firstAvailable) {
-          setSelectedResumeVersionId(firstAvailable.versionId);
+      setSelectedResumeVersionId((prev) => {
+        if (prev) return prev;
+        if (data.length > 0) {
+          const firstAvailable =
+            data[0].convertedVersion ?? data[0].aiOptimizedVersion ?? null;
+          if (firstAvailable) {
+            return firstAvailable.versionId;
+          }
         }
-      }
+        return prev;
+      });
     } catch {
       // Silently degrade
       // 静默降级

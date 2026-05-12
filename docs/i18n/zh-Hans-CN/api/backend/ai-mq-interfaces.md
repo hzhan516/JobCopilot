@@ -58,6 +58,7 @@
 | Response ← AI | 对话回复结果 | `backend.res.conversation` | `backend.queue.conversation` | Python AI | Java Backend |
 | Request → AI | 职位精排 | `ai.req.job.rank` | `ai.queue.job.rank` | Java Backend | Python AI |
 | Response ← AI | 职位精排结果 | `backend.res.job.rank` | `backend.queue.job.rank` | Python AI | Java Backend |
+| Request → AI | 模型增量更新 | `ai.req.model.incremental` | `ai.queue.model.incremental` | Java Backend | Python AI |
 | DLX → DLQ | 死信 | `dlq.routing.key` | `ai.dlq.queue` | 业务队列（自动转发） | 运维/监控（可手动消费） |
 
 > **Outbox 说明**：上表中的 "Java Backend" 生产者实际上是 `OutboxRelayScheduler`，它从 `outbox_message` 表读取记录后转发到 RabbitMQ。原始业务方法（如 `JobApplicationService.submitJob`）仅写入 Outbox 表。
@@ -133,6 +134,50 @@
 | `currentMessage` | String | 当前用户发送的最新消息 |
 | `fileUrls` | List<String> | 用户引用的外部文件 URL 列表 |
 | `resumeVersionId` | String | 关联简历版本 ID（可选） |
+
+---
+
+### 3.5 ScoreLabelCommand — 增量训练评分标签
+
+**发送时机**：`JobApplicationService.scoreJob()` 完成后，评分结果被序列化并写入 Outbox 表，路由键为 `ai.req.model.incremental`。
+
+**说明**：此消息为**发后即忘**（fire-and-forget）。AI 服务消费后用于更新增量统计并重新计算模型权重，不会向后端发送结果回调。
+
+```json
+{
+  "messageId": "msg-uuid-v4",
+  "jobId": "job-uuid",
+  "resumeVersionId": "resume-uuid",
+  "resume": {
+    "skills": ["Python", "AWS", "Kubernetes"],
+    "experience": [
+      {"title": "Senior Engineer", "summary": "Built microservices...", "company": "TechCorp"}
+    ]
+  },
+  "job": {
+    "title": "Software Engineer",
+    "description": "We are looking for...",
+    "requirements": ["Python", "AWS"]
+  },
+  "suitable": true,
+  "finalScore": 0.85,
+  "timestamp": "2026-05-09T16:00:00Z"
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `messageId` | String | 唯一消息 ID，用于去重 |
+| `jobId` | String | 职位唯一标识 |
+| `resumeVersionId` | String | 简历版本唯一标识 |
+| `resume.skills` | List<String> | 解析后的简历技能 |
+| `resume.experience` | List<Map> | 解析后的简历经验条目 |
+| `job.title` | String | 职位标题 |
+| `job.description` | String | 职位描述 |
+| `job.requirements` | List<String> | 职位要求 |
+| `suitable` | Boolean | 简历是否适合该职位 |
+| `finalScore` | Float | 最终融合得分（0.0-1.0） |
+| `timestamp` | String | ISO 8601 时间戳 |
 
 ---
 
