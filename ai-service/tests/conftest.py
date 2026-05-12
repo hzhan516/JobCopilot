@@ -83,6 +83,10 @@ def _redis_scard(key: str) -> int:
     return len(_redis_sets.get(key, set()))
 
 
+def _redis_smembers(key: str) -> set[str]:
+    return set(_redis_sets.get(key, set()))
+
+
 def _redis_spop(key: str, count: int = 1) -> list[str]:
     s = _redis_sets.get(key, set())
     popped = []
@@ -137,6 +141,7 @@ _redis_mock.hincrby = _redis_hincrby
 _redis_mock.sadd = _redis_sadd
 _redis_mock.sismember = _redis_sismember
 _redis_mock.scard = _redis_scard
+_redis_mock.smembers = _redis_smembers
 _redis_mock.spop = _redis_spop
 _redis_mock.publish = _redis_publish
 _redis_mock.script_load = _redis_script_load

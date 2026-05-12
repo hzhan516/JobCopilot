@@ -4,15 +4,16 @@ import re
 import threading
 import time
 
-from app.infrastructure.object_storage import get_object_storage
+from app.infrastructure.object_storage import MODEL_BUCKET, get_object_storage
 from app.infrastructure.redis_client import get_redis
 from app.schemas import SuitabilityBreakdown, SuitabilityRequest, SuitabilityResponse
+from app.config import LLM_TEXT_MODEL
 from app.services.llm_client import generate_json_from_text_prompt
 
 
 logger = logging.getLogger(__name__)
 
-OBJECT_STORAGE_BUCKET = "resume-assistant-models"
+OBJECT_STORAGE_BUCKET = MODEL_BUCKET
 LATEST_MODEL_KEY = "baseline_model_latest.json"
 REDIS_MODEL_VERSION_KEY = "ra:ai:incremental:model_version"
 
@@ -162,14 +163,30 @@ def _build_experience_text(experience_items: list[dict]) -> str:
     return " ".join(parts)
 
 
-def _calculate_dataset_score(request: SuitabilityRequest) -> float | None:
-    """Compute a data-driven suitability score if an offline baseline model artifact exists.
-    数据集模型评分：加载离线训练产出的加权特征基线模型，
-    对技能重叠率、标题关键词重叠、经验描述重叠三个维度做归一化加权求和，
-    在 LLM 不可用时提供可解释的降级评分。"""
+def _select_model_profile(artifact: dict, llm_model: str) -> tuple[dict, bool]:
+    if artifact.get("model_type") != "adaptive_weighted_ensemble":
+        return artifact, False
+
+    min_samples = int(artifact.get("min_model_specific_samples", 10))
+    by_model = artifact.get("by_llm_model") or {}
+    model_profile = by_model.get(llm_model)
+    if model_profile and int(model_profile.get("sample_count", 0)) >= min_samples:
+        return model_profile, True
+
+    return artifact.get("default", {}), True
+
+
+def _calculate_dataset_score(
+    request: SuitabilityRequest,
+    llm_overall_score: float,
+    llm_model: str,
+) -> tuple[float | None, bool]:
+    """Compute a data-driven suitability score if an incremental model artifact exists.
+    数据集模型评分：加载增量训练产出的自适应权重模型，
+    对 LLM 分数、语义相似度和文本重叠特征做归一化加权求和。"""
     artifact = _load_dataset_model_artifact()
     if not artifact:
-        return None
+        return None, False
 
     resume_skills = _normalize_items(request.resume.skills)
     job_requirements = _normalize_items(request.job.requirements)
@@ -193,14 +210,17 @@ def _calculate_dataset_score(request: SuitabilityRequest) -> float | None:
     )
 
     raw_features = {
+        "llm_overall_score": _clamp_score(llm_overall_score),
+        "semantic_match": _clamp_score(request.semantic_match or 0.0),
         "skill_overlap_ratio": skill_overlap_ratio,
         "title_keyword_overlap": float(title_keyword_overlap),
         "experience_description_overlap": float(experience_description_overlap),
     }
 
-    feature_weights = artifact.get("feature_weights", {})
-    normalization = artifact.get("normalization", {})
-    bias = float(artifact.get("bias", 0.0))
+    profile, adaptive = _select_model_profile(artifact, llm_model)
+    feature_weights = profile.get("feature_weights", {})
+    normalization = profile.get("normalization", {})
+    bias = float(profile.get("bias", 0.0))
 
     score = bias
 
@@ -210,7 +230,7 @@ def _calculate_dataset_score(request: SuitabilityRequest) -> float | None:
         normalized_value = min(value / normalizer, 1.0)
         score += weight * normalized_value
 
-    return round(_clamp_score(score), 2)
+    return round(_clamp_score(score), 2), adaptive
 
 
 def evaluate_suitability_baseline(request: SuitabilityRequest) -> SuitabilityResponse:
@@ -254,6 +274,7 @@ def evaluate_suitability_baseline(request: SuitabilityRequest) -> SuitabilityRes
         vertexScore=overall_score,
         datasetScore=None,
         finalScore=overall_score,
+        llmModel=None,
     )
 
 
@@ -297,9 +318,9 @@ Job:
 
 
 def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> SuitabilityResponse:
-    """Evaluate suitability using Vertex AI LLM and ensemble with baseline/dataset scores.
+    """Evaluate suitability using the configured LLM and optional incremental model scores.
     人岗匹配度评估主入口：优先使用 LLM 做深度语义评估；若 LLM 异常则降级到基线规则；
-    最终得分融合 LLM 评分（70%）与离线数据集模型评分（30%），兼顾准确性与可解释性。"""
+    有增量自适应模型时使用模型输出作为最终分数，否则兼容旧版 70/30 加权模型。"""
     baseline_response = evaluate_suitability_baseline(request)
     prompt = _build_vertex_suitability_prompt(request)
 
@@ -325,9 +346,15 @@ def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> Suitability
             baseline_response.final_score,
         )
 
-        dataset_score = _calculate_dataset_score(request)
+        dataset_score, uses_adaptive_ensemble = _calculate_dataset_score(
+            request,
+            overall_score,
+            LLM_TEXT_MODEL,
+        )
         final_score = round(
-            overall_score if dataset_score is None else ((overall_score * 0.7) + (dataset_score * 0.3)),
+            overall_score if dataset_score is None
+            else dataset_score if uses_adaptive_ensemble
+            else ((overall_score * 0.7) + (dataset_score * 0.3)),
             2,
         )
         suitable = final_score >= 0.6
@@ -351,6 +378,7 @@ def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> Suitability
             vertexScore=round(overall_score, 2),
             datasetScore=dataset_score,
             finalScore=final_score,
+            llmModel=LLM_TEXT_MODEL,
         )
 
     except Exception:

@@ -5,12 +5,14 @@ import re
 import threading
 from datetime import datetime, timezone
 
-from app.infrastructure.object_storage import get_object_storage
+from app.infrastructure.object_storage import MODEL_BUCKET, get_object_storage
 from app.infrastructure.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
 
 FEATURE_KEYS = [
+    "llm_overall_score",
+    "semantic_match",
     "skill_overlap_ratio",
     "title_keyword_overlap",
     "experience_description_overlap",
@@ -18,14 +20,16 @@ FEATURE_KEYS = [
 
 FEATURE_COUNT_CAP = 5000
 MIN_SAMPLES_TO_RECOMPUTE = 10
+MIN_MODEL_SPECIFIC_SAMPLES = 10
 
 REDIS_KEY_PREFIX = "ra:ai:incremental"
 REDIS_STATS_KEY = f"{REDIS_KEY_PREFIX}:stats"
+REDIS_MODEL_SET_KEY = f"{REDIS_KEY_PREFIX}:llm_models"
 REDIS_DEDUP_SET = f"{REDIS_KEY_PREFIX}:dedup"
 REDIS_MODEL_VERSION_KEY = f"{REDIS_KEY_PREFIX}:model_version"
 MAX_DEDUP_SIZE = 100000
 
-OBJECT_STORAGE_BUCKET = "resume-assistant-models"
+OBJECT_STORAGE_BUCKET = MODEL_BUCKET
 LATEST_MODEL_KEY = "baseline_model_latest.json"
 
 # Lua script for atomic soft-cap accumulation in Redis
@@ -81,9 +85,14 @@ def _build_experience_text(experience_items: list[dict]) -> str:
 
 
 def _extract_features(score_payload: dict) -> dict[str, float]:
-    """从评分消息体中提取三个特征值。"""
+    """Extract model training features from one score label payload."""
     resume = score_payload.get("resume", {})
     job = score_payload.get("job", {})
+
+    llm_overall_score = _safe_float(
+        score_payload.get("llmOverallScore", score_payload.get("finalScore", 0.0))
+    )
+    semantic_match = _safe_float(score_payload.get("semanticMatch", 0.0))
 
     resume_skills = _normalize_items(resume.get("skills", []))
     job_requirements = _normalize_items(job.get("requirements", []))
@@ -103,10 +112,27 @@ def _extract_features(score_payload: dict) -> dict[str, float]:
     )
 
     return {
+        "llm_overall_score": _clamp_score(llm_overall_score),
+        "semantic_match": _clamp_score(semantic_match),
         "skill_overlap_ratio": skill_overlap_ratio,
         "title_keyword_overlap": float(title_keyword_overlap),
         "experience_description_overlap": float(experience_description_overlap),
     }
+
+
+def _safe_float(value: object, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _clamp_score(value: float) -> float:
+    return max(0.0, min(1.0, value))
+
+
+def _safe_model_key(model_name: str) -> str:
+    return hashlib.sha256(model_name.encode("utf-8")).hexdigest()[:16]
 
 
 class IncrementalModelService:
@@ -126,7 +152,9 @@ class IncrementalModelService:
         if self._lua_sha is None:
             self._lua_sha = self._redis.script_load(LUA_SOFT_CAP)
 
-    def _stats_hash_key(self, target: str, feature_key: str) -> str:
+    def _stats_hash_key(self, target: str, feature_key: str, llm_model: str | None = None) -> str:
+        if llm_model:
+            return f"{REDIS_STATS_KEY}:model:{_safe_model_key(llm_model)}:{target}:{feature_key}"
         return f"{REDIS_STATS_KEY}:{target}:{feature_key}"
 
     def is_processed(self, message_id: str, job_id: str, resume_version_id: str) -> bool:
@@ -151,15 +179,24 @@ class IncrementalModelService:
             return
 
         features = _extract_features(score_payload)
-        is_positive = score_payload.get("suitable", False) and score_payload.get("finalScore", 0) >= 0.6
+        is_positive = bool(score_payload.get("suitable", False)) and _safe_float(score_payload.get("finalScore", 0.0)) >= 0.6
         target = "positive" if is_positive else "negative"
 
         self._ensure_lua_loaded()
+        llm_model = str(score_payload.get("llmModel") or "").strip()
+
+        model_scopes = [None]
+        if llm_model:
+            model_scopes.append(llm_model)
+
         pipe = self._redis.pipeline()
-        for key in FEATURE_KEYS:
-            value = features.get(key, 0.0)
-            hash_key = self._stats_hash_key(target, key)
-            pipe.evalsha(self._lua_sha, 1, hash_key, str(value), str(FEATURE_COUNT_CAP))
+        for model_scope in model_scopes:
+            if model_scope:
+                self._redis.sadd(REDIS_MODEL_SET_KEY, model_scope)
+            for key in FEATURE_KEYS:
+                value = features.get(key, 0.0)
+                hash_key = self._stats_hash_key(target, key, model_scope)
+                pipe.evalsha(self._lua_sha, 1, hash_key, str(value), str(FEATURE_COUNT_CAP))
         pipe.execute()
 
         self.mark_processed(message_id, job_id, resume_id)
@@ -177,54 +214,78 @@ class IncrementalModelService:
             logger.info("Incremental sample threshold reached (%d), triggering weight recomputation", total_new)
             threading.Thread(target=self.recompute_weights, daemon=True).start()
 
+    def _read_scope_artifact(self, llm_model: str | None = None) -> dict:
+        positive_avgs = {}
+        negative_avgs = {}
+        normalizations = {}
+        positive_counts = {}
+        negative_counts = {}
+
+        for key in FEATURE_KEYS:
+            pos_sum = float(self._redis.hget(self._stats_hash_key("positive", key, llm_model), "sum") or 0)
+            pos_count = int(float(self._redis.hget(self._stats_hash_key("positive", key, llm_model), "count") or 0))
+            neg_sum = float(self._redis.hget(self._stats_hash_key("negative", key, llm_model), "sum") or 0)
+            neg_count = int(float(self._redis.hget(self._stats_hash_key("negative", key, llm_model), "count") or 0))
+
+            positive_counts[key] = pos_count
+            negative_counts[key] = neg_count
+            positive_avgs[key] = pos_sum / max(pos_count, 1)
+            negative_avgs[key] = neg_sum / max(neg_count, 1)
+            normalizations[key] = max(positive_avgs[key], negative_avgs[key], 1.0)
+
+        raw_weights = {}
+        for key in FEATURE_KEYS:
+            diff = positive_avgs[key] - negative_avgs[key]
+            raw_weights[key] = max(diff, 0.0)
+
+        total_weight = sum(raw_weights.values())
+        if total_weight == 0:
+            feature_weights = {k: round(1 / len(FEATURE_KEYS), 4) for k in FEATURE_KEYS}
+        else:
+            feature_weights = {k: round(raw_weights[k] / total_weight, 4) for k in FEATURE_KEYS}
+
+        sample_count = max(
+            max(positive_counts.values(), default=0),
+            max(negative_counts.values(), default=0),
+        )
+
+        return {
+            "llm_model": llm_model,
+            "sample_count": sample_count,
+            "feature_weights": feature_weights,
+            "normalization": normalizations,
+            "bias": 0.0,
+            "stats": {
+                "positive_counts": positive_counts,
+                "negative_counts": negative_counts,
+            },
+        }
+
     def recompute_weights(self) -> dict:
         """基于增量统计重新计算特征权重，生成新版本模型文件并写入对象存储。"""
         with self._lock:
-            positive_avgs = {}
-            negative_avgs = {}
-            normalizations = {}
-
-            for key in FEATURE_KEYS:
-                pos_sum = float(self._redis.hget(self._stats_hash_key("positive", key), "sum") or 0)
-                pos_count = int(self._redis.hget(self._stats_hash_key("positive", key), "count") or 0)
-                neg_sum = float(self._redis.hget(self._stats_hash_key("negative", key), "sum") or 0)
-                neg_count = int(self._redis.hget(self._stats_hash_key("negative", key), "count") or 0)
-
-                positive_avgs[key] = pos_sum / max(pos_count, 1)
-                negative_avgs[key] = neg_sum / max(neg_count, 1)
-
-                all_values = [positive_avgs[key], negative_avgs[key]]
-                normalizations[key] = max(max(all_values), 1.0)
-
-            raw_weights = {}
-            for key in FEATURE_KEYS:
-                diff = positive_avgs[key] - negative_avgs[key]
-                raw_weights[key] = max(diff, 0.0)
-
-            total_weight = sum(raw_weights.values())
-            if total_weight == 0:
-                feature_weights = {k: round(1 / len(FEATURE_KEYS), 4) for k in FEATURE_KEYS}
-            else:
-                feature_weights = {k: round(raw_weights[k] / total_weight, 4) for k in FEATURE_KEYS}
-
             new_version = int(self._redis.get(REDIS_MODEL_VERSION_KEY) or 0) + 1
+            default_profile = self._read_scope_artifact()
+
+            by_llm_model = {}
+            smembers = getattr(self._redis, "smembers", lambda _key: set())
+            for raw_model in smembers(REDIS_MODEL_SET_KEY) or set():
+                model_name = raw_model.decode("utf-8") if isinstance(raw_model, bytes) else str(raw_model)
+                model_profile = self._read_scope_artifact(model_name)
+                if model_profile["sample_count"] >= MIN_MODEL_SPECIFIC_SAMPLES:
+                    by_llm_model[model_name] = model_profile
 
             model_artifact = {
-                "model_type": "weighted_feature_baseline",
+                "model_type": "adaptive_weighted_ensemble",
                 "version": f"v{new_version}",
-                "feature_weights": feature_weights,
-                "normalization": normalizations,
-                "bias": 0.0,
-                "stats": {
-                    "positive_counts": {
-                        k: int(self._redis.hget(self._stats_hash_key("positive", k), "count") or 0)
-                        for k in FEATURE_KEYS
-                    },
-                    "negative_counts": {
-                        k: int(self._redis.hget(self._stats_hash_key("negative", k), "count") or 0)
-                        for k in FEATURE_KEYS
-                    },
-                },
+                "min_model_specific_samples": MIN_MODEL_SPECIFIC_SAMPLES,
+                "default": default_profile,
+                "by_llm_model": by_llm_model,
+                # Backward-compatible top-level fields for older readers/tests.
+                "feature_weights": default_profile["feature_weights"],
+                "normalization": default_profile["normalization"],
+                "bias": default_profile["bias"],
+                "stats": default_profile["stats"],
                 "generated_at": datetime.now(timezone.utc).isoformat(),
             }
 

@@ -56,7 +56,7 @@ COPY --from=builder /opt/venv /opt/venv
 COPY app/ ./app/
 
 # 创建必要目录并设置非 root 用户
-RUN mkdir -p /app/uploads /app/models_cache && \
+RUN mkdir -p /app/uploads /app/model-artifacts /app/models_cache && \
     adduser --disabled-password --gecos '' appuser && \
     chown -R appuser:appuser /app /opt/venv
 

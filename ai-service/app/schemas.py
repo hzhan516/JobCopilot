@@ -147,6 +147,7 @@ class SuitabilityRequest(AppBaseModel):
 
     resume: ParsedResumeContent
     job: ParsedJobContent
+    semantic_match: float | None = Field(default=None, alias="semanticMatch")
 
 
 class SuitabilityBreakdown(AppBaseModel):
@@ -168,6 +169,7 @@ class SuitabilityResponse(AppBaseModel):
     vertex_score: float = Field(alias="vertexScore")
     dataset_score: float | None = Field(default=None, alias="datasetScore")
     final_score: float = Field(alias="finalScore")
+    llm_model: str | None = Field(default=None, alias="llmModel")
 
 
 class JobMatchRequest(AppBaseModel):

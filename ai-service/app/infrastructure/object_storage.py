@@ -10,8 +10,12 @@ from typing import Protocol
 
 logger = __import__("logging").getLogger(__name__)
 
-STORAGE_TYPE = os.getenv("STORAGE_TYPE", "local")
-LOCAL_STORAGE_BASE_PATH = os.getenv("LOCAL_STORAGE_BASE_PATH", "/app/uploads")
+STORAGE_TYPE = os.getenv("MODEL_STORAGE_TYPE") or os.getenv("STORAGE_TYPE", "local")
+LOCAL_STORAGE_BASE_PATH = (
+    os.getenv("MODEL_STORAGE_BASE_PATH")
+    or os.getenv("LOCAL_STORAGE_BASE_PATH")
+    or "/app/model-artifacts"
+)
 
 # Model artifacts are stored under a dedicated subdirectory
 MODEL_BUCKET = os.getenv("MODEL_BUCKET", "resume-assistant-models")

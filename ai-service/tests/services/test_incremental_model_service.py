@@ -33,6 +33,8 @@ class TestFeatureExtraction:
             },
         }
         features = _extract_features(payload)
+        assert "llm_overall_score" in features
+        assert "semantic_match" in features
         assert "skill_overlap_ratio" in features
         assert "title_keyword_overlap" in features
         assert "experience_description_overlap" in features
@@ -68,6 +70,9 @@ class TestIncrementalModelService:
             },
             "suitable": True,
             "finalScore": 0.85,
+            "llmModel": "mock/text-model",
+            "llmOverallScore": 0.8,
+            "semanticMatch": 0.75,
         }
         self.service.update_statistics(payload)
         pos_count = self.service._redis.hget(
@@ -78,6 +83,11 @@ class TestIncrementalModelService:
         )
         assert float(pos_count) == 1.0
         assert float(neg_count or 0) == 0.0
+
+        model_count = self.service._redis.hget(
+            f"{REDIS_STATS_KEY}:model:5db620cbaa9467c9:positive:semantic_match", "count"
+        )
+        assert float(model_count) == 1.0
 
     def test_dedup_prevents_duplicate(self):
         payload = {
@@ -111,6 +121,9 @@ class TestIncrementalModelService:
 
         result = self.service.recompute_weights()
         assert result["version"] == "v1"
+        assert result["model_type"] == "adaptive_weighted_ensemble"
+        assert "default" in result
+        assert "by_llm_model" in result
         assert "feature_weights" in result
 
         # 验证对象存储写入 / Verify object storage writes

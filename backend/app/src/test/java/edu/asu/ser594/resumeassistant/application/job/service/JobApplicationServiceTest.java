@@ -4,11 +4,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.asu.ser594.resumeassistant.api.embedding.facade.VectorFacade;
 import edu.asu.ser594.resumeassistant.api.job.dto.request.SubmitJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
+import edu.asu.ser594.resumeassistant.domain.embedding.repository.JobVectorRepository;
+import edu.asu.ser594.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import edu.asu.ser594.resumeassistant.domain.job.exception.JobException;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobScoreRepository;
 import edu.asu.ser594.resumeassistant.domain.job.valueobject.ParsedJobContent;
+import edu.asu.ser594.resumeassistant.domain.matching.repository.JobDatasetRepository;
+import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeGroupRepository;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
@@ -43,6 +47,18 @@ class JobApplicationServiceTest {
 
     @Mock
     private ResumeVersionRepository resumeVersionRepository;
+
+    @Mock
+    private ResumeGroupRepository resumeGroupRepository;
+
+    @Mock
+    private JobDatasetRepository jobDatasetRepository;
+
+    @Mock
+    private ResumeVectorRepository resumeVectorRepository;
+
+    @Mock
+    private JobVectorRepository jobVectorRepository;
 
     @Mock
     private AiMessagePublisherPort aiMessagePublisherPort;
