@@ -1,0 +1,76 @@
+# =============================================================================
+# Global ConfigMap — Non-sensitive environment variables
+# 全局 ConfigMap — 非敏感环境变量
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "resume-assistant.fullname" . }}-config
+  namespace: {{ include "resume-assistant.namespace" . }}
+  labels:
+    {{- include "resume-assistant.labels" . | nindent 4 }}
+data:
+  # Spring Boot / Spring Boot
+  SPRING_PROFILES_ACTIVE: {{ .Values.backend.springProfilesActive | quote }}
+  SPRING_APPLICATION_NAME: "resume-assistant-backend"
+
+  # Service discovery addresses / 服务发现地址
+  {{- if eq .Values.global.infraMode "embedded" }}
+  SPRING_DATASOURCE_URL: {{ printf "jdbc:postgresql://%s-postgres:5432/%s" (include "resume-assistant.fullname" .) .Values.postgres.auth.database | quote }}
+  SPRING_RABBITMQ_HOST: {{ printf "%s-rabbitmq" (include "resume-assistant.fullname" .) | quote }}
+  SPRING_RABBITMQ_PORT: "5672"
+  RABBITMQ_HOST: {{ printf "%s-rabbitmq" (include "resume-assistant.fullname" .) | quote }}
+  RABBITMQ_PORT: "5672"
+  REDIS_HOST: {{ printf "%s-redis" (include "resume-assistant.fullname" .) | quote }}
+  REDIS_PORT: "6379"
+  AI_SERVICE_BASE_URL: {{ printf "http://%s-ai-service:8000" (include "resume-assistant.fullname" .) | quote }}
+  BACKEND_SERVICE_URL: {{ printf "http://%s-backend:8080" (include "resume-assistant.fullname" .) | quote }}
+  {{- else }}
+  SPRING_DATASOURCE_URL: {{ .Values.backend.managed.postgresUrl | quote }}
+  SPRING_RABBITMQ_HOST: {{ .Values.backend.managed.rabbitmqHost | quote }}
+  SPRING_RABBITMQ_PORT: {{ .Values.backend.managed.rabbitmqPort | quote }}
+  REDIS_HOST: {{ .Values.backend.managed.redisHost | quote }}
+  REDIS_PORT: {{ .Values.backend.managed.redisPort | quote }}
+  AI_SERVICE_BASE_URL: {{ printf "http://%s-ai-service:8000" (include "resume-assistant.fullname" .) | quote }}
+  BACKEND_SERVICE_URL: {{ printf "http://%s-backend:8080" (include "resume-assistant.fullname" .) | quote }}
+  {{- end }}
+
+  # Embedding / 嵌入向量
+  LLM_EMBEDDING_MODEL_DIMENSION: {{ .Values.aiService.llmEmbeddingDimension | quote }}
+  LLM_EMBEDDING_MODEL: {{ .Values.aiService.llmEmbeddingModel | quote }}
+
+  # AI Service models / AI 服务模型
+  LLM_TEXT_MODEL: {{ .Values.aiService.llmTextModel | quote }}
+  LLM_VISION_MODEL: {{ .Values.aiService.llmVisionModel | quote }}
+  LLM_TEMPERATURE: {{ .Values.aiService.llmTemperature | quote }}
+  LLM_REQUEST_TIMEOUT_SECONDS: {{ .Values.aiService.llmRequestTimeout | quote }}
+  LLM_MAX_TOKENS: {{ .Values.aiService.llmMaxTokens | quote }}
+
+  # Logging / 日志
+  LOG_LEVEL: {{ .Values.aiService.logLevel | quote }}
+
+  # Backend timeouts / 后端超时
+  BACKEND_QUERY_TIMEOUT: {{ .Values.aiService.backendQueryTimeout | quote }}
+  BACKEND_BATCH_UPSERT_TIMEOUT: {{ .Values.aiService.backendBatchUpsertTimeout | quote }}
+  BACKEND_BATCH_SIZE: {{ .Values.aiService.backendBatchSize | quote }}
+
+  # CAPTCHA / 验证码
+  CAPTCHA_ENABLED: "true"
+  CAPTCHA_TOLERANCE: "8"
+  CAPTCHA_TOKEN_EXPIRY: "300"
+  CAPTCHA_TRACK_WIDTH: "300"
+  CAPTCHA_MAX_ATTEMPTS: "5"
+
+  # Storage type / 存储类型
+  STORAGE_TYPE: {{ .Values.backend.storageType | quote }}
+
+  # Model artifact storage / 模型产物存储
+  MODEL_STORAGE_TYPE: "local"
+  MODEL_STORAGE_BASE_PATH: "/app/model-artifacts"
+  MODEL_BUCKET: "resume-assistant-models"
+
+  # Search / 搜索
+  SEARCH_MAX_LIMIT: "100"
+
+  # Health check mail / 健康检查邮件
+  MANAGEMENT_HEALTH_MAIL_ENABLED: "false"

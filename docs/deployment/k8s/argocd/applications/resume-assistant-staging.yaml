@@ -1,0 +1,42 @@
+# =============================================================================
+# ArgoCD Application — Staging Environment
+# ArgoCD Application — 预发布环境
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: resume-assistant-staging
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/resume-assistant.git
+    targetRevision: HEAD
+    path: docs/deployment/k8s/helm/resume-assistant
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-production.yaml
+      parameters:
+        - name: namespace.name
+          value: resume-assistant-staging
+        - name: ingress.host
+          value: staging.resume-assistant.example.com
+        - name: backend.replicaCount
+          value: "2"
+        - name: aiService.replicaCount
+          value: "2"
+        - name: frontend.replicaCount
+          value: "2"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: resume-assistant-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground

@@ -1,5 +1,6 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
 
+--extra-index-url https://download.pytorch.org/whl/cpu
 # Python AI服务依赖 / Python AI Service Dependencies
 # ================= / =================
 

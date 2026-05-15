@@ -1,0 +1,46 @@
+# =============================================================================
+# ArgoCD Application — Production Environment
+# ArgoCD Application — 生产环境
+# =============================================================================
+# Production uses manual sync approval to prevent accidental deployments.
+# 生产环境使用手动同步批准，防止意外部署。
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: resume-assistant-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/resume-assistant.git
+    targetRevision: HEAD
+    path: docs/deployment/k8s/helm/resume-assistant
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-production.yaml
+      parameters:
+        - name: namespace.name
+          value: resume-assistant-prod
+        - name: ingress.host
+          value: resume-assistant.example.com
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: resume-assistant-prod
+  syncPolicy:
+    # Manual sync for production / 生产环境手动同步
+    automated:
+      prune: false
+      selfHeal: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+  ignoreDifferences:
+    # Ignore HPA-driven replica changes to avoid sync loops
+    # 忽略 HPA 驱动的副本数变化，避免同步循环
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas

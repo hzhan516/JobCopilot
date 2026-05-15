@@ -66,6 +66,7 @@ services:
         # Google OAuth 2.0 Client ID. Required for Google Sign-In.
         # Obtain from https://console.cloud.google.com/apis/credentials
         - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+    image: resume-assistant-frontend
     container_name: resume-assistant-frontend
     ports:
       # Host port mapping for the Nginx reverse proxy.
@@ -125,6 +126,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: resume-assistant-backend
     container_name: resume-assistant-backend
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the line below if you need direct host access to the Spring
@@ -261,6 +263,7 @@ services:
     build:
       context: ./ai-service
       dockerfile: Dockerfile
+    image: resume-assistant-ai-service
     container_name: resume-assistant-ai
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the line below if you want to browse the FastAPI auto-generated

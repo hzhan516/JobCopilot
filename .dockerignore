@@ -28,6 +28,9 @@ ai-service/venv/
 ai-service/__pycache__/
 ai-service/*.pyc
 ai-service/.pytest_cache/
+ai-service/htmlcov/
+ai-service/coverage.xml
+ai-service/.coverage
 
 # 本地环境文件
 .env

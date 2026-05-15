@@ -66,12 +66,13 @@ services:
         # Google OAuth 2.0 Client ID. Required for Google Sign-In.
         # Obtain from https://console.cloud.google.com/apis/credentials
         - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+    image: resume-assistant-frontend
     container_name: resume-assistant-frontend
     ports:
       # Host port mapping for the Nginx reverse proxy.
       # FRONTEND_HOST_PORT defaults to 80. Change it in .env if port 80 is
       # already in use on your machine (e.g. FRONTEND_HOST_PORT=8081).
-      - "${FRONTEND_HOST_PORT:-80}:80"
+      - "${FRONTEND_HOST_PORT:-80}:8080"
     networks:
       # Frontend lives exclusively in the public tier. It can reach the
       # backend via Docker DNS (backend:8080) because the backend also joins
@@ -85,7 +86,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -125,6 +126,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: resume-assistant-backend
     container_name: resume-assistant-backend
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the line below if you need direct host access to the Spring
@@ -267,6 +269,7 @@ services:
     build:
       context: ./ai-service
       dockerfile: Dockerfile
+    image: resume-assistant-ai-service
     container_name: resume-assistant-ai
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the line below if you want to browse the FastAPI auto-generated
@@ -375,10 +378,12 @@ services:
   #   db-network       — no
   # ============================================================================
   redis:
-    image: docker.io/library/redis:7-alpine
+    image: public.ecr.aws/bitnami/redis:7.4.1-debian-12-r0
     container_name: resume-assistant-redis
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
     volumes:
-      - redis-data:/data
+      - redis-data:/bitnami/redis
     networks:
       - internal-network
     restart: unless-stopped
@@ -417,7 +422,7 @@ services:
   #     RABBITMQ_PASSWORD in .env.
   # ============================================================================
   rabbitmq:
-    image: docker.io/library/rabbitmq:3-management-alpine
+    image: public.ecr.aws/bitnami/rabbitmq:3.13.7-debian-12-r0
     container_name: resume-assistant-rabbitmq
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the lines below if you need direct host access to the AMQP
@@ -429,15 +434,15 @@ services:
       - .env
     environment:
       # Default user created on first startup. Override in .env for security.
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME:-guest}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
       # Increase the maximum message size to 10 MB to accommodate large
       # embedding vectors and resume text summaries transmitted between
       # backend and ai-service.
       - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit max_message_size 10485760
     volumes:
       # Persistent storage for RabbitMQ mnesia database and definitions.
-      - rabbitmq-data:/var/lib/rabbitmq
+      - rabbitmq-data:/bitnami/rabbitmq
     networks:
       # RabbitMQ is strictly internal-tier only.
       - internal-network
@@ -473,7 +478,10 @@ services:
   #   - pgvector extension is pre-installed in the ankane/pgvector image.
   # ============================================================================
   postgres:
-    image: docker.io/pgvector/pgvector:pg15
+    build:
+      context: ./middleware/postgres
+      dockerfile: Dockerfile
+    image: resume-assistant-postgres:bitnami
     container_name: resume-assistant-postgres
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the line below if you need to connect with a local database
@@ -483,12 +491,12 @@ services:
     env_file:
       - .env
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-resume_assistant}
-      - POSTGRES_USER=${POSTGRES_USER:-resume_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
+      - POSTGRESQL_DATABASE=${POSTGRES_DB:-resume_assistant}
+      - POSTGRESQL_USERNAME=${POSTGRES_USER:-resume_user}
+      - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
     volumes:
       # Named volume for persistent database files.
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/bitnami/postgresql
       # Initialization scripts executed on the FIRST container start only.
       # Flyway (enabled in prod profile) handles schema migrations afterwards.
       - ./backend/app/src/main/resources/db/init.sql:/docker-entrypoint-initdb.d/templates/init.sql:ro

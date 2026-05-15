@@ -1,0 +1,36 @@
+# =============================================================================
+# ArgoCD Application — Development Environment
+# ArgoCD Application — 开发环境
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: resume-assistant-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/resume-assistant.git
+    targetRevision: develop
+    path: docs/deployment/k8s/helm/resume-assistant
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-minimal.yaml
+      parameters:
+        - name: namespace.name
+          value: resume-assistant-dev
+        - name: ingress.host
+          value: dev.resume-assistant.local
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: resume-assistant-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground

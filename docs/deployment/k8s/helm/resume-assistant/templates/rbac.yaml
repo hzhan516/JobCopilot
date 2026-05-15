@@ -1,0 +1,11 @@
+{{- if .Values.serviceAccount.create }}
+# =============================================================================
+# RBAC — Minimal permissions for service accounts
+# RBAC — 服务账号最小权限
+# =============================================================================
+# Currently no K8s API access is required by the application.
+# If future features need to read ConfigMaps/Secrets via API,
+# add Role + RoleBinding here.
+# 当前应用不需要访问 K8s API。如果未来功能需要通过 API 读取 ConfigMap/Secret，
+# 请在此处添加 Role + RoleBinding。
+{{- end }}

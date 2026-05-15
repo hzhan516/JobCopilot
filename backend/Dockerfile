@@ -67,20 +67,22 @@ RUN apk add --no-cache \
     || pip3 install weasyprint \
     && apk add --no-cache su-exec
 
-# 创建非 root 用户
-RUN addgroup -S resume && adduser -S resume -G resume
+# 创建非 root 用户，显式固定 UID/GID=1000 以匹配 K8s securityContext
+# Create non-root user with explicit UID/GID=1000 to align with K8s securityContext
+RUN addgroup -S resume -g 1000 && adduser -S resume -u 1000 -G resume
 
 # 设置工作目录
 WORKDIR /app
 
-# 创建上传目录与日志目录（resume 用户需可写）
-# Create upload and log directories (resume user must be able to write)
-RUN mkdir -p /app/uploads /app/backend/logs && chown -R resume:resume /app
+# 创建上传目录与日志目录，并在构建阶段预置 resume 用户权限
+# Create upload and log directories and preset ownership for resume user at build time
+RUN mkdir -p /app/uploads /app/backend/logs && chown -R resume:resume /app/uploads /app/backend/logs /home/resume
 
 # 为 resume 用户创建 home 目录（LibreOffice 需要可写的 $HOME）
 # Create home directory for resume user (LibreOffice needs a writable $HOME)
 RUN mkdir -p /home/resume && chown resume:resume /home/resume
-ENV HOME=/home/resume
+ENV HOME=/home/resume \
+    LOG_PATH=/app/backend/logs
 
 # 从构建阶段复制 JAR 文件
 COPY --from=builder /build/app/target/app-*.jar app.jar
