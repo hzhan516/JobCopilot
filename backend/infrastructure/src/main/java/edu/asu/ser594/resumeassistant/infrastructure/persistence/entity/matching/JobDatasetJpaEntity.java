@@ -7,7 +7,6 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -37,8 +36,7 @@ public class JobDatasetJpaEntity {
     private String description;
 
     @JdbcTypeCode(SqlTypes.ARRAY)
-    @Column(columnDefinition = "TEXT[]")
-    private List<String> requirements;
+    private String[] requirements;
 
     @Column(length = 200)
     private String location;

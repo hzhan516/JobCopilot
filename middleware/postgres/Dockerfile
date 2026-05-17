@@ -17,6 +17,8 @@ RUN apt-get update && \
     \
     cp /usr/lib/postgresql/15/lib/vector.so /opt/bitnami/postgresql/lib/ && \
     cp /usr/share/postgresql/15/extension/vector* /opt/bitnami/postgresql/share/extension/ && \
+    sed -i 's/^#\?trusted = false/trusted = true/' /opt/bitnami/postgresql/share/extension/vector.control && \
+    grep -q '^trusted = true' /opt/bitnami/postgresql/share/extension/vector.control || echo 'trusted = true' >> /opt/bitnami/postgresql/share/extension/vector.control && \
     \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*

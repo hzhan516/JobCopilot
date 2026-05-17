@@ -170,7 +170,7 @@ public class JobApplicationService {
                         .title(pc.title())
                         .company(pc.company())
                         .description(pc.description())
-                        .requirements(pc.requirements())
+                        .requirements(pc.requirements() != null ? pc.requirements().toArray(new String[0]) : new String[0])
                         .location(pc.location())
                         .experienceLevel(null)
                         .source("USER_SUBMITTED")

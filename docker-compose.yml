@@ -69,10 +69,10 @@ services:
     image: resume-assistant-frontend
     container_name: resume-assistant-frontend
     ports:
-      # Host port mapping for the Nginx reverse proxy.
-      # FRONTEND_HOST_PORT defaults to 80. Change it in .env if port 80 is
-      # already in use on your machine (e.g. FRONTEND_HOST_PORT=8081).
-      - "${FRONTEND_HOST_PORT:-80}:8080"
+     # Host port mapping for the Nginx reverse proxy.
+     # FRONTEND_HOST_PORT defaults to 80. Change it in .env if port 80 is
+     # already in use on your machine (e.g. FRONTEND_HOST_PORT=8081).
+     - "${FRONTEND_HOST_PORT:-80}:8080"
     networks:
       # Frontend lives exclusively in the public tier. It can reach the
       # backend via Docker DNS (backend:8080) because the backend also joins
@@ -151,8 +151,8 @@ services:
       # Port 5672 is NOT exposed to the host; AMQP traffic stays inside Docker.
       - SPRING_RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - SPRING_RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
-      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_USERNAME:-guest}
-      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
+      - SPRING_RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
+      - SPRING_RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
 
       # --- File Storage ---
       # Local filesystem storage is used for the Docker Compose deployment.
@@ -282,8 +282,8 @@ services:
       # --- RabbitMQ Configuration (internal-network) ---
       - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
-      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME:-guest}
-      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
 
       # --- File Storage (shared with backend, read-only) ---
       - FILE_STORAGE_PATH=/app/uploads
@@ -418,11 +418,11 @@ services:
   #   - The Management UI (port 15672) is NOT exposed to the internet.
   #     Access it via SSH tunnel when needed:
   #       ssh -L 15672:localhost:15672 <your-host>
-  #   - Override default guest/guest credentials via RABBITMQ_USERNAME and
-  #     RABBITMQ_PASSWORD in .env.
+  #   - Override default guest/guest credentials via RABBITMQ_DEFAULT_USER and
+  #     RABBITMQ_DEFAULT_PASS in .env.
   # ============================================================================
   rabbitmq:
-    image: public.ecr.aws/bitnami/rabbitmq:3.13.7-debian-12-r0
+    image: public.ecr.aws/docker/library/rabbitmq:3.13-management-alpine
     container_name: resume-assistant-rabbitmq
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the lines below if you need direct host access to the AMQP
@@ -434,15 +434,15 @@ services:
       - .env
     environment:
       # Default user created on first startup. Override in .env for security.
-      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME:-guest}
-      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
       # Increase the maximum message size to 10 MB to accommodate large
       # embedding vectors and resume text summaries transmitted between
       # backend and ai-service.
       - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit max_message_size 10485760
     volumes:
       # Persistent storage for RabbitMQ mnesia database and definitions.
-      - rabbitmq-data:/bitnami/rabbitmq
+      - rabbitmq-data:/var/lib/rabbitmq
     networks:
       # RabbitMQ is strictly internal-tier only.
       - internal-network
