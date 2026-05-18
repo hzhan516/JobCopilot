@@ -282,14 +282,14 @@ job seekers.
 │   │                │                  │                  │  Consume     │            │
 │   │                │                  │                  │─────────────>│            │
 │   │                │                  │                  │              │  Update    │
-│   │                │                  │                  │              │  incremental_stats.json
+│   │                │                  │                  │              │  Redis stats
 │   │                │                  │                  │              │            │
 │   │                │                  │                  │              │  Recompute │
 │   │                │                  │                  │              │  Weights   │
 │   │                │                  │                  │              │  (if threshold)
 │   │                │                  │                  │              │            │
 │   │                │                  │                  │              │  Generate  │
-│   │                │                  │                  │              │  baseline_model_v{N}.json
+│   │                │                  │                  │              │  model artifact
 │   │                │                  │                  │              │            │
 │   │                │                  │                  │              │  Invalidate│
 │   │                │                  │                  │              │  ModelCache│
@@ -1259,8 +1259,8 @@ Error Response:
 │  │  │                     1. Resume Parser Module                       │  │ │
 │  │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │  │ │
 │  │  │  │ PDF Extractor│  │ Docx         │  │ LiteLLM      │          │  │ │
-│  │  │  │ (PDF/DOCX)   │  │ Extractor    │  │ Structured   │          │  │ │
-│  │  │  │              │  │ (python-docx)│  │ Output       │          │  │ │
+│  │  │  │ (pypdf)      │  │ Extractor    │  │ Structured   │          │  │ │
+│  │  │  │              │  │ (OpenXML ZIP)│  │ Output       │          │  │ │
 │  │  │  └──────────────┘  └──────────────┘  └──────────────┘          │  │ │
 │  │  │                              │                                  │  │ │
 │  │  │                              ▼                                  │  │ │
@@ -1320,8 +1320,8 @@ Error Response:
 │       ▼                                                                      │
 │  ┌─────────────────────────┐                                                │
 │  │  Step 1: Text Extraction │                                               │
-│  │  - PyPDF2 for PDF files  │                                               │
-│  │  - python-docx for DOCX  │                                               │
+│  │  - pypdf for PDF files   │                                               │
+│  │  - OpenXML ZIP for DOCX  │                                               │
 │  └───────────┬─────────────┘                                               │
 │              │ Raw Text                                                     │
 │              ▼                                                              │
@@ -1654,7 +1654,7 @@ The actual cost depends on the configured LiteLLM provider and model. The curren
 ### 9.1 Docker Compose Configuration
 
 ```yaml
-# docker-compose.yml.example (Simplified)
+# docker-compose.yml (Simplified)
 version: '3.8'
 
 services:
@@ -1662,77 +1662,88 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "80:80"
+      - "${FRONTEND_HOST_PORT:-80}:8080"
     depends_on:
       - backend
     networks:
-      - job-assistant-network
+      - public-network
 
   # 2. Java Backend Service
   backend:
     build: ./backend
-    ports:
-      - "8080:8080"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/jobassistant
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/resume_assistant
       - SPRING_RABBITMQ_HOST=rabbitmq
       - JWT_SECRET=${JWT_SECRET}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
     depends_on:
       - postgres
       - rabbitmq
     networks:
-      - job-assistant-network
+      - public-network
+      - internal-network
+      - db-network
 
   # 3. Python AI Service
   ai-service:
     build: ./ai-service
-    ports:
-      - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:5432/jobassistant
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - RABBITMQ_HOST=rabbitmq
+      - BACKEND_SERVICE_URL=http://backend:8080
+      - LLM_TEXT_MODEL=${LLM_TEXT_MODEL:-gemini/gemini-2.5-flash}
+      - MODEL_STORAGE_BASE_PATH=/app/model-artifacts
     depends_on:
-      - postgres
       - rabbitmq
+      - redis
     networks:
-      - job-assistant-network
+      - internal-network
+    volumes:
+      - shared-storage:/app/uploads:ro
+      - model-artifacts:/app/model-artifacts
 
   # 4. PostgreSQL Database
   postgres:
-    image: ankane/pgvector:latest
-    ports:
-      - "5432:5432"
+    build: ./middleware/postgres
     environment:
-      - POSTGRES_DB=jobassistant
-      - POSTGRES_USER=jobassistant
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRESQL_DATABASE=${POSTGRES_DB:-resume_assistant}
+      - POSTGRESQL_USERNAME=${POSTGRES_USER:-resume_user}
+      - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres-data:/bitnami/postgresql
     networks:
-      - job-assistant-network
+      - db-network
 
   # 5. RabbitMQ Message Queue
   rabbitmq:
     image: rabbitmq:3-management
-    ports:
-      - "5672:5672"
-      - "15672:15672"
     environment:
-      - RABBITMQ_DEFAULT_USER=jobassistant
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq-data:/var/lib/rabbitmq
     networks:
-      - job-assistant-network
+      - internal-network
+
+  # 6. Redis Shared State
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    networks:
+      - internal-network
 
 volumes:
-  postgres_data:
-  rabbitmq_data:
+  postgres-data:
+  rabbitmq-data:
+  redis-data:
+  shared-storage:
+  model-artifacts:
 
 networks:
-  job-assistant-network:
+  public-network:
+    driver: bridge
+  internal-network:
+    driver: bridge
+  db-network:
     driver: bridge
 ```
 
@@ -1749,14 +1760,14 @@ networks:
 │  │  │                    Docker Network (bridge)                        │  │ │
 │  │  │                                                                  │  │ │
 │  │  │  ┌─────────────┐                                                │  │ │
-│  │  │  │  Frontend   │  Port: 80 (host) -> 80 (container)             │  │ │
+│  │  │  │  Frontend   │  Host: ${FRONTEND_HOST_PORT:-80} -> 8080       │  │ │
 │  │  │  │  (Nginx +   │                                                │  │ │
 │  │  │  │   React)    │                                                │  │ │
 │  │  │  └──────┬──────┘                                                │  │ │
 │  │  │         │ HTTPS/REST                                             │  │ │
 │  │  │         ▼                                                        │  │ │
 │  │  │  ┌─────────────┐                                                │  │ │
-│  │  │  │  Backend    │  Port: 8080 (host) -> 8080 (container)         │  │ │
+│  │  │  │  Backend    │  Port: 8080 (internal only)                   │  │ │
 │  │  │  │  (Spring    │                                                │  │ │
 │  │  │  │   Boot)     │                                                │  │ │
 │  │  │  └──────┬──────┘                                                │  │ │
@@ -1765,7 +1776,7 @@ networks:
 │  │  │    │         │                                                   │  │ │
 │  │  │    ▼         ▼ RabbitMQ                                          │  │ │
 │  │  │  ┌─────────────┐  ┌─────────────┐                                │  │ │
-│  │  │  │  AI Service │  │  RabbitMQ   │  Port: 5672, 15672            │  │ │
+│  │  │  │  AI Service │  │  RabbitMQ   │  Port: 5672 (internal only)   │  │ │
 │  │  │  │  (FastAPI)  │  │             │                                │  │ │
 │  │  │  │  Port: 8000 │  │             │                                │  │ │
 │  │  │  └──────┬──────┘  └─────────────┘                                │  │ │
@@ -1774,7 +1785,7 @@ networks:
 │  │  │                        │ JDBC                                     │  │ │
 │  │  │                        ▼                                         │  │ │
 │  │  │  ┌─────────────────────────────────────────┐                     │  │ │
-│  │  │  │  PostgreSQL 15 + pgvector              │  Port: 5432          │  │ │
+│  │  │  │  PostgreSQL 15 + pgvector              │  Port: 5432 internal │  │ │
 │  │  │  │  - Business data                        │                     │  │ │
 │  │  │  │  - Vector embeddings                    │                     │  │ │
 │  │  │  └─────────────────────────────────────────┘                     │  │ │
@@ -1782,8 +1793,11 @@ networks:
 │  │  └──────────────────────────────────────────────────────────────────┘  │ │
 │  │                                                                         │ │
 │  │  Volumes:                                                               │ │
-│  │  - postgres_data:/var/lib/postgresql/data                              │ │
-│  │  - rabbitmq_data:/var/lib/rabbitmq                                     │ │
+│  │  - postgres-data:/bitnami/postgresql                                  │ │
+│  │  - rabbitmq-data:/var/lib/rabbitmq                                     │ │
+│  │  - redis-data:/data                                                   │ │
+│  │  - shared-storage:/app/uploads                                        │ │
+│  │  - model-artifacts:/app/model-artifacts                               │ │
 │  │                                                                         │ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
 │                                                                             │
@@ -1794,12 +1808,13 @@ networks:
 
 | Service             | Container Port | Host Port | Purpose           |
 | ------------------- | -------------- | --------- | ----------------- |
-| Frontend            | 80             | 80        | Web application   |
-| Backend             | 8080           | 8080      | REST API          |
-| AI Service          | 8000           | 8000      | AI processing API |
-| PostgreSQL          | 5432           | 5432      | Database access   |
-| RabbitMQ            | 5672           | 5672      | Message broker    |
-| RabbitMQ Management | 15672          | 15672     | Web management UI |
+| Frontend            | 8080           | `${FRONTEND_HOST_PORT:-80}` | Web application and API reverse proxy |
+| Backend             | 8080           | Not exposed by default      | Internal REST API behind Nginx |
+| AI Service          | 8000           | Not exposed by default      | Internal AI processing API |
+| PostgreSQL          | 5432           | Not exposed by default      | Database access from backend |
+| RabbitMQ            | 5672           | Not exposed by default      | Internal message broker |
+| RabbitMQ Management | 15672          | Not exposed by default      | Dev-only management UI if port mapping is uncommented |
+| Redis               | 6379           | Not exposed by default      | Internal shared state for AI model adaptation |
 
 ---
 
@@ -1812,7 +1827,7 @@ networks:
 | API Response Time (p95)  | < 200ms | For non-AI endpoints       |
 | Resume Upload Processing | < 30s   | End-to-end with AI parsing |
 | Job Match Query          | < 500ms | Vector similarity search   |
-| Chat Response            | < 3s    | First token from LLM       |
+| Chat Response            | < 3s    | Full AI reply delivery     |
 | Concurrent Users         | 1000    | Supported simultaneously   |
 | System Availability      | 99.9%   | Uptime target              |
 

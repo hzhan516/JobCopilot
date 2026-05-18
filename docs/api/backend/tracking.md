@@ -3,21 +3,18 @@
 
 # Application Tracking API Documentation
 
-This document describes the complete API for the application tracking module, including status transition control, event history, and statistics features.
+This document describes the complete API for the application tracking module, including status updates, event history, applied date handling, and statistics features.
 
 ---
 
-## 1. Status Transition Description
+## 1. Status Handling Description
 
-```
-PENDING -> APPLIED
-APPLIED -> SCREENING, REJECTED
-SCREENING -> INTERVIEWING, REJECTED
-INTERVIEWING -> OFFER, REJECTED
-OFFER -> ACCEPTED, REJECTED
-```
+Supported statuses are `PENDING`, `APPLIED`, `SCREENING`, `INTERVIEWING`, `OFFER`, `ACCEPTED`, `REJECTED`, and `WITHDRAWN`.
 
-Any illegal status transition will return `400 Bad Request` with the message `"Status transition from X to Y is not allowed"`.
+- Create requests may include an optional initial `status`. If omitted, the backend uses `PENDING`.
+- Updating a record may set any valid status value. When the new status differs from the current status, the backend appends a `TrackingEvent`.
+- If a record is created or updated to `APPLIED` without `appliedAt`, the backend sets `appliedAt` to the current date.
+- `appliedAt` cannot be a future date.
 
 ---
 
@@ -25,7 +22,7 @@ Any illegal status transition will return `400 Bad Request` with the message `"S
 
 ### 2.1 Create Tracking Record
 **Endpoint:** `POST /api/v1/trackings`  
-**Description:** Create a new job application tracking record with initial status `PENDING`.
+**Description:** Create a new job application tracking record. The initial status is optional and defaults to `PENDING`.
 
 **Request Header:**
 ```http
@@ -39,6 +36,7 @@ Content-Type: application/json
   "jobId": "job-001",
   "companyName": "Tech Corp",
   "jobTitle": "Senior Java Developer",
+  "status": "APPLIED",
   "appliedAt": "2026-04-10",
   "notes": "Referral from friend"
 }
@@ -65,7 +63,7 @@ Content-Type: application/json
   },
   "companyName": "Tech Corp",
   "jobTitle": "Senior Java Developer",
-  "status": "PENDING",
+  "status": "APPLIED",
   "appliedAt": "2026-04-10",
   "createdAt": "2026-04-16T10:00:00Z",
   "updatedAt": "2026-04-16T10:00:00Z",
@@ -120,9 +118,9 @@ Content-Type: application/json
 **Endpoint:** `GET /api/v1/trackings/{id}`  
 **Description:** Get details by tracking ID.
 
-### 2.4 Update Tracking Record (with Status Transition)
+### 2.4 Update Tracking Record (with Status Update)
 **Endpoint:** `PUT /api/v1/trackings/{id}`  
-**Description:** Update the tracking record's company, job title, applied date, notes, and status. Status changes will trigger a `TrackingEvent` record.
+**Description:** Update the tracking record's company, job title, applied date, notes, and status. When the submitted status differs from the current status, the backend records a `TrackingEvent`.
 
 **Request Body (`UpdateTrackingRequest`):**
 ```json
@@ -143,7 +141,7 @@ Content-Type: application/json
 
 ### 2.6 Get Statistics
 **Endpoint:** `GET /api/v1/trackings/stats`  
-**Description:** Get statistical distribution and success rate of all tracking records for the current user.
+**Description:** Get statistical distribution and success rate of all tracking records for the current user. `appliedCount` includes `APPLIED`, `SCREENING`, and `INTERVIEWING`; `offerCount` includes `OFFER` and `ACCEPTED`; `successRate` is `offerCount / totalApplications * 100`.
 
 **Response Body (`TrackingStatsResponse`):**
 ```json
@@ -165,8 +163,7 @@ Content-Type: application/json
 
 | HTTP Status | Business Code | Description |
 |-------------|------------|------|
-| 400 | 400 | Illegal status transition (TrackingException) |
-| 400 | 400 | Tracking not found (ID does not exist or does not belong to current user) |
-| 500 | 500 | Database exception |
+| 400 | 400 | Request validation or parameter format error |
+| 500 | 500 | Application or database exception |
 
 ---

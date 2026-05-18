@@ -54,29 +54,29 @@
     * **(c) 评估：** **上下文相关性评分**（使用自定义 LLM 作为评判标准），衡量 AI 的建议是否准确反映了所选的具体简历版本，与零样本/无 RAG 基线进行比较。
 
 4. **LLM API 集成（弹性包装器）**
-    * **(a) 功能：** 在 `ai-service` 内抽象 OpenAI 客户端的生产级 API 包装器。
-    * **(b) 集成：** 实现指数退避重试、token/成本跟踪并发送回数据库，以及在 API 被速率限制或失败时的优雅降级。
+    * **(a) 功能：** 在 `ai-service` 内抽象 LiteLLM 兼容客户端的生产级 API 包装器。
+    * **(b) 集成：** 实现指数退避重试、JSON 响应验证、日志记录，以及在 API 被速率限制或失败时的优雅降级。
 
 ## 7. 系统架构
 
 智能求职助手利用严格结构化的 Monorepo，包含解耦的微服务，将业务逻辑与繁重的 AI 工作负载分离，以及专用的根级评估和测试目录。
 
-* **前端 (`frontend/`):** React 18 / Vite UI，用于文档管理、聊天交互和申请跟踪。
+* **前端 (`frontend/`):** React 19 / Vite 7 UI，用于文档管理、聊天交互和申请跟踪。
 * **后端 (`backend/`):** Java Spring Boot 3.x，使用领域驱动设计（DDD）架构（分为 `api`、`app`、`domain`、`infrastructure`、`trigger` 和 `types` 层），处理 JWT 认证、CRUD 和多版本文档状态。
 * **AI 流水线 (`ai-service/`):** 一个无状态的 Python FastAPI 应用，管理所有 LLM 交互、结构化解析和向量计算。
 * **评估 (`eval/`):** 包含计算 AI 指标和基线比较的 Python 脚本的专用根目录。
-* **测试套件 (`tests/`):** 编排跨系统组件的 15+ 端到端集成测试的根目录。
-* **数据层:** PostgreSQL（关系数据）+ `pgvector`（嵌入）。MinIO（兼容 S3）用于原始 PDF/Word 文件存储。
-* **数据流:** 当用户上传 PDF 时，后端将其保存到 MinIO 并向 **RabbitMQ** 发布事件。`ai-service` 消费该事件，获取文件，通过 OpenAI 提取/嵌入数据，并通过 MQ 将结果返回给后端。
+* **测试套件:** 后端 JUnit 测试位于各后端模块中，AI-service pytest 测试位于 `ai-service/tests`。
+* **数据层:** PostgreSQL 存储关系数据和 `pgvector` 嵌入。在 Docker Compose 部署中，上传的 PDF/Word 文件存储在 Docker 命名卷（`shared-storage`）中，并由后端和 AI service 共同挂载。后端也包含可配置的 MinIO/S3 兼容存储支持，但默认 Compose 设置使用本地卷存储。
+* **数据流:** 当用户上传 PDF 时，后端通过配置的存储后端保存文件并向 **RabbitMQ** 发布事件。`ai-service` 消费该事件，通过生成的存储 URL 读取文件，使用配置的 LiteLLM provider 提取/嵌入数据，并通过 MQ 将结果返回给后端。
 
 ```mermaid
 graph TD
     A[frontend: React UI] <-->|REST API / JWT| B(backend: Java Spring Boot)
-    B -->|Save Raw File| C[(MinIO Object Storage)]
+    B -->|Save Raw File| C[(Storage Backend / shared-storage)]
     B -->|SQL / pgvector| D[(PostgreSQL DB)]
     B -->|Publish Task| E[[RabbitMQ Queue]]
     E -->|Consume Task| F{ai-service: Python FastAPI}
-    F <-->|API Calls| G((OpenAI LLM & Embeddings))
+    F <-->|API Calls| G((LiteLLM Provider))
     F -->|Return Results| E
 ```
 
@@ -88,11 +88,11 @@ graph TD
 
 2. **AI 指标 2：推荐质量（NDCG@5）。** 我们将整理 5 份样本简历和 50 个职位描述池。人工评估者将为每份简历排名前 5 的理想匹配。我们将比较 `pgvector` 余弦相似度结果与人工排序。**基线：** 标准关键词匹配（无嵌入）。
 
-3. **系统级评估：** 我们将使用负载测试工具（例如 Locust/JMeter）对 API 进行测试，确保正常使用下的 API 错误率 `< 1%`，向量匹配的响应延迟（p95）`< 5 秒`。我们要求通过根 `tests/` 目录编排的 `> 80%` 测试覆盖率（结合 Java 的 JUnit 和 Python 的 Pytest），由 GitHub Actions CI 强制执行。
+3. **系统级评估：** 我们将使用负载测试工具（例如 Locust/JMeter）对 API 进行测试，确保正常使用下的 API 错误率 `< 1%`，向量匹配的响应延迟（p95）`< 5 秒`。自动化检查结合后端 JUnit 测试、AI-service pytest 测试，以及 GitHub Actions CI 的后端构建/测试覆盖。
 
 ## 9. 时间线与风险
 
-* **里程碑 1 - 设置与提案：** 确定系统架构、数据库模式、Docker Compose 环境（MinIO、Postgres、MQ），并实现基本的 JWT 认证。
+* **里程碑 1 - 设置与提案：** 确定系统架构、数据库模式、Docker Compose 环境（Postgres、RabbitMQ、shared storage），并实现基本的 JWT 认证。
 * **里程碑 2 - 设计与原型：** `ai-service` 设置与 API 包装器。实现 RabbitMQ 异步通信。完成 AI 技术 #1（结构化输出解析）和端到端文件上传流程。
 * **里程碑 3 - 实现：** 实现 `pgvector` 语义搜索（AI 技术 #2）和基于 RAG 的聊天（AI 技术 #3）。完成 React UI，编写 15+ 自动化测试，并配置 CI 流水线。
 * **里程碑 4 - 最终提交：** 计算与基线的评估指标。重构和清理代码，录制 10 到 15 分钟的演示视频，并完成 README 文档。

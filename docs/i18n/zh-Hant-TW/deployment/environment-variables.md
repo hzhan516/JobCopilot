@@ -348,13 +348,12 @@ openssl rand -base64 48
 
 | 模型 | 維度 |
 |------|------|
-| `gemini/gemini-embedding-001` | `768` |
+| `gemini/gemini-embedding-001` | `1536` |
 | `openai/text-embedding-ada-002` | `1536` |
 | `openai/text-embedding-3-small` | `1536` |
 | `openai/text-embedding-3-large` | `3072` |
-| `sentence-transformers/all-MiniLM-L6-v2` | `384` |
 
-> **注意**：`.env.example` 中的預設值 `1536` 對應 OpenAI Ada-002。若使用 Gemini 嵌入，請改為 `768`。
+> **注意**：`.env.example` 中的預設值 `1536` 對應目前預設的 `gemini/gemini-embedding-001` 配置，以及表中列出的 OpenAI 1536 維嵌入模型。
 
 ### `LLM_TEMPERATURE`
 
@@ -651,6 +650,40 @@ openssl rand -base64 32
 | **有效取值** | 任意 URL 路徑前綴，例如 `/files`、`https://cdn.example.com` |
 | **安全說明** | 如果為空，後端生成相對 URL。設定外部 CDN 可提高效能，但需要適當的存取控制。 |
 | **常見錯誤** | 新增尾部斜線導致 URL 中出現雙斜線。 |
+
+### AI 模型產物儲存
+
+這些變數由 Python AI 服務使用，用於保存增量匹配模型 artifact。它們與上方後端履歷檔案儲存設定是分開的。
+
+### `MODEL_STORAGE_TYPE`
+
+| 欄位 | 值 |
+|------|-----|
+| **用途** | 決定自適應增量模型 artifact 儲存位置。 |
+| **預設值** | `local` |
+| **有效取值** | `local`、`minio`、`s3` |
+| **安全說明** | 單節點 Docker Compose 可以使用本機儲存。多實例或 Kubernetes 部署請使用 S3-compatible 物件儲存，確保所有 AI 副本能載入同一個最新模型。 |
+| **常見錯誤** | 誤以為模型 artifact 會被打包進 AI Docker 映像。它們是刻意儲存在映像外部，並透過資料卷或物件儲存持久化。 |
+
+### `MODEL_STORAGE_BASE_PATH`
+
+| 欄位 | 值 |
+|------|-----|
+| **用途** | 當 `MODEL_STORAGE_TYPE=local` 時，本機模型 artifact 儲存根目錄。 |
+| **預設值** | `/app/model-artifacts` |
+| **有效取值** | AI 服務容器內任意可寫的絕對檔案系統路徑 |
+| **安全說明** | 請將此路徑掛載為持久化資料卷；否則容器重建後重新訓練的模型 artifact 會遺失。 |
+| **常見錯誤** | 指向唯讀路徑，或忘記在 Docker Compose 中掛載 `model-artifacts` 資料卷。 |
+
+### `MODEL_BUCKET`
+
+| 欄位 | 值 |
+|------|-----|
+| **用途** | 用於保存 `baseline_model_latest.json` 等模型 artifact 的 bucket 或頂層目錄名。 |
+| **預設值** | `resume-assistant-models` |
+| **有效取值** | 任意有效的 S3 bucket 名稱或本機目錄片段 |
+| **安全說明** | 模型 artifact 可能編碼聚合後的使用者/職位匹配行為，應保持私有。 |
+| **常見錯誤** | 以為 `AWS_S3_*` 變數會控制模型 artifact 儲存。目前 AI 服務透過 `MODEL_STORAGE_TYPE` 以及 `MINIO_*` 端點/憑證變數設定 S3-compatible 儲存路徑。 |
 
 ### AWS S3 設定（`STORAGE_TYPE=s3` 時生效）
 
@@ -1002,7 +1035,7 @@ Redis 作為共享狀態層，為分散式快取、分散式鎖（ShedLock）、
 | **預設值** | `6379` |
 | **有效取值** | `1024–65535` |
 | **安全說明** | 網路隔離是主要防禦手段。更改連接埠帶來的收益極小。 |
-| **常見錯誤** | 更改連接埠後未同步更新 `docker-compose.yml` 中 Redis 服務的連接埠對應。 |
+| **常見錯誤** | 更改連接埠後未同步更新 Redis 容器命令/配置以及後端、AI 服務環境變數。Docker Compose 預設不向主機暴露 Redis。 |
 
 ### `REDIS_PASSWORD`
 

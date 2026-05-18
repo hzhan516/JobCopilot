@@ -53,14 +53,14 @@
 
 | 层级       | 技术                                   | 说明                |
 |----------|--------------------------------------|-------------------|
-| **前端**   | React 18 + TypeScript + Tailwind CSS | 求职者交互界面           |
+| **前端**   | React 19 + TypeScript + Tailwind CSS | 求职者交互界面           |
 | **后端**   | Java Spring Boot 3.x + DDD           | 业务逻辑、数据管理、消息队列    |
 | **AI服务** | Python FastAPI                       | 简历解析、匹配计算、对话处理    |
 | **数据库**  | PostgreSQL 15 + pgvector             | 业务数据 + 向量数据（统一存储） |
 | **消息队列** | RabbitMQ                             | 异步服务通信            |
 | **缓存**     | Redis 7                              | 分布式状态、锁、Pub/Sub  |
-| **对象存储** | MinIO                                | 文件存储（简历、对话附件） |
-| **部署**   | Docker Compose                       | 5服务架构             |
+| **对象存储** | shared-storage / 可选 MinIO           | 文件存储（简历、对话附件） |
+| **部署**   | Docker Compose                       | 6服务架构             |
 
 ---
 
@@ -99,7 +99,7 @@
 │                                     │                                       │
 │  ┌──────────────────────────────────▼─────────────────────────────────────┐ │
 │  │                        基础设施层                                        │ │
-│  │  Repository | MQ Publisher | MQ Consumer | PGVector Client | MinIO     │ │
+│  │  Repository | MQ Publisher | MQ Consumer | PGVector Client | Storage Service │ │
 │  └──────────────────────────────────┬─────────────────────────────────────┘ │
 └───────────────────────────────────┬─┴───────────────────────────────────────┘
                                     │ 消息队列 (RabbitMQ)
@@ -115,8 +115,8 @@
 │  │                        AI处理引擎                                        │ │
 │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐│ │
 │  │  │ 简历解析器   │  │ 嵌入生成器   │  │ 匹配计算器   │  │ 对话处理器   ││ │
-│  │  │ PyPDF2       │  │ Sentence-    │  │ 相似度       │  │ RAG +        ││ │
-│  │  │ OpenAI API   │  │ Transformers │  │ 排序         │  │ 记忆         ││ │
+│  │  │ pypdf /      │  │ LiteLLM      │  │ 相似度       │  │ RAG +        ││ │
+│  │  │ OpenXML ZIP  │  │ Embeddings   │  │ 排序         │  │ 记忆         ││ │
 │  │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘│ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -127,8 +127,8 @@
 │  │                         PostgreSQL 15                                   │ │
 │  │  ┌──────────────────────────────┐  ┌─────────────────────────────────┐ │ │
 │  │  │    业务数据表                 │  │    向量表 (pgvector)            │ │ │
-│  │  │  - users                     │  │  - resume_embeddings            │ │ │
-│  │  │  - resumes                   │  │  - job_embeddings               │ │ │
+│  │  │  - users                     │  │  - resume_vectors               │ │ │
+│  │  │  - resumes                   │  │  - job_vectors                  │ │ │
 │  │  │  - jobs                      │  │                                 │ │ │
 │  │  │  - conversations             │  │  统一数据库管理                  │ │ │
 │  │  │  - messages                  │  │                                 │ │ │
@@ -195,14 +195,14 @@
 │   │              │                    │                  │  消费          │          │
 │   │              │                    │                  │───────────────>│          │
 │   │              │                    │                  │                │  更新    │
-│   │              │                    │                  │                │  incremental_stats.json
+│   │              │                    │                  │                │  Redis 状态
 │   │              │                    │                  │                │          │
 │   │              │                    │                  │                │  重新计算│
 │   │              │                    │                  │                │  权重    │
 │   │              │                    │                  │                │  （若达阈值）
 │   │              │                    │                  │                │          │
 │   │              │                    │                  │                │  生成    │
-│   │              │                    │                  │                │  baseline_model_v{N}.json
+│   │              │                    │                  │                │  模型 artifact
 │   │              │                    │                  │                │          │
 │   │              │                    │                  │                │  失效    │
 │   │              │                    │                  │                │  ModelCache│
@@ -335,10 +335,10 @@ ai_service/
 
 | 模块        | 功能                     | 依赖                                       |
 |-----------|------------------------|------------------------------------------|
-| **简历解析器** | 提取PDF/Word内容，生成结构化JSON | PyPDF2, python-docx, OpenAI API          |
-| **嵌入生成器** | 生成文本向量表示               | sentence-transformers (all-MiniLM-L6-v2) |
+| **简历解析器** | 提取PDF/Word内容，生成结构化JSON | pypdf, OpenXML ZIP, LiteLLM              |
+| **嵌入生成器** | 生成文本向量表示               | LiteLLM embedding provider               |
 | **匹配计算器** | 计算简历-职位相似度             | cosine similarity, ranking algorithm     |
-| **对话处理器** | RAG对话，记忆管理             | LangChain, OpenAI API, pgvector          |
+| **对话处理器** | RAG对话，记忆管理             | LiteLLM, 数据库历史, pgvector            |
 
 ---
 
@@ -433,31 +433,38 @@ CREATE TABLE interviews (
 
 ```sql
 -- 简历嵌入向量表
-CREATE TABLE resume_embeddings (
-    id BIGSERIAL PRIMARY KEY,
-    resume_id BIGINT REFERENCES resumes(id) ON DELETE CASCADE,
-    embedding VECTOR(384),  -- all-MiniLM-L6-v2 维度
-    metadata JSONB,
+CREATE TABLE resume_vectors (
+    id VARCHAR(64) PRIMARY KEY,
+    resume_version_id VARCHAR(64) NOT NULL UNIQUE,
+    embedding VECTOR(1536),  -- 默认维度，可由初始化脚本按环境变量替换
+    status VARCHAR(32) NOT NULL,
+    error_message TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(resume_id)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 职位嵌入向量表
-CREATE TABLE job_embeddings (
-    id BIGSERIAL PRIMARY KEY,
-    job_id BIGINT REFERENCES jobs(id) ON DELETE CASCADE,
-    embedding VECTOR(384),
-    metadata JSONB,
+CREATE TABLE job_vectors (
+    id VARCHAR(64) PRIMARY KEY,
+    job_id VARCHAR(64) NOT NULL UNIQUE,
+    embedding VECTOR(1536),
+    status VARCHAR(32) NOT NULL,
+    error_message TEXT,
+    title TEXT,
+    description TEXT,
+    requirements JSONB,
+    raw_content TEXT,
+    source_file VARCHAR(255),
+    model_version VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(job_id)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 向量相似度搜索索引 (IVFFlat - 快速近似搜索)
-CREATE INDEX idx_resume_embeddings_vector ON resume_embeddings 
-    USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+CREATE INDEX idx_resume_vectors_version_id ON resume_vectors (resume_version_id);
+CREATE INDEX idx_resume_vectors_status ON resume_vectors (status);
 
-CREATE INDEX idx_job_embeddings_vector ON job_embeddings 
-    USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+CREATE INDEX idx_job_vectors_job_id ON job_vectors (job_id);
+CREATE INDEX idx_job_vectors_status ON job_vectors (status);
 ```
 
 ### 5.2 向量存储设计
@@ -466,7 +473,7 @@ CREATE INDEX idx_job_embeddings_vector ON job_embeddings
 
 | 模型                   | 维度  | 用途        | 说明           |
 |----------------------|-----|-----------|--------------|
-| **all-MiniLM-L6-v2** | 384 | 简历/职位语义匹配 | 轻量级，速度快，效果良好 |
+| **LLM_EMBEDDING_MODEL** | 1536（默认） | 简历/职位语义匹配 | 通过 LiteLLM 配置，可按环境变量调整 |
 
 #### 5.2.2 相似度搜索示例
 
@@ -477,7 +484,7 @@ SELECT
     j.title,
     j.company,
     1 - (je.embedding <=> $1) AS similarity_score
-FROM job_embeddings je
+FROM job_vectors je
 JOIN jobs j ON je.job_id = j.id
 ORDER BY je.embedding <=> $1
 LIMIT 10;
@@ -487,7 +494,7 @@ SELECT
     r.id,
     r.summary,
     1 - (re.embedding <=> $1) AS similarity_score
-FROM resume_embeddings re
+FROM resume_vectors re
 JOIN resumes r ON re.resume_id = r.id
 WHERE r.user_id = $2
 ORDER BY re.embedding <=> $1
@@ -540,7 +547,7 @@ LIMIT 5;
 
 **文件上传支线**：
 ```
-AI服务 / 前端 ──▶ 调用后端上传API ──▶ 转存MinIO ──▶ 返回预签名URL ──▶ 更新Message记录(fileUrl)
+AI服务 / 前端 ──▶ 调用后端上传API ──▶ 存储后端/共享卷 ──▶ 返回文件URL ──▶ 更新Message记录(fileUrl)
 ```
 
 ### 5.4 Redis 缓存设计（CAPTCHA）
@@ -804,11 +811,11 @@ Response (200 OK):
 
 | 技术            | 用途             | 实现                               |
 |---------------|----------------|----------------------------------|
-| **向量搜索/嵌入**   | 简历与职位语义匹配      | sentence-transformers + pgvector |
-| **结构化输出**     | 解析简历为结构化JSON   | OpenAI GPT-4 + JSON Schema       |
-| **LLM API集成** | API调用层，重试和成本追踪 | 自定义客户端 + 装饰器                     |
+| **向量搜索/嵌入**   | 简历与职位语义匹配      | LiteLLM embeddings + pgvector |
+| **结构化输出**     | 解析简历为结构化JSON   | LiteLLM provider + JSON Schema |
+| **LLM API集成** | API调用层，重试和降级 | LiteLLM 客户端 + 重试逻辑                     |
 | **记忆/对话管理**   | 对话历史管理         | 数据库存储 + 上下文窗口管理                  |
-| **RAG**       | 检索简历内容作为对话上下文  | LangChain + pgvector             |
+| **RAG**       | 检索简历内容作为对话上下文  | 数据库上下文 + LiteLLM             |
 
 ### 7.2 简历解析模块
 
@@ -817,7 +824,7 @@ Response (200 OK):
 ```
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
 │ PDF/Word    │───▶│ 文本提取    │───▶│ LLM解析     │───▶│ 结构化JSON  │
-│ 文件        │    │ (PyPDF2)    │    │ (GPT-4)     │    │ 输出        │
+│ 文件        │    │ (pypdf/ZIP) │    │ (LiteLLM)   │    │ 输出        │
 └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
 ```
 
@@ -1064,77 +1071,88 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "80:80"
+      - "${FRONTEND_HOST_PORT:-80}:8080"
     depends_on:
       - backend
     networks:
-      - job-assistant-network
+      - public-network
 
   # 2. Java后端服务
   backend:
     build: ./backend
-    ports:
-      - "8080:8080"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/jobassistant
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/resume_assistant
       - SPRING_RABBITMQ_HOST=rabbitmq
       - JWT_SECRET=${JWT_SECRET}
     depends_on:
       - postgres
       - rabbitmq
     networks:
-      - job-assistant-network
+      - public-network
+      - internal-network
+      - db-network
 
   # 3. Python AI服务
   ai-service:
     build: ./ai-service
-    ports:
-      - "8000:8000"
     environment:
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - DATABASE_URL=postgresql://postgres:5432/jobassistant
+      - RABBITMQ_HOST=rabbitmq
+      - BACKEND_SERVICE_URL=http://backend:8080
+      - LLM_TEXT_MODEL=${LLM_TEXT_MODEL:-gemini/gemini-2.5-flash}
+      - MODEL_STORAGE_BASE_PATH=/app/model-artifacts
     depends_on:
       - rabbitmq
-      - postgres
+      - redis
     networks:
-      - job-assistant-network
+      - internal-network
+    volumes:
+      - shared-storage:/app/uploads:ro
+      - model-artifacts:/app/model-artifacts
 
   # 4. PostgreSQL + pgvector
   postgres:
-    image: ankane/pgvector:latest
-    ports:
-      - "5432:5432"
+    build: ./middleware/postgres
     environment:
-      - POSTGRES_DB=jobassistant
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRESQL_DATABASE=${POSTGRES_DB:-resume_assistant}
+      - POSTGRESQL_USERNAME=${POSTGRES_USER:-resume_user}
+      - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d
+      - postgres-data:/bitnami/postgresql
     networks:
-      - job-assistant-network
+      - db-network
 
   # 5. RabbitMQ
   rabbitmq:
     image: rabbitmq:3-management
-    ports:
-      - "5672:5672"
-      - "15672:15672"
     environment:
-      - RABBITMQ_DEFAULT_USER=${MQ_USER}
-      - RABBITMQ_DEFAULT_PASS=${MQ_PASSWORD}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq-data:/var/lib/rabbitmq
     networks:
-      - job-assistant-network
+      - internal-network
+
+  # 6. Redis共享状态
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    networks:
+      - internal-network
 
 volumes:
-  postgres_data:
-  rabbitmq_data:
+  postgres-data:
+  rabbitmq-data:
+  redis-data:
+  shared-storage:
+  model-artifacts:
 
 networks:
-  job-assistant-network:
+  public-network:
+    driver: bridge
+  internal-network:
+    driver: bridge
+  db-network:
     driver: bridge
 ```
 
@@ -1142,11 +1160,12 @@ networks:
 
 | 服务         | 内部端口       | 外部端口       | 用途        |
 |------------|------------|------------|-----------|
-| Frontend   | 80         | 80         | Web界面     |
-| Backend    | 8080       | 8080       | REST API  |
-| AI Service | 8000       | 8000       | AI处理API   |
-| PostgreSQL | 5432       | 5432       | 数据库       |
-| RabbitMQ   | 5672/15672 | 5672/15672 | 消息队列/管理界面 |
+| Frontend   | 8080       | `${FRONTEND_HOST_PORT:-80}` | Web界面与API反向代理 |
+| Backend    | 8080       | 默认不暴露       | Nginx 后方的内部 REST API |
+| AI Service | 8000       | 默认不暴露       | 内部 AI 处理 API |
+| PostgreSQL | 5432       | 默认不暴露       | 后端访问数据库 |
+| RabbitMQ   | 5672/15672 | 默认不暴露       | 内部消息队列/开发调试管理界面 |
+| Redis      | 6379       | 默认不暴露       | AI 增量模型共享状态 |
 
 ### 9.3 基础设施图
 
@@ -1157,7 +1176,7 @@ networks:
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
 │  │  Nginx      │  │  Spring Boot│  │  FastAPI    │             │
 │  │  (Frontend) │  │  (Backend)  │  │  (AI)       │             │
-│  │  Port 80    │  │  Port 8080  │  │  Port 8000  │             │
+│  │  Host->8080 │  │ Internal    │  │ Internal    │             │
 │  └─────────────┘  └─────────────┘  └─────────────┘             │
 │         │                │                │                     │
 │         └────────────────┴────────────────┘                     │
@@ -1169,7 +1188,7 @@ networks:
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
 │  │ PostgreSQL  │  │  RabbitMQ   │  │  Volumes    │             │
 │  │ + pgvector  │  │             │  │  (持久化)    │             │
-│  │ Port 5432   │  │ Port 5672   │  │             │             │
+│  │ Internal    │  │ Internal    │  │             │             │
 │  └─────────────┘  └─────────────┘  └─────────────┘             │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
@@ -1274,7 +1293,7 @@ networks:
 3. [Spring Boot Documentation](https://spring.io/projects/spring-boot)
 4. [FastAPI Documentation](https://fastapi.tiangolo.com/)
 5. [RabbitMQ Documentation](https://www.rabbitmq.com/documentation.html)
-6. [Sentence Transformers](https://www.sbert.net/)
+6. [LiteLLM Documentation](https://docs.litellm.ai/)
 
 ### 11.3 架构决策记录 (ADR)
 
@@ -1306,19 +1325,19 @@ networks:
 - 支持可靠消息传递
 - 数据隔离，AI服务不直接访问数据库
 
-#### ADR-003: 使用sentence-transformers生成嵌入
+#### ADR-003: 使用 LiteLLM provider 生成嵌入
 
 **状态**: 已接受
 
 **背景**: 需要生成文本向量用于语义匹配
 
-**决策**: 使用all-MiniLM-L6-v2模型
+**决策**: 使用由 `LLM_EMBEDDING_MODEL` 配置的 LiteLLM 兼容嵌入模型，默认 `gemini/gemini-embedding-001`
 
 **理由**:
 
-- 轻量级，384维向量
-- 速度快，适合实时应用
-- 多语言支持
+- 与文本/视觉 LLM provider 配置方式一致
+- 默认 1536 维，和数据库初始化脚本的默认向量维度一致
+- 可通过环境变量切换到 OpenAI 或 Vertex AI 等兼容模型
 
 ---
 

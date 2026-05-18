@@ -651,6 +651,40 @@ If left empty, both the backend interceptor and the AI service middleware skip t
 | **Security notes** | If empty, the backend generates relative URLs. Setting an external CDN improves performance but requires proper access control. |
 | **Common mistakes** | Adding a trailing slash that causes double slashes in URLs. |
 
+### AI Model Artifact Storage
+
+These variables are consumed by the Python AI service for incremental matching model artifacts. They are separate from the backend resume file storage settings above.
+
+### `MODEL_STORAGE_TYPE`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Determines where adaptive incremental model artifacts are stored. |
+| **Default** | `local` |
+| **Valid values** | `local`, `minio`, `s3` |
+| **Security notes** | Local storage is acceptable for single-node Docker Compose. For multi-instance or Kubernetes deployments, use S3-compatible object storage so all AI replicas can load the same latest model. |
+| **Common mistakes** | Assuming model artifacts are baked into the AI Docker image. They are intentionally stored outside the image and persisted through a volume or object storage. |
+
+### `MODEL_STORAGE_BASE_PATH`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Root directory for local model artifact storage when `MODEL_STORAGE_TYPE=local`. |
+| **Default** | `/app/model-artifacts` |
+| **Valid values** | Any writable absolute filesystem path inside the AI service container |
+| **Security notes** | Mount this path as a persistent volume; otherwise retrained model artifacts are lost when the container is recreated. |
+| **Common mistakes** | Pointing this at a read-only path or forgetting to mount the `model-artifacts` volume in Docker Compose. |
+
+### `MODEL_BUCKET`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Bucket or top-level directory name used to store model artifacts such as `baseline_model_latest.json`. |
+| **Default** | `resume-assistant-models` |
+| **Valid values** | Any valid S3 bucket name or local directory segment |
+| **Security notes** | Keep model artifacts private because they may encode aggregate user/job matching behavior. |
+| **Common mistakes** | Expecting `AWS_S3_*` variables to control model artifact storage. The current AI service uses the S3-compatible storage path configured through `MODEL_STORAGE_TYPE` and the `MINIO_*` endpoint/credential variables. |
+
 ### AWS S3 Settings (`STORAGE_TYPE=s3`)
 
 ### `AWS_S3_REGION`
@@ -1001,7 +1035,7 @@ Redis serves as the shared state layer for distributed caching, distributed lock
 | **Default** | `6379` |
 | **Valid values** | `1024–65535` |
 | **Security notes** | Network isolation is the primary defense. Changing the port provides minimal benefit. |
-| **Common mistakes** | Changing this without updating the Redis service `ports` mapping in `docker-compose.yml`. |
+| **Common mistakes** | Changing this without updating the Redis container command/configuration and the backend/AI-service environment. Redis is not host-exposed by default in Docker Compose. |
 
 ### `REDIS_PASSWORD`
 

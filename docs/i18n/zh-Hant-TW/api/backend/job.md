@@ -13,20 +13,27 @@
 
 ### 1.1 提交職位連結 (Submit Job Link)
 **Endpoint:** `POST /api/v1/jobs`
-**描述:** 接收使用者提交的職位 URL，並將非同步剖析請求發佈到 RabbitMQ。立即返回任務的初始狀態。
+**描述:** 接收使用者提交的職位 URL 和可選的職位截圖，並將非同步剖析請求發佈到 RabbitMQ。立即返回任務的初始狀態。
 
 **Request Header:**
 ```http
 Authorization: Bearer <user-jwt-token>
-Content-Type: application/json
+Content-Type: multipart/form-data
 ```
 
-**Request Body (`SubmitJobRequest`):**
-```json
-{
-  "url": "https://www.linkedin.com/jobs/view/12345",
-  "imageCheckEnabled": true
-}
+**Form Fields:**
+
+| 欄位 | 類型 | 必填 | 說明 |
+|------|------|------|------|
+| `url` | String | 是 | 職位發布頁面 URL。 |
+| `screenshot` | File | 否 | 可選的職位截圖。後端會將其轉成 Base64，作為 AI 解析的 fallback 輸入。 |
+
+**Request Example:**
+```bash
+curl -X POST "http://localhost/api/v1/jobs" \
+  -H "Authorization: Bearer <user-jwt-token>" \
+  -F "url=https://www.linkedin.com/jobs/view/12345" \
+  -F "screenshot=@job-posting.png"
 ```
 
 **Response Body (`JobResponse`):**
@@ -37,7 +44,7 @@ Content-Type: application/json
   "originalUrl": "https://www.linkedin.com/jobs/view/12345",
   "status": "PENDING",
   "parsedContent": null,
-  "imageCheckEnabled": true,
+  "imageCheckEnabled": false,
   "errorMessage": null
 }
 ```
@@ -65,7 +72,7 @@ Authorization: Bearer <user-jwt-token>
     "description": "Full job description...",
     "requirements": ["Java", "Spring Boot", "AWS"]
   },
-  "imageCheckEnabled": true,
+  "imageCheckEnabled": false,
   "errorMessage": null
 }
 ```
@@ -88,7 +95,7 @@ Authorization: Bearer <user-jwt-token>
     "originalUrl": "https://www.linkedin.com/jobs/view/12345",
     "status": "COMPLETED",
     "parsedContent": null,
-    "imageCheckEnabled": true,
+    "imageCheckEnabled": false,
     "errorMessage": null
   }
 ]
@@ -110,7 +117,25 @@ Authorization: Bearer <user-jwt-token>
 **Response Body (`JobMatchResponse`):**
 與 1.4 回應格式相同。
 
-### 1.6 取得歷史配對列表 (Get Match History)
+### 1.6 從列表隱藏職位 (Hide Job from List)
+**Endpoint:** `DELETE /api/v1/jobs/{jobId}`
+**描述:** 將職位從使用者可見的職位列表中隱藏，但保留資料庫記錄。後端會設定 `hidden_at`，而 `GET /api/v1/jobs` 只回傳 `hidden_at` 為 null 的職位。
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+```
+
+**Response Body:**
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": null
+}
+```
+
+### 1.7 取得歷史配對列表 (Get Match History)
 **Endpoint:** `GET /api/v1/jobs/match/history`
 **描述:** 取得當前登入使用者的歷史配對記錄列表。
 
@@ -133,7 +158,7 @@ Authorization: Bearer <user-jwt-token>
 
 ---
 
-### 1.7 職位智慧配對 (Match Jobs)
+### 1.8 職位智慧配對 (Match Jobs)
 **Endpoint:** `POST /api/v1/jobs/match`
 **描述:** 根據使用者履歷或查詢條件，呼叫 AI 服務取得配對的職位推薦列表。
 
@@ -146,7 +171,7 @@ Content-Type: application/json
 **Request Body (`JobMatchRequest`):**
 ```json
 {
-  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
   "query": "Java Spring Boot",
   "topK": 10,
   "filters": {
@@ -194,7 +219,7 @@ Content-Type: application/json
 
 ---
 
-### 1.8 向量搜尋職位 (Vector Search Jobs)
+### 1.9 向量搜尋職位 (Vector Search Jobs)
 **Endpoint:** `POST /api/v1/jobs/vector-search`
 **描述:** 對 `job_vectors` 資料表執行近似最近鄰（ANN）向量搜尋，基於提供的查詢向量或查詢文字返回語義最相似的職位。
 
@@ -271,7 +296,7 @@ Content-Type: application/json
 
 ---
 
-### 1.9 職位評分 (Score Job)
+### 1.10 職位評分 (Score Job)
 **Endpoint:** `POST /api/v1/jobs/{jobId}/score`
 **描述:** 針對單一職位與履歷進行匹配評分，呼叫 AI 服務的適配度端點。評分結果會儲存至歷史記錄，並非同步發送評分標籤給 AI 服務以供增量模型訓練。
 
@@ -308,7 +333,7 @@ Content-Type: application/json
 |------|------|------|
 | `suitable` | Boolean | 候選人是否整體適合該職位 |
 | `summary` | String | 1-2 句簡潔的評估說明 |
-| `finalScore` | Float | 最終融合得分（0.0-1.0）；70% LLM + 30% 資料集模型 |
+| `finalScore` | Float | 最終融合得分（0.0-1.0）。有自適應資料集模型時使用模型分數，否則回退到舊版 LLM/資料集加權分數。 |
 | `breakdown.skillScore` | Float | 技能匹配得分 |
 | `breakdown.experienceScore` | Float | 經驗匹配得分 |
 | `breakdown.overallScore` | Float | LLM 綜合得分 |
@@ -329,7 +354,8 @@ Content-Type: application/json
 {
   "jobId": "job-uuid-1234",
   "url": "https://www.linkedin.com/jobs/view/12345",
-  "imageCheckEnabled": true
+  "imageCheckEnabled": false,
+  "screenshotBase64": "base64-encoded-image-or-null"
 }
 ```
 
@@ -380,7 +406,11 @@ Content-Type: application/json
     "requirements": ["Python", "AWS"]
   },
   "suitable": true,
+  "llmOverallScore": 0.82,
   "finalScore": 0.85,
+  "semanticMatch": 0.78,
+  "datasetScore": 0.87,
+  "llmModel": "configured-llm-model",
   "timestamp": "2026-05-09T16:00:00Z"
 }
 ```
@@ -396,7 +426,11 @@ Content-Type: application/json
 | `job.description` | String | 職位描述 |
 | `job.requirements` | List<String> | 職位要求 |
 | `suitable` | Boolean | 履歷是否適合該職位 |
+| `llmOverallScore` | Float | 資料集模型調整前的 LLM 綜合分數 |
 | `finalScore` | Float | 最終融合得分（0.0-1.0） |
+| `semanticMatch` | Float | 可選的向量語義相似度分數 |
+| `datasetScore` | Float | 可選的自適應增量模型分數 |
+| `llmModel` | String | 可選的評分使用 LLM 模型名稱 |
 | `timestamp` | String | ISO 8601 時間戳 |
 
 > **注意：**

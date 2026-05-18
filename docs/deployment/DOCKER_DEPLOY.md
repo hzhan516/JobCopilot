@@ -92,10 +92,12 @@ docker-compose ps
 # or
 podman-compose ps
 
-# Health checks
-curl http://localhost:8080/api/actuator/health
-curl http://localhost:8000/health
+# Health checks through the public Nginx entry point
 curl http://localhost/health
+curl http://localhost/api/actuator/health
+
+# AI service is internal by default; check it from inside the container
+docker compose exec ai-service python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/health').read().decode())"
 ```
 
 ## Service Endpoints
@@ -114,9 +116,9 @@ In addition to resume/job parsing, embedding generation, ranking, and conversati
 
 1. **Job Dataset Sync**: When a job is successfully parsed, the backend writes it to the `job_dataset` table (training corpus).
 2. **Score Label Consumption**: When a user scores a job, the backend sends a score label message to the `ai.queue.model.incremental` queue.
-3. **Incremental Statistics**: The AI service maintains `incremental_stats.json` to accumulate positive/negative sample feature statistics.
-4. **Weight Recomputation**: When the sample threshold (`MIN_SAMPLES_TO_RECOMPUTE=10`) is reached, the service automatically recomputes feature weights and generates a new model version (`baseline_model_v{N}.json`).
-5. **Hot Reload**: The `suitability_service` loads the latest model through a memory cache without requiring a restart.
+3. **Incremental Statistics**: The AI service keeps positive/negative sample feature statistics in Redis hashes and uses Redis sets for cross-instance deduplication.
+4. **Weight Recomputation**: When the sample threshold (`MIN_SAMPLES_TO_RECOMPUTE=10`) is reached, the service recomputes adaptive ensemble weights and writes versioned model artifacts such as `baseline_model_v{N}.json` plus `baseline_model_latest.json` to the configured model object storage.
+5. **Hot Reload**: The `suitability_service` loads the latest model from object storage through an in-memory cache, invalidated by Redis Pub/Sub with periodic version checks as a fallback.
 
 Administrators can also manually trigger weight recomputation via `POST /api/v1/admin/recompute-model`.
 

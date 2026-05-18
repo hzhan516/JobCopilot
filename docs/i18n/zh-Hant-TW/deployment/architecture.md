@@ -13,7 +13,8 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
                             |
                             v
                     +---------------+
-                    |  Nginx : 80   |  <-- 唯一公網入口
+                    | Host:80 ->    |  <-- 唯一公網入口
+                    | Nginx : 8080  |
                     |  (frontend)   |
                     +---------------+
                             |
@@ -46,11 +47,11 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 
 | 網路 | 服務 | 外部暴露 | 用途 |
 |------|------|----------|------|
-| **公網（Public）** | `frontend`（Nginx） | 僅連接埠 `80` | 所有 HTTP/HTTPS 流量的單一入口 |
+| **公網（Public）** | `frontend`（Nginx）、`backend` | 主機 `${FRONTEND_HOST_PORT:-80}` 轉發到 `frontend:8080` | 所有 HTTP/HTTPS 流量的單一入口 |
 | **內網（Internal）** | `backend`、`ai-service`、`rabbitmq`、`redis` | 無（僅 Docker DNS） | 服務間透過容器名稱通信 |
-| **資料庫網（Database）** | `postgres` | 無（僅 Docker DNS） | 隔離的持續性資料儲存 |
+| **資料庫網（Database）** | `backend`、`postgres` | 無（僅 Docker DNS） | 隔離的持續性資料儲存 |
 
-> **開發範本說明**：當前 `docker-compose.yml` 範本為方便本機除錯，額外映射了主機連接埠（`8080`、`8000`、`5432`、`5672`、`15672`）。在**生產部署**中，僅應將 `frontend:80` 暴露給主機。
+> **開發範本說明**：目前 `docker-compose.yml` 預設只暴露前端。後端（`8080`）、AI 服務（`8000`）、PostgreSQL（`5432`）、RabbitMQ（`5672`）和 RabbitMQ Management（`15672`）的主機連接埠僅保留為已註解的開發除錯範例。在**生產部署**中，僅應暴露前端主機連接埠。
 
 ## 3. 服務清單
 
@@ -58,8 +59,8 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 
 | 屬性 | 值 |
 |------|-----|
-| **網路** | `resume-network`（公網 + 內網） |
-| **主機連接埠** | `80`（生產目標；範本使用 `8081:80` 用於開發） |
+| **網路** | `public-network` |
+| **主機連接埠** | `${FRONTEND_HOST_PORT:-80}:8080` |
 | **職責** | 靜態單頁應用程式託管與所有 API 流量的反向代理。 |
 | **安全說明** | Nginx 將 `/api/*` 代理至 `backend:8080`。環境變數 `VITE_API_BASE_URL` **必須為空或相對路徑**（例如 `/api`）。若設為絕對 URL（如 `http://backend:8080`），瀏覽器將直接連接後端，繞過 Nginx，破壞單入口安全模型。 |
 
@@ -67,8 +68,8 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 
 | 屬性 | 值 |
 |------|-----|
-| **網路** | `resume-network`（公網 + 內網 + 資料庫網） |
-| **主機連接埠** | 生產環境無（範本暴露 `8080:8080` 用於開發） |
+| **網路** | `public-network`、`internal-network`、`db-network` |
+| **主機連接埠** | 預設無；`8080:8080` 是已註解的開發除錯範例 |
 | **職責** | REST API 閘道、JWT 身分驗證、CAPTCHA 驗證、業務邏輯編排、RabbitMQ 生產者。 |
 | **安全說明** | 唯一跨越三層網路的服務。透過 Docker DNS 與 PostgreSQL（`postgres:5432`）和 RabbitMQ（`rabbitmq:5672`）通信。所有發往 `ai-service` 的出站 REST 請求均攜帶 `X-Internal-API-Key` 標頭。 |
 
@@ -76,17 +77,17 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 
 | 屬性 | 值 |
 |------|-----|
-| **網路** | `resume-network`（僅內網） |
-| **主機連接埠** | 生產環境無（範本暴露 `8000:8000` 用於開發） |
-| **職責** | 大型語言模型（LLM）推理、嵌入向量生成、履歷/職缺解析、職缺排序。 |
+| **網路** | `internal-network` |
+| **主機連接埠** | 預設無；`8000:8000` 是已註解的開發除錯範例 |
+| **職責** | 大型語言模型（LLM）推理、嵌入向量生成、履歷/職缺解析、職缺排序、適配度評分，以及自適應模型產物載入。 |
 | **安全說明** | REST 端點 `/api/v1/ai/embeddings` 受 `X-Internal-API-Key` 中介軟體保護。MQ 消費者監聽四個佇列：`ai.queue.job.parse`、`ai.queue.resume.parse`、`ai.queue.conversation`、`ai.queue.job.rank`。不存取資料庫。 |
 
 ### 3.4 PostgreSQL（含 pgvector）
 
 | 屬性 | 值 |
 |------|-----|
-| **網路** | `resume-network`（僅資料庫網） |
-| **主機連接埠** | 生產環境無（範本暴露 `5432:5432` 用於開發） |
+| **網路** | `db-network` |
+| **主機連接埠** | 預設無；`5432:5432` 是已註解的開發除錯範例 |
 | **職責** | 業務資料與嵌入向量的統一儲存。 |
 | **安全說明** | 使用 `pgvector` 擴充功能進行相似度檢索。僅能從 Docker 網路內的 `backend` 存取。即使具備網路隔離，強密碼 `POSTGRES_PASSWORD` 仍是縱深防禦的必備措施。 |
 
@@ -94,8 +95,8 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 
 | 屬性 | 值 |
 |------|-----|
-| **網路** | `resume-network`（僅內網） |
-| **主機連接埠** | 生產環境無（範本暴露 `5672:5672` 和 `15672:15672` 用於開發） |
+| **網路** | `internal-network` |
+| **主機連接埠** | 預設無；`5672:5672` 和 `15672:15672` 是已註解的開發除錯範例 |
 | **職責** | 後端與 AI 服務之間的非同步訊息代理（Outbox 模式，訊息佇列）。 |
 | **安全說明** | 透過環境變數覆蓋預設的 `guest/guest` 憑證。管理面板（`:15672`）絕不應暴露於公網；透過 SSH 隧道存取：`ssh -L 15672:localhost:15672 <host>`。訊息大小限制設為 10 MB（`max_message_size 10485760`），以容納向量和履歷摘要。 |
 
@@ -103,7 +104,7 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 
 | 屬性 | 值 |
 |------|-----|
-| **網路** | `resume-network`（僅內網） |
+| **網路** | `internal-network` |
 | **主機連接埠** | 生產環境無 |
 | **職責** | 分散式狀態儲存：CAPTCHA 挑戰/token、驗證碼、對話流橋接、增量模型統計、去重集合、分散式鎖（ShedLock）。 |
 | **安全說明** | 無外部存取。開發環境密碼認證可選（`REDIS_PASSWORD` 可為空），生產環境建議啟用。資料透過 `redis-data` 命名卷持久化。 |
@@ -114,7 +115,7 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 
 ### 第一層：網路隔離
 
-僅 `frontend` 服務（Nginx，連接埠 `80`）面向公網暴露。其他所有服務透過 Docker 內部 DNS（`<service-name>`）通信。對主機的外部連接埠掃描只能發現連接埠 `80`。
+僅 `frontend` 服務透過主機 `${FRONTEND_HOST_PORT:-80}` 面向公網暴露，並轉發到容器內 Nginx 的 `8080` 連接埠。其他所有服務透過 Docker 內部 DNS（`<service-name>`）通信。對主機的外部連接埠掃描應只能發現配置的前端主機連接埠。
 
 ### 第二層：應用層 API 金鑰
 
@@ -177,7 +178,7 @@ curl -f http://localhost/health
 
 ```yaml
 ports:
-  - "8081:80"   # 或主機上任意閒置連接埠
+  - "8081:8080"   # 或主機上任意閒置連接埠
 ```
 
 然後透過 `http://localhost:8081` 存取應用程式。

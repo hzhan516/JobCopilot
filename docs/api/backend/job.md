@@ -13,20 +13,27 @@ This module provides the capability for job seekers to submit desired job links,
 
 ### 1.1 Submit Job Link
 **Endpoint:** `POST /api/v1/jobs`
-**Description:** Receives a job URL submitted by the user and publishes an asynchronous parsing request to RabbitMQ. Returns the initial status of the task immediately.
+**Description:** Receives a job URL and an optional screenshot uploaded by the user, then publishes an asynchronous parsing request to RabbitMQ. Returns the initial status of the task immediately.
 
 **Request Header:**
 ```http
 Authorization: Bearer <user-jwt-token>
-Content-Type: application/json
+Content-Type: multipart/form-data
 ```
 
-**Request Body (`SubmitJobRequest`):**
-```json
-{
-  "url": "https://www.linkedin.com/jobs/view/12345",
-  "imageCheckEnabled": true
-}
+**Form Fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `url` | String | Yes | Job posting URL. |
+| `screenshot` | File | No | Optional job posting screenshot. The backend forwards it to the AI service as Base64 fallback input. |
+
+**Request Example:**
+```bash
+curl -X POST "http://localhost/api/v1/jobs" \
+  -H "Authorization: Bearer <user-jwt-token>" \
+  -F "url=https://www.linkedin.com/jobs/view/12345" \
+  -F "screenshot=@job-posting.png"
 ```
 
 **Response Body (`JobResponse`):**
@@ -37,7 +44,7 @@ Content-Type: application/json
   "originalUrl": "https://www.linkedin.com/jobs/view/12345",
   "status": "PENDING",
   "parsedContent": null,
-  "imageCheckEnabled": true,
+  "imageCheckEnabled": false,
   "errorMessage": null
 }
 ```
@@ -65,7 +72,7 @@ Authorization: Bearer <user-jwt-token>
     "description": "Full job description...",
     "requirements": ["Java", "Spring Boot", "AWS"]
   },
-  "imageCheckEnabled": true,
+  "imageCheckEnabled": false,
   "errorMessage": null
 }
 ```
@@ -88,7 +95,7 @@ Authorization: Bearer <user-jwt-token>
     "originalUrl": "https://www.linkedin.com/jobs/view/12345",
     "status": "COMPLETED",
     "parsedContent": null,
-    "imageCheckEnabled": true,
+    "imageCheckEnabled": false,
     "errorMessage": null
   }
 ]
@@ -164,7 +171,7 @@ Content-Type: application/json
 **Request Body (`JobMatchRequest`):**
 ```json
 {
-  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
   "query": "Java Spring Boot",
   "topK": 10,
   "filters": {
@@ -226,7 +233,8 @@ To comply with the system architecture, the Java backend no longer directly call
 {
   "jobId": "job-uuid-1234",
   "url": "https://www.linkedin.com/jobs/view/12345",
-  "imageCheckEnabled": true
+  "imageCheckEnabled": false,
+  "screenshotBase64": "base64-encoded-image-or-null"
 }
 ```
 
@@ -366,7 +374,7 @@ Content-Type: application/json
 |-------|------|-------------|
 | `suitable` | Boolean | Whether the candidate is generally a good fit |
 | `summary` | String | 1-2 concise sentences explaining the decision |
-| `finalScore` | Float | Final fused score (0.0-1.0); 70% LLM + 30% dataset model |
+| `finalScore` | Float | Final fused score (0.0-1.0). Uses the adaptive dataset model when available; otherwise falls back to the legacy LLM/dataset weighted score. |
 | `breakdown.skillScore` | Float | Skill match score |
 | `breakdown.experienceScore` | Float | Experience match score |
 | `breakdown.overallScore` | Float | LLM overall score |
@@ -387,7 +395,8 @@ To comply with the system architecture, the Java backend no longer directly call
 {
   "jobId": "job-uuid-1234",
   "url": "https://www.linkedin.com/jobs/view/12345",
-  "imageCheckEnabled": true
+  "imageCheckEnabled": false,
+  "screenshotBase64": "base64-encoded-image-or-null"
 }
 ```
 
@@ -442,7 +451,11 @@ To comply with the system architecture, the Java backend no longer directly call
     "requirements": ["Python", "AWS"]
   },
   "suitable": true,
+  "llmOverallScore": 0.82,
   "finalScore": 0.85,
+  "semanticMatch": 0.78,
+  "datasetScore": 0.87,
+  "llmModel": "configured-llm-model",
   "timestamp": "2026-05-09T16:00:00Z"
 }
 ```
@@ -458,5 +471,9 @@ To comply with the system architecture, the Java backend no longer directly call
 | `job.description` | String | Job description |
 | `job.requirements` | List<String> | Job requirements |
 | `suitable` | Boolean | Whether the resume is suitable for the job |
+| `llmOverallScore` | Float | LLM overall score before dataset model adjustment |
 | `finalScore` | Float | Final fused score (0.0-1.0) |
+| `semanticMatch` | Float | Optional semantic similarity score from vector matching |
+| `datasetScore` | Float | Optional score from the adaptive incremental model |
+| `llmModel` | String | Optional configured LLM model name used for the score |
 | `timestamp` | String | ISO 8601 timestamp |

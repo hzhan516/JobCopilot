@@ -13,7 +13,8 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
                             |
                             v
                     +---------------+
-                    |  Nginx : 80   |  <-- Only public entry point
+                    | Host:80 ->    |  <-- Only public entry point
+                    | Nginx : 8080  |
                     |  (frontend)   |
                     +---------------+
                             |
@@ -46,11 +47,11 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
 
 | Network | Services | External Exposure | Purpose |
 |---------|----------|-------------------|---------|
-| **Public** | `frontend` (Nginx) | Port `80` only | Single entry point for all HTTP/HTTPS traffic |
+| **Public** | `frontend` (Nginx), `backend` | Host `${FRONTEND_HOST_PORT:-80}` to `frontend:8080` | Single entry point for all HTTP/HTTPS traffic |
 | **Internal** | `backend`, `ai-service`, `rabbitmq`, `redis` | None (Docker DNS only) | Inter-service communication via container names |
-| **Database** | `postgres` | None (Docker DNS only) | Isolated persistent data storage |
+| **Database** | `backend`, `postgres` | None (Docker DNS only) | Isolated persistent data storage |
 
-> **Note on Development Template**: The current `docker-compose.yml` template maps additional host ports (`8080`, `8000`, `5432`, `5672`, `15672`) for local debugging convenience. In a **production deployment**, only `frontend:80` should be exposed to the host.
+> **Note on Development Template**: The current `docker-compose.yml` exposes only the frontend by default. Direct host ports for backend (`8080`), AI service (`8000`), PostgreSQL (`5432`), RabbitMQ (`5672`), and RabbitMQ Management (`15672`) are kept as commented development-only examples. In a **production deployment**, only the frontend host port should be exposed.
 
 ## 3. Service Inventory
 
@@ -58,8 +59,8 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
 
 | Attribute | Value |
 |-----------|-------|
-| **Networks** | `resume-network` (public + internal) |
-| **Host ports** | `80` (production target; template uses `8081:80` for dev) |
+| **Networks** | `public-network` |
+| **Host ports** | `${FRONTEND_HOST_PORT:-80}:8080` |
 | **Role** | Static SPA host and reverse proxy for all API traffic. |
 | **Security notes** | Nginx proxies `/api/*` to `backend:8080`. The `VITE_API_BASE_URL` environment variable **must be empty or a relative path** (e.g. `/api`). If set to an absolute URL (e.g. `http://backend:8080`), the browser will attempt direct connections to the backend, bypassing Nginx and breaking the single-entry-point security model. |
 
@@ -67,8 +68,8 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
 
 | Attribute | Value |
 |-----------|-------|
-| **Networks** | `resume-network` (public + internal + db) |
-| **Host ports** | None in production (template exposes `8080:8080` for dev) |
+| **Networks** | `public-network`, `internal-network`, `db-network` |
+| **Host ports** | None by default; `8080:8080` is a commented dev-only example |
 | **Role** | REST API gateway, JWT authentication, CAPTCHA verification, business logic orchestration, and RabbitMQ producer. |
 | **Security notes** | The only service that spans all three network tiers. Communicates with PostgreSQL via Docker DNS (`postgres:5432`) and with RabbitMQ (`rabbitmq:5672`). All outbound REST calls to `ai-service` include the `X-Internal-API-Key` header. |
 
@@ -76,17 +77,17 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
 
 | Attribute | Value |
 |-----------|-------|
-| **Networks** | `resume-network` (internal only) |
-| **Host ports** | None in production (template exposes `8000:8000` for dev) |
-| **Role** | LLM inference, embedding generation, resume/job parsing, and job ranking. |
+| **Networks** | `internal-network` |
+| **Host ports** | None by default; `8000:8000` is a commented dev-only example |
+| **Role** | LLM inference, embedding generation, resume/job parsing, job ranking, suitability scoring, and adaptive model artifact loading. |
 | **Security notes** | REST endpoint `/api/v1/ai/embeddings` is protected by `X-Internal-API-Key` middleware. MQ consumers listen on four queues: `ai.queue.job.parse`, `ai.queue.resume.parse`, `ai.queue.conversation`, and `ai.queue.job.rank`. No database access. |
 
 ### 3.4 PostgreSQL (with pgvector)
 
 | Attribute | Value |
 |-----------|-------|
-| **Networks** | `resume-network` (database tier only) |
-| **Host ports** | None in production (template exposes `5432:5432` for dev) |
+| **Networks** | `db-network` |
+| **Host ports** | None by default; `5432:5432` is a commented dev-only example |
 | **Role** | Unified storage for business data and vector embeddings. |
 | **Security notes** | Uses the `pgvector` extension for similarity search. Accessible only from `backend` within the Docker network. Even with network isolation, a strong `POSTGRES_PASSWORD` is mandatory as a defense-in-depth measure. |
 
@@ -94,8 +95,8 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
 
 | Attribute | Value |
 |-----------|-------|
-| **Networks** | `resume-network` (internal only) |
-| **Host ports** | None in production (template exposes `5672:5672` and `15672:15672` for dev) |
+| **Networks** | `internal-network` |
+| **Host ports** | None by default; `5672:5672` and `15672:15672` are commented dev-only examples |
 | **Role** | Async message broker between backend and AI service (Outbox pattern). |
 | **Security notes** | Override the default `guest/guest` credentials via `RABBITMQ_USERNAME` and `RABBITMQ_PASSWORD`. The Management UI (`:15672`) should never be exposed to the public internet; access it via SSH tunnel: `ssh -L 15672:localhost:15672 <host>`. Message size limit is set to 10 MB (`max_message_size 10485760`) to accommodate vectors and resume summaries. |
 
@@ -103,7 +104,7 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
 
 | Attribute | Value |
 |-----------|-------|
-| **Networks** | `resume-network` (internal only) |
+| **Networks** | `internal-network` |
 | **Host ports** | None in production |
 | **Role** | Distributed state storage: CAPTCHA challenges/tokens, verification codes, conversation streaming bridges, incremental model statistics, deduplication sets, and distributed locks (ShedLock). |
 | **Security notes** | No external access. Password auth is optional in dev (`REDIS_PASSWORD` may be empty) but recommended in production. Data persists via the `redis-data` named volume. |
@@ -114,7 +115,7 @@ The deployment implements five independent security layers. Breaching one does n
 
 ### Layer 1: Network Isolation
 
-Only the `frontend` service (Nginx on port `80`) is exposed to the internet. All other services communicate through Docker's internal DNS (`<service-name>`). An external port scan of the host will only discover port `80`.
+Only the `frontend` service is exposed to the internet through `${FRONTEND_HOST_PORT:-80}` on the host, forwarding to Nginx on container port `8080`. All other services communicate through Docker's internal DNS (`<service-name>`). An external port scan of the host should only discover the configured frontend host port.
 
 ### Layer 2: Application-Layer API Key
 
@@ -177,7 +178,7 @@ Expected output from step 8: `HTTP 200 OK` with a short health status body.
 
 ```yaml
 ports:
-  - "8081:80"   # or any free port on your host
+  - "8081:8080"   # or any free port on your host
 ```
 
 Then access the app at `http://localhost:8081`.

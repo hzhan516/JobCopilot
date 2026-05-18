@@ -155,7 +155,7 @@ curl -X POST http://localhost:8080/api/v1/resumes \
 **Important Notes**:
 - The `versionId` parameter is the `originalVersionId` returned by the upload endpoint
 - Do not use `groupId` as the download parameter
-- The current version only supports returning the original file; format conversion will be implemented in a future version
+- The backend supports export conversion through the configured document converters. Supported target formats are `pdf`, `docx`, `html`, `md`, and `txt`.
 
 #### Request Example (cURL)
 
@@ -165,7 +165,7 @@ curl -X GET http://localhost:8080/api/v1/resumes/550e8400-e29b-41d4-a716-4466554
   -H "Authorization: Bearer <your_access_token>" \
   --output resume.pdf
 
-# Specify export format (currently returns original file, filename will be modified)
+# Specify export format
 curl -X GET "http://localhost:8080/api/v1/resumes/550e8400-e29b-41d4-a716-446655440001/download?format=pdf" \
   -H "Authorization: Bearer <your_access_token>" \
   --output resume.pdf

@@ -92,10 +92,12 @@ docker-compose ps
 # 或
 podman-compose ps
 
-# 健康检查
-curl http://localhost:8080/api/actuator/health
-curl http://localhost:8000/health
+# 通过公开 Nginx 入口进行健康检查
 curl http://localhost/health
+curl http://localhost/api/actuator/health
+
+# AI 服务默认仅在 Docker 内网暴露；从容器内部检查
+docker compose exec ai-service python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/health').read().decode())"
 ```
 
 ## 服务访问地址
@@ -113,9 +115,9 @@ curl http://localhost/health
 
 1. **职位数据集同步**：职位成功解析后，后端将其写入 `job_dataset` 表（训练语料库）。
 2. **评分标签消费**：用户对职位进行评分时，后端将评分标签消息发送到 `ai.queue.model.incremental` 队列。
-3. **增量统计**：AI 服务维护 `incremental_stats.json`，累积正/负样本的特征统计量。
-4. **权重重新计算**：当样本达到阈值（`MIN_SAMPLES_TO_RECOMPUTE=10`）时，服务自动重新计算特征权重并生成新的模型版本（`baseline_model_v{N}.json`）。
-5. **热加载**：`suitability_service` 通过内存缓存加载最新模型，无需重启服务。
+3. **增量统计**：AI 服务将正/负样本的特征统计量维护在 Redis Hash 中，并使用 Redis Set 做跨实例去重。
+4. **权重重新计算**：当样本达到阈值（`MIN_SAMPLES_TO_RECOMPUTE=10`）时，服务重新计算自适应集成权重，并将 `baseline_model_v{N}.json` 和 `baseline_model_latest.json` 等版本化模型 artifact 写入配置的模型对象存储。
+5. **热加载**：`suitability_service` 通过内存缓存从对象存储加载最新模型，并由 Redis Pub/Sub 触发失效，另有定期版本检查作为兜底。
 
 管理员也可以通过 `POST /api/v1/admin/recompute-model` 手动触发权重重新计算。
 

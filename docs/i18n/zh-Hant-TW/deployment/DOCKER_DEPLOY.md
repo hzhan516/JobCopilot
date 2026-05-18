@@ -93,10 +93,12 @@ docker-compose ps
 # 或
 podman-compose ps
 
-# 健康檢查
-curl http://localhost:8080/api/actuator/health
-curl http://localhost:8000/health
+# 透過公開 Nginx 入口進行健康檢查
 curl http://localhost/health
+curl http://localhost/api/actuator/health
+
+# AI 服務預設僅在 Docker 內網暴露；從容器內部檢查
+docker compose exec ai-service python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/health').read().decode())"
 ```
 
 ## 服務存取位址
@@ -114,9 +116,9 @@ curl http://localhost/health
 
 1. **職位資料集同步**：當職位成功剖析後，後端將其寫入 `job_dataset` 資料表（訓練語料庫）。
 2. **評分標籤消費**：當用戶對職位進行評分時，後端將評分標籤訊息發送至 `ai.queue.model.incremental` 佇列。
-3. **增量統計**：AI 服務維護 `incremental_stats.json` 以累積正/負樣本的特徵統計。
-4. **權重重新計算**：當樣本閾值（`MIN_SAMPLES_TO_RECOMPUTE=10`）達成時，服務自動重新計算特徵權重並生成新版本模型（`baseline_model_v{N}.json`）。
-5. **熱重載**：`suitability_service` 透過記憶體快取載入最新模型，無需重啟服務。
+3. **增量統計**：AI 服務將正/負樣本的特徵統計維護在 Redis Hash 中，並使用 Redis Set 做跨實例去重。
+4. **權重重新計算**：當樣本閾值（`MIN_SAMPLES_TO_RECOMPUTE=10`）達成時，服務重新計算自適應集成權重，並將 `baseline_model_v{N}.json` 和 `baseline_model_latest.json` 等版本化模型 artifact 寫入設定的模型物件儲存。
+5. **熱重載**：`suitability_service` 透過記憶體快取從物件儲存載入最新模型，並由 Redis Pub/Sub 觸發失效，另有定期版本檢查作為兜底。
 
 管理員亦可透過 `POST /api/v1/admin/recompute-model` 手動觸發權重重新計算。
 

@@ -53,11 +53,11 @@
 
 | 服务   | 技术栈                       | 端口           | 说明            |
 |------|---------------------------|--------------|---------------|
-| 前端   | React 18 + Vite           | 80           | Nginx托管的Web界面 |
-| 后端   | Java 21 + Spring Boot 3.5 | 8080         | REST API、业务逻辑及滑块 CAPTCHA 人机验证 |
-| AI服务 | Python 3 + FastAPI        | 8000         | AI处理、嵌入生成、排序、对话及增量模型训练 |
-| 数据库  | PostgreSQL 15 + pgvector  | 5432         | 业务数据和向量存储     |
-| 消息队列 | RabbitMQ 3                | 5672 / 15672 | 异步消息处理        |
+| 前端   | React 19 + Vite 7         | `${FRONTEND_HOST_PORT:-80}` -> 8080 | Nginx 托管的 Web 界面与反向代理 |
+| 后端   | Java 21 + Spring Boot 3.5 | 8080 internal | REST API、业务逻辑及滑块 CAPTCHA 人机验证 |
+| AI服务 | Python 3 + FastAPI + LiteLLM | 8000 internal | AI处理、嵌入生成、排序、对话及增量模型训练 |
+| 数据库  | PostgreSQL 15 + pgvector  | 5432 internal | 业务数据和向量存储     |
+| 消息队列 | RabbitMQ 3                | 5672 internal | 异步消息处理        |
 | 缓存     | Redis 7                   | 6379         | 分布式状态、锁、Pub/Sub |
 
 ## 项目结构
@@ -301,9 +301,9 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ### 前端
 
-- React 18.2
-- Vite 5.0
-- React Router 6
+- React 19.2
+- Vite 7
+- React Router 7
 - Axios
 
 ### 后端
@@ -317,9 +317,10 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ### AI服务
 
 - Python 3.11
-- FastAPI
-- OpenAI API
-- Uvicorn
+- FastAPI 0.115
+- LiteLLM 1.61.11 兼容的文本、视觉与嵌入模型
+- 默认通过 Google AI Studio 使用 Gemini；Vertex AI 为可选项
+- Uvicorn 0.32
 
 ### 运维
 
