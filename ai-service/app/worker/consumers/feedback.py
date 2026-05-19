@@ -4,11 +4,10 @@ import asyncio
 from app.infrastructure.redis.client import RedisBuffer
 
 logger = logging.getLogger(__name__)
-redis_buffer = RedisBuffer()
 
-def handle_feedback_message(ch, method, properties, body):
+def handle_feedback_message(ch, method, properties, body: bytes):
     try:
-        data = json.loads(body)
+        data = json.loads(body.decode("utf-8"))
         logger.info(f"Received feedback: {data.get('jobId')} - {data.get('feedbackType')}")
         
         label = 0
@@ -32,8 +31,9 @@ def handle_feedback_message(ch, method, properties, body):
             "features": features
         }
         
-        # redis_buffer.append is async, so run it
+        redis_buffer = RedisBuffer()
         asyncio.run(redis_buffer.append(sample))
+        
         ch.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as e:
         logger.error(f"Error handling feedback message: {e}")

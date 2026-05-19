@@ -1,114 +1,13 @@
 import json
 import logging
 import re
-import threading
-import time
 
-from app.infrastructure.object_storage import MODEL_BUCKET, get_object_storage
-from app.infrastructure.redis_client import get_redis
 from app.schemas import SuitabilityBreakdown, SuitabilityRequest, SuitabilityResponse
 from app.config import LLM_TEXT_MODEL
 from app.services.llm_client import generate_json_from_text_prompt
 
 
 logger = logging.getLogger(__name__)
-
-OBJECT_STORAGE_BUCKET = MODEL_BUCKET
-LATEST_MODEL_KEY = "baseline_model_latest.json"
-REDIS_MODEL_VERSION_KEY = "ra:ai:incremental:model_version"
-
-
-class ModelCache:
-    """线程安全的分布式模型内存缓存。
-
-    热路径（get）纯内存读取，零网络 I/O。
-    版本失效通过 Redis Pub/Sub 即时通知 + 60 秒兜底轮询实现。
-    模型数据从对象存储拉取，支持多实例一致性。
-    """
-
-    def __init__(self):
-        self._artifact: dict | None = None
-        self._version: int = 0
-        self._lock = threading.RLock()
-        self._redis = get_redis()
-        self._storage = get_object_storage()
-        self._pubsub = None
-
-        # 订阅模型失效频道（在后台线程中延迟建立，避免导入时因 Redis 不可用而崩溃）
-        threading.Thread(target=self._listen_invalidation, daemon=True).start()
-
-        # 兜底：每 60 秒主动检查 Redis 版本号
-        threading.Thread(target=self._periodic_refresh, daemon=True).start()
-
-    def _listen_invalidation(self):
-        while True:
-            try:
-                pubsub = self._redis.pubsub()
-                pubsub.subscribe("ra:ai:model_invalidate")
-                self._pubsub = pubsub
-                for message in pubsub.listen():
-                    if message["type"] == "message":
-                        try:
-                            new_version = int(message["data"])
-                            with self._lock:
-                                if new_version > self._version:
-                                    self._version = 0
-                                    logger.info("Model invalidation received: version=%d", new_version)
-                        except (ValueError, TypeError):
-                            pass
-            except Exception:
-                logger.exception("Pub/Sub listener encountered error, retrying in 5s")
-            time.sleep(5)
-
-    def _periodic_refresh(self):
-        while True:
-            time.sleep(60)
-            try:
-                redis_version = int(self._redis.get(REDIS_MODEL_VERSION_KEY) or 0)
-                with self._lock:
-                    if redis_version > self._version:
-                        self._version = 0
-                        logger.info("Periodic refresh triggered: new_version=%d", redis_version)
-            except Exception:
-                logger.exception("Periodic model version check failed")
-
-    def get(self) -> dict | None:
-        """热路径：纯内存读取，零网络 I/O。"""
-        with self._lock:
-            if self._version == 0:
-                self._reload()
-            return self._artifact
-
-    def _reload(self):
-        try:
-            redis_version = int(self._redis.get(REDIS_MODEL_VERSION_KEY) or 0)
-            data = self._storage.get_object(OBJECT_STORAGE_BUCKET, LATEST_MODEL_KEY)
-            if data is None:
-                logger.warning("Model object not found in storage: %s/%s", OBJECT_STORAGE_BUCKET, LATEST_MODEL_KEY)
-                # 保留旧缓存，不降级到 None
-                if self._artifact is not None:
-                    self._version = redis_version if redis_version else 1
-                return
-            payload = json.loads(data)
-            self._artifact = payload.get("model_artifact")
-            self._version = redis_version if redis_version else 1
-            logger.info("Model reloaded from object storage: version=%d", self._version)
-        except Exception:
-            logger.exception("Failed to load model from object storage")
-            # 拉取失败时保留旧缓存
-
-    def invalidate(self):
-        with self._lock:
-            self._version = 0
-
-
-_model_cache = ModelCache()
-
-
-def invalidate_model_cache():
-    """使模型缓存失效，供 incremental_model_service 在权重重算后调用。"""
-    _model_cache.invalidate()
-
 
 def _normalize_items(items: list[str]) -> set[str]:
     normalized: set[str] = set()
@@ -138,99 +37,6 @@ def _calculate_experience_score(experience_items: list[dict]) -> float:
 
     return 1.0
 
-
-def _load_dataset_model_artifact() -> dict | None:
-    return _model_cache.get()
-
-
-def _tokenize_text(text: str) -> set[str]:
-    tokens = re.findall(r"[a-zA-Z]+", text.lower())
-    return {token for token in tokens if len(token) >= 3}
-
-
-def _build_experience_text(experience_items: list[dict]) -> str:
-    parts: list[str] = []
-
-    for item in experience_items:
-        if not isinstance(item, dict):
-            continue
-
-        for key in ("title", "summary", "company"):
-            value = item.get(key)
-            if value:
-                parts.append(str(value))
-
-    return " ".join(parts)
-
-
-def _select_model_profile(artifact: dict, llm_model: str) -> tuple[dict, bool]:
-    if artifact.get("model_type") != "adaptive_weighted_ensemble":
-        return artifact, False
-
-    min_samples = int(artifact.get("min_model_specific_samples", 10))
-    by_model = artifact.get("by_llm_model") or {}
-    model_profile = by_model.get(llm_model)
-    if model_profile and int(model_profile.get("sample_count", 0)) >= min_samples:
-        return model_profile, True
-
-    return artifact.get("default", {}), True
-
-
-def _calculate_dataset_score(
-    request: SuitabilityRequest,
-    llm_overall_score: float,
-    llm_model: str,
-) -> tuple[float | None, bool]:
-    """Compute a data-driven suitability score if an incremental model artifact exists.
-    数据集模型评分：加载增量训练产出的自适应权重模型，
-    对 LLM 分数、语义相似度和文本重叠特征做归一化加权求和。"""
-    artifact = _load_dataset_model_artifact()
-    if not artifact:
-        return None, False
-
-    resume_skills = _normalize_items(request.resume.skills)
-    job_requirements = _normalize_items(request.job.requirements)
-
-    if job_requirements:
-        skill_overlap_ratio = len(resume_skills & job_requirements) / len(job_requirements)
-    else:
-        skill_overlap_ratio = 0.0
-
-    title_tokens = _tokenize_text(request.job.title)
-    title_keyword_overlap = len(resume_skills & title_tokens)
-
-    resume_experience_text = _build_experience_text(request.resume.experience)
-    job_text = " ".join([
-        request.job.title,
-        request.job.description,
-    ])
-
-    experience_description_overlap = len(
-        _tokenize_text(resume_experience_text) & _tokenize_text(job_text)
-    )
-
-    raw_features = {
-        "llm_overall_score": _clamp_score(llm_overall_score),
-        "semantic_match": _clamp_score(request.semantic_match or 0.0),
-        "skill_overlap_ratio": skill_overlap_ratio,
-        "title_keyword_overlap": float(title_keyword_overlap),
-        "experience_description_overlap": float(experience_description_overlap),
-    }
-
-    profile, adaptive = _select_model_profile(artifact, llm_model)
-    feature_weights = profile.get("feature_weights", {})
-    normalization = profile.get("normalization", {})
-    bias = float(profile.get("bias", 0.0))
-
-    score = bias
-
-    for key, value in raw_features.items():
-        weight = float(feature_weights.get(key, 0.0))
-        normalizer = float(normalization.get(key, 1.0)) or 1.0
-        normalized_value = min(value / normalizer, 1.0)
-        score += weight * normalized_value
-
-    return round(_clamp_score(score), 2), adaptive
 
 
 def evaluate_suitability_baseline(request: SuitabilityRequest) -> SuitabilityResponse:
@@ -346,26 +152,8 @@ def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> Suitability
             baseline_response.final_score,
         )
 
-        dataset_score, uses_adaptive_ensemble = _calculate_dataset_score(
-            request,
-            overall_score,
-            LLM_TEXT_MODEL,
-        )
-        final_score = round(
-            overall_score if dataset_score is None
-            else dataset_score if uses_adaptive_ensemble
-            else ((overall_score * 0.7) + (dataset_score * 0.3)),
-            2,
-        )
+        final_score = round(overall_score, 2)
         suitable = final_score >= 0.6
-
-        if vertex_suitable != suitable:
-            logger.info(
-                "Suitability decision adjusted by final score: vertex=%s, final=%s",
-                vertex_suitable,
-                suitable,
-            )
-
 
         return SuitabilityResponse(
             suitable=suitable,
@@ -376,7 +164,7 @@ def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> Suitability
                 overallScore=round(overall_score, 2),
             ),
             vertexScore=round(overall_score, 2),
-            datasetScore=dataset_score,
+            datasetScore=None,
             finalScore=final_score,
             llmModel=LLM_TEXT_MODEL,
         )

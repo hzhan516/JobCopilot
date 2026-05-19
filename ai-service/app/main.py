@@ -5,7 +5,6 @@ Resume Assistant - Python AI service entry point.
 
 import logging
 import os
-import socket
 import threading
 
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
@@ -13,7 +12,6 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
 from app.config import LOG_LEVEL, LLM_EMBEDDING_MODEL, LLM_EMBEDDING_MODEL_DIMENSION
-from app.infrastructure.redis_client import get_redis
 from app.mq.consumer import create_connection, setup_all_queues, start_all_consumers
 
 from app.schemas import (
@@ -28,8 +26,6 @@ from app.schemas import (
 from app.services.job_matching_service import find_job_matches
 from app.services.suitability_service import evaluate_suitability_with_vertex
 from app.services.vector_service import generate_embedding
-from app.services.backend_client import sync_existing_job_embeddings
-
 
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
@@ -42,42 +38,12 @@ logger = logging.getLogger(__name__)
 _mq_connection = None
 _mq_channel = None
 
-
-def _start_sync_thread() -> None:
-    """Launch a background thread to sync offline job embeddings into the backend vector store on startup.
-    启动后台线程，在应用启动时将离线职位 embedding 同步到后端向量库，避免冷启动时向量检索为空。
-    使用 Redis 分布式锁确保多实例下仅一个实例执行同步。"""
-    def _run_sync() -> None:
-        redis = get_redis()
-        lock_key = "ra:ai:startup_sync_lock"
-        lock_value = f"{os.getpid()}@{socket.gethostname()}"
-        acquired = redis.set(lock_key, lock_value, nx=True, ex=600)
-        if not acquired:
-            logger.info("Startup sync already running on another instance, skipping.")
-            return
-        try:
-            sync_existing_job_embeddings()
-        except Exception:
-            logger.exception("Background embedding sync failed")
-        finally:
-            lua = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end"
-            try:
-                redis.eval(lua, 1, lock_key, lock_value)
-            except Exception:
-                logger.exception("Failed to release startup sync lock")
-
-    sync_thread = threading.Thread(target=_run_sync, name="embedding-sync-thread", daemon=True)
-    sync_thread.start()
-    logger.info("Embedding sync background thread started.")
-
-
 import asyncio
 from app.api.model_manager import model_manager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _start_mq_consumer_once()
-    _start_sync_thread()
     await model_manager.load_latest()
     reload_task = asyncio.create_task(model_manager.watch_for_reloads())
     yield

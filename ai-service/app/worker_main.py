@@ -10,18 +10,30 @@ from app.config import FEEDBACK_REQUEST_QUEUE
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+import time
+
 def start_mq_consumer():
-    connection = create_worker_connection()
-    channel = connection.channel()
-    setup_feedback_queue(channel)
-    channel.basic_qos(prefetch_count=1)
-    channel.basic_consume(
-        queue=FEEDBACK_REQUEST_QUEUE,
-        on_message_callback=handle_feedback_message,
-        auto_ack=False,
-    )
-    logger.info("Starting RabbitMQ consumer for ai.queue.feedback...")
-    channel.start_consuming()
+    retry_delay = 5
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            logger.info("Starting RabbitMQ consumers for Worker (Attempt %d)...", attempt)
+            connection = create_worker_connection()
+            channel = connection.channel()
+            setup_feedback_queue(channel)
+            channel.basic_qos(prefetch_count=1)
+            channel.basic_consume(
+                queue=FEEDBACK_REQUEST_QUEUE,
+                on_message_callback=handle_feedback_message,
+                auto_ack=False,
+            )
+            logger.info("RabbitMQ consumer for ai.queue.feedback is ready.")
+            channel.start_consuming()
+            break
+        except Exception as e:
+            logger.warning("RabbitMQ worker consumer startup failed (Attempt %d): %s. Retrying in %d seconds...", attempt, e, retry_delay)
+            time.sleep(retry_delay)
 
 async def run_worker():
     logger.info("Starting AI Worker...")

@@ -1,17 +1,16 @@
 import json
 import logging
-from pathlib import Path
 
 import requests
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.config import (
-    BACKEND_BATCH_SIZE,
-    BACKEND_BATCH_UPSERT_TIMEOUT,
+    BACKEND_QUERY_TIMEOUT,
     BACKEND_SERVICE_URL,
+    INTERNAL_API_KEY,
     LLM_EMBEDDING_MODEL,
+    BACKEND_BATCH_UPSERT_TIMEOUT,
 )
-from app.services.vector_service import generate_embedding
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +34,11 @@ def batch_upsert_job_vectors(items: list[dict]) -> dict:
 
     payload = {"items": items}
     try:
+        headers = {"X-Internal-API-Key": INTERNAL_API_KEY} if INTERNAL_API_KEY else {}
         response = requests.post(
             JOB_VECTOR_BATCH_URL,
             json=payload,
+            headers=headers,
             timeout=BACKEND_BATCH_UPSERT_TIMEOUT,
         )
         response.raise_for_status()
@@ -65,9 +66,11 @@ def batch_upsert_resume_vectors(items: list[dict]) -> dict:
 
     payload = {"items": items}
     try:
+        headers = {"X-Internal-API-Key": INTERNAL_API_KEY} if INTERNAL_API_KEY else {}
         response = requests.post(
             RESUME_VECTOR_BATCH_URL,
             json=payload,
+            headers=headers,
             timeout=BACKEND_BATCH_UPSERT_TIMEOUT,
         )
         response.raise_for_status()
@@ -118,86 +121,3 @@ def _build_resume_vector_item(
     }
 
 
-def sync_existing_job_embeddings(
-    data_file: Path | str | None = None,
-    batch_size: int = BACKEND_BATCH_SIZE,
-) -> dict:
-    """Startup sync: read offline data-pipeline output, generate embeddings, and batch-write to backend.
-    启动时同步离线数据：读取数据管道产出的归一化职位数据，生成 embedding 后批量写入后端，
-    使向量库在系统启动后即具备可检索数据，避免冷启动空窗期。"""
-    if data_file is None:
-        project_root = Path(__file__).resolve().parent.parent.parent
-        data_file = project_root / "data_pipeline" / "output" / "normalized_jobs_sample.jsonl"
-    else:
-        data_file = Path(data_file)
-
-    if not data_file.is_file():
-        logger.info("Data file not found: %s, skipping startup sync.", data_file)
-        return {"total": 0, "success": 0, "failed": 0, "skipped": 0}
-
-    total = 0
-    success = 0
-    failed = 0
-    skipped = 0
-    batch = []
-
-    logger.info("Starting startup sync from %s", data_file)
-
-    with data_file.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                record = json.loads(line)
-            except json.JSONDecodeError:
-                logger.warning("Invalid JSON line, skipping")
-                continue
-
-            job_id = record.get("job_id")
-            if not job_id:
-                continue
-
-            text = record.get("description") or record.get("title") or ""
-            if not text:
-                logger.warning("No text for job_id %s, skipping embedding generation", job_id)
-                continue
-
-            try:
-                embedding = generate_embedding(text)
-            except Exception:
-                logger.exception("Embedding generation failed for job_id=%s", job_id)
-                failed += 1
-                continue
-
-            item = _build_job_vector_item(
-                reference_id=job_id,
-                embedding=embedding,
-                title=record.get("title", ""),
-                description=record.get("description", ""),
-                requirements=record.get("requirements", []),
-                raw_content=record.get("description", ""),
-                source_file=str(data_file),
-                model_version=LLM_EMBEDDING_MODEL,
-            )
-            batch.append(item)
-            total += 1
-
-            if len(batch) >= batch_size:
-                result = batch_upsert_job_vectors(batch)
-                success += result.get("success", 0)
-                failed += result.get("failed", 0)
-                skipped += result.get("skipped", 0)
-                batch.clear()
-
-    if batch:
-        result = batch_upsert_job_vectors(batch)
-        success += result.get("success", 0)
-        failed += result.get("failed", 0)
-        skipped += result.get("skipped", 0)
-
-    logger.info(
-        "Startup sync completed. Total processed: %d, Success: %d, Skipped: %d, Failed: %d",
-        total, success, skipped, failed,
-    )
-    return {"total": total, "success": success, "failed": failed, "skipped": skipped}

@@ -88,6 +88,15 @@ async def rank_jobs(command: JobRankCommand) -> JobRankResultPayload:
         features = extract_features(details, command.query, command.resume_text)
         job_features.append((job_id, features))
 
+    if not job_features:
+        return JobRankResultPayload(
+            matchId=command.match_id,
+            status="COMPLETED",
+            rankTimeMs=0,
+            rankedResults=[],
+            errorMessage=None,
+        )
+
     try:
         feature_matrix = [
             [features[col] for col in FEATURE_COLUMNS]

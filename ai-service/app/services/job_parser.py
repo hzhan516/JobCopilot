@@ -7,7 +7,6 @@ from pathlib import Path
 import httpx
 
 from app.schemas import ParsedJobContent
-from app.services.file_parser import download_file_bytes
 from app.services.llm_client import (
     generate_json_from_image_prompt,
     generate_json_from_text_prompt,

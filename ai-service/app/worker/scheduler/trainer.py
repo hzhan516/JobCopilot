@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 from datetime import datetime, timezone
 import lightgbm as lgb
@@ -43,7 +42,7 @@ class IncrementalTrainer:
                     await self.redis_buffer.append(sample)
                 return
 
-            baseline_samples = self.api_client.get_baseline_features()
+            baseline_samples = await self.api_client.get_baseline_features_async()
             all_samples = baseline_samples + new_samples
 
             X, y = self._build_matrix(all_samples)

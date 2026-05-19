@@ -28,6 +28,7 @@ class MinioModelRegistry:
                 self.s3.create_bucket(Bucket=MINIO_MODEL_BUCKET)
             except Exception as e:
                 logger.error(f"Failed to create bucket: {e}")
+                raise
 
     def upload_model(self, model_bytes: bytes, version: str) -> str:
         object_key = f"ranker_model_{version}.txt"
