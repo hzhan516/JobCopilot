@@ -70,7 +70,7 @@ interface ResumeStore {
   fetchGroups: () => Promise<void>;
   fetchGroupDetail: (groupId: string) => Promise<void>;
   uploadResume: (file: File, title?: string) => Promise<UploadResponse['data']>;
-  pollParseStatus: (groupId: string) => Promise<'COMPLETED' | 'FAILED' | 'TIMEOUT'>;
+  pollParseStatus: (groupId: string, signal?: AbortSignal) => Promise<'COMPLETED' | 'FAILED' | 'TIMEOUT'>;
   saveVersion: (versionId: string, content: string) => Promise<void>;
   createVersion: (groupId: string, sourceVersionId?: string) => Promise<string>;
   deleteGroup: (groupId: string) => Promise<void>;
@@ -119,18 +119,22 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
     }
   },
 
-  pollParseStatus: async (groupId: string) => {
+  pollParseStatus: async (groupId: string, signal?: AbortSignal) => {
     const maxRetries = 30;
     const interval = 2000;
     let attempts = 0;
 
     return new Promise((resolve) => {
       const poll = async () => {
+        if (signal?.aborted) return resolve('TIMEOUT');
         attempts++;
         try {
           const data = await resumeService.getResumeGroup(groupId);
           const adaptedGroup = adaptGroup(data);
-          set({ currentGroup: adaptedGroup });
+          
+          if (get().currentGroup?.groupId === groupId) {
+            set({ currentGroup: adaptedGroup });
+          }
 
           const originalVersion = adaptedGroup.versions.find((v) => v.versionType === 'ORIGINAL');
           const status = originalVersion?.parseStatus;
@@ -143,7 +147,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
             return;
           }
         } catch (error) {
-          console.error(error);
+          console.error('Error polling parse status:', error);
         }
 
         if (attempts >= maxRetries) {

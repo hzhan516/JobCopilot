@@ -27,6 +27,7 @@ import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeGroupReposi
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.UserFeedbackCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.exception.AiServiceUnavailableException;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import lombok.RequiredArgsConstructor;
@@ -431,31 +432,38 @@ public class JobApplicationService {
             jobScoreRepository.save(record);
 
             // 异步发送评分标签到 AI Service 用于增量训练
-            // Asynchronously send score label to AI service for incremental training
-            try {
-                Map<String, Object> scoreLabelPayload = new HashMap<>();
-                scoreLabelPayload.put("messageId", java.util.UUID.randomUUID().toString());
-                scoreLabelPayload.put("jobId", jobId);
-                scoreLabelPayload.put("resumeVersionId", request.resumeVersionId());
-                scoreLabelPayload.put("resume", Map.of(
+                // Asynchronously send score label to AI service for incremental training
+                Map<String, Object> contextPayload = new HashMap<>();
+                contextPayload.put("resume", Map.of(
                         "skills", resumeMap.get("skills") != null ? resumeMap.get("skills") : java.util.List.of(),
                         "experience", resumeMap.get("experience") != null ? resumeMap.get("experience") : java.util.List.of()
                 ));
-                scoreLabelPayload.put("job", jobMap);
-                scoreLabelPayload.put("suitable", suitable);
-                scoreLabelPayload.put("llmOverallScore", overallScore);
-                scoreLabelPayload.put("finalScore", finalScore);
-                scoreLabelPayload.put("timestamp", java.time.Instant.now().toString());
+                contextPayload.put("job", jobMap);
+                contextPayload.put("llmOverallScore", overallScore);
+                contextPayload.put("finalScore", finalScore);
                 if (llmModel != null && !llmModel.isBlank()) {
-                    scoreLabelPayload.put("llmModel", llmModel);
+                    contextPayload.put("llmModel", llmModel);
                 }
                 if (semanticMatch != null) {
-                    scoreLabelPayload.put("semanticMatch", semanticMatch);
+                    contextPayload.put("semanticMatch", semanticMatch);
                 }
                 if (datasetScore != null) {
-                    scoreLabelPayload.put("datasetScore", datasetScore);
+                    contextPayload.put("datasetScore", datasetScore);
                 }
-                aiMessagePublisherPort.sendScoreLabel(scoreLabelPayload);
+                
+                String contextStr = objectMapper.writeValueAsString(contextPayload);
+                
+                UserFeedbackCommand feedbackCmd = new UserFeedbackCommand(
+                        java.util.UUID.randomUUID().toString(),
+                        userId,
+                        request.resumeVersionId(),
+                        jobId,
+                        suitable ? "APPLY" : "IGNORE",
+                        (double) finalScore,
+                        contextStr,
+                        java.time.Instant.now()
+                );
+                aiMessagePublisherPort.sendUserFeedback(feedbackCmd);
                 log.info("Score label sent to outbox for jobId={}, resumeVersionId={}", jobId, request.resumeVersionId());
             } catch (Exception e) {
                 log.error("Failed to send score label to outbox for jobId={}: {}", jobId, e.getMessage());

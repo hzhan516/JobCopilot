@@ -98,6 +98,8 @@ class ParsedJobContent(AppBaseModel):
     company: str
     description: str
     requirements: list[str] = Field(default_factory=list)
+    salary: str | None = None
+    location: str | None = None
 
 
 class ParsedResumeContent(AppBaseModel):

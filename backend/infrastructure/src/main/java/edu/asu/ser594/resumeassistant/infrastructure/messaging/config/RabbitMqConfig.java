@@ -44,8 +44,8 @@ public class RabbitMqConfig {
     public static final String ROUTING_KEY_RES_JOB_RANK = "backend.res.job.rank";
     public static final String QUEUE_RES_JOB_RANK = "backend.queue.job.rank";
 
-    public static final String ROUTING_KEY_REQ_MODEL_INCREMENTAL = "ai.req.model.incremental";
-    public static final String QUEUE_REQ_MODEL_INCREMENTAL = "ai.queue.model.incremental";
+    public static final String ROUTING_KEY_REQ_MODEL_INCREMENTAL = "ai.req.feedback";
+    public static final String QUEUE_REQ_MODEL_INCREMENTAL = "ai.queue.feedback";
 
     @Bean
     public MessageConverter jackson2JsonMessageConverter() {

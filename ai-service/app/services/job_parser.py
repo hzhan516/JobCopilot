@@ -29,6 +29,8 @@ def _build_job_content(data: dict[str, Any]) -> ParsedJobContent:
         company=str(data.get("company", "")).strip(),
         description=str(data.get("description", "")).strip(),
         requirements=_normalize_requirements(data.get("requirements")),
+        salary=str(data.get("salary", "")).strip() or None,
+        location=str(data.get("location", "")).strip() or None,
     )
 
 
@@ -58,18 +60,22 @@ Do not include markdown fences.
 Do not include explanations.
 
 Return exactly one JSON object with this shape:
-{{
+{
   "title": "string",
   "company": "string",
   "description": "string",
-  "requirements": ["string", "string"]
-}}
+  "requirements": ["string", "string"],
+  "salary": "string",
+  "location": "string"
+}
 
 Rules:
 - title: the actual job title
 - company: the hiring company name if available
 - description: a concise but complete cleaned summary of the role
 - requirements: a list of concrete required skills, technologies, qualifications, or experience
+- salary: the salary range or compensation details if provided
+- location: the geographic location, remote status, or workplace type
 - if a field is missing, return an empty string or empty list
 - keep requirements short and specific
 
@@ -143,18 +149,22 @@ Optional text context:
 \"\"\"
 
 Return exactly one JSON object with this shape:
-{{
+{
   "title": "string",
   "company": "string",
   "description": "string",
-  "requirements": ["string", "string"]
-}}
+  "requirements": ["string", "string"],
+  "salary": "string",
+  "location": "string"
+}
 
 Rules:
 - title: the actual job title
 - company: the hiring company name if visible or provided in context
 - description: a concise but complete cleaned summary of the role
 - requirements: concrete required skills, technologies, qualifications, or experience
+- salary: the salary range or compensation details if provided
+- location: the geographic location, remote status, or workplace type
 - if a field is missing, return an empty string or empty list
 """.strip()
 

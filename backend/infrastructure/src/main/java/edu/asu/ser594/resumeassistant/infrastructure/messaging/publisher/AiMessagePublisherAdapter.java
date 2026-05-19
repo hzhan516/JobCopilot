@@ -8,6 +8,7 @@ import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ConversationRequest
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobRankCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ResumeParseCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.UserFeedbackCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import edu.asu.ser594.resumeassistant.domain.shared.repository.OutboxMessageRepository;
 import edu.asu.ser594.resumeassistant.infrastructure.messaging.config.RabbitMqConfig;
@@ -67,9 +68,9 @@ public class AiMessagePublisherAdapter implements AiMessagePublisherPort {
      * Send score label to AI service for incremental model training
      */
     @Override
-    public void sendScoreLabel(Map<String, Object> payload) {
-        log.info("Saving score label to outbox for job: {}", payload.get("jobId"));
-        saveToOutbox(RabbitMqConfig.ROUTING_KEY_REQ_MODEL_INCREMENTAL, payload);
+    public void sendUserFeedback(UserFeedbackCommand command) {
+        log.info("Saving UserFeedbackCommand to outbox for job: {}", command.jobId());
+        saveToOutbox(RabbitMqConfig.ROUTING_KEY_REQ_MODEL_INCREMENTAL, command);
     }
 
     private void saveToOutbox(String routingKey, Object command) {

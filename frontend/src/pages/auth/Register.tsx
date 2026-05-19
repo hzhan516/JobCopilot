@@ -120,8 +120,9 @@ export default function Register() {
   }, []);
 
   // 倒计时逻辑 / Countdown logic
+  const isCountingDown = countdown > 0;
   useEffect(() => {
-    if (countdown <= 0) return;
+    if (!isCountingDown) return;
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -133,7 +134,7 @@ export default function Register() {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [countdown]);
+  }, [isCountingDown]);
 
   // 查询邮箱验证开关状态 / Check email verification toggle
   useEffect(() => {
