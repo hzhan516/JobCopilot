@@ -477,6 +477,39 @@ services:
   #     network isolation.
   #   - pgvector extension is pre-installed in the ankane/pgvector image.
   # ============================================================================
+
+  ai-worker:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    image: resume-assistant-ai-service
+    container_name: resume-assistant-ai-worker
+    command: ["python", "-m", "app.worker_main"]
+    env_file:
+      - .env
+    environment:
+      - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_MODEL_BUCKET=${MINIO_MODEL_BUCKET:-ai-models}
+      - BACKEND_SERVICE_URL=${BACKEND_SERVICE_URL:-http://backend:8080}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-}
+    networks:
+      - internal-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: on-failure
+
   postgres:
     build:
       context: ./middleware/postgres

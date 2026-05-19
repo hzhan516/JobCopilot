@@ -25,7 +25,6 @@ from app.schemas import (
     SuitabilityResponse,
 )
 
-from app.services.incremental_model_service import incremental_service
 from app.services.job_matching_service import find_job_matches
 from app.services.suitability_service import evaluate_suitability_with_vertex
 from app.services.vector_service import generate_embedding
@@ -72,13 +71,19 @@ def _start_sync_thread() -> None:
     logger.info("Embedding sync background thread started.")
 
 
+import asyncio
+from app.api.model_manager import model_manager
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _start_mq_consumer_once()
     _start_sync_thread()
+    await model_manager.load_latest()
+    reload_task = asyncio.create_task(model_manager.watch_for_reloads())
     yield
     # Shutdown / 优雅关闭
     logger.info("Shutting down MQ consumers...")
+    reload_task.cancel()
     global _mq_connection, _mq_channel
     if _mq_channel and _mq_channel.is_open:
         try:
@@ -107,11 +112,9 @@ admin_router = APIRouter(prefix="/admin", tags=["admin"])
 def recompute_model(
     x_internal_api_key: str | None = Header(None, alias="X-Internal-API-Key"),
 ):
-    """强制触发增量模型权重重算 / Force incremental model weight recomputation."""
     if INTERNAL_API_KEY and x_internal_api_key != INTERNAL_API_KEY:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    result = incremental_service.recompute_weights()
-    return {"status": "ok", "version": result["version"]}
+    return {"status": "ok", "message": "Deprecated. Use ai-worker scheduling."}
 
 
 app.include_router(admin_router, prefix="/api/v1")

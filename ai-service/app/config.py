@@ -85,3 +85,25 @@ BACKEND_SERVICE_URL = os.getenv("BACKEND_SERVICE_URL", "http://backend:8080")
 BACKEND_QUERY_TIMEOUT = float(os.getenv("BACKEND_QUERY_TIMEOUT", "5"))
 BACKEND_BATCH_UPSERT_TIMEOUT = float(os.getenv("BACKEND_BATCH_UPSERT_TIMEOUT", "30"))
 BACKEND_BATCH_SIZE = int(os.getenv("BACKEND_BATCH_SIZE", "100"))
+
+# Redis
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
+
+# MinIO for Model Registry
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+MINIO_MODEL_BUCKET = os.getenv("MINIO_MODEL_BUCKET", "ai-models")
+
+# Internal API Auth
+INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "")
+
+# Model Training Settings
+RETRAIN_INTERVAL_HOURS = int(os.getenv("RETRAIN_INTERVAL_HOURS", "24"))
+MIN_SAMPLES_FOR_RETRAIN = int(os.getenv("MIN_SAMPLES_FOR_RETRAIN", "10"))
+
+# User Feedback Queue
+FEEDBACK_REQUEST_QUEUE = "ai.queue.feedback"
+FEEDBACK_REQUEST_ROUTING_KEY = "ai.req.feedback"

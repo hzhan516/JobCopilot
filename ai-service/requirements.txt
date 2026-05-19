@@ -44,3 +44,8 @@ tenacity==8.4.1
 
 # Google Auth (Required by LiteLLM for Vertex AI)
 google-auth==2.35.0
+
+# 模型与定时任务 / Machine Learning & Scheduling
+lightgbm==4.5.0
+scikit-learn==1.5.2
+APScheduler==3.10.4
