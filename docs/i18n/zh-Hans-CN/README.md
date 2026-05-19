@@ -31,7 +31,7 @@
 
 ```text
 ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-│     前端    │──────▶│     后端    │◀─────▶│    AI      │
+│     前端    │──────▶│     后端    │◀─────▶│   AI API   │
 │   (React)   │      │ (Spring    │      │ (FastAPI)  │
 │             │      │   Boot)     │      │            │
 └─────────────┘      └──────┬──────┘      └──────▲──────┘
@@ -46,16 +46,24 @@
                      └─────────────┘      (消息队列)
                             ▲
                             │
-                     ┌─────────────┐
-                     │   RabbitMQ  │
-                     └─────────────┘
+                     ┌─────────────┐      ┌─────────────┐
+                     │   RabbitMQ  │─────▶│  AI Worker  │
+                     └─────────────┘      │ (LightGBM)  │
+                                          └──────┬──────┘
+                                                 │
+                                          ┌──────▼──────┐
+                                          │    MinIO    │
+                                          │ (模型注册表)│
+                                          └─────────────┘
 ```
 
 | 服务   | 技术栈                       | 端口           | 说明            |
 |------|---------------------------|--------------|---------------|
 | 前端   | React 19 + Vite 7         | `${FRONTEND_HOST_PORT:-80}` -> 8080 | Nginx 托管的 Web 界面与反向代理 |
 | 后端   | Java 21 + Spring Boot 3.5 | 8080 internal | REST API、业务逻辑及滑块 CAPTCHA 人机验证 |
-| AI服务 | Python 3 + FastAPI + LiteLLM | 8000 internal | AI处理、嵌入生成、排序、对话及增量模型训练 |
+| AI API | Python 3 + FastAPI + LiteLLM | 8000 internal | 无状态 API：AI 处理、嵌入生成、排序、对话 |
+| AI Worker | Python 3 + LightGBM | 无 | 有状态后台工作节点：消费 `ai.queue.feedback` 进行增量模型训练 |
+| 模型注册表 | MinIO | 9000 internal | 存储训练好的 LightGBM 模型 |
 | 数据库  | PostgreSQL 15 + pgvector  | 5432 internal | 业务数据和向量存储     |
 | 消息队列 | RabbitMQ 3                | 5672 internal | 异步消息处理        |
 | 缓存     | Redis 7                   | 6379         | 分布式状态、锁、Pub/Sub |
@@ -76,7 +84,13 @@
 │   ├── trigger/          # 触发器层（控制器、定时任务、监听器）
 │   └── types/            # 共享类型和常量
 ├── ai-service/           # Python AI服务
-│   ├── app/              # FastAPI应用
+│   ├── app/              # AI服务源代码 (DDD架构)
+│   │   ├── api/          # API层 (FastAPI路由)
+│   │   ├── domain/       # 领域层 (业务逻辑)
+│   │   ├── infrastructure/ # 基础设施层 (MinIO, Redis, RabbitMQ)
+│   │   ├── worker/       # Worker层 (LightGBM训练逻辑)
+│   │   ├── main.py       # AI API 启动入口
+│   │   └── worker_main.py # AI Worker 启动入口
 │   ├── requirements.txt  # Python依赖
 │   └── Dockerfile        # AI服务Docker镜像
 ├── docs/                 # 项目文档

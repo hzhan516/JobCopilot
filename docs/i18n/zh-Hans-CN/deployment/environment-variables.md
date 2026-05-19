@@ -651,39 +651,49 @@ openssl rand -base64 32
 | **安全说明** | 如果为空，后端生成相对 URL。设置外部 CDN 可提高性能，但需要适当的访问控制。 |
 | **常见错误** | 添加尾部斜杠导致 URL 中出现双斜杠。 |
 
-### AI 模型产物存储
+### AI 模型产物存储 (MinIO)
 
-这些变量由 Python AI 服务使用，用于保存增量匹配模型 artifact。它们与上方后端简历文件存储设置是分开的。
+这些变量由 Python AI 服务（AI API 和 AI Worker）使用，用于保存和加载增量匹配模型 artifact。它们与上方后端简历文件存储设置是分开的。
 
-### `MODEL_STORAGE_TYPE`
-
-| 字段 | 值 |
-|------|-----|
-| **用途** | 决定自适应增量模型 artifact 存储位置。 |
-| **默认值** | `local` |
-| **有效取值** | `local`、`minio`、`s3` |
-| **安全说明** | 单节点 Docker Compose 可以使用本地存储。多实例或 Kubernetes 部署请使用 S3-compatible 对象存储，确保所有 AI 副本能加载同一个最新模型。 |
-| **常见错误** | 误以为模型 artifact 会被打包进 AI Docker 镜像。它们是刻意存储在镜像外部，并通过数据卷或对象存储持久化。 |
-
-### `MODEL_STORAGE_BASE_PATH`
+### `MINIO_ENDPOINT`
 
 | 字段 | 值 |
 |------|-----|
-| **用途** | 当 `MODEL_STORAGE_TYPE=local` 时，本地模型 artifact 存储根目录。 |
-| **默认值** | `/app/model-artifacts` |
-| **有效取值** | AI 服务容器内任意可写的绝对文件系统路径 |
-| **安全说明** | 请将此路径挂载为持久化数据卷；否则容器重建后重新训练的模型 artifact 会丢失。 |
-| **常见错误** | 指向只读路径，或忘记在 Docker Compose 中挂载 `model-artifacts` 数据卷。 |
+| **用途** | MinIO 服务器地址。 |
+| **默认值** | `http://minio:9000` |
+| **有效取值** | 任意 HTTP(S) URL |
+| **安全说明** | 生产环境请使用 HTTPS。验证 TLS 证书或配置后端信任库。 |
+| **常见错误** | 在 Docker 内使用 `http://localhost:9000` 而不是服务名。 |
 
-### `MODEL_BUCKET`
+### `MINIO_ACCESS_KEY`
 
 | 字段 | 值 |
 |------|-----|
-| **用途** | 用于保存 `baseline_model_latest.json` 等模型 artifact 的 bucket 或顶层目录名。 |
-| **默认值** | `resume-assistant-models` |
-| **有效取值** | 任意有效的 S3 bucket 名称或本地目录片段 |
+| **用途** | MinIO 访问密钥（用户名）。 |
+| **默认值** | `minioadmin` |
+| **有效取值** | 任意字符串 |
+| **安全说明** | 生产环境请立即从默认的 `minioadmin` 更换。 |
+| **常见错误** | 在开发和生产 MinIO 实例之间重复使用相同的凭证。 |
+
+### `MINIO_SECRET_KEY`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | MinIO 秘密密钥（密码）。 |
+| **默认值** | `minioadmin` |
+| **有效取值** | 任意字符串；建议长度 ≥ 16 |
+| **安全说明** | 存储在密钥管理器中。泄露的密钥将授予对所有存储桶的完全读写权限。 |
+| **常见错误** | 将密钥提交到 Git 或在聊天消息中共享。 |
+
+### `MINIO_MODEL_BUCKET`
+
+| 字段 | 值 |
+|------|-----|
+| **用途** | 用于保存 `baseline_model_latest.json` 等模型 artifact 的 bucket 名称。 |
+| **默认值** | `ai-models` |
+| **有效取值** | 任意有效的 S3 bucket 名称 |
 | **安全说明** | 模型 artifact 可能编码聚合后的用户/职位匹配行为，应保持私有。 |
-| **常见错误** | 以为 `AWS_S3_*` 变量会控制模型 artifact 存储。目前 AI 服务通过 `MODEL_STORAGE_TYPE` 以及 `MINIO_*` 端点/凭证变量配置 S3-compatible 存储路径。 |
+| **常见错误** | 以为 `AWS_S3_*` 变量会控制模型 artifact 存储。目前 AI 服务通过 `MINIO_*` 端点/凭证变量配置 S3-compatible 存储路径。 |
 
 ### AWS S3 配置（`STORAGE_TYPE=s3` 时生效）
 

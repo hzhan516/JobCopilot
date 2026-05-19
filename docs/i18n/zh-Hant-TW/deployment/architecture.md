@@ -22,7 +22,7 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
             |                               |
             v                               v
    +------------------+           +------------------+
-   |  backend : 8080  |           |  ai-service:8000 |
+   |  backend : 8080  |           |  ai-api   :8000  |
    |  (Spring Boot)   |<--------->|  (FastAPI)       |
    +------------------+           +------------------+
             |                               |
@@ -34,13 +34,18 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
             +----->|  redis   : 6379  |<----+
                    | (快取與鎖)       |
                    +------------------+
-            |
-            v
-   +------------------+
-   | postgres : 5432  |
-   | (PostgreSQL +    |
-   |  pgvector)       |
-   +------------------+
+            |               |
+            v               v
+   +------------------+   +------------------+
+   | postgres : 5432  |   |  ai-worker       |
+   | (PostgreSQL +    |   |  (LightGBM)      |
+   |  pgvector)       |   +------------------+
+   +------------------+           |
+                                  v
+                          +------------------+
+                          |  minio : 9000    |
+                          |  (模型註冊表)    |
+                          +------------------+
 ```
 
 ### 網路分層
@@ -48,7 +53,7 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 | 網路 | 服務 | 外部暴露 | 用途 |
 |------|------|----------|------|
 | **公網（Public）** | `frontend`（Nginx）、`backend` | 主機 `${FRONTEND_HOST_PORT:-80}` 轉發到 `frontend:8080` | 所有 HTTP/HTTPS 流量的單一入口 |
-| **內網（Internal）** | `backend`、`ai-service`、`rabbitmq`、`redis` | 無（僅 Docker DNS） | 服務間透過容器名稱通信 |
+| **內網（Internal）** | `backend`、`ai-api`、`ai-worker`、`rabbitmq`、`redis`、`minio` | 無（僅 Docker DNS） | 服務間透過容器名稱通信 |
 | **資料庫網（Database）** | `backend`、`postgres` | 無（僅 Docker DNS） | 隔離的持續性資料儲存 |
 
 > **開發範本說明**：目前 `docker-compose.yml` 預設只暴露前端。後端（`8080`）、AI 服務（`8000`）、PostgreSQL（`5432`）、RabbitMQ（`5672`）和 RabbitMQ Management（`15672`）的主機連接埠僅保留為已註解的開發除錯範例。在**生產部署**中，僅應暴露前端主機連接埠。
@@ -73,7 +78,7 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 | **職責** | REST API 閘道、JWT 身分驗證、CAPTCHA 驗證、業務邏輯編排、RabbitMQ 生產者。 |
 | **安全說明** | 唯一跨越三層網路的服務。透過 Docker DNS 與 PostgreSQL（`postgres:5432`）和 RabbitMQ（`rabbitmq:5672`）通信。所有發往 `ai-service` 的出站 REST 請求均攜帶 `X-Internal-API-Key` 標頭。 |
 
-### 3.3 AI 服務（FastAPI）
+### 3.3 AI API (FastAPI)
 
 | 屬性 | 值 |
 |------|-----|
@@ -82,7 +87,16 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 | **職責** | 大型語言模型（LLM）推理、嵌入向量生成、履歷/職缺解析、職缺排序、適配度評分，以及自適應模型產物載入。 |
 | **安全說明** | REST 端點 `/api/v1/ai/embeddings` 受 `X-Internal-API-Key` 中介軟體保護。MQ 消費者監聽四個佇列：`ai.queue.job.parse`、`ai.queue.resume.parse`、`ai.queue.conversation`、`ai.queue.job.rank`。不存取資料庫。 |
 
-### 3.4 PostgreSQL（含 pgvector）
+### 3.4 AI Worker (LightGBM)
+
+| 屬性 | 值 |
+|------|-----|
+| **網路** | `internal-network` |
+| **主機連接埠** | 無 |
+| **職責** | 用於增量模型訓練的背景工作程式。從 `ai.queue.feedback` 消耗反饋並將訓練好的模型儲存到 MinIO。 |
+| **安全說明** | 嚴格與 PostgreSQL 隔離。僅與 RabbitMQ、Redis 和 MinIO 通信。 |
+
+### 3.5 PostgreSQL（含 pgvector）
 
 | 屬性 | 值 |
 |------|-----|
@@ -91,16 +105,16 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 | **職責** | 業務資料與嵌入向量的統一儲存。 |
 | **安全說明** | 使用 `pgvector` 擴充功能進行相似度檢索。僅能從 Docker 網路內的 `backend` 存取。即使具備網路隔離，強密碼 `POSTGRES_PASSWORD` 仍是縱深防禦的必備措施。 |
 
-### 3.5 RabbitMQ（Management）
+### 3.6 RabbitMQ（Management）
 
 | 屬性 | 值 |
 |------|-----|
 | **網路** | `internal-network` |
 | **主機連接埠** | 預設無；`5672:5672` 和 `15672:15672` 是已註解的開發除錯範例 |
-| **職責** | 後端與 AI 服務之間的非同步訊息代理（Outbox 模式，訊息佇列）。 |
+| **職責** | 後端、AI API 與 AI Worker 之間的非同步訊息代理（Outbox 模式，訊息佇列）。 |
 | **安全說明** | 透過環境變數覆蓋預設的 `guest/guest` 憑證。管理面板（`:15672`）絕不應暴露於公網；透過 SSH 隧道存取：`ssh -L 15672:localhost:15672 <host>`。訊息大小限制設為 10 MB（`max_message_size 10485760`），以容納向量和履歷摘要。 |
 
-### 3.6 Redis（快取與鎖）
+### 3.7 Redis（快取與鎖）
 
 | 屬性 | 值 |
 |------|-----|
@@ -108,6 +122,15 @@ Resume Assistant（智慧求職助手）是一個以**三層 Docker 網路架構
 | **主機連接埠** | 生產環境無 |
 | **職責** | 分散式狀態儲存：CAPTCHA 挑戰/token、驗證碼、對話流橋接、增量模型統計、去重集合、分散式鎖（ShedLock）。 |
 | **安全說明** | 無外部存取。開發環境密碼認證可選（`REDIS_PASSWORD` 可為空），生產環境建議啟用。資料透過 `redis-data` 命名卷持久化。 |
+
+### 3.8 MinIO (模型註冊表)
+
+| 屬性 | 值 |
+|------|-----|
+| **網路** | `internal-network` |
+| **主機連接埠** | 生產環境無 |
+| **職責** | 儲存已訓練的 LightGBM 模型產物的物件儲存。 |
+| **安全說明** | 無外部存取。專供 `ai-worker` (寫入) 和 `ai-api` (讀取) 使用。 |
 
 ## 4. 縱深防禦（Defense in Depth）
 

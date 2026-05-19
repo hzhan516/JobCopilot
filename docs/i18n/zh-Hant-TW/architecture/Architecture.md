@@ -55,11 +55,13 @@
 |----------|--------------------------------------|-------------------|
 | **前端**   | React 19 + TypeScript + Tailwind CSS | 求職者互動介面           |
 | **後端**   | Java Spring Boot 3.x + DDD           | 業務邏輯、資料管理、訊息佇列    |
-| **AI服務** | Python FastAPI                       | 履歷剖析、匹配計算、對話處理    |
+| **AI API** | Python FastAPI + LiteLLM             | 履歷剖析、匹配計算、對話處理    |
+| **AI Worker** | Python LightGBM                   | 用於增量模型訓練的背景工作程式 |
 | **資料庫**  | PostgreSQL 15 + pgvector             | 業務資料 + 向量資料（統一儲存） |
 | **訊息佇列** | RabbitMQ                             | 非同步服務通訊            |
-| **物件儲存** | shared-storage / 可選 MinIO           | 檔案儲存（履歷、對話附件） |
-| **部署**   | Docker Compose                       | 6服務架構             |
+| **快取**   | Redis 7                              | 分散式狀態、鎖、Pub/Sub |
+| **模型註冊表** | MinIO                              | 儲存已訓練的 LightGBM 模型 |
+| **部署**   | Docker Compose                       | 容器化本地部署           |
 
 ---
 
@@ -117,6 +119,14 @@
 │  │  │ pypdf /      │  │ LiteLLM      │  │ 相似度       │  │ RAG +        ││ │
 │  │  │ OpenXML ZIP  │  │ Embeddings   │  │ 排序         │  │ 記憶         ││ │
 │  │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘│ │
+│  └──────────────────────────────────┬─────────────────────────────────────┘ │
+│                                     │                                       │
+│  ┌──────────────────────────────────▼─────────────────────────────────────┐ │
+│  │                        AI Worker (LightGBM)                            │ │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                  │ │
+│  │  │ 增量訓練     │  │ 模型評估     │  │ MinIO        │                  │ │
+│  │  │              │  │              │  │ 註冊表       │                  │ │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘                  │ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────┘
 
@@ -307,23 +317,27 @@ ai_service/
 ├── config/                 # 設定管理
 │   ├── settings.py
 │   └── model_config.yaml
-├── api/                    # API路由
+├── api/                    # FastAPI 無狀態端點
 │   ├── resume_parser.py
 │   ├── job_matcher.py
 │   └── chat_processor.py
-├── services/               # 業務服務
+├── worker/                 # 有狀態背景工作程式 (LightGBM)
+│   ├── incremental_trainer.py
+│   └── model_evaluator.py
+├── domain/                 # 核心 AI 邏輯與模型
 │   ├── resume_parser_service.py
 │   ├── embedding_service.py
 │   ├── matching_service.py
 │   └── chat_service.py
-├── models/                 # AI模型封裝
+├── infrastructure/         # 外部整合 (MinIO, MQ, DB)
 │   ├── llm_client.py
 │   ├── embedding_model.py
-│   └── vector_store.py
-├── consumers/              # 訊息佇列消費者
-│   ├── resume_consumer.py
-│   ├── match_consumer.py
-│   └── chat_consumer.py
+│   ├── vector_store.py
+│   ├── minio_client.py
+│   └── consumers/          # 訊息佇列消費者
+│       ├── resume_consumer.py
+│       ├── match_consumer.py
+│       └── chat_consumer.py
 └── utils/                  # 工具函式
     ├── pdf_extractor.py
     ├── text_processor.py

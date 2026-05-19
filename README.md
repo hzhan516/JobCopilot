@@ -31,30 +31,38 @@ The **Resume Assistant** is an AI-powered platform designed to streamline the jo
 This project adopts a microservices architecture with the following components:
 
 ```text
-┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-│   Frontend  │──────▶│   Backend   │──────▶│  RabbitMQ   │
-│   (React)   │      │  (Spring    │      │             │
-│             │      │   Boot)     │      └──────┬──────┘
-└─────────────┘      └──────┬──────┘             │
-                            │      ┌─────────┐   │
-                            │◀────▶│  Redis  │   │
-                            │      │   :6379 │◀──┘
-                            │      └─────────┘   │
-                            ▼                    ▼
-                     ┌─────────────────────────────┐
-                     │ PostgreSQL 15 + pgvector    │
-                     │ business data + embeddings  │
-                     └─────────────────────────────┘
+┌─────────────┐      ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
+│   Frontend  │──────▶│   Backend   │──────▶│  RabbitMQ   │─────▶│  AI Worker  │
+│   (React)   │      │  (Spring    │      │             │      │ (LightGBM)  │
+│             │      │   Boot)     │      └──────┬──────┘      └──────┬──────┘
+└─────────────┘      └──────┬───┬──┘             │                    │
+                            │   │                │                    ▼
+                            │   │  ┌─────────┐   │             ┌─────────────┐
+                            │   └─▶│  Redis  │   │             │    MinIO    │
+                            │      │   :6379 │◀──┘             │(Model Reg.) │
+                            │      └─────────┘                 └─────────────┘
+                            ▼                    ▼                    ▲
+                     ┌─────────────────────────────┐                  │
+                     │ PostgreSQL 15 + pgvector    │                  │
+                     │ business data + embeddings  │                  │
+                     └─────────────────────────────┘                  │
+                            ▲             ▲                           │
+                            │             │      ┌─────────────┐      │
+                            └─────────────┴──────│   AI API    │──────┘
+                                                 │  (FastAPI)  │
+                                                 └─────────────┘
 ```
 
 | Service       | Technology                | Port         | Description                          |
 |---------------|---------------------------|--------------|--------------------------------------|
 | Frontend      | React 19 + Vite 7         | `${FRONTEND_HOST_PORT:-80}` -> 8080 | Web user interface and Nginx reverse proxy |
 | Backend       | Java 21 + Spring Boot 3.5 | 8080 internal | REST API, business logic, and slider CAPTCHA protection |
-| AI Service    | Python 3 + FastAPI + LiteLLM | 8000 internal | AI processing, embedding generation, ranking, chat, and incremental model training |
+| AI API        | Python 3 + FastAPI + LiteLLM | 8000 internal | AI processing, embedding generation, ranking, and chat |
+| AI Worker     | Python 3 + LightGBM       | N/A          | Background worker for incremental model training |
 | Database      | PostgreSQL 15 + pgvector  | 5432 internal | Business data and vector storage     |
 | Message Queue | RabbitMQ 3                | 5672 internal | Async message processing             |
 | Cache         | Redis 7                   | 6379 internal | Distributed state, locks, Pub/Sub    |
+| Model Registry| MinIO                     | 9000 internal | Storage for trained LightGBM models  |
 
 ## Project Structure
 
@@ -71,8 +79,12 @@ This project adopts a microservices architecture with the following components:
 │   ├── infrastructure/        # Persistence, storage, messaging, security, converters
 │   ├── trigger/               # HTTP controllers, MQ listeners, controller tests
 │   └── types/                 # Shared types and constants
-├── ai-service/                # Python FastAPI AI service
+├── ai-service/                # Python AI service (API & Worker)
 │   ├── app/                   # AI service source code
+│   │   ├── api/               # FastAPI stateless endpoints
+│   │   ├── worker/            # Stateful background worker (LightGBM)
+│   │   ├── domain/            # Core AI logic and models
+│   │   └── infrastructure/    # External integrations (MinIO, MQ, DB)
 │   ├── tests/                 # Pytest test suite
 │   ├── requirements.txt       # Python dependencies
 │   └── Dockerfile             # AI service Docker image

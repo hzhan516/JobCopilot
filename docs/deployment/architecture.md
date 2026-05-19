@@ -22,7 +22,7 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
             |                               |
             v                               v
    +------------------+           +------------------+
-   |  backend : 8080  |           |  ai-service:8000 |
+   |  backend : 8080  |           |  ai-api   :8000  |
    |  (Spring Boot)   |<--------->|  (FastAPI)       |
    +------------------+           +------------------+
             |                               |
@@ -34,13 +34,18 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
             +----->|  redis   : 6379  |<----+
                    |  (Cache & Locks) |
                    +------------------+
-            |
-            v
-   +------------------+
-   | postgres : 5432  |
-   | (PostgreSQL +    |
-   |  pgvector)       |
-   +------------------+
+            |               |
+            v               v
+   +------------------+   +------------------+
+   | postgres : 5432  |   |  ai-worker       |
+   | (PostgreSQL +    |   |  (LightGBM)      |
+   |  pgvector)       |   +------------------+
+   +------------------+           |
+                                  v
+                          +------------------+
+                          |  minio : 9000    |
+                          |  (Model Registry)|
+                          +------------------+
 ```
 
 ### Network Segmentation
@@ -48,7 +53,7 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
 | Network | Services | External Exposure | Purpose |
 |---------|----------|-------------------|---------|
 | **Public** | `frontend` (Nginx), `backend` | Host `${FRONTEND_HOST_PORT:-80}` to `frontend:8080` | Single entry point for all HTTP/HTTPS traffic |
-| **Internal** | `backend`, `ai-service`, `rabbitmq`, `redis` | None (Docker DNS only) | Inter-service communication via container names |
+| **Internal** | `backend`, `ai-api`, `ai-worker`, `rabbitmq`, `redis`, `minio` | None (Docker DNS only) | Inter-service communication via container names |
 | **Database** | `backend`, `postgres` | None (Docker DNS only) | Isolated persistent data storage |
 
 > **Note on Development Template**: The current `docker-compose.yml` exposes only the frontend by default. Direct host ports for backend (`8080`), AI service (`8000`), PostgreSQL (`5432`), RabbitMQ (`5672`), and RabbitMQ Management (`15672`) are kept as commented development-only examples. In a **production deployment**, only the frontend host port should be exposed.
@@ -73,7 +78,7 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
 | **Role** | REST API gateway, JWT authentication, CAPTCHA verification, business logic orchestration, and RabbitMQ producer. |
 | **Security notes** | The only service that spans all three network tiers. Communicates with PostgreSQL via Docker DNS (`postgres:5432`) and with RabbitMQ (`rabbitmq:5672`). All outbound REST calls to `ai-service` include the `X-Internal-API-Key` header. |
 
-### 3.3 AI Service (FastAPI)
+### 3.3 AI API (FastAPI)
 
 | Attribute | Value |
 |-----------|-------|
@@ -82,7 +87,16 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
 | **Role** | LLM inference, embedding generation, resume/job parsing, job ranking, suitability scoring, and adaptive model artifact loading. |
 | **Security notes** | REST endpoint `/api/v1/ai/embeddings` is protected by `X-Internal-API-Key` middleware. MQ consumers listen on four queues: `ai.queue.job.parse`, `ai.queue.resume.parse`, `ai.queue.conversation`, and `ai.queue.job.rank`. No database access. |
 
-### 3.4 PostgreSQL (with pgvector)
+### 3.4 AI Worker (LightGBM)
+
+| Attribute | Value |
+|-----------|-------|
+| **Networks** | `internal-network` |
+| **Host ports** | None |
+| **Role** | Background worker for incremental model training. Consumes feedback from `ai.queue.feedback` and saves trained models to MinIO. |
+| **Security notes** | Strictly isolated from PostgreSQL. Only communicates with RabbitMQ, Redis, and MinIO. |
+
+### 3.5 PostgreSQL (with pgvector)
 
 | Attribute | Value |
 |-----------|-------|
@@ -91,16 +105,16 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
 | **Role** | Unified storage for business data and vector embeddings. |
 | **Security notes** | Uses the `pgvector` extension for similarity search. Accessible only from `backend` within the Docker network. Even with network isolation, a strong `POSTGRES_PASSWORD` is mandatory as a defense-in-depth measure. |
 
-### 3.5 RabbitMQ (Management)
+### 3.6 RabbitMQ (Management)
 
 | Attribute | Value |
 |-----------|-------|
 | **Networks** | `internal-network` |
 | **Host ports** | None by default; `5672:5672` and `15672:15672` are commented dev-only examples |
-| **Role** | Async message broker between backend and AI service (Outbox pattern). |
+| **Role** | Async message broker between backend, AI API, and AI Worker (Outbox pattern). |
 | **Security notes** | Override the default `guest/guest` credentials via `RABBITMQ_USERNAME` and `RABBITMQ_PASSWORD`. The Management UI (`:15672`) should never be exposed to the public internet; access it via SSH tunnel: `ssh -L 15672:localhost:15672 <host>`. Message size limit is set to 10 MB (`max_message_size 10485760`) to accommodate vectors and resume summaries. |
 
-### 3.6 Redis (Cache & Locks)
+### 3.7 Redis (Cache & Locks)
 
 | Attribute | Value |
 |-----------|-------|
@@ -108,6 +122,15 @@ Resume Assistant is an AI-powered job-search platform deployed as a **three-tier
 | **Host ports** | None in production |
 | **Role** | Distributed state storage: CAPTCHA challenges/tokens, verification codes, conversation streaming bridges, incremental model statistics, deduplication sets, and distributed locks (ShedLock). |
 | **Security notes** | No external access. Password auth is optional in dev (`REDIS_PASSWORD` may be empty) but recommended in production. Data persists via the `redis-data` named volume. |
+
+### 3.8 MinIO (Model Registry)
+
+| Attribute | Value |
+|-----------|-------|
+| **Networks** | `internal-network` |
+| **Host ports** | None in production |
+| **Role** | Object storage for trained LightGBM model artifacts. |
+| **Security notes** | No external access. Used exclusively by `ai-worker` (write) and `ai-api` (read). |
 
 ## 4. Defense in Depth
 

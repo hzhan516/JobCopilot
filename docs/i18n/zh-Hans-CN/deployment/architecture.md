@@ -22,8 +22,8 @@ Resume Assistant（智能求职助手）是一个以**三层 Docker 网络架构
             |                               |
             v                               v
    +------------------+           +------------------+
-   |  backend : 8080  |           |  ai-service:8000 |
-   |  (Spring Boot)   |<--------->|  (FastAPI)       |
+   |  backend : 8080  |           | ai-service:8000  |
+   |  (Spring Boot)   |<--------->|  (AI API)        |
    +------------------+           +------------------+
             |                               |
             |      +------------------+     |
@@ -32,15 +32,20 @@ Resume Assistant（智能求职助手）是一个以**三层 Docker 网络架构
             |      +------------------+     |
             |      +------------------+     |
             +----->|  redis   : 6379  |<----+
-                   |  (缓存与锁)      |
-                   +------------------+
-            |
-            v
-   +------------------+
-   | postgres : 5432  |
-   | (PostgreSQL +    |
-   |  pgvector)       |
-   +------------------+
+                   |  (缓存与锁)      |     |
+                   +------------------+     |
+            |                               |
+            v                               v
+   +------------------+           +------------------+
+   | postgres : 5432  |           |  ai-worker       |
+   | (PostgreSQL +    |           |  (LightGBM)      |
+   |  pgvector)       |           +------------------+
+   +------------------+                   |
+                                          v
+                                  +------------------+
+                                  |  minio : 9000    |
+                                  |  (模型注册表)    |
+                                  +------------------+
 ```
 
 ### 网络分层
@@ -48,7 +53,7 @@ Resume Assistant（智能求职助手）是一个以**三层 Docker 网络架构
 | 网络 | 服务 | 外部暴露 | 用途 |
 |------|------|----------|------|
 | **公网（Public）** | `frontend`（Nginx）、`backend` | 宿主机 `${FRONTEND_HOST_PORT:-80}` 转发到 `frontend:8080` | 所有 HTTP/HTTPS 流量的单一入口 |
-| **内网（Internal）** | `backend`、`ai-service`、`rabbitmq`、`redis` | 无（仅 Docker DNS） | 服务间通过容器名通信 |
+| **内网（Internal）** | `backend`、`ai-service`、`ai-worker`、`rabbitmq`、`redis`、`minio` | 无（仅 Docker DNS） | 服务间通过容器名通信 |
 | **数据库网（Database）** | `backend`、`postgres` | 无（仅 Docker DNS） | 隔离的持久化数据存储 |
 
 > **开发模板说明**：当前 `docker-compose.yml` 默认只暴露前端。后端（`8080`）、AI 服务（`8000`）、PostgreSQL（`5432`）、RabbitMQ（`5672`）和 RabbitMQ Management（`15672`）的宿主机端口仅保留为已注释的开发调试示例。在**生产部署**中，仅应暴露前端宿主机端口。

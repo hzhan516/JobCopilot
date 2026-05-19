@@ -685,6 +685,16 @@ These variables are consumed by the Python AI service for incremental matching m
 | **Security notes** | Keep model artifacts private because they may encode aggregate user/job matching behavior. |
 | **Common mistakes** | Expecting `AWS_S3_*` variables to control model artifact storage. The current AI service uses the S3-compatible storage path configured through `MODEL_STORAGE_TYPE` and the `MINIO_*` endpoint/credential variables. |
 
+### `RETRAIN_INTERVAL_HOURS`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Interval in hours for the AI worker to check for new feedback and retrain the LightGBM model. |
+| **Default** | `24` |
+| **Valid values** | Positive integer |
+| **Security notes** | Frequent retraining consumes more CPU and memory resources. |
+| **Common mistakes** | Setting this too low (e.g., `1`) without enough new data, causing unnecessary retraining cycles. |
+
 ### AWS S3 Settings (`STORAGE_TYPE=s3`)
 
 ### `AWS_S3_REGION`

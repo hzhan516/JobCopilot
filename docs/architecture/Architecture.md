@@ -83,10 +83,12 @@ job seekers.
 | ----------------- | ----------------------------------- | ----------------------- | ------------------------------- |
 | **Frontend**      | React + TypeScript + Tailwind CSS   | React 19, Vite 7        | User interface                  |
 | **Backend**       | Java + Spring Boot                  | Java 21, Spring Boot 3  | Business logic, API, auth       |
-| **AI Service**    | Python FastAPI + LiteLLM            | Python 3.11+            | Parsing, embeddings, ranking, chat |
+| **AI API**        | Python FastAPI + LiteLLM            | Python 3.11+            | Parsing, embeddings, ranking, chat |
+| **AI Worker**     | Python LightGBM                     | Python 3.11+            | Background worker for incremental model training |
 | **Database**      | PostgreSQL + pgvector               | PostgreSQL 15           | Business data + vector data     |
 | **Message Queue** | RabbitMQ                            | RabbitMQ 3              | Async AI task processing        |
 | **Cache**         | Redis                               | Redis 7                 | Distributed state, locks, Pub/Sub |
+| **Model Registry**| MinIO                               | RELEASE.2024            | Storage for trained LightGBM models |
 | **Deployment**    | Docker Compose + Nginx              | Compose v2              | Containerized local deployment  |
 
 ---
@@ -159,6 +161,14 @@ job seekers.
 │  │  │  LiteLLM)    │  │  Embeddings) │  │  Ranking)    │  │  Memory)     │      │   │
 │  │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘      │   │
 │  └─────────────────────────────────────────────────────────────────────────────┘   │
+│                                          │                                          │
+│  ┌───────────────────────────────────────▼──────────────────────────────────────┐   │
+│  │                           AI Worker (LightGBM)                                 │   │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                        │   │
+│  │  │ Incremental  │  │ Model        │  │ MinIO        │                        │   │
+│  │  │ Training     │  │ Evaluation   │  │ Registry     │                        │   │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘                        │   │
+│  └─────────────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────────────┘
                                           │
                                           │ JDBC
@@ -185,6 +195,10 @@ job seekers.
 │  │  - Distributed Caching (CAPTCHA, verification codes)                          │   │
 │  │  - Pub/Sub (conversation streaming, model invalidation)                       │   │
 │  │  - Distributed Locks (ShedLock, startup sync)                                 │   │
+│  └─────────────────────────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐   │
+│  │                              MinIO                                            │   │
+│  │  - Model Registry for LightGBM artifacts                                      │   │
 │  └─────────────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────────────┘
 ```

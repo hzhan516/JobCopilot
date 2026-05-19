@@ -30,35 +30,38 @@
 本專案採用微服務架構，包含以下元件：
 
 ```text
-┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-│     前端    │──────▶│     後端    │◀─────▶│    AI      │
-│   (React)   │      │ (Spring    │      │ (FastAPI)  │
-│             │      │   Boot)     │      │            │
-└─────────────┘      └──────┬──────┘      └──────▲──────┘
-                            │      ┌─────────┐   │
-                            │◀────▶│  Redis  │   │
-                            │      │  :6379  │◀──┘
-                            │      └─────────┘   │
-                            ▼                      │
-                     ┌─────────────┐               │
-                     │  PostgreSQL │               │
-                     │  + pgvector │───────────────┘
-                     └─────────────┘      (訊息佇列)
-                            ▲
-                            │
-                     ┌─────────────┐
-                     │   RabbitMQ  │
-                     └─────────────┘
+┌─────────────┐      ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
+│     前端    │──────▶│     後端    │──────▶│  RabbitMQ   │─────▶│  AI Worker  │
+│   (React)   │      │  (Spring    │      │             │      │ (LightGBM)  │
+│             │      │   Boot)     │      └──────┬──────┘      └──────┬──────┘
+└─────────────┘      └──────┬───┬──┘             │                    │
+                            │   │                │                    ▼
+                            │   │  ┌─────────┐   │             ┌─────────────┐
+                            │   └─▶│  Redis  │   │             │    MinIO    │
+                            │      │   :6379 │◀──┘             │ (模型註冊表) │
+                            │      └─────────┘                 └─────────────┘
+                            ▼                    ▼                    ▲
+                     ┌─────────────────────────────┐                  │
+                     │ PostgreSQL 15 + pgvector    │                  │
+                     │ 業務資料 + 向量儲存         │                  │
+                     └─────────────────────────────┘                  │
+                            ▲             ▲                           │
+                            │             │      ┌─────────────┐      │
+                            └─────────────┴──────│   AI API    │──────┘
+                                                 │  (FastAPI)  │
+                                                 └─────────────┘
 ```
 
 | 服務   | 技術棧                       | 連接埠           | 說明            |
 |------|---------------------------|--------------|---------------|
 | 前端   | React 19 + Vite 7         | `${FRONTEND_HOST_PORT:-80}` -> 8080 | Nginx 託管的 Web 介面與反向代理 |
 | 後端   | Java 21 + Spring Boot 3.5 | 8080 internal | REST API、業務邏輯及滑塊 CAPTCHA 人機驗證 |
-| AI 服務 | Python 3 + FastAPI + LiteLLM | 8000 internal | AI 處理、嵌入生成、排序、對話與增量模型訓練 |
+| AI API | Python 3 + FastAPI + LiteLLM | 8000 internal | AI 處理、嵌入生成、排序與對話 |
+| AI Worker | Python 3 + LightGBM       | 無            | 用於增量模型訓練的背景工作程式 |
 | 資料庫  | PostgreSQL 15 + pgvector  | 5432 internal | 業務資料和向量儲存     |
 | 訊息佇列 | RabbitMQ 3                | 5672 internal | 非同步訊息處理        |
-| 快取     | Redis 7                   | 6379         | 分散式狀態、鎖、Pub/Sub |
+| 快取     | Redis 7                   | 6379 internal | 分散式狀態、鎖、Pub/Sub |
+| 模型註冊表 | MinIO                     | 9000 internal | 儲存已訓練的 LightGBM 模型 |
 
 ## 專案結構
 
@@ -75,10 +78,15 @@
 │   ├── infrastructure/   # 基礎設施層（資料庫、快取、訊息佇列）
 │   ├── trigger/          # 觸發器層（控制器、定時任務、監聽器）
 │   └── types/            # 共享類型和常數
-├── ai-service/           # Python AI 服務
-│   ├── app/              # FastAPI 應用
-│   ├── requirements.txt  # Python 依賴
-│   └── Dockerfile        # AI 服務 Docker 映像檔
+├── ai-service/                # Python AI 服務 (API & Worker)
+│   ├── app/                   # AI 服務原始碼
+│   │   ├── api/               # FastAPI 無狀態端點
+│   │   ├── worker/            # 有狀態背景工作程式 (LightGBM)
+│   │   ├── domain/            # 核心 AI 邏輯與模型
+│   │   └── infrastructure/    # 外部整合 (MinIO, MQ, DB)
+│   ├── tests/                 # Pytest 測試套件
+│   ├── requirements.txt       # Python 依賴
+│   └── Dockerfile             # AI 服務 Docker 映像檔
 ├── docs/                 # 專案文件
 ├── eval/                 # AI 評估腳本
 ├── tests/                # 測試腳本
