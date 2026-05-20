@@ -265,14 +265,14 @@ public class ConversationApplicationService {
             }
         }
 
-        if (init) {
-            if (conversation.getJobId() != null) {
-                Optional<Job> jobOpt = jobRepository.findById(conversation.getJobId().toString());
-                if (jobOpt.isPresent()) {
-                    primaryJobText = buildJobText(jobOpt.get());
-                }
+        if (conversation.getJobId() != null) {
+            Optional<Job> jobOpt = jobRepository.findById(conversation.getJobId().toString());
+            if (jobOpt.isPresent()) {
+                primaryJobText = buildJobText(jobOpt.get());
             }
+        }
 
+        if (init) {
             relatedJobTexts = loadRelatedJobTexts(conversation.getUserId(), conversation.getJobId());
         }
 

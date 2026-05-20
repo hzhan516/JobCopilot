@@ -44,6 +44,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # 仅安装运行所需的轻量级依赖 (使用 libpq5 代替 libpq-dev)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    libgomp1 \
     libpq5 \
     && rm -rf /var/lib/apt/lists/*
 

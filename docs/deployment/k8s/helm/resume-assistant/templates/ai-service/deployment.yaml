@@ -39,8 +39,6 @@ spec:
             - secretRef:
                 name: {{ include "resume-assistant.secretName" . }}
           env:
-            - name: MODEL_STORAGE_BASE_PATH
-              value: "/app/model-artifacts"
             - name: FILE_STORAGE_PATH
               value: "/app/uploads"
             {{- if $gcpCreds }}
@@ -74,8 +72,6 @@ spec:
           volumeMounts:
             - name: uploads
               mountPath: /app/uploads
-            - name: model-artifacts
-              mountPath: /app/model-artifacts
             {{- if $gcpCreds }}
             - name: gcp-credentials
               mountPath: /app/credentials
@@ -85,8 +81,6 @@ spec:
             {{- toYaml .Values.aiService.securityContext | nindent 12 }}
       volumes:
         - name: uploads
-          emptyDir: {}
-        - name: model-artifacts
           emptyDir: {}
         {{- if $gcpCreds }}
         - name: gcp-credentials

@@ -407,14 +407,12 @@ openssl rand -base64 48
 
 ### 增量模型训练参数
 
-以下参数控制增量职位训练闭环。它们目前**硬编码**在 `ai-service/app/services/incremental_model_service.py` 中，不可通过环境变量配置。
+以下参数控制 AI worker 的增量职位训练闭环。
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `FEATURE_COUNT_CAP` | `5000` | 每特征每类别的样本数软上限。超过后，旧统计量会衰减以腾出空间给新反馈。 |
-| `MIN_SAMPLES_TO_RECOMPUTE` | `10` | 触发自动模型权重重新计算所需的新样本最小数量。 |
-
-> **未来计划**：这些参数可能在后续版本中作为环境变量暴露，以便更精细的运营控制。
+| `RETRAIN_INTERVAL_HOURS` | `24` | AI worker 检查缓冲反馈并重新训练的间隔时间（小时）。 |
+| `MIN_SAMPLES_FOR_RETRAIN` | `10` | 触发重新训练前所需的最小缓冲反馈样本数。 |
 
 ---
 
@@ -689,7 +687,7 @@ openssl rand -base64 32
 
 | 字段 | 值 |
 |------|-----|
-| **用途** | 用于保存 `baseline_model_latest.json` 等模型 artifact 的 bucket 名称。 |
+| **用途** | 用于保存 `ranker_model_<version>.txt` 和 `latest_meta.json` 等模型 artifact 的 bucket 名称。 |
 | **默认值** | `ai-models` |
 | **有效取值** | 任意有效的 S3 bucket 名称 |
 | **安全说明** | 模型 artifact 可能编码聚合后的用户/职位匹配行为，应保持私有。 |

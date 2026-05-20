@@ -115,12 +115,12 @@ docker compose exec ai-service python -c "import urllib.request; print(urllib.re
 In addition to resume/job parsing, embedding generation, ranking, and conversation, the AI service now includes an **incremental model training loop**:
 
 1. **Job Dataset Sync**: When a job is successfully parsed, the backend writes it to the `job_dataset` table (training corpus).
-2. **Score Label Consumption**: When a user scores a job, the backend sends a score label message to the `ai.queue.model.incremental` queue.
-3. **Incremental Statistics**: The AI service keeps positive/negative sample feature statistics in Redis hashes and uses Redis sets for cross-instance deduplication.
-4. **Weight Recomputation**: When the sample threshold (`MIN_SAMPLES_TO_RECOMPUTE=10`) is reached, the service recomputes adaptive ensemble weights and writes versioned model artifacts such as `baseline_model_v{N}.json` plus `baseline_model_latest.json` to the configured model object storage.
-5. **Hot Reload**: The `suitability_service` loads the latest model from object storage through an in-memory cache, invalidated by Redis Pub/Sub with periodic version checks as a fallback.
+2. **Score Label Consumption**: When a user scores a job, the backend sends a score label message to the `ai.queue.feedback` queue.
+3. **Feedback Buffering**: The AI worker converts feedback into labeled feature samples and stores them in a Redis buffer.
+4. **LightGBM Retraining**: When the sample threshold (`MIN_SAMPLES_FOR_RETRAIN=10`) is reached, the worker combines buffered feedback with baseline features, trains a LightGBM ranker, and writes versioned artifacts such as `ranker_model_<version>.txt` plus `latest_meta.json` to MinIO.
+5. **Hot Reload**: The model manager loads the latest model from MinIO and reloads it when the worker publishes a Redis `ai.model.reload` notification.
 
-Administrators can also manually trigger weight recomputation via `POST /api/v1/admin/recompute-model`.
+`POST /api/v1/admin/recompute-model` is kept for compatibility and returns a deprecation message; scheduled retraining is handled by `ai-worker`.
 
 ## Common Commands
 

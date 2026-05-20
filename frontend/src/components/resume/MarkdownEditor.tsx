@@ -34,7 +34,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   });
 
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error' | 'conflict'>('idle');
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSaveEnabledRef = useRef<boolean>(true);
 
   // Local backup to localStorage to prevent data loss on accidental refresh

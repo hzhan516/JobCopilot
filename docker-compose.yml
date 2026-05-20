@@ -327,11 +327,12 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
 
       # --- AI Model Artifact Storage ---
-      # Model artifacts are not baked into the Docker image. In local Docker
-      # Compose they are persisted in the writable model-artifacts volume.
-      - MODEL_STORAGE_TYPE=${MODEL_STORAGE_TYPE:-local}
-      - MODEL_STORAGE_BASE_PATH=${MODEL_STORAGE_BASE_PATH:-/app/model-artifacts}
-      - MODEL_BUCKET=${MODEL_BUCKET:-resume-assistant-models}
+      # Model artifacts are stored in MinIO so ai-service and ai-worker can
+      # share trained ranking models without baking them into the Docker image.
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_MODEL_BUCKET=${MINIO_MODEL_BUCKET:-ai-models}
 
       # --- Defense-in-Depth: Internal API Key ---
       # Must match the INTERNAL_API_KEY set in the backend environment.
@@ -340,9 +341,6 @@ services:
     volumes:
       # Read-only access to resume files uploaded by the backend.
       - shared-storage:/app/uploads:ro
-      # Writable model artifact volume. Incremental learning writes model files
-      # here instead of baking them into the ai-service Docker image.
-      - model-artifacts:/app/model-artifacts
       # Google Cloud Service Account JSON key file.
       # CRITICAL: the ${VERTEX_CREDENTIALS} variable in .env MUST be an
       # ABSOLUTE host path (e.g. /home/user/gcp-key.json). Relative paths
@@ -356,6 +354,8 @@ services:
       rabbitmq:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     restart: on-failure
     healthcheck:
@@ -378,12 +378,10 @@ services:
   #   db-network       — no
   # ============================================================================
   redis:
-    image: public.ecr.aws/bitnami/redis:7.4.1-debian-12-r0
+    image: docker.io/library/redis:7-alpine
     container_name: resume-assistant-redis
-    environment:
-      - ALLOW_EMPTY_PASSWORD=yes
     volumes:
-      - redis-data:/bitnami/redis
+      - redis-data:/data
     networks:
       - internal-network
     restart: unless-stopped
@@ -393,6 +391,31 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
+
+  # ============================================================================
+  # TIER 2 — INTERNAL APPLICATION LAYER
+  # ============================================================================
+  # MinIO provides S3-compatible object storage for AI model artifacts generated
+  # by the incremental learning worker and loaded by ai-service.
+  # ============================================================================
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: resume-assistant-minio
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio-data:/data
+    networks:
+      - internal-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   # ============================================================================
   # TIER 2 — INTERNAL APPLICATION LAYER  (Part 4 of 4)
@@ -508,13 +531,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     restart: on-failure
 
   postgres:
-    build:
-      context: ./middleware/postgres
-      dockerfile: Dockerfile
-    image: resume-assistant-postgres:bitnami
+    image: docker.io/ankane/pgvector:latest
     container_name: resume-assistant-postgres
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the line below if you need to connect with a local database
@@ -524,12 +546,12 @@ services:
     env_file:
       - .env
     environment:
-      - POSTGRESQL_DATABASE=${POSTGRES_DB:-resume_assistant}
-      - POSTGRESQL_USERNAME=${POSTGRES_USER:-resume_user}
-      - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
+      - POSTGRES_DB=${POSTGRES_DB:-resume_assistant}
+      - POSTGRES_USER=${POSTGRES_USER:-resume_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
     volumes:
       # Named volume for persistent database files.
-      - postgres-data:/bitnami/postgresql
+      - postgres-data:/var/lib/postgresql/data
       # Initialization scripts executed on the FIRST container start only.
       # Flyway (enabled in prod profile) handles schema migrations afterwards.
       - ./backend/app/src/main/resources/db/init.sql:/docker-entrypoint-initdb.d/templates/init.sql:ro
@@ -620,7 +642,6 @@ volumes:
   shared-storage:
     driver: local
 
-  # AI model artifacts generated by the incremental learning pipeline.
-  # Kept outside the Docker image so models can be updated independently.
-  model-artifacts:
+  # AI model artifacts stored by MinIO.
+  minio-data:
     driver: local

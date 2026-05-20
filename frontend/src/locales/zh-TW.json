@@ -290,6 +290,8 @@
     "selectResumePlaceholder": "選擇一個就緒的簡歷...",
     "selectJob": "選擇職位",
     "selectJobPlaceholder": "選擇一個已導入的職位...",
+    "selectedResumeLabel": "簡歷：{{name}}",
+    "selectedJobLabel": "職位：{{name}}",
     "resumeRequired": "請選擇簡歷",
     "jobRequired": "請選擇職位",
     "noAvailableJobs": "暫無可用職位，請先到職位匹配頁面導入職位",

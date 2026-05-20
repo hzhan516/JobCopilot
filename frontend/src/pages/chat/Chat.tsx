@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import type { Conversation, Message, ResumeGroup, Job } from '@/types';
 import { useTranslation } from 'react-i18next';
 import { formatTime } from '@/utils/i18n';
@@ -150,6 +150,36 @@ export default function Chat() {
       setSelectedJobId('');
     }
   }, [newDialogOpen]);
+
+  const activeResumeName = useMemo(() => {
+    const resumeVersionId = activeConversation?.resumeVersionId;
+    if (!resumeVersionId) return null;
+
+    for (const group of resumes) {
+      const versions = [group.convertedVersion, group.aiOptimizedVersion, group.originalVersion]
+        .filter((version): version is NonNullable<typeof version> => Boolean(version));
+
+      if (versions.some((version) => version.versionId === resumeVersionId)) {
+        return group.title || resumeVersionId.slice(0, 8);
+      }
+    }
+
+    return resumeVersionId.slice(0, 8);
+  }, [activeConversation?.resumeVersionId, resumes]);
+
+  const activeJobName = useMemo(() => {
+    const jobId = activeConversation?.jobId;
+    if (!jobId) return null;
+
+    const job = jobs.find((item) => item.id === jobId);
+    if (!job) return jobId.slice(0, 8);
+
+    const company = job.parsedContent?.company?.trim();
+    const title = job.parsedContent?.title?.trim();
+    const parts = [company, title].filter(Boolean);
+
+    return parts.length > 0 ? parts.join(' - ') : jobId.slice(0, 8);
+  }, [activeConversation?.jobId, jobs]);
 
   const handleSelectConversation = async (conversation: Conversation) => {
     syncConversation(conversation);
@@ -557,18 +587,28 @@ export default function Chat() {
                     <h3 className="font-semibold text-gray-900">{activeConversation.title}</h3>
                     <div className="flex items-center space-x-2 mt-0.5">
                       <p className="text-xs text-gray-500">{t('chat.aiAssistant')}</p>
-                      {(activeConversation.resumeVersionId || activeConversation.jobId) && (
+                      {(activeResumeName || activeJobName) && (
                         <div className="flex items-center space-x-1">
-                          {activeConversation.resumeVersionId && (
-                            <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
+                          {activeResumeName && (
+                            <span
+                              className="inline-flex items-center max-w-48 text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600"
+                              title={activeResumeName}
+                            >
                               <FileText className="w-3 h-3 mr-0.5" />
-                              {t('chat.selectResume')}
+                              <span className="truncate">
+                                {t('chat.selectedResumeLabel', { name: activeResumeName })}
+                              </span>
                             </span>
                           )}
-                          {activeConversation.jobId && (
-                            <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-600">
+                          {activeJobName && (
+                            <span
+                              className="inline-flex items-center max-w-72 text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-600"
+                              title={activeJobName}
+                            >
                               <Briefcase className="w-3 h-3 mr-0.5" />
-                              {t('chat.selectJob')}
+                              <span className="truncate">
+                                {t('chat.selectedJobLabel', { name: activeJobName })}
+                              </span>
                             </span>
                           )}
                         </div>

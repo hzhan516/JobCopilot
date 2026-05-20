@@ -60,14 +60,14 @@ Do not include markdown fences.
 Do not include explanations.
 
 Return exactly one JSON object with this shape:
-{
+{{
   "title": "string",
   "company": "string",
   "description": "string",
   "requirements": ["string", "string"],
   "salary": "string",
   "location": "string"
-}
+}}
 
 Rules:
 - title: the actual job title
@@ -149,14 +149,14 @@ Optional text context:
 \"\"\"
 
 Return exactly one JSON object with this shape:
-{
+{{
   "title": "string",
   "company": "string",
   "description": "string",
   "requirements": ["string", "string"],
   "salary": "string",
   "location": "string"
-}
+}}
 
 Rules:
 - title: the actual job title

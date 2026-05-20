@@ -203,25 +203,25 @@
 │   │              │───────────────────>│                  │                │          │
 │   │              │                    │  调用 AI /suitability            │          │
 │   │              │                    │  保存 ScoreRecord│                │          │
-│   │              │                    │  发布 ScoreLabel │                │          │
-│   │              │                    │  ai.req.model.incremental       │          │
+│   │              │                    │  发布反馈        │                │          │
+│   │              │                    │  ai.req.feedback │                │          │
 │   │              │                    │──────────────────>│               │          │
 │   │              │  返回结果          │                  │                │          │
 │   │              │<───────────────────│                  │                │          │
 │   │              │                    │                  │  消费          │          │
 │   │              │                    │                  │───────────────>│          │
-│   │              │                    │                  │                │  更新    │
-│   │              │                    │                  │                │  Redis 状态
+│   │              │                    │                  │                │  缓冲    │
+│   │              │                    │                  │                │  反馈    │
 │   │              │                    │                  │                │          │
-│   │              │                    │                  │                │  重新计算│
-│   │              │                    │                  │                │  权重    │
+│   │              │                    │                  │                │  训练    │
+│   │              │                    │                  │                │  LightGBM│
 │   │              │                    │                  │                │  （若达阈值）
 │   │              │                    │                  │                │          │
 │   │              │                    │                  │                │  生成    │
 │   │              │                    │                  │                │  模型 artifact
 │   │              │                    │                  │                │          │
-│   │              │                    │                  │                │  失效    │
-│   │              │                    │                  │                │  ModelCache│
+│   │              │                    │                  │                │  重新加载│
+│   │              │                    │                  │                │  模型    │
 │   │              │                    │                  │                │          │
 │   │  下次评分    │                    │                  │                │  加载新  │
 │   │─────────────>│                    │                  │                │  模型    │
@@ -236,10 +236,10 @@
 **关键设计点：**
 
 1. **双写**：解析后的职位同时写入 `jobs` 表（面向用户，支持软删除）和 `job_dataset` 表（训练语料，持久保存）。
-2. **发后即忘 MQ**：评分标签通过 Outbox 发送到 `ai.queue.model.incremental`。投递失败不会阻塞评分响应。
-3. **软上限移动平均**：增量统计存储在 Redis Hash 中，使用 Lua 脚本实现软上限（`FEATURE_COUNT_CAP=5000`）的原子累加，防止历史数据淹没新反馈。
-4. **对象存储模型产物**：新模型权重从 Redis 统计中计算并写入对象存储。Redis 版本号追踪最新的模型产物。
-5. **Redis 驱动缓存失效**：`suitability_service` 使用 `ModelCache`，热路径为内存读取。后台 Pub/Sub 监听器监听 `ra:ai:model_invalidate` 通道，配合定期版本检查标记缓存失效，触发从对象存储重新加载，避免每次评分请求都进行磁盘 I/O。
+2. **发后即忘 MQ**：评分标签通过 Outbox 发送到 `ai.queue.feedback`。投递失败不会阻塞评分响应。
+3. **Redis 反馈缓冲**：AI worker 将评分反馈转换为带标签的特征样本，并写入 Redis 缓冲区。
+4. **MinIO 模型产物**：AI worker 使用 baseline features 与缓冲反馈训练 LightGBM ranker，并将 `ranker_model_<version>.txt` 和 `latest_meta.json` 写入 MinIO。
+5. **Redis 驱动模型重载**：model manager 从 MinIO 加载最新模型，并在 worker 发布 `ai.model.reload` 通知时重新加载。
 
 ---
 
@@ -1115,25 +1115,26 @@ services:
       - RABBITMQ_HOST=rabbitmq
       - BACKEND_SERVICE_URL=http://backend:8080
       - LLM_TEXT_MODEL=${LLM_TEXT_MODEL:-gemini/gemini-2.5-flash}
-      - MODEL_STORAGE_BASE_PATH=/app/model-artifacts
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_MODEL_BUCKET=${MINIO_MODEL_BUCKET:-ai-models}
     depends_on:
       - rabbitmq
       - redis
+      - minio
     networks:
       - internal-network
     volumes:
       - shared-storage:/app/uploads:ro
-      - model-artifacts:/app/model-artifacts
 
   # 4. PostgreSQL + pgvector
   postgres:
-    build: ./middleware/postgres
+    image: docker.io/ankane/pgvector:latest
     environment:
-      - POSTGRESQL_DATABASE=${POSTGRES_DB:-resume_assistant}
-      - POSTGRESQL_USERNAME=${POSTGRES_USER:-resume_user}
-      - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
+      - POSTGRES_DB=${POSTGRES_DB:-resume_assistant}
+      - POSTGRES_USER=${POSTGRES_USER:-resume_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
     volumes:
-      - postgres-data:/bitnami/postgresql
+      - postgres-data:/var/lib/postgresql/data
     networks:
       - db-network
 
@@ -1156,12 +1157,21 @@ services:
     networks:
       - internal-network
 
+  # 7. MinIO模型注册表
+  minio:
+    image: quay.io/minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    volumes:
+      - minio-data:/data
+    networks:
+      - internal-network
+
 volumes:
   postgres-data:
   rabbitmq-data:
   redis-data:
   shared-storage:
-  model-artifacts:
+  minio-data:
 
 networks:
   public-network:

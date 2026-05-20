@@ -428,52 +428,32 @@ To comply with the system architecture, the Java backend no longer directly call
 
 ### 2.3 Score Label Request (Backend -> AI Service)
 **Exchange:** `ai.direct.exchange`
-**Routing Key:** `ai.req.model.incremental`
-**Queue:** `ai.queue.model.incremental`
+**Routing Key:** `ai.req.feedback`
+**Queue:** `ai.queue.feedback`
 
 **Description:** After `scoreJob()` completes, the backend asynchronously sends the scoring result to the AI service for incremental model training. This is a **fire-and-forget** message; no result callback is expected.
 
 **Message Body:**
 ```json
 {
-  "messageId": "msg-uuid-v4",
+  "matchId": "feedback-uuid-v4",
+  "userId": "user-uuid",
+  "resumeVersionId": "resume-version-uuid",
   "jobId": "job-uuid",
-  "resumeVersionId": "resume-uuid",
-  "resume": {
-    "skills": ["Python", "AWS", "Kubernetes"],
-    "experience": [
-      {"title": "Senior Engineer", "summary": "Built microservices...", "company": "TechCorp"}
-    ]
-  },
-  "job": {
-    "title": "Software Engineer",
-    "description": "We are looking for...",
-    "requirements": ["Python", "AWS"]
-  },
-  "suitable": true,
-  "llmOverallScore": 0.82,
-  "finalScore": 0.85,
-  "semanticMatch": 0.78,
-  "datasetScore": 0.87,
-  "llmModel": "configured-llm-model",
+  "feedbackType": "APPLY",
+  "score": 0.85,
+  "context": "{\"resume\":{\"skills\":[\"Python\"]},\"job\":{\"title\":\"Software Engineer\"},\"llmOverallScore\":0.82,\"finalScore\":0.85}",
   "timestamp": "2026-05-09T16:00:00Z"
 }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `messageId` | String | Unique message ID for deduplication |
-| `jobId` | String | Job unique identifier |
+| `matchId` | String | Unique feedback message ID |
+| `userId` | UUID | User who produced the score |
 | `resumeVersionId` | String | Resume version unique identifier |
-| `resume.skills` | List<String> | Parsed resume skills |
-| `resume.experience` | List<Map> | Parsed resume experience items |
-| `job.title` | String | Job title |
-| `job.description` | String | Job description |
-| `job.requirements` | List<String> | Job requirements |
-| `suitable` | Boolean | Whether the resume is suitable for the job |
-| `llmOverallScore` | Float | LLM overall score before dataset model adjustment |
-| `finalScore` | Float | Final fused score (0.0-1.0) |
-| `semanticMatch` | Float | Optional semantic similarity score from vector matching |
-| `datasetScore` | Float | Optional score from the adaptive incremental model |
-| `llmModel` | String | Optional configured LLM model name used for the score |
+| `jobId` | String | Job unique identifier |
+| `feedbackType` | String | Feedback label. Current scoring flow sends `APPLY` for suitable matches and `IGNORE` otherwise |
+| `score` | Double | Final fused score (0.0-1.0) |
+| `context` | String | JSON string containing resume/job context plus optional `llmOverallScore`, `semanticMatch`, `datasetScore`, and `llmModel` |
 | `timestamp` | String | ISO 8601 timestamp |

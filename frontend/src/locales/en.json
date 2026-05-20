@@ -290,6 +290,8 @@
     "selectResumePlaceholder": "Choose a ready resume...",
     "selectJob": "Select Job",
     "selectJobPlaceholder": "Choose an imported job...",
+    "selectedResumeLabel": "Resume: {{name}}",
+    "selectedJobLabel": "Job: {{name}}",
     "resumeRequired": "Please select a resume",
     "jobRequired": "Please select a job",
     "noAvailableJobs": "No available jobs. Please import a job from the Job Matching page first.",

@@ -291,6 +291,8 @@
     "selectResumePlaceholder": "选择一个就绪的简历...",
     "selectJob": "选择职位",
     "selectJobPlaceholder": "选择一个已导入的职位...",
+    "selectedResumeLabel": "简历：{{name}}",
+    "selectedJobLabel": "职位：{{name}}",
     "resumeRequired": "请选择简历",
     "jobRequired": "请选择职位",
     "noAvailableJobs": "暂无可用职位，请先到职位匹配页面导入职位",

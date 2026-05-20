@@ -312,6 +312,8 @@ aiService:
   backendQueryTimeout: 5
   backendBatchUpsertTimeout: 30
   backendBatchSize: 100
+  minioEndpoint: "http://minio:9000"
+  minioModelBucket: "ai-models"
 
 # ------------------------------------------------------------------------------
 # Frontend / React + Nginx
