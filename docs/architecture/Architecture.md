@@ -288,25 +288,25 @@ job seekers.
 │   │                │─────────────────>│                  │              │            │
 │   │                │                  │  Call AI /suitability          │              │
 │   │                │                  │  Save ScoreRecord│              │            │
-│   │                │                  │  Publish ScoreLabel             │            │
-│   │                │                  │  ai.req.model.incremental      │              │
+│   │                │                  │  Publish Feedback               │            │
+│   │                │                  │  ai.req.feedback               │              │
 │   │                │                  │─────────────────>│              │            │
 │   │                │  Return Result   │                  │              │            │
 │   │                │<─────────────────│                  │              │            │
 │   │                │                  │                  │  Consume     │            │
 │   │                │                  │                  │─────────────>│            │
-│   │                │                  │                  │              │  Update    │
-│   │                │                  │                  │              │  Redis stats
+│   │                │                  │                  │              │  Buffer    │
+│   │                │                  │                  │              │  feedback  │
 │   │                │                  │                  │              │            │
-│   │                │                  │                  │              │  Recompute │
-│   │                │                  │                  │              │  Weights   │
+│   │                │                  │                  │              │  Train     │
+│   │                │                  │                  │              │  LightGBM  │
 │   │                │                  │                  │              │  (if threshold)
 │   │                │                  │                  │              │            │
 │   │                │                  │                  │              │  Generate  │
 │   │                │                  │                  │              │  model artifact
 │   │                │                  │                  │              │            │
-│   │                │                  │                  │              │  Invalidate│
-│   │                │                  │                  │              │  ModelCache│
+│   │                │                  │                  │              │  Reload    │
+│   │                │                  │                  │              │  Model     │
 │   │                │                  │                  │              │            │
 │   │  Next Score    │                  │                  │              │  Load New  │
 │   │───────────────>│                  │                  │              │  Model     │
@@ -321,10 +321,10 @@ job seekers.
 **Key Design Points:**
 
 1. **Dual Write**: Parsed jobs are written to both the `jobs` table (user-facing, soft-deletable) and the `job_dataset` table (training corpus, persistent).
-2. **Fire-and-Forget MQ**: Score labels are sent via Outbox to `ai.queue.model.incremental`. Delivery failures do not block the scoring response.
-3. **Soft-Cap Moving Average**: The incremental statistics are stored in Redis Hashes with a soft cap (`FEATURE_COUNT_CAP=5000`) using a Lua script for atomic accumulation, preventing historical data from drowning out new feedback.
-4. **Object Storage Model Artifacts**: New model weights are computed from Redis statistics and written to object storage. A Redis version number tracks the latest model artifact.
-5. **Redis-Driven Cache Invalidation**: `suitability_service` uses `ModelCache` with a hot-path memory read. A background Pub/Sub listener on `ra:ai:model_invalidate` and a periodic version check mark the cache stale, triggering a reload from object storage without disk I/O on every scoring request.
+2. **Fire-and-Forget MQ**: Score labels are sent via Outbox to `ai.queue.feedback`. Delivery failures do not block the scoring response.
+3. **Redis Feedback Buffer**: The AI worker converts score feedback into labeled feature samples and stores them in a Redis buffer.
+4. **MinIO Model Artifacts**: The AI worker trains a LightGBM ranker from baseline features plus buffered feedback, then writes `ranker_model_<version>.txt` and `latest_meta.json` to MinIO.
+5. **Redis-Driven Model Reload**: The model manager loads the latest model from MinIO and reloads it when the worker publishes an `ai.model.reload` notification.
 
 ---
 
@@ -1704,25 +1704,26 @@ services:
       - RABBITMQ_HOST=rabbitmq
       - BACKEND_SERVICE_URL=http://backend:8080
       - LLM_TEXT_MODEL=${LLM_TEXT_MODEL:-gemini/gemini-2.5-flash}
-      - MODEL_STORAGE_BASE_PATH=/app/model-artifacts
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_MODEL_BUCKET=${MINIO_MODEL_BUCKET:-ai-models}
     depends_on:
       - rabbitmq
       - redis
+      - minio
     networks:
       - internal-network
     volumes:
       - shared-storage:/app/uploads:ro
-      - model-artifacts:/app/model-artifacts
 
   # 4. PostgreSQL Database
   postgres:
-    build: ./middleware/postgres
+    image: docker.io/ankane/pgvector:latest
     environment:
-      - POSTGRESQL_DATABASE=${POSTGRES_DB:-resume_assistant}
-      - POSTGRESQL_USERNAME=${POSTGRES_USER:-resume_user}
-      - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
+      - POSTGRES_DB=${POSTGRES_DB:-resume_assistant}
+      - POSTGRES_USER=${POSTGRES_USER:-resume_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
     volumes:
-      - postgres-data:/bitnami/postgresql
+      - postgres-data:/var/lib/postgresql/data
     networks:
       - db-network
 
@@ -1745,12 +1746,21 @@ services:
     networks:
       - internal-network
 
+  # 7. MinIO Model Registry
+  minio:
+    image: quay.io/minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    volumes:
+      - minio-data:/data
+    networks:
+      - internal-network
+
 volumes:
   postgres-data:
   rabbitmq-data:
   redis-data:
   shared-storage:
-  model-artifacts:
+  minio-data:
 
 networks:
   public-network:
@@ -1807,11 +1817,11 @@ networks:
 │  │  └──────────────────────────────────────────────────────────────────┘  │ │
 │  │                                                                         │ │
 │  │  Volumes:                                                               │ │
-│  │  - postgres-data:/bitnami/postgresql                                  │ │
+│  │  - postgres-data:/var/lib/postgresql/data                             │ │
 │  │  - rabbitmq-data:/var/lib/rabbitmq                                     │ │
 │  │  - redis-data:/data                                                   │ │
 │  │  - shared-storage:/app/uploads                                        │ │
-│  │  - model-artifacts:/app/model-artifacts                               │ │
+│  │  - minio-data:/data                                                   │ │
 │  │                                                                         │ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
 │                                                                             │

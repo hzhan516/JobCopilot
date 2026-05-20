@@ -432,6 +432,7 @@ public class JobApplicationService {
             jobScoreRepository.save(record);
 
             // 异步发送评分标签到 AI Service 用于增量训练
+            try {
                 // Asynchronously send score label to AI service for incremental training
                 Map<String, Object> contextPayload = new HashMap<>();
                 contextPayload.put("resume", Map.of(

@@ -58,7 +58,7 @@
 | Response ← AI | 对话回复结果 | `backend.res.conversation` | `backend.queue.conversation` | Python AI | Java Backend |
 | Request → AI | 职位精排 | `ai.req.job.rank` | `ai.queue.job.rank` | Java Backend | Python AI |
 | Response ← AI | 职位精排结果 | `backend.res.job.rank` | `backend.queue.job.rank` | Python AI | Java Backend |
-| Request → AI | 模型增量更新 | `ai.req.model.incremental` | `ai.queue.model.incremental` | Java Backend | Python AI |
+| Request → AI | 用户反馈 | `ai.req.feedback` | `ai.queue.feedback` | Java Backend | Python AI Worker |
 | DLX → DLQ | 死信 | `dlq.routing.key` | `ai.dlq.queue` | 业务队列（自动转发） | 运维/监控（可手动消费） |
 
 > **Outbox 说明**：上表中的 "Java Backend" 生产者实际上是 `OutboxRelayScheduler`，它从 `outbox_message` 表读取记录后转发到 RabbitMQ。原始业务方法（如 `JobApplicationService.submitJob`）仅写入 Outbox 表。
@@ -184,54 +184,34 @@
 
 ---
 
-### 3.5 ScoreLabelCommand — 增量训练评分标签
+### 3.5 UserFeedbackCommand — 增量训练反馈标签
 
-**发送时机**：`JobApplicationService.scoreJob()` 完成后，评分结果被序列化并写入 Outbox 表，路由键为 `ai.req.model.incremental`。
+**发送时机**：`JobApplicationService.scoreJob()` 完成后，评分结果被序列化并写入 Outbox 表，路由键为 `ai.req.feedback`。
 
-**说明**：此消息为**发后即忘**（fire-and-forget）。AI 服务消费后用于更新增量统计并重新计算模型权重，不会向后端发送结果回调。
+**说明**：此消息为**发后即忘**（fire-and-forget）。AI worker 消费后将带标签的特征样本写入 Redis，并用于定时 LightGBM 重新训练，不会向后端发送结果回调。
 
 ```json
 {
-  "messageId": "msg-uuid-v4",
+  "matchId": "feedback-uuid-v4",
+  "userId": "user-uuid",
+  "resumeVersionId": "resume-version-uuid",
   "jobId": "job-uuid",
-  "resumeVersionId": "resume-uuid",
-  "resume": {
-    "skills": ["Python", "AWS", "Kubernetes"],
-    "experience": [
-      {"title": "Senior Engineer", "summary": "Built microservices...", "company": "TechCorp"}
-    ]
-  },
-  "job": {
-    "title": "Software Engineer",
-    "description": "We are looking for...",
-    "requirements": ["Python", "AWS"]
-  },
-  "suitable": true,
-  "llmOverallScore": 0.78,
-  "semanticMatch": 0.82,
-  "datasetScore": 0.73,
-  "finalScore": 0.85,
-  "llmModel": "gemini/gemini-2.0-flash",
+  "feedbackType": "APPLY",
+  "score": 0.85,
+  "context": "{\"resume\":{\"skills\":[\"Python\"]},\"job\":{\"title\":\"Software Engineer\"},\"llmOverallScore\":0.82,\"finalScore\":0.85}",
   "timestamp": "2026-05-09T16:00:00Z"
 }
 ```
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `messageId` | String | 唯一消息 ID，用于去重 |
-| `jobId` | String | 职位唯一标识 |
+| `matchId` | String | 唯一反馈消息 ID |
+| `userId` | UUID | 产生评分的用户 |
 | `resumeVersionId` | String | 简历版本唯一标识 |
-| `resume.skills` | List<String> | 解析后的简历技能 |
-| `resume.experience` | List<Map> | 解析后的简历经验条目 |
-| `job.title` | String | 职位标题 |
-| `job.description` | String | 职位描述 |
-| `job.requirements` | List<String> | 职位要求 |
-| `suitable` | Boolean | 简历是否适合该职位 |
-| `llmOverallScore` | Float | 当前配置的 LLM 适配度评估器返回的整体分数 |
-| `semanticMatch` | Float | 可选，pgvector 召回得到的语义相似度分数 |
-| `datasetScore` | Float | 可选，自适应数据集模型产生的分数 |
-| `finalScore` | Float | 最终融合得分（0.0-1.0） |
-| `llmModel` | String | 可选，LLM 适配度评估使用的模型标识 |
+| `jobId` | String | 职位唯一标识 |
+| `feedbackType` | String | 反馈标签；当前评分流程适合时发送 `APPLY`，否则发送 `IGNORE` |
+| `score` | Double | 最终融合得分（0.0-1.0） |
+| `context` | String | JSON 字符串，包含简历/职位上下文以及可选的 `llmOverallScore`、`semanticMatch`、`datasetScore`、`llmModel` |
 | `timestamp` | String | ISO 8601 时间戳 |
 
 ---

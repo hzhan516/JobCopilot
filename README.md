@@ -12,7 +12,7 @@ The **Resume Assistant** is an AI-powered platform designed to streamline the jo
 
 - **Guixing Jia** (@GuixingJia) - Project Manager, Python AI Service & Frontend
 - **Hansheng Zhang** (@hzhan516) - Java Backend & Database Lead
-- **Mu-Hsi Yu** (@muhsiyu) - Frontend & UX Lead, Python AI Service
+- **Mu-Hsi Yu** (@mhsi) - Frontend & UX Lead, Python AI Service
 
 ## Features
 

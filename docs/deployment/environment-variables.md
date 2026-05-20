@@ -407,14 +407,12 @@ You only need to configure **one** provider. The choice is determined by the pre
 
 ### Incremental Model Training Parameters
 
-The following parameters control the incremental job training loop. They are currently **hard-coded** in `ai-service/app/services/incremental_model_service.py` and are not configurable via environment variables.
+The following parameters control the AI worker's incremental job training loop.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `FEATURE_COUNT_CAP` | `5000` | Soft cap for per-feature per-class sample count. When exceeded, old statistics decay to make room for new feedback. |
-| `MIN_SAMPLES_TO_RECOMPUTE` | `10` | Minimum number of new samples required to trigger automatic model weight recomputation. |
-
-> **Future work**: These parameters may be exposed as environment variables in a future release for finer operational control.
+| `RETRAIN_INTERVAL_HOURS` | `24` | Interval in hours for the AI worker to check for buffered feedback and retrain. |
+| `MIN_SAMPLES_FOR_RETRAIN` | `10` | Minimum number of buffered feedback samples required before retraining runs. |
 
 ---
 
@@ -651,39 +649,49 @@ If left empty, both the backend interceptor and the AI service middleware skip t
 | **Security notes** | If empty, the backend generates relative URLs. Setting an external CDN improves performance but requires proper access control. |
 | **Common mistakes** | Adding a trailing slash that causes double slashes in URLs. |
 
-### AI Model Artifact Storage
+### AI Model Artifact Storage (MinIO)
 
-These variables are consumed by the Python AI service for incremental matching model artifacts. They are separate from the backend resume file storage settings above.
+These variables are consumed by the Python AI service and AI worker for incremental matching model artifacts. They are separate from the backend resume file storage settings above.
 
-### `MODEL_STORAGE_TYPE`
-
-| Field | Value |
-|-------|-------|
-| **Purpose** | Determines where adaptive incremental model artifacts are stored. |
-| **Default** | `local` |
-| **Valid values** | `local`, `minio`, `s3` |
-| **Security notes** | Local storage is acceptable for single-node Docker Compose. For multi-instance or Kubernetes deployments, use S3-compatible object storage so all AI replicas can load the same latest model. |
-| **Common mistakes** | Assuming model artifacts are baked into the AI Docker image. They are intentionally stored outside the image and persisted through a volume or object storage. |
-
-### `MODEL_STORAGE_BASE_PATH`
+### `MINIO_ENDPOINT`
 
 | Field | Value |
 |-------|-------|
-| **Purpose** | Root directory for local model artifact storage when `MODEL_STORAGE_TYPE=local`. |
-| **Default** | `/app/model-artifacts` |
-| **Valid values** | Any writable absolute filesystem path inside the AI service container |
-| **Security notes** | Mount this path as a persistent volume; otherwise retrained model artifacts are lost when the container is recreated. |
-| **Common mistakes** | Pointing this at a read-only path or forgetting to mount the `model-artifacts` volume in Docker Compose. |
+| **Purpose** | MinIO server URL used by the AI model registry. |
+| **Default** | `http://minio:9000` |
+| **Valid values** | Any HTTP(S) URL |
+| **Security notes** | Use HTTPS in production. Validate TLS certificates or configure the trust store. |
+| **Common mistakes** | Using `http://localhost:9000` from inside Docker or Kubernetes instead of the service name. |
 
-### `MODEL_BUCKET`
+### `MINIO_ACCESS_KEY`
 
 | Field | Value |
 |-------|-------|
-| **Purpose** | Bucket or top-level directory name used to store model artifacts such as `baseline_model_latest.json`. |
-| **Default** | `resume-assistant-models` |
-| **Valid values** | Any valid S3 bucket name or local directory segment |
+| **Purpose** | MinIO access key used by the AI model registry. |
+| **Default** | `minioadmin` |
+| **Valid values** | Any string |
+| **Security notes** | Change the default value immediately outside local development. |
+| **Common mistakes** | Reusing the same credentials between development and production MinIO instances. |
+
+### `MINIO_SECRET_KEY`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | MinIO secret key used by the AI model registry. |
+| **Default** | `minioadmin` |
+| **Valid values** | Any string; recommended length ≥ 16 |
+| **Security notes** | Store in a secret manager. A leaked key grants read/write access to model artifacts. |
+| **Common mistakes** | Committing the secret to Git or sharing it in chat logs. |
+
+### `MINIO_MODEL_BUCKET`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Bucket name for model artifacts such as `ranker_model_<version>.txt` and `latest_meta.json`. |
+| **Default** | `ai-models` |
+| **Valid values** | Any valid S3 bucket name |
 | **Security notes** | Keep model artifacts private because they may encode aggregate user/job matching behavior. |
-| **Common mistakes** | Expecting `AWS_S3_*` variables to control model artifact storage. The current AI service uses the S3-compatible storage path configured through `MODEL_STORAGE_TYPE` and the `MINIO_*` endpoint/credential variables. |
+| **Common mistakes** | Expecting `AWS_S3_*` variables to control model artifact storage. The AI service uses the `MINIO_*` endpoint, credential, and model bucket variables. |
 
 ### `RETRAIN_INTERVAL_HOURS`
 

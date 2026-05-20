@@ -65,9 +65,8 @@ data:
   STORAGE_TYPE: {{ .Values.backend.storageType | quote }}
 
   # Model artifact storage / 模型产物存储
-  MODEL_STORAGE_TYPE: "local"
-  MODEL_STORAGE_BASE_PATH: "/app/model-artifacts"
-  MODEL_BUCKET: "resume-assistant-models"
+  MINIO_ENDPOINT: {{ .Values.aiService.minioEndpoint | quote }}
+  MINIO_MODEL_BUCKET: {{ .Values.aiService.minioModelBucket | quote }}
 
   # Search / 搜索
   SEARCH_MAX_LIMIT: "100"

@@ -11,7 +11,7 @@
 
 - **Guixing Jia** (@GuixingJia) - 專案經理 (PM)，Python AI 服務 & 前端開發
 - **Hansheng Zhang** (@hzhan516) - Java 後端 & 資料庫架構負責人
-- **Mu-Hsi Yu** (@muhsiyu) - 前端 & UX 設計負責人，Python AI 服務
+- **Mu-Hsi Yu** (@mhsi) - 前端 & UX 設計負責人，Python AI 服務
 
 ## 功能特性
 

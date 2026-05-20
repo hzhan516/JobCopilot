@@ -58,7 +58,7 @@ The backend uses the **Transactional Outbox** pattern to guarantee atomicity bet
 | Response ← AI | Conversation Reply | `backend.res.conversation` | `backend.queue.conversation` | Python AI | Java Backend |
 | Request → AI | Job Rank | `ai.req.job.rank` | `ai.queue.job.rank` | Java Backend | Python AI |
 | Response ← AI | Job Rank Result | `backend.res.job.rank` | `backend.queue.job.rank` | Python AI | Java Backend |
-| Request → AI | Model Incremental | `ai.req.model.incremental` | `ai.queue.model.incremental` | Java Backend | Python AI |
+| Request → AI | User Feedback | `ai.req.feedback` | `ai.queue.feedback` | Java Backend | Python AI Worker |
 | DLX → DLQ | Dead Letter | `dlq.routing.key` | `ai.dlq.queue` | Business queues (auto-forward) | Ops / monitoring |
 
 > **Note on Outbox**: The "Java Backend" producer listed above is technically the `OutboxRelayScheduler`, which reads from the `outbox_message` table and forwards to RabbitMQ. The original business methods (e.g., `JobApplicationService.submitJob`) only write to the Outbox table.
@@ -184,54 +184,34 @@ The backend uses the **Transactional Outbox** pattern to guarantee atomicity bet
 
 ---
 
-### 3.5 ScoreLabelCommand — Score Label for Incremental Training
+### 3.5 UserFeedbackCommand — Feedback Label for Incremental Training
 
-**Trigger**: After `JobApplicationService.scoreJob()` completes, the scoring result is serialized and written to the Outbox table with routing key `ai.req.model.incremental`.
+**Trigger**: After `JobApplicationService.scoreJob()` completes, the scoring result is serialized and written to the Outbox table with routing key `ai.req.feedback`.
 
-**Note**: This is a **fire-and-forget** message. The AI service consumes it to update incremental statistics and recompute model weights. No result callback is sent back to the backend.
+**Note**: This is a **fire-and-forget** message. The AI worker consumes it, buffers labeled feature samples in Redis, and uses them for scheduled LightGBM retraining. No result callback is sent back to the backend.
 
 ```json
 {
-  "messageId": "msg-uuid-v4",
+  "matchId": "feedback-uuid-v4",
+  "userId": "user-uuid",
+  "resumeVersionId": "resume-version-uuid",
   "jobId": "job-uuid",
-  "resumeVersionId": "resume-uuid",
-  "resume": {
-    "skills": ["Python", "AWS", "Kubernetes"],
-    "experience": [
-      {"title": "Senior Engineer", "summary": "Built microservices...", "company": "TechCorp"}
-    ]
-  },
-  "job": {
-    "title": "Software Engineer",
-    "description": "We are looking for...",
-    "requirements": ["Python", "AWS"]
-  },
-  "suitable": true,
-  "llmOverallScore": 0.78,
-  "semanticMatch": 0.82,
-  "datasetScore": 0.73,
-  "finalScore": 0.85,
-  "llmModel": "gemini/gemini-2.0-flash",
+  "feedbackType": "APPLY",
+  "score": 0.85,
+  "context": "{\"resume\":{\"skills\":[\"Python\"]},\"job\":{\"title\":\"Software Engineer\"},\"llmOverallScore\":0.82,\"finalScore\":0.85}",
   "timestamp": "2026-05-09T16:00:00Z"
 }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `messageId` | String | Unique message ID for deduplication |
-| `jobId` | String | Job unique identifier |
+| `matchId` | String | Unique feedback message ID |
+| `userId` | UUID | User who produced the score |
 | `resumeVersionId` | String | Resume version unique identifier |
-| `resume.skills` | List<String> | Parsed resume skills |
-| `resume.experience` | List<Map> | Parsed resume experience items |
-| `job.title` | String | Job title |
-| `job.description` | String | Job description |
-| `job.requirements` | List<String> | Job requirements |
-| `suitable` | Boolean | Whether the resume is suitable for the job |
-| `llmOverallScore` | Float | Overall score returned by the configured LLM-based suitability evaluator |
-| `semanticMatch` | Float | Optional semantic similarity score from pgvector recall |
-| `datasetScore` | Float | Optional score produced by the adaptive dataset model |
-| `finalScore` | Float | Final fused score (0.0-1.0) |
-| `llmModel` | String | Optional model identifier used by the LLM suitability evaluator |
+| `jobId` | String | Job unique identifier |
+| `feedbackType` | String | Feedback label. Current scoring flow sends `APPLY` for suitable matches and `IGNORE` otherwise |
+| `score` | Double | Final fused score (0.0-1.0) |
+| `context` | String | JSON string containing resume/job context plus optional `llmOverallScore`, `semanticMatch`, `datasetScore`, and `llmModel` |
 | `timestamp` | String | ISO 8601 timestamp |
 
 ---

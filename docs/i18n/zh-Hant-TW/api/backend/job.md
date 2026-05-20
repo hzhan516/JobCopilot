@@ -383,54 +383,34 @@ Content-Type: application/json
 
 ### 2.3 評分標籤請求 (Backend -> AI Service)
 **Exchange:** `ai.direct.exchange`
-**Routing Key:** `ai.req.model.incremental`
-**Queue:** `ai.queue.model.incremental`
+**Routing Key:** `ai.req.feedback`
+**Queue:** `ai.queue.feedback`
 
 **描述:** 當 `scoreJob()` 完成後，後端將評分結果非同步發送至 AI 服務進行增量模型訓練。此為 **發送後即忘（fire-and-forget）** 訊息，不期望結果回呼。
 
 **Message Body:**
 ```json
 {
-  "messageId": "msg-uuid-v4",
+  "matchId": "feedback-uuid-v4",
+  "userId": "user-uuid",
+  "resumeVersionId": "resume-version-uuid",
   "jobId": "job-uuid",
-  "resumeVersionId": "resume-uuid",
-  "resume": {
-    "skills": ["Python", "AWS", "Kubernetes"],
-    "experience": [
-      {"title": "Senior Engineer", "summary": "Built microservices...", "company": "TechCorp"}
-    ]
-  },
-  "job": {
-    "title": "Software Engineer",
-    "description": "We are looking for...",
-    "requirements": ["Python", "AWS"]
-  },
-  "suitable": true,
-  "llmOverallScore": 0.82,
-  "finalScore": 0.85,
-  "semanticMatch": 0.78,
-  "datasetScore": 0.87,
-  "llmModel": "configured-llm-model",
+  "feedbackType": "APPLY",
+  "score": 0.85,
+  "context": "{\"resume\":{\"skills\":[\"Python\"]},\"job\":{\"title\":\"Software Engineer\"},\"llmOverallScore\":0.82,\"finalScore\":0.85}",
   "timestamp": "2026-05-09T16:00:00Z"
 }
 ```
 
 | 欄位 | 類型 | 說明 |
 |------|------|------|
-| `messageId` | String | 唯一訊息 ID，用於去重 |
-| `jobId` | String | 職位唯一識別 |
+| `matchId` | String | 唯一反饋訊息 ID |
+| `userId` | UUID | 產生評分的使用者 |
 | `resumeVersionId` | String | 履歷版本唯一識別 |
-| `resume.skills` | List<String> | 解析後的履歷技能 |
-| `resume.experience` | List<Map> | 解析後的履歷經驗項目 |
-| `job.title` | String | 職位標題 |
-| `job.description` | String | 職位描述 |
-| `job.requirements` | List<String> | 職位要求 |
-| `suitable` | Boolean | 履歷是否適合該職位 |
-| `llmOverallScore` | Float | 資料集模型調整前的 LLM 綜合分數 |
-| `finalScore` | Float | 最終融合得分（0.0-1.0） |
-| `semanticMatch` | Float | 可選的向量語義相似度分數 |
-| `datasetScore` | Float | 可選的自適應增量模型分數 |
-| `llmModel` | String | 可選的評分使用 LLM 模型名稱 |
+| `jobId` | String | 職位唯一識別 |
+| `feedbackType` | String | 反饋標籤；目前評分流程適合時發送 `APPLY`，否則發送 `IGNORE` |
+| `score` | Double | 最終融合得分（0.0-1.0） |
+| `context` | String | JSON 字串，包含履歷/職位上下文以及可選的 `llmOverallScore`、`semanticMatch`、`datasetScore`、`llmModel` |
 | `timestamp` | String | ISO 8601 時間戳 |
 
 > **注意：**

@@ -35,8 +35,6 @@ spec:
             - secretRef:
                 name: resume-assistant-secrets
           env:
-            - name: MODEL_STORAGE_BASE_PATH
-              value: "/app/model-artifacts"
             - name: FILE_STORAGE_PATH
               value: "/app/uploads"
           ports:
@@ -61,8 +59,6 @@ spec:
           volumeMounts:
             - name: uploads
               mountPath: /app/uploads
-            - name: model-artifacts
-              mountPath: /app/model-artifacts
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -70,6 +66,4 @@ spec:
                 - ALL
       volumes:
         - name: uploads
-          emptyDir: {}
-        - name: model-artifacts
           emptyDir: {}

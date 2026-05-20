@@ -114,12 +114,12 @@ docker compose exec ai-service python -c "import urllib.request; print(urllib.re
 除简历/职位解析、嵌入生成、排序和对话外，AI 服务现在还包含**增量模型训练闭环**：
 
 1. **职位数据集同步**：职位成功解析后，后端将其写入 `job_dataset` 表（训练语料库）。
-2. **评分标签消费**：用户对职位进行评分时，后端将评分标签消息发送到 `ai.queue.model.incremental` 队列。
-3. **增量统计**：AI 服务将正/负样本的特征统计量维护在 Redis Hash 中，并使用 Redis Set 做跨实例去重。
-4. **权重重新计算**：当样本达到阈值（`MIN_SAMPLES_TO_RECOMPUTE=10`）时，服务重新计算自适应集成权重，并将 `baseline_model_v{N}.json` 和 `baseline_model_latest.json` 等版本化模型 artifact 写入配置的模型对象存储。
-5. **热加载**：`suitability_service` 通过内存缓存从对象存储加载最新模型，并由 Redis Pub/Sub 触发失效，另有定期版本检查作为兜底。
+2. **评分标签消费**：用户对职位进行评分时，后端将评分标签消息发送到 `ai.queue.feedback` 队列。
+3. **反馈缓冲**：AI worker 将反馈转换为带标签的特征样本，并写入 Redis 缓冲区。
+4. **LightGBM 重新训练**：当样本达到阈值（`MIN_SAMPLES_FOR_RETRAIN=10`）时，worker 将缓冲反馈与 baseline features 合并，训练 LightGBM ranker，并将 `ranker_model_<version>.txt` 和 `latest_meta.json` 等版本化 artifact 写入 MinIO。
+5. **热加载**：model manager 从 MinIO 加载最新模型，并在 worker 发布 Redis `ai.model.reload` 通知时重新加载。
 
-管理员也可以通过 `POST /api/v1/admin/recompute-model` 手动触发权重重新计算。
+`POST /api/v1/admin/recompute-model` 仅保留兼容性并返回弃用提示；定时重新训练由 `ai-worker` 负责。
 
 ## 常用命令
 
