@@ -176,9 +176,6 @@ def _redis_pipeline():
 _redis_mock.pipeline = _redis_pipeline
 
 # Apply patch before any app imports
-import app.infrastructure.redis_client as _redis_client_module
-_redis_client_module._redis_client = _redis_mock
-_redis_client_module.get_redis = lambda: _redis_mock
 
 # Object storage patch
 _storage_mock = MagicMock()
@@ -196,9 +193,6 @@ def _storage_get(bucket: str, key: str) -> bytes | None:
 _storage_mock.put_object = _storage_put
 _storage_mock.get_object = _storage_get
 
-import app.infrastructure.object_storage as _storage_module
-_storage_module._backend = _storage_mock
-_storage_module.get_object_storage = lambda: _storage_mock
 
 # Now safe to import app.main
 import app.main as main_module
@@ -324,3 +318,30 @@ def mock_dependencies(mock_litellm: MagicMock, mock_httpx: tuple[MagicMock, Magi
         "rabbitmq_connection": mock_rabbitmq[0],
         "rabbitmq_channel": mock_rabbitmq[1],
     }
+
+# New Infrastructure Mocks for Refactored AI Service
+
+@pytest.fixture
+def mock_minio_registry(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    registry_mock = MagicMock()
+    registry_mock.get_latest_meta.return_value = None
+    registry_mock.upload_model.return_value = "fake_key.txt"
+    monkeypatch.setattr("app.api.model_manager.MinioModelRegistry", lambda: registry_mock)
+    monkeypatch.setattr("app.worker.scheduler.trainer.MinioModelRegistry", lambda: registry_mock)
+    return registry_mock
+
+@pytest.fixture
+def mock_redis_buffer(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    buffer_mock = MagicMock()
+    buffer_mock.drain.return_value = []
+    buffer_mock.acquire_lock.return_value = True
+    monkeypatch.setattr("app.worker.scheduler.trainer.RedisBuffer", lambda: buffer_mock)
+    monkeypatch.setattr("app.worker.consumers.feedback.RedisBuffer", lambda: buffer_mock)
+    return buffer_mock
+
+@pytest.fixture
+def mock_internal_api(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    api_mock = MagicMock()
+    api_mock.get_baseline_features.return_value = []
+    monkeypatch.setattr("app.worker.scheduler.trainer.InternalApiClient", lambda: api_mock)
+    return api_mock

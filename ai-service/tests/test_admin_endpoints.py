@@ -7,18 +7,14 @@ from app.main import app
 
 
 class TestAdminRecomputeModel:
-    @patch("app.main.incremental_service")
-    def test_recompute_model_success(self, mock_service):
-        mock_service.recompute_weights.return_value = {"version": "v3"}
+    def test_recompute_model_success(self):
         client = TestClient(app)
         response = client.post("/api/v1/admin/recompute-model")
         assert response.status_code == 200
         assert response.json()["status"] == "ok"
-        assert response.json()["version"] == "v3"
+        assert "Deprecated" in response.json()["message"]
 
-    @patch("app.main.incremental_service")
-    def test_recompute_model_with_internal_api_key(self, mock_service):
-        mock_service.recompute_weights.return_value = {"version": "v3"}
+    def test_recompute_model_with_internal_api_key(self):
         client = TestClient(app)
         with patch("app.main.INTERNAL_API_KEY", "secret-key"):
             # 无 key 时应 401
