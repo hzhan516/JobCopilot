@@ -69,10 +69,10 @@ services:
     image: resume-assistant-frontend
     container_name: resume-assistant-frontend
     ports:
-      # Host port mapping for the Nginx reverse proxy.
-      # FRONTEND_HOST_PORT defaults to 80. Change it in .env if port 80 is
-      # already in use on your machine (e.g. FRONTEND_HOST_PORT=8081).
-      - "${FRONTEND_HOST_PORT:-80}:80"
+     # Host port mapping for the Nginx reverse proxy.
+     # FRONTEND_HOST_PORT defaults to 80. Change it in .env if port 80 is
+     # already in use on your machine (e.g. FRONTEND_HOST_PORT=8081).
+     - "${FRONTEND_HOST_PORT:-80}:8080"
     networks:
       # Frontend lives exclusively in the public tier. It can reach the
       # backend via Docker DNS (backend:8080) because the backend also joins
@@ -86,7 +86,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -151,16 +151,15 @@ services:
       # Port 5672 is NOT exposed to the host; AMQP traffic stays inside Docker.
       - SPRING_RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - SPRING_RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
-      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_USERNAME:-guest}
-      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
+      - SPRING_RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
+      - SPRING_RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
 
       # --- File Storage ---
       # Local filesystem storage is used for the Docker Compose deployment.
       # The path `/app/uploads` is backed by the named volume `shared-storage`
       # mounted below. Both backend and ai-service share this volume.
       - FILE_STORAGE_PATH=/app/uploads
-      - STORAGE_TYPE=local
-      - LOCAL_STORAGE_BASE_PATH=/app/uploads
+      - STORAGE_TYPE=${STORAGE_TYPE:-minio}
 
       # --- JWT Secret ---
       # Symmetric signing key for HS256 JWT tokens. Must be at least 32
@@ -206,6 +205,12 @@ services:
       - REDIS_HOST=${REDIS_HOST:-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+
+      # --- Actuator Health Checks ---
+      # Local compose commonly runs without SMTP credentials while email
+      # verification is disabled, so do not let MailHealthIndicator block
+      # backend/frontend startup.
+      - MANAGEMENT_HEALTH_MAIL_ENABLED=${MANAGEMENT_HEALTH_MAIL_ENABLED:-false}
     volumes:
       # Named volume shared with ai-service. Backend writes uploaded resumes
       # here; ai-service reads them (read-only mount on its side).
@@ -225,7 +230,51 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      redis:
+    
+  # ============================================================================
+  # TIER 2: INTERNAL INFRASTRUCTURE
+  # ============================================================================
+
+  # MinIO Object Storage
+  # Stores user-uploaded resumes and AI model artifacts.
+  minio:
+    image: minio/minio:RELEASE.2024-05-10T01-41-38Z
+    container_name: resume-assistant-minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+    networks:
+      - internal-network
+    volumes:
+      - minio-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO Bucket Setup
+  # Automatically creates required buckets on startup
+  minio-setup:
+    image: minio/mc:RELEASE.2024-05-09T17-04-24Z
+    container_name: resume-assistant-minio-setup
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - internal-network
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add myminio http://minio:9000 ${MINIO_ACCESS_KEY:-minioadmin} ${MINIO_SECRET_KEY:-minioadmin};
+      /usr/bin/mc mb -p myminio/${MINIO_BUCKET_NAME:-resumes};
+      /usr/bin/mc mb -p myminio/${MINIO_MODEL_BUCKET:-ai-models};
+      /usr/bin/mc policy set download myminio/${MINIO_BUCKET_NAME:-resumes};
+      exit 0;
+      "
+
+  redis:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -276,8 +325,8 @@ services:
       # --- RabbitMQ Configuration (internal-network) ---
       - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
-      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME:-guest}
-      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
 
       # --- File Storage (shared with backend, read-only) ---
       - FILE_STORAGE_PATH=/app/uploads
@@ -320,13 +369,7 @@ services:
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
 
-      # --- AI Model Artifact Storage ---
-      # Model artifacts are not baked into the Docker image. In local Docker
-      # Compose they are persisted in the writable model-artifacts volume.
-      - MODEL_STORAGE_TYPE=${MODEL_STORAGE_TYPE:-local}
-      - MODEL_STORAGE_BASE_PATH=${MODEL_STORAGE_BASE_PATH:-/app/model-artifacts}
-      - MODEL_BUCKET=${MODEL_BUCKET:-resume-assistant-models}
-
+      
       # --- Defense-in-Depth: Internal API Key ---
       # Must match the INTERNAL_API_KEY set in the backend environment.
       # If empty, the middleware skips validation (dev convenience).
@@ -334,9 +377,6 @@ services:
     volumes:
       # Read-only access to resume files uploaded by the backend.
       - shared-storage:/app/uploads:ro
-      # Writable model artifact volume. Incremental learning writes model files
-      # here instead of baking them into the ai-service Docker image.
-      - model-artifacts:/app/model-artifacts
       # Google Cloud Service Account JSON key file.
       # CRITICAL: the ${VERTEX_CREDENTIALS} variable in .env MUST be an
       # ABSOLUTE host path (e.g. /home/user/gcp-key.json). Relative paths
@@ -349,7 +389,51 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      redis:
+    
+  # ============================================================================
+  # TIER 2: INTERNAL INFRASTRUCTURE
+  # ============================================================================
+
+  # MinIO Object Storage
+  # Stores user-uploaded resumes and AI model artifacts.
+  minio:
+    image: minio/minio:RELEASE.2024-05-10T01-41-38Z
+    container_name: resume-assistant-minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+    networks:
+      - internal-network
+    volumes:
+      - minio-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO Bucket Setup
+  # Automatically creates required buckets on startup
+  minio-setup:
+    image: minio/mc:RELEASE.2024-05-09T17-04-24Z
+    container_name: resume-assistant-minio-setup
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - internal-network
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add myminio http://minio:9000 ${MINIO_ACCESS_KEY:-minioadmin} ${MINIO_SECRET_KEY:-minioadmin};
+      /usr/bin/mc mb -p myminio/${MINIO_BUCKET_NAME:-resumes};
+      /usr/bin/mc mb -p myminio/${MINIO_MODEL_BUCKET:-ai-models};
+      /usr/bin/mc policy set download myminio/${MINIO_BUCKET_NAME:-resumes};
+      exit 0;
+      "
+
+  redis:
         condition: service_healthy
     restart: on-failure
     healthcheck:
@@ -371,11 +455,57 @@ services:
   #   internal-network — yes (backend and ai-service read/write)
   #   db-network       — no
   # ============================================================================
-  redis:
-    image: docker.io/library/redis:7-alpine
-    container_name: resume-assistant-redis
+
+  # ============================================================================
+  # TIER 2: INTERNAL INFRASTRUCTURE
+  # ============================================================================
+
+  # MinIO Object Storage
+  # Stores user-uploaded resumes and AI model artifacts.
+  minio:
+    image: minio/minio:RELEASE.2024-05-10T01-41-38Z
+    container_name: resume-assistant-minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+    networks:
+      - internal-network
     volumes:
-      - redis-data:/data
+      - minio-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO Bucket Setup
+  # Automatically creates required buckets on startup
+  minio-setup:
+    image: minio/mc:RELEASE.2024-05-09T17-04-24Z
+    container_name: resume-assistant-minio-setup
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - internal-network
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add myminio http://minio:9000 ${MINIO_ACCESS_KEY:-minioadmin} ${MINIO_SECRET_KEY:-minioadmin};
+      /usr/bin/mc mb -p myminio/${MINIO_BUCKET_NAME:-resumes};
+      /usr/bin/mc mb -p myminio/${MINIO_MODEL_BUCKET:-ai-models};
+      /usr/bin/mc policy set download myminio/${MINIO_BUCKET_NAME:-resumes};
+      exit 0;
+      "
+
+  redis:
+    image: public.ecr.aws/bitnami/redis:7.4.1-debian-12-r0
+    container_name: resume-assistant-redis
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - redis-data:/bitnami/redis
     networks:
       - internal-network
     restart: unless-stopped
@@ -410,11 +540,11 @@ services:
   #   - The Management UI (port 15672) is NOT exposed to the internet.
   #     Access it via SSH tunnel when needed:
   #       ssh -L 15672:localhost:15672 <your-host>
-  #   - Override default guest/guest credentials via RABBITMQ_USERNAME and
-  #     RABBITMQ_PASSWORD in .env.
+  #   - Override default guest/guest credentials via RABBITMQ_DEFAULT_USER and
+  #     RABBITMQ_DEFAULT_PASS in .env.
   # ============================================================================
   rabbitmq:
-    image: docker.io/library/rabbitmq:3-management-alpine
+    image: public.ecr.aws/docker/library/rabbitmq:3.13-management-alpine
     container_name: resume-assistant-rabbitmq
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the lines below if you need direct host access to the AMQP
@@ -469,8 +599,88 @@ services:
   #     network isolation.
   #   - pgvector extension is pre-installed in the ankane/pgvector image.
   # ============================================================================
+
+  ai-worker:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    image: resume-assistant-ai-service
+    container_name: resume-assistant-ai-worker
+    command: ["python", "-m", "app.worker_main"]
+    env_file:
+      - .env
+    environment:
+      - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_MODEL_BUCKET=${MINIO_MODEL_BUCKET:-ai-models}
+      - BACKEND_SERVICE_URL=${BACKEND_SERVICE_URL:-http://backend:8080}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-}
+    networks:
+      - internal-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    
+  # ============================================================================
+  # TIER 2: INTERNAL INFRASTRUCTURE
+  # ============================================================================
+
+  # MinIO Object Storage
+  # Stores user-uploaded resumes and AI model artifacts.
+  minio:
+    image: minio/minio:RELEASE.2024-05-10T01-41-38Z
+    container_name: resume-assistant-minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+    networks:
+      - internal-network
+    volumes:
+      - minio-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO Bucket Setup
+  # Automatically creates required buckets on startup
+  minio-setup:
+    image: minio/mc:RELEASE.2024-05-09T17-04-24Z
+    container_name: resume-assistant-minio-setup
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - internal-network
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add myminio http://minio:9000 ${MINIO_ACCESS_KEY:-minioadmin} ${MINIO_SECRET_KEY:-minioadmin};
+      /usr/bin/mc mb -p myminio/${MINIO_BUCKET_NAME:-resumes};
+      /usr/bin/mc mb -p myminio/${MINIO_MODEL_BUCKET:-ai-models};
+      /usr/bin/mc policy set download myminio/${MINIO_BUCKET_NAME:-resumes};
+      exit 0;
+      "
+
+  redis:
+        condition: service_healthy
+    restart: on-failure
+
   postgres:
-    image: docker.io/ankane/pgvector:latest
+    build:
+      context: ./middleware/postgres
+      dockerfile: Dockerfile
+    image: resume-assistant-postgres:bitnami
     container_name: resume-assistant-postgres
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the line below if you need to connect with a local database
@@ -480,12 +690,12 @@ services:
     env_file:
       - .env
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-resume_assistant}
-      - POSTGRES_USER=${POSTGRES_USER:-resume_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
+      - POSTGRESQL_DATABASE=${POSTGRES_DB:-resume_assistant}
+      - POSTGRESQL_USERNAME=${POSTGRES_USER:-resume_user}
+      - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
     volumes:
       # Named volume for persistent database files.
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/bitnami/postgresql
       # Initialization scripts executed on the FIRST container start only.
       # Flyway (enabled in prod profile) handles schema migrations afterwards.
       - ./backend/app/src/main/resources/db/init.sql:/docker-entrypoint-initdb.d/templates/init.sql:ro
@@ -576,7 +786,7 @@ volumes:
   shared-storage:
     driver: local
 
-  # AI model artifacts generated by the incremental learning pipeline.
-  # Kept outside the Docker image so models can be updated independently.
-  model-artifacts:
+  # MinIO persistent data.
+  minio-data:
     driver: local
+

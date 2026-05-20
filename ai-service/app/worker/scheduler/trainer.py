@@ -7,7 +7,7 @@ from app.config import MIN_SAMPLES_FOR_RETRAIN, RETRAIN_INTERVAL_HOURS
 from app.infrastructure.redis.client import RedisBuffer
 from app.infrastructure.api_client.client import InternalApiClient
 from app.infrastructure.minio.client import MinioModelRegistry
-from app.domain.ml.features import FEATURE_COLUMNS
+from app.domain.ml.features import FEATURE_COLUMNS, extract_features
 from sklearn.metrics import roc_auc_score
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,16 @@ class IncrementalTrainer:
                     await self.redis_buffer.append(sample)
                 return
 
-            baseline_samples = await self.api_client.get_baseline_features_async()
+            raw_baseline = await self.api_client.get_baseline_features_async()
+            baseline_samples = []
+            for item in raw_baseline:
+                features = extract_features(
+                    item, 
+                    query="", 
+                    resume_text=item.get("requirements", "")
+                )
+                baseline_samples.append({"label": 1, "features": features})
+            
             all_samples = baseline_samples + new_samples
 
             X, y = self._build_matrix(all_samples)
