@@ -52,8 +52,8 @@ def test_setup_all_queues():
     setup_all_queues(mock_channel)
     
     assert mock_channel.exchange_declare.call_count == 2
-    assert mock_channel.queue_declare.call_count == 10
-    assert mock_channel.queue_bind.call_count == 10
+    assert mock_channel.queue_declare.call_count == 11
+    assert mock_channel.queue_bind.call_count == 11
 
     dlq_call = mock_channel.queue_declare.call_args_list[0]
     assert dlq_call.kwargs["queue"] == AI_DLQ_QUEUE
