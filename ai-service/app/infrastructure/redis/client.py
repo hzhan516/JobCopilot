@@ -53,3 +53,6 @@ class RedisBuffer:
     async def broadcast_reload(self, version: str, object_key: str):
         payload = {"version": version, "object_key": object_key}
         await self.redis.publish("ai.model.reload", json.dumps(payload))
+
+    async def close(self):
+        await self.redis.close()

@@ -121,7 +121,9 @@ async def test_generate_match_reason_fallback_on_error(mock_safe_call):
 
 @pytest.mark.asyncio
 @patch("app.services.job_rank_service._generate_match_reason")
-async def test_rank_jobs(mock_generate):
+@patch("app.services.job_rank_service.extract_features")
+@patch("app.services.job_rank_service.model_manager")
+async def test_rank_jobs(mock_model_manager, mock_extract_features, mock_generate):
     job_details = {
         "job1": {"title": "Junior Java", "description": "Needs basic java", "semanticMatch": 0.4},
         "job2": {"title": "Senior Java", "description": "Needs expert java", "semanticMatch": 0.9},
@@ -140,6 +142,24 @@ async def test_rank_jobs(mock_generate):
         return f"Reason for {job.job_id}"
     mock_generate.side_effect = mock_reason_generator
     
+    def mock_extract(details, query, resume_text):
+        return {
+            "semantic_match": details.get("semanticMatch", 0.0),
+            "skill_overlap_ratio": 0.5,
+            "experience_overlap_ratio": 0.5,
+            "title_keyword_overlap": 1.0,
+            "query_title_similarity": 0.0,
+            "years_of_experience_diff": 0.0,
+            "location_match": 0.0,
+            "salary_range_overlap": 0.0,
+        }
+    mock_extract_features.side_effect = mock_extract
+
+    async def mock_predict(feature_matrix):
+        # feature_matrix is a list of lists, where the first element is semantic_match
+        return [row[0] for row in feature_matrix]
+    mock_model_manager.predict.side_effect = mock_predict
+    
     result = await rank_jobs(command)
     
     assert result.match_id == "123"
@@ -157,3 +177,5 @@ async def test_rank_jobs(mock_generate):
     assert result.ranked_results[3].match_reason is None
     
     assert mock_generate.call_count == 3
+    assert mock_extract_features.call_count == 4
+    mock_model_manager.predict.assert_called_once()
