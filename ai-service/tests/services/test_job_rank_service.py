@@ -63,18 +63,20 @@ def test_safe_llm_call_max_retries_exceeded(mock_completion):
     
     assert mock_completion.call_count == 2
 
+@pytest.mark.asyncio
 @patch("app.services.job_rank_service._safe_llm_call")
-def test_generate_match_reason_no_resume(mock_safe_call):
+async def test_generate_match_reason_no_resume(mock_safe_call):
     command = JobRankCommand(
         matchId="123", userId="user", resumeVersionId="v1", 
         query="", recalledJobIds=["job1"], jobDetails={}
     )
-    result = _generate_match_reason(command, MagicMock())
+    result = await _generate_match_reason(command, MagicMock())
     assert result is None
     mock_safe_call.assert_not_called()
 
+@pytest.mark.asyncio
 @patch("app.services.job_rank_service._safe_llm_call")
-def test_generate_match_reason_success(mock_safe_call):
+async def test_generate_match_reason_success(mock_safe_call):
     command = JobRankCommand(
         matchId="123", userId="user", resumeVersionId="v1", 
         resumeText="Java developer with 5 years experience.",
@@ -89,7 +91,7 @@ def test_generate_match_reason_success(mock_safe_call):
     
     mock_safe_call.return_value = "Candidate is perfect."
     
-    result = _generate_match_reason(command, job_mock)
+    result = await _generate_match_reason(command, job_mock)
     
     assert result == "Candidate is perfect."
     mock_safe_call.assert_called_once()
@@ -100,8 +102,9 @@ def test_generate_match_reason_success(mock_safe_call):
     assert "<job_description>" in prompt_sent
     assert "UNTRUSTED raw data" in prompt_sent
 
+@pytest.mark.asyncio
 @patch("app.services.job_rank_service._safe_llm_call")
-def test_generate_match_reason_fallback_on_error(mock_safe_call):
+async def test_generate_match_reason_fallback_on_error(mock_safe_call):
     command = JobRankCommand(
         matchId="123", userId="user", resumeVersionId="v1", 
         resumeText="Java developer", query="", recalledJobIds=["job1"], 
@@ -112,12 +115,13 @@ def test_generate_match_reason_fallback_on_error(mock_safe_call):
     
     mock_safe_call.side_effect = Exception("LLM totally down")
     
-    result = _generate_match_reason(command, job_mock)
+    result = await _generate_match_reason(command, job_mock)
     
     assert result is None
 
+@pytest.mark.asyncio
 @patch("app.services.job_rank_service._generate_match_reason")
-def test_rank_jobs(mock_generate):
+async def test_rank_jobs(mock_generate):
     job_details = {
         "job1": {"title": "Junior Java", "description": "Needs basic java", "semanticMatch": 0.4},
         "job2": {"title": "Senior Java", "description": "Needs expert java", "semanticMatch": 0.9},
@@ -132,11 +136,11 @@ def test_rank_jobs(mock_generate):
         jobDetails=job_details
     )
     
-    def mock_reason_generator(cmd, job):
+    async def mock_reason_generator(cmd, job):
         return f"Reason for {job.job_id}"
     mock_generate.side_effect = mock_reason_generator
     
-    result = rank_jobs(command)
+    result = await rank_jobs(command)
     
     assert result.match_id == "123"
     assert result.status == "COMPLETED"
