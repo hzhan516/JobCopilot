@@ -2,6 +2,7 @@ import json
 import logging
 import re
 import base64
+import threading
 from typing import Any
 
 import litellm
@@ -18,6 +19,10 @@ from app.config import (
 
 logger = logging.getLogger(__name__)
 
+# 全局并发锁：防止 FastAPI 的 I/O 并发瞬间打爆 Vertex AI 导致 429
+# Global Semaphore: Threading bounded semaphore to cap concurrent LLM requests
+MAX_CONCURRENT_LLM_REQUESTS = 5
+_llm_semaphore = threading.BoundedSemaphore(MAX_CONCURRENT_LLM_REQUESTS)
 
 # Exponential backoff for transient LLM failures (rate limits, connection drops).
 # 指数退避重试：针对 LLM 服务商的瞬时限流或网络抖动，避免请求堆积放大故障。
@@ -108,13 +113,14 @@ def _generate_text(model: str, messages: list[dict[str, Any]]) -> str:
     执行文本补全：带重试机制与空响应兜底，防止下游因空字符串导致解析异常。"""
     logger.debug("LLM request: model=%s, messages_count=%d", model, len(messages))
     try:
-        response = completion(
-            model=model,
-            messages=messages,
-            temperature=LLM_TEMPERATURE,
-            max_tokens=LLM_MAX_TOKENS,
-            timeout=LLM_REQUEST_TIMEOUT_SECONDS,
-        )
+        with _llm_semaphore:
+            response = completion(
+                model=model,
+                messages=messages,
+                temperature=LLM_TEMPERATURE,
+                max_tokens=LLM_MAX_TOKENS,
+                timeout=LLM_REQUEST_TIMEOUT_SECONDS,
+            )
     except Exception:
         logger.exception("LLM completion failed: model=%s", model)
         raise

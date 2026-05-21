@@ -431,46 +431,6 @@ public class JobApplicationService {
             );
             jobScoreRepository.save(record);
 
-            // 异步发送评分标签到 AI Service 用于增量训练
-            try {
-                // Asynchronously send score label to AI service for incremental training
-                Map<String, Object> contextPayload = new HashMap<>();
-                contextPayload.put("resume", Map.of(
-                        "skills", resumeMap.get("skills") != null ? resumeMap.get("skills") : java.util.List.of(),
-                        "experience", resumeMap.get("experience") != null ? resumeMap.get("experience") : java.util.List.of()
-                ));
-                contextPayload.put("job", jobMap);
-                contextPayload.put("llmOverallScore", overallScore);
-                contextPayload.put("finalScore", finalScore);
-                if (llmModel != null && !llmModel.isBlank()) {
-                    contextPayload.put("llmModel", llmModel);
-                }
-                if (semanticMatch != null) {
-                    contextPayload.put("semanticMatch", semanticMatch);
-                }
-                if (datasetScore != null) {
-                    contextPayload.put("datasetScore", datasetScore);
-                }
-                
-                String contextStr = objectMapper.writeValueAsString(contextPayload);
-                
-                UserFeedbackCommand feedbackCmd = new UserFeedbackCommand(
-                        java.util.UUID.randomUUID().toString(),
-                        userId,
-                        request.resumeVersionId(),
-                        jobId,
-                        suitable ? "APPLY" : "IGNORE",
-                        (double) finalScore,
-                        contextStr,
-                        java.time.Instant.now()
-                );
-                aiMessagePublisherPort.sendUserFeedback(feedbackCmd);
-                log.info("Score label sent to outbox for jobId={}, resumeVersionId={}", jobId, request.resumeVersionId());
-            } catch (Exception e) {
-                log.error("Failed to send score label to outbox for jobId={}: {}", jobId, e.getMessage());
-                // 非阻塞：标签发送失败不应影响主流程
-            }
-
             return new JobScoreResponse(
                     suitable,
                     summary != null ? summary : "",
@@ -570,5 +530,36 @@ public class JobApplicationService {
                 job.isImageCheckEnabled(),
                 job.getErrorMessage()
         );
+    }
+
+    /**
+     * Track user action (CLICK, APPLY, REJECT) for AI incremental learning.
+     * 追踪真实用户反馈行为，并发送至 AI 队列以支持增量学习。
+     */
+    @Transactional
+    public void trackUserAction(String jobId, UUID userId, String actionType, String resumeVersionId) {
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new JobException("job.not.found"));
+
+        if (!job.getUserId().equals(userId)) {
+            throw new JobException("access.denied");
+        }
+
+        try {
+            UserFeedbackCommand feedbackCmd = new UserFeedbackCommand(
+                    java.util.UUID.randomUUID().toString(),
+                    userId,
+                    resumeVersionId, // Passing the specific resume context
+                    jobId,
+                    actionType,
+                    0.0,
+                    "{}",
+                    java.time.Instant.now()
+            );
+            aiMessagePublisherPort.sendUserFeedback(feedbackCmd);
+            log.info("User action '{}' tracked and sent to outbox for jobId={}, resumeVersionId={}", actionType, jobId, resumeVersionId);
+        } catch (Exception e) {
+            log.error("Failed to send user action '{}' to outbox for jobId={}: {}", actionType, jobId, e.getMessage());
+        }
     }
 }

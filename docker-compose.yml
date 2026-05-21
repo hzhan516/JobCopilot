@@ -524,6 +524,8 @@ services:
       - MINIO_MODEL_BUCKET=${MINIO_MODEL_BUCKET:-ai-models}
       - BACKEND_SERVICE_URL=${BACKEND_SERVICE_URL:-http://backend:8080}
       - INTERNAL_API_KEY=${INTERNAL_API_KEY:-}
+      - RETRAIN_INTERVAL_HOURS=${RETRAIN_INTERVAL_HOURS:-24}
+      - MIN_SAMPLES_FOR_RETRAIN=${MIN_SAMPLES_FOR_RETRAIN:-10}
     networks:
       - internal-network
     depends_on:

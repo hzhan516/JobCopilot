@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { jobService } from '@/services/jobService';
@@ -33,6 +33,7 @@ export default function JobDetail() {
   const { t } = useTranslation();
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
+  const hasTrackedClick = useRef(false);
   const [job, setJob] = useState<Job | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [resumes, setResumes] = useState<ResumeGroup[]>([]);
@@ -128,6 +129,13 @@ export default function JobDetail() {
       loadJob();
       loadResumes();
       loadScoreHistory();
+      // Track view action securely (Strict Mode safe)
+      if (!hasTrackedClick.current) {
+        hasTrackedClick.current = true;
+        jobService.trackAction(jobId, 'CLICK').catch(err => {
+          console.warn('Failed to track job click', err);
+        });
+      }
     }
   }, [jobId, loadJob, loadResumes, loadScoreHistory]);
 
@@ -192,6 +200,7 @@ export default function JobDetail() {
       const result = await jobService.scoreJob(jobId!, { resumeVersionId: selectedResumeVersionId });
       setScoreResult(result);
       toast.success(t('jobDetail.scoreSuccess'));
+      loadScoreHistory(); // 刷新评分历史
     } catch (error: unknown) {
       const err = error as { response?: { status?: number; data?: { message?: string } } };
       if (err.response?.status === 503) {
@@ -203,6 +212,15 @@ export default function JobDetail() {
       }
     } finally {
       setIsScoring(false);
+    }
+  };
+
+  const handleTrackAction = async (action: 'APPLY' | 'REJECT') => {
+    try {
+      await jobService.trackAction(jobId!, action, selectedResumeVersionId || undefined);
+      toast.success(action === 'APPLY' ? 'Marked as Applied' : 'Marked as Rejected');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to track action');
     }
   };
 
@@ -374,6 +392,16 @@ export default function JobDetail() {
                   </a>
                 </Button>
               )}
+              <div className="flex items-center gap-2 ml-4 pl-4 border-l border-gray-200">
+                <Button variant="default" onClick={() => handleTrackAction('APPLY')} className="bg-green-600 hover:bg-green-700">
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Mark as Applied
+                </Button>
+                <Button variant="destructive" onClick={() => handleTrackAction('REJECT')}>
+                  <X className="w-4 h-4 mr-2" />
+                  Not Interested
+                </Button>
+              </div>
             </>
           )}
         </div>

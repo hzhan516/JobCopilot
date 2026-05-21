@@ -118,6 +118,20 @@ public class JobController {
     }
 
     /**
+     * Track user action (CLICK, APPLY, REJECT)
+     */
+    @PostMapping("/{jobId}/track")
+    public ApiResponse<Void> trackJobAction(
+            @CurrentUser UUID userId,
+            @PathVariable("jobId") String jobId,
+            @RequestParam("action") String actionType,
+            @RequestParam(value = "resumeVersionId", required = false) String resumeVersionId) {
+        log.info("User {} action {} on job {} with resume {}", userId, actionType, jobId, resumeVersionId);
+        jobFacade.trackJobAction(jobId, userId, actionType, resumeVersionId);
+        return ApiResponse.success(null);
+    }
+
+    /**
      * 启动异步职位匹配
      * Start async job matching
      */
