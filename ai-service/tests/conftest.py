@@ -337,11 +337,14 @@ def mock_minio_registry(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     monkeypatch.setattr("app.worker.scheduler.trainer.MinioModelRegistry", lambda: registry_mock)
     return registry_mock
 
+from unittest.mock import MagicMock, AsyncMock
+
 @pytest.fixture
 def mock_redis_buffer(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     buffer_mock = MagicMock()
-    buffer_mock.drain.return_value = []
-    buffer_mock.acquire_lock.return_value = True
+    buffer_mock.drain = AsyncMock(return_value=[])
+    buffer_mock.acquire_lock = AsyncMock(return_value=True)
+    buffer_mock.append = AsyncMock(return_value=None)
     monkeypatch.setattr("app.worker.scheduler.trainer.RedisBuffer", lambda: buffer_mock)
     monkeypatch.setattr("app.worker.consumers.feedback.RedisBuffer", lambda: buffer_mock)
     return buffer_mock

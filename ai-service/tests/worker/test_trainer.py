@@ -1,11 +1,9 @@
 import pytest
-from unittest.mock import patch, MagicMock
-from app.worker.scheduler.trainer import IncrementalTrainer
-import numpy as np
+from unittest.mock import patch, MagicMock, AsyncMock
 
 @pytest.mark.asyncio
 async def test_trainer_skips_when_lock_fails(mock_redis_buffer, mock_internal_api, mock_minio_registry):
-    mock_redis_buffer.acquire_lock.return_value = False
+    mock_redis_buffer.acquire_lock = AsyncMock(return_value=False)
     trainer = IncrementalTrainer()
     await trainer.try_retrain()
     
@@ -14,9 +12,9 @@ async def test_trainer_skips_when_lock_fails(mock_redis_buffer, mock_internal_ap
 
 @pytest.mark.asyncio
 async def test_trainer_skips_insufficient_samples(mock_redis_buffer, mock_internal_api, mock_minio_registry):
-    mock_redis_buffer.acquire_lock.return_value = True
+    mock_redis_buffer.acquire_lock = AsyncMock(return_value=True)
     # Return fewer than MIN_SAMPLES_FOR_RETRAIN (which is 10)
-    mock_redis_buffer.drain.return_value = [{"label": 1}] * 5
+    mock_redis_buffer.drain = AsyncMock(return_value=[{"label": 1}] * 5)
     
     trainer = IncrementalTrainer()
     await trainer.try_retrain()
@@ -27,13 +25,13 @@ async def test_trainer_skips_insufficient_samples(mock_redis_buffer, mock_intern
 
 @pytest.mark.asyncio
 async def test_trainer_successful_run(mock_redis_buffer, mock_internal_api, mock_minio_registry):
-    mock_redis_buffer.acquire_lock.return_value = True
+    mock_redis_buffer.acquire_lock = AsyncMock(return_value=True)
     
     # 15 new samples
-    mock_redis_buffer.drain.return_value = [
+    mock_redis_buffer.drain = AsyncMock(return_value=[
         {"label": 1, "features": {"semantic_match": 0.9}},
         {"label": 0, "features": {"semantic_match": 0.1}}
-    ] * 8
+    ] * 8)
     
     # 5 baseline samples
     mock_internal_api.get_baseline_features.return_value = [
