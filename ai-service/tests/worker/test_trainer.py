@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
+from app.worker.scheduler.trainer import IncrementalTrainer
 
 @pytest.mark.asyncio
 async def test_trainer_skips_when_lock_fails(mock_redis_buffer, mock_internal_api, mock_minio_registry):
