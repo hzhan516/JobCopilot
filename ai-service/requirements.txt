@@ -48,3 +48,5 @@ google-auth==2.35.0
 lightgbm==4.5.0
 scikit-learn==1.5.2
 APScheduler==3.10.4
+respx
+pytest-cov
