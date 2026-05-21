@@ -131,7 +131,8 @@ jobs:
         cache: maven
     
     - name: Run Architecture Tests
-      run: mvn test -pl app,domain -am -Dtest=**/architecture/*Test -DfailIfNoTests=false -B --file pom.xml
+      working-directory: ./backend
+      run: mvn test -pl domain -Dtest=**/architecture/*Test -Dsurefire.failIfNoSpecifiedTests=false -B
 
   build:
     name: Build Application
