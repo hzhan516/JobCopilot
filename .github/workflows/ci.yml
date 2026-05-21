@@ -50,6 +50,7 @@ jobs:
     permissions:
       contents: read
       checks: write
+      pull-requests: write
 
     defaults:
       run:
@@ -130,7 +131,7 @@ jobs:
         cache: maven
     
     - name: Run Architecture Tests
-      run: mvn test -pl app,domain -am -Dtest=**/architecture/*Test -Dsurefire.failIfNoSpecifiedTests=false -B --file pom.xml
+      run: mvn test -pl app,domain -am -Dtest=**/architecture/*Test -B --file pom.xml
 
   build:
     name: Build Application
@@ -208,6 +209,10 @@ jobs:
   ai-service-test:
     name: AI Service Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
 
     defaults:
       run:
@@ -230,7 +235,7 @@ jobs:
     - name: Run Tests
       run: pytest
       env:
-        PYTHONPATH: .
+        PYTHONPATH: ./ai-service
 
   code-quality:
     name: Code Quality Check

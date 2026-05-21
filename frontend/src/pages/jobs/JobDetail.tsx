@@ -219,8 +219,8 @@ export default function JobDetail() {
     try {
       await jobService.trackAction(jobId!, action, selectedResumeVersionId || undefined);
       toast.success(action === 'APPLY' ? 'Marked as Applied' : 'Marked as Rejected');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to track action');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to track action');
     }
   };
 

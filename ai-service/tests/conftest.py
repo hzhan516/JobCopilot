@@ -1,6 +1,6 @@
 import json
 from collections.abc import Iterator
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -193,6 +193,13 @@ def _storage_get(bucket: str, key: str) -> bytes | None:
 _storage_mock.put_object = _storage_put
 _storage_mock.get_object = _storage_get
 
+
+# Patch boto3.client to prevent MinIO connection during module import
+try:
+    boto3_patcher = patch("boto3.client")
+    boto3_patcher.start()
+except ImportError:
+    pass # If boto3 is not installed, we can't patch it, but import app.main will fail anyway
 
 # Now safe to import app.main
 import app.main as main_module
