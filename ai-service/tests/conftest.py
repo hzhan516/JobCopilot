@@ -345,6 +345,8 @@ def mock_redis_buffer(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     buffer_mock.drain = AsyncMock(return_value=[])
     buffer_mock.acquire_lock = AsyncMock(return_value=True)
     buffer_mock.append = AsyncMock(return_value=None)
+    buffer_mock.broadcast_reload = AsyncMock(return_value=None)
+    buffer_mock.release_lock = AsyncMock(return_value=None)
     monkeypatch.setattr("app.worker.scheduler.trainer.RedisBuffer", lambda: buffer_mock)
     monkeypatch.setattr("app.worker.consumers.feedback.RedisBuffer", lambda: buffer_mock)
     return buffer_mock
@@ -352,6 +354,6 @@ def mock_redis_buffer(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 @pytest.fixture
 def mock_internal_api(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     api_mock = MagicMock()
-    api_mock.get_baseline_features.return_value = []
+    api_mock.get_baseline_features_async = AsyncMock(return_value=[])
     monkeypatch.setattr("app.worker.scheduler.trainer.InternalApiClient", lambda: api_mock)
     return api_mock

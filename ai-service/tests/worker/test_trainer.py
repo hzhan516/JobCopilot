@@ -22,7 +22,7 @@ async def test_trainer_skips_insufficient_samples(mock_redis_buffer, mock_intern
     
     # Check that it puts them back
     assert mock_redis_buffer.append.call_count == 5
-    mock_internal_api.get_baseline_features.assert_not_called()
+    mock_internal_api.get_baseline_features_async.assert_not_called()
 
 @pytest.mark.asyncio
 async def test_trainer_successful_run(mock_redis_buffer, mock_internal_api, mock_minio_registry):
@@ -35,15 +35,15 @@ async def test_trainer_successful_run(mock_redis_buffer, mock_internal_api, mock
     ] * 8)
     
     # 5 baseline samples
-    mock_internal_api.get_baseline_features.return_value = [
+    mock_internal_api.get_baseline_features_async = AsyncMock(return_value=[
         {"label": 1, "features": {"semantic_match": 0.8}}
-    ] * 5
+    ] * 5)
     
     trainer = IncrementalTrainer()
     await trainer.try_retrain()
     
     # Should fetch baseline
-    mock_internal_api.get_baseline_features.assert_called_once()
+    mock_internal_api.get_baseline_features_async.assert_called_once()
     
     # Should upload model
     mock_minio_registry.upload_model.assert_called_once()
