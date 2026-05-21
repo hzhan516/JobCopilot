@@ -216,8 +216,8 @@ services:
       # Named volume shared with ai-service. Backend writes uploaded resumes
       # here; ai-service reads them (read-only mount on its side).
       - shared-storage:/app/uploads
-      # Host-mounted directory for persistent backend logs.
-      - ./backend/logs:/app/backend/logs
+      # [REMOVED] Host-mounted directory for persistent backend logs caused Permission Denied on WSL.
+      # Logs can still be accessed via `docker logs resume-assistant-backend`.
     networks:
       # Gateway role: backend bridges all three tiers.
       - public-network
@@ -536,6 +536,8 @@ services:
       minio:
         condition: service_healthy
     restart: on-failure
+    healthcheck:
+      disable: true
 
   postgres:
     image: docker.io/ankane/pgvector:latest
