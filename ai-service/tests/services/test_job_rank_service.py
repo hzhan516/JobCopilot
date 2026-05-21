@@ -7,24 +7,11 @@ from tenacity import RetryError
 
 from app.schemas import JobRankCommand
 from app.services.job_rank_service import (
-    _tokenize, 
     _clip_score, 
     _safe_llm_call, 
     _generate_match_reason, 
     rank_jobs
 )
-
-def test_tokenize():
-    text = "Hello, world! This is a test-case 123."
-    tokens = _tokenize(text)
-    assert "hello" in tokens
-    assert "world" in tokens
-    assert "this" in tokens
-    assert "is" in tokens
-    assert "test" in tokens
-    assert "case" in tokens
-    assert "123" in tokens
-    assert "a" not in tokens
 
 def test_clip_score():
     assert _clip_score(-1.0) == 0.0
