@@ -25,6 +25,8 @@ from app.config import (
     RESUME_PARSE_REQUEST_ROUTING_KEY,
     RESUME_PARSE_RESULT_QUEUE,
     RESUME_PARSE_RESULT_ROUTING_KEY,
+    FEEDBACK_REQUEST_QUEUE,
+    FEEDBACK_REQUEST_ROUTING_KEY,
     RABBITMQ_HOST,
     RABBITMQ_PASSWORD,
     RABBITMQ_PORT,
@@ -39,6 +41,8 @@ from app.schemas import (
     JobParseCommand,
     ResumeParseCommand,
 )
+
+from app.worker.consumers.feedback import handle_feedback_message
 from app.services.conversation_service import process_conversation
 from app.services.job_rank_service import rank_jobs
 from app.services.job_orchestrator import process_job
@@ -152,6 +156,12 @@ def setup_all_queues(channel: pika.adapters.blocking_connection.BlockingChannel)
         routing_key=JOB_RANK_RESULT_ROUTING_KEY,
     )
 
+    declare_queue(channel, FEEDBACK_REQUEST_QUEUE)
+    channel.queue_bind(
+        exchange=AI_DIRECT_EXCHANGE,
+        queue=FEEDBACK_REQUEST_QUEUE,
+        routing_key=FEEDBACK_REQUEST_ROUTING_KEY,
+    )
 
 
 
@@ -332,6 +342,11 @@ def start_all_consumers(channel: pika.adapters.blocking_connection.BlockingChann
     channel.basic_consume(
         queue=JOB_RANK_REQUEST_QUEUE,
         on_message_callback=_async_handler(handle_job_rank_message),
+        auto_ack=False,
+    )
+    channel.basic_consume(
+        queue=FEEDBACK_REQUEST_QUEUE,
+        on_message_callback=handle_feedback_message,
         auto_ack=False,
     )
     channel.start_consuming()

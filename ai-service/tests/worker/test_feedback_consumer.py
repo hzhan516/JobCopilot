@@ -1,5 +1,5 @@
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from app.worker.consumers.feedback import handle_feedback_message
 
 def test_handle_feedback_message(mock_redis_buffer):
@@ -22,6 +22,7 @@ def test_handle_feedback_message(mock_redis_buffer):
     body = json.dumps(payload).encode("utf-8")
     
     # Act
+    mock_redis_buffer.append = AsyncMock()
     with patch("app.worker.consumers.feedback.RedisBuffer", return_value=mock_redis_buffer):
         handle_feedback_message(mock_ch, mock_method, None, body)
     
@@ -44,7 +45,9 @@ def test_handle_feedback_message_invalid_json(mock_redis_buffer):
     
     body = b"not json"
     
-    handle_feedback_message(mock_ch, mock_method, None, body)
+    mock_redis_buffer.append = AsyncMock()
+    with patch("app.worker.consumers.feedback.RedisBuffer", return_value=mock_redis_buffer):
+        handle_feedback_message(mock_ch, mock_method, None, body)
     
     mock_redis_buffer.append.assert_not_called()
     mock_ch.basic_nack.assert_called_once_with(delivery_tag=2, requeue=False)
