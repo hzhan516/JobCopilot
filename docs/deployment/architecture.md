@@ -1,10 +1,10 @@
-# Resume Assistant — Docker Compose Deployment Architecture
+# JobCopilot — Docker Compose Deployment Architecture
 
 > [简体中文](../i18n/zh-Hans-CN/deployment/architecture.md) | [繁體中文](../i18n/zh-Hant-TW/deployment/architecture.md)
 
 ## 1. Overview
 
-Resume Assistant is an AI-powered job-search platform deployed as a **three-tier Docker network architecture**: a public-facing reverse proxy tier, an internal application tier, and an isolated database tier.
+JobCopilot is an AI-powered job-search platform deployed as a **three-tier Docker network architecture**: a public-facing reverse proxy tier, an internal application tier, and an isolated database tier.
 
 ## 2. Network Architecture
 
@@ -235,5 +235,5 @@ docker compose exec ai-service env | grep INTERNAL_API_KEY
 **Solution**: PostgreSQL is isolated on the internal Docker network and does **not** expose port `5432` to the host in production. This is expected behavior. To access the database, enter the container:
 
 ```bash
-docker compose exec postgres psql -U resume_user -d resume_assistant
+docker compose exec postgres psql -U resume_user -d JobCopilot
 ```

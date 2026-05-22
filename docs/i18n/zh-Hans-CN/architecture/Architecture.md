@@ -1097,7 +1097,7 @@ services:
   backend:
     build: ./backend
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/resume_assistant
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/JobCopilot
       - SPRING_RABBITMQ_HOST=rabbitmq
       - JWT_SECRET=${JWT_SECRET}
     depends_on:
@@ -1130,7 +1130,7 @@ services:
   postgres:
     image: docker.io/ankane/pgvector:latest
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-resume_assistant}
+      - POSTGRES_DB=${POSTGRES_DB:-JobCopilot}
       - POSTGRES_USER=${POSTGRES_USER:-resume_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
     volumes:

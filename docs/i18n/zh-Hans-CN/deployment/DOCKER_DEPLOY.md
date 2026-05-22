@@ -163,7 +163,7 @@ docker-compose up -d --build backend
 docker-compose exec backend sh
 
 # 进入数据库容器
-docker-compose exec postgres psql -U resume_user -d resume_assistant
+docker-compose exec postgres psql -U resume_user -d JobCopilot
 ```
 
 ## 数据持久化
@@ -180,10 +180,10 @@ docker-compose exec postgres psql -U resume_user -d resume_assistant
 docker volume ls
 
 # 备份数据（PostgreSQL）
-docker-compose exec postgres pg_dump -U resume_user resume_assistant > backup.sql
+docker-compose exec postgres pg_dump -U resume_user JobCopilot > backup.sql
 
 # 恢复数据
-docker-compose exec -T postgres psql -U resume_user resume_assistant < backup.sql
+docker-compose exec -T postgres psql -U resume_user JobCopilot < backup.sql
 ```
 
 ## 故障排查
@@ -252,8 +252,8 @@ docker-compose up -d
 
 **解决**：手动执行初始化 SQL：
 ```bash
-docker exec -i resume-assistant-postgres \
-  psql -U resume_user -d resume_assistant \
+docker exec -i JobCopilot-postgres \
+  psql -U resume_user -d JobCopilot \
   < backend/app/src/main/resources/db/migration/init_outbox_message.sql
 ```
 
@@ -263,9 +263,9 @@ docker-compose down -v
 docker-compose up -d
 ```
 
-### `FATAL: database "resume_assistant" does not exist`（PostgreSQL）
+### `FATAL: database "JobCopilot" does not exist`（PostgreSQL）
 
-**现象**：后端或 PostgreSQL 健康检查报错 `database "resume_assistant" does not exist` 或 `role "resume_user" does not exist`。
+**现象**：后端或 PostgreSQL 健康检查报错 `database "JobCopilot" does not exist` 或 `role "resume_user" does not exist`。
 
 **原因**：`postgres-data` 数据卷已被初始化过（例如使用默认的 `postgres` 凭据或来自之前的项目）。PostgreSQL 的 `docker-entrypoint-initdb.d` 以及 `POSTGRES_USER`/`POSTGRES_DB` 环境变量仅在数据目录为空时的**首次**初始化生效。
 
@@ -338,8 +338,8 @@ docker-compose up -d --build backend
 
 1. **手动执行 SQL**（推荐用于有数据的开发环境）：
    ```bash
-   docker exec -i resume-assistant-postgres \
-     psql -U resume_user -d resume_assistant \
+   docker exec -i JobCopilot-postgres \
+     psql -U resume_user -d JobCopilot \
      < backend/app/src/main/resources/db/migration/init_outbox_message.sql
    ```
 

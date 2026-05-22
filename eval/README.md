@@ -1,7 +1,7 @@
 # AI Evaluation Results
 
 This directory contains the evaluation harness and generated results for the
-Resume Assistant AI pipeline.
+JobCopilot AI pipeline.
 
 ## What Is Evaluated
 

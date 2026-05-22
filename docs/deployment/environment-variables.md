@@ -1,8 +1,8 @@
-# Resume Assistant — Environment Variables Reference
+# JobCopilot — Environment Variables Reference
 
 > [简体中文](../i18n/zh-Hans-CN/deployment/environment-variables.md) | [繁體中文](../i18n/zh-Hant-TW/deployment/environment-variables.md)
 
-This document describes every environment variable used by the Resume Assistant stack. Variables are organized by functional area, matching the comment blocks in `.env.example`.
+This document describes every environment variable used by the JobCopilot stack. Variables are organized by functional area, matching the comment blocks in `.env.example`.
 
 > **Quick tip**: Run `cp .env.example .env` before editing. Never commit `.env` to version control.
 >
@@ -76,7 +76,7 @@ The following values are **not** defined in `.env.example` but are configurable 
 | Field | Value |
 |-------|-------|
 | **Purpose** | Name of the default database created on first container startup. |
-| **Default** | `resume_assistant` |
+| **Default** | `JobCopilot` |
 | **Valid values** | Any valid PostgreSQL identifier |
 | **Security notes** | Database name is not a secret, but changing it from the default makes automated scanning slightly harder. |
 | **Common mistakes** | Renaming this after the volume has been initialized has no effect. `docker-entrypoint-initdb.d` only runs on the first start when the data directory is empty. |
@@ -229,7 +229,7 @@ openssl rand -base64 48
 | Field | Value |
 |-------|-------|
 | **Purpose** | Application name displayed in Spring Boot Actuator, metrics, and logs. |
-| **Default** | `resume-assistant-backend` |
+| **Default** | `JobCopilot-backend` |
 | **Valid values** | Any valid Spring Boot application name |
 | **Security notes** | Not a secret. Used for observability and service discovery. |
 | **Common mistakes** | Using spaces or special characters that break URL-safe identifiers. |
@@ -956,7 +956,7 @@ These variables are consumed by the Python AI service and AI worker for incremen
 | Field | Value |
 |-------|-------|
 | **Purpose** | Sender address displayed in verification emails. |
-| **Default** | `noreply@resume-assistant.local` |
+| **Default** | `noreply@JobCopilot.local` |
 | **Valid values** | Any valid email address |
 | **Security notes** | Some SMTP providers require the `From` address to be verified or registered in their console. Using an unverified address may cause emails to be rejected or land in spam. |
 | **Common mistakes** | Using a personal Gmail address without enabling "App Passwords" or without configuring SPF/DKIM for the domain. |

@@ -1,7 +1,7 @@
 <!-- Language Switcher / 语言切换 / 語言切換 -->
 > [English](../../../README.md) | [简体中文](README.md) | [繁體中文](../zh-Hant-TW/README.md)
 
-# 智能求职助手 (Resume Assistant)
+# 智能求职助手 (JobCopilot)
 
 **智能求职助手**是一个由 AI 驱动的平台，旨在为应届毕业生和转行者简化求职流程。它能够自动解析用户上传的简历，使用语义向量匹配技术评估简历与就业市场数据的契合度，并提供交互式的 AI 助手来迭代优化简历内容。通过结合安全的文件管理、异步 AI 处理和个性化推荐，该系统为用户节省了数小时的手动修改时间，同时显著提高了面试机会。
 
@@ -126,7 +126,7 @@
 
 ```bash
 git clone <仓库地址>
-cd resume-assistant
+cd JobCopilot
 ```
 
 ### 2. 配置环境变量

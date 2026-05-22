@@ -1,6 +1,6 @@
-# Resume Assistant Frontend
+# JobCopilot Frontend
 
-React 19 + TypeScript + Vite frontend for the Resume Assistant application.
+React 19 + TypeScript + Vite frontend for the JobCopilot application.
 
 ## Available Scripts
 

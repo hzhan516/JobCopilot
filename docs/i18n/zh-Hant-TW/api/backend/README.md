@@ -3,7 +3,7 @@
 
 # Backend API 文件
 
-本文件包含 Resume Assistant 後端 API 的完整介面定義。
+本文件包含 JobCopilot 後端 API 的完整介面定義。
 
 ## 基本資訊
 

@@ -9,7 +9,7 @@
 
 ## 概述
 
-Resume Assistant API 采用统一的响应格式，无论请求成功或失败，都会返回以下结构：
+JobCopilot API 采用统一的响应格式，无论请求成功或失败，都会返回以下结构：
 
 ```json
 {

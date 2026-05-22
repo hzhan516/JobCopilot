@@ -8,7 +8,7 @@
 
 智能求职助手后端使用 **Logback**（Spring Boot 默认附带的日志框架）来处理所有应用与框架日志。一个统一的 `logback-spring.xml` 文件控制后端所有日志消息的输出格式、滚动策略与保留规则。
 
-The Resume Assistant backend uses **Logback** (the default logging framework shipped with Spring Boot) to handle all application and framework logs. A single `logback-spring.xml` file controls the output format, rolling policy, and retention rules for every log message produced by the backend.
+The JobCopilot backend uses **Logback** (the default logging framework shipped with Spring Boot) to handle all application and framework logs. A single `logback-spring.xml` file controls the output format, rolling policy, and retention rules for every log message produced by the backend.
 
 ---
 
@@ -72,7 +72,7 @@ You can override the path at runtime:
 
 ```bash
 # 本地运行 / Local run
-java -DLOG_PATH=/var/log/resume-assistant -jar app.jar
+java -DLOG_PATH=/var/log/JobCopilot -jar app.jar
 
 # Docker 运行 / Docker run
 docker run -e LOG_PATH=/app/logs my-backend-image

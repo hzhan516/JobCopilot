@@ -1,10 +1,10 @@
-# Resume Assistant — Docker Compose 部署架构
+# JobCopilot — Docker Compose 部署架构
 
 > [English](../../../deployment/architecture.md) | [繁體中文](../../../i18n/zh-Hant-TW/deployment/architecture.md)
 
 ## 1. 概述
 
-Resume Assistant（智能求职助手）是一个以**三层 Docker 网络架构**部署的 AI 驱动求职平台：面向公网的反向代理层、内部应用层以及隔离的数据库层。
+JobCopilot（智能求职助手）是一个以**三层 Docker 网络架构**部署的 AI 驱动求职平台：面向公网的反向代理层、内部应用层以及隔离的数据库层。
 
 ## 2. 网络架构
 
@@ -217,5 +217,5 @@ docker compose exec ai-service env | grep INTERNAL_API_KEY
 **解决**：PostgreSQL 位于隔离的内网 Docker 网络中，生产环境**不**向宿主机暴露端口 `5432`。这是预期行为。如需访问数据库，请进入容器：
 
 ```bash
-docker compose exec postgres psql -U resume_user -d resume_assistant
+docker compose exec postgres psql -U resume_user -d JobCopilot
 ```

@@ -1,8 +1,8 @@
-# Resume Assistant — 環境變數參考手冊
+# JobCopilot — 環境變數參考手冊
 
 > [English](../../../deployment/environment-variables.md) | [简体中文](../../../i18n/zh-Hans-CN/deployment/environment-variables.md)
 
-本文件描述 Resume Assistant 技術堆疊使用的所有環境變數。變數依功能區域組織，與 `.env.example` 中的註解區塊一一對應。
+本文件描述 JobCopilot 技術堆疊使用的所有環境變數。變數依功能區域組織，與 `.env.example` 中的註解區塊一一對應。
 
 > **快速提示**：編輯前先執行 `cp .env.example .env`。切勿將 `.env` 提交到版本控制。
 >
@@ -76,7 +76,7 @@
 | 欄位 | 值 |
 |------|-----|
 | **用途** | 容器首次啟動時建立的預設資料庫名稱。 |
-| **預設值** | `resume_assistant` |
+| **預設值** | `JobCopilot` |
 | **有效取值** | 任意有效的 PostgreSQL 識別項 |
 | **安全說明** | 資料庫名稱不是機密，但偏離預設值可使自動化掃描稍微困難。 |
 | **常見錯誤** | 在資料卷已初始化後重新命名此變數無效。`docker-entrypoint-initdb.d` 僅在資料目錄為空時首次執行。 |
@@ -229,7 +229,7 @@ openssl rand -base64 48
 | 欄位 | 值 |
 |------|-----|
 | **用途** | Spring Boot 應用名稱，顯示在 Actuator、指標和日誌中。 |
-| **預設值** | `resume-assistant-backend` |
+| **預設值** | `JobCopilot-backend` |
 | **有效取值** | 任意有效的 Spring Boot 應用名稱 |
 | **安全說明** | 不是機密。用於可觀測性和服務發現。 |
 | **常見錯誤** | 使用空格或特殊字元，破壞 URL 安全識別項。 |
@@ -956,7 +956,7 @@ openssl rand -base64 32
 | 欄位 | 值 |
 |------|-----|
 | **用途** | 驗證郵件中顯示的寄件人地址。 |
-| **預設值** | `noreply@resume-assistant.local` |
+| **預設值** | `noreply@JobCopilot.local` |
 | **有效取值** | 任意有效的郵箱地址 |
 | **安全說明** | 某些SMTP服務商要求 `From` 地址在其主控台中已驗證或已註冊。使用未驗證的地址可能導致郵件被拒收或進入垃圾郵件匣。 |
 | **常見錯誤** | 使用個人Gmail地址但未啟用「應用程式密碼」，或未為網域設定SPF/DKIM記錄。 |

@@ -1,10 +1,10 @@
-# Resume Assistant Helm Chart
+# JobCopilot Helm Chart
 
-> [English](../../../../../deployment/k8s/helm/resume-assistant/README.md) | [简体中文](README.md) | [繁體中文](../../../../zh-Hant-TW/deployment/k8s/helm/README.md)
+> [English](../../../../../deployment/k8s/helm/JobCopilot/README.md) | [简体中文](README.md) | [繁體中文](../../../../zh-Hant-TW/deployment/k8s/helm/README.md)
 
 ## 概述
 
-本 Helm Chart 在 Kubernetes 上部署完整的 Resume Assistant 平台。
+本 Helm Chart 在 Kubernetes 上部署完整的 JobCopilot 平台。
 
 ## 安装
 
@@ -20,21 +20,21 @@
 
 ```bash
 # 先创建命名空间
-kubectl create namespace resume-assistant
+kubectl create namespace JobCopilot
 
 # 使用默认值安装（自建中间件，开发配置）
-helm install resume-assistant . \
-  --namespace resume-assistant
+helm install JobCopilot . \
+  --namespace JobCopilot
 
 # 生产环境安装（托管中间件）
-helm install resume-assistant . \
-  --namespace resume-assistant \
+helm install JobCopilot . \
+  --namespace JobCopilot \
   -f values.yaml \
   -f values-production.yaml
 
 # 最小资源安装（kind/minikube）
-helm install resume-assistant . \
-  --namespace resume-assistant \
+helm install JobCopilot . \
+  --namespace JobCopilot \
   -f values.yaml \
   -f values-minimal.yaml
 ```
@@ -42,8 +42,8 @@ helm install resume-assistant . \
 ### 升级
 
 ```bash
-helm upgrade resume-assistant . \
-  --namespace resume-assistant \
+helm upgrade JobCopilot . \
+  --namespace JobCopilot \
   -f values.yaml \
   -f values-production.yaml
 ```
@@ -51,9 +51,9 @@ helm upgrade resume-assistant . \
 ### 卸载
 
 ```bash
-helm uninstall resume-assistant --namespace resume-assistant
+helm uninstall JobCopilot --namespace JobCopilot
 # 注意：默认不会删除 PVC，以防止数据丢失
-kubectl delete pvc -n resume-assistant -l app.kubernetes.io/name=resume-assistant
+kubectl delete pvc -n JobCopilot -l app.kubernetes.io/name=JobCopilot
 ```
 
 ---
@@ -66,7 +66,7 @@ kubectl delete pvc -n resume-assistant -l app.kubernetes.io/name=resume-assistan
 |-----------------------------------|---------------------------------|--------------------------|
 | `global.infraMode`                | 中间件模式：`embedded` 或 `managed`    | `embedded`               |
 | `secrets.existingSecret`          | 使用预创建的 Secret 替代 Helm 管理        | `""`                     |
-| `ingress.host`                    | Ingress 域名                      | `resume-assistant.local` |
+| `ingress.host`                    | Ingress 域名                      | `JobCopilot.local` |
 | `ingress.tls.enabled`             | 启用 TLS                          | `false`                  |
 | `backend.replicaCount`            | 后端副本数                           | `1`                      |
 | `backend.springProfilesActive`    | Spring 配置文件                     | `dev`                    |
@@ -79,7 +79,7 @@ kubectl delete pvc -n resume-assistant -l app.kubernetes.io/name=resume-assistan
 
 ### 完整值参考
 
-参见 [`values.yaml`](../../../../../deployment/k8s/helm/resume-assistant/values.yaml)。
+参见 [`values.yaml`](../../../../../deployment/k8s/helm/JobCopilot/values.yaml)。
 
 ---
 
@@ -98,21 +98,21 @@ secrets:
 
 ```bash
 # 手动创建 Secret
-kubectl create secret generic resume-assistant-secrets \
-  --namespace=resume-assistant \
+kubectl create secret generic JobCopilot-secrets \
+  --namespace=JobCopilot \
   --from-literal=JWT_SECRET=... \
   --from-literal=POSTGRES_PASSWORD=...
 
 # 在 values 中引用
-helm install resume-assistant . \
-  --set secrets.existingSecret=resume-assistant-secrets
+helm install JobCopilot . \
+  --set secrets.existingSecret=JobCopilot-secrets
 ```
 
 ### 方式三：External Secrets Operator
 
 ```yaml
 secrets:
-  existingSecret: "resume-assistant-eso-secret"
+  existingSecret: "JobCopilot-eso-secret"
 ```
 
 配置 ESO 从 AWS Secrets Manager、Azure Key Vault 或 GCP Secret Manager 同步。
@@ -130,7 +130,7 @@ secrets:
 
 提供 `init.sql`：
 ```bash
-helm install resume-assistant . \
+helm install JobCopilot . \
   --set-file postgres.initSql=../../../backend/app/src/main/resources/db/init.sql
 ```
 
@@ -146,7 +146,7 @@ helm install resume-assistant . \
 # 对密钥文件进行 Base64 编码
 export GCP_CREDS_B64=$(base64 -w 0 /path/to/gcp-service-account.json)
 
-helm install resume-assistant . \
+helm install JobCopilot . \
   --set secrets.gcpCredentialsJson="$GCP_CREDS_B64"
 ```
 
@@ -161,7 +161,7 @@ Chart 会创建独立的 Secret，并以只读卷形式挂载到 `/app/credentia
 helm lint .
 
 # 渲染模板而不安装
-helm template resume-assistant . \
+helm template JobCopilot . \
   -f values.yaml \
   -f values-production.yaml > rendered.yaml
 
@@ -179,17 +179,17 @@ global:
 
 backend:
   image:
-    repository: resume-assistant-backend
+    repository: JobCopilot-backend
     tag: "v1.2.3"
 
 aiService:
   image:
-    repository: resume-assistant-ai-service
+    repository: JobCopilot-ai-service
     tag: "v1.2.3"
 
 frontend:
   image:
-    repository: resume-assistant-frontend
+    repository: JobCopilot-frontend
     tag: "v1.2.3"
 ```
 

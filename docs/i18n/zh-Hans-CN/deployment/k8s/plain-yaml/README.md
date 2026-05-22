@@ -34,11 +34,11 @@ plain-yaml/
 
 ```bash
 # 从 .env 生成
-../scripts/generate-secrets.sh .env resume-assistant | kubectl apply -f -
+../scripts/generate-secrets.sh .env JobCopilot | kubectl apply -f -
 
 # 或手动创建
-kubectl create secret generic resume-assistant-secrets \
-  --namespace=resume-assistant \
+kubectl create secret generic JobCopilot-secrets \
+  --namespace=JobCopilot \
   --from-literal=JWT_SECRET=your-secret \
   --from-literal=POSTGRES_PASSWORD=your-password
 ```
@@ -74,7 +74,7 @@ cat > overlays/my-env/kustomization.yaml <<EOF
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: resume-assistant-my-env
+namespace: JobCopilot-my-env
 
 resources:
   - ../../base
@@ -87,11 +87,11 @@ commonLabels:
 patches:
   - target:
       kind: Ingress
-      name: resume-assistant
+      name: JobCopilot
     patch: |
       - op: replace
         path: /spec/rules/0/host
-        value: my-env.resume-assistant.example.com
+        value: my-env.JobCopilot.example.com
 EOF
 ```
 
@@ -103,7 +103,7 @@ EOF
 patches:
   - target:
       kind: Deployment
-      name: resume-assistant-backend
+      name: JobCopilot-backend
     patch: |
       - op: add
         path: /spec/template/spec/containers/0/resources

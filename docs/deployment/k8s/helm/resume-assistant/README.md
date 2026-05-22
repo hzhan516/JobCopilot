@@ -1,10 +1,10 @@
-# Resume Assistant Helm Chart
+# JobCopilot Helm Chart
 
 > [English](README.md) | [简体中文](../../../../i18n/zh-Hans-CN/deployment/k8s/helm/README.md) | [繁體中文](../../../../i18n/zh-Hant-TW/deployment/k8s/helm/README.md)
 
 ## Overview
 
-This Helm chart deploys the complete Resume Assistant platform on Kubernetes.
+This Helm chart deploys the complete JobCopilot platform on Kubernetes.
 
 ## Installation
 
@@ -20,21 +20,21 @@ This Helm chart deploys the complete Resume Assistant platform on Kubernetes.
 
 ```bash
 # Create namespace first
-kubectl create namespace resume-assistant
+kubectl create namespace JobCopilot
 
 # Install with defaults (embedded middleware, dev profile)
-helm install resume-assistant . \
-  --namespace resume-assistant
+helm install JobCopilot . \
+  --namespace JobCopilot
 
 # Install for production (managed middleware)
-helm install resume-assistant . \
-  --namespace resume-assistant \
+helm install JobCopilot . \
+  --namespace JobCopilot \
   -f values.yaml \
   -f values-production.yaml
 
 # Install for minimal resources (kind/minikube)
-helm install resume-assistant . \
-  --namespace resume-assistant \
+helm install JobCopilot . \
+  --namespace JobCopilot \
   -f values.yaml \
   -f values-minimal.yaml
 ```
@@ -42,8 +42,8 @@ helm install resume-assistant . \
 ### Upgrade
 
 ```bash
-helm upgrade resume-assistant . \
-  --namespace resume-assistant \
+helm upgrade JobCopilot . \
+  --namespace JobCopilot \
   -f values.yaml \
   -f values-production.yaml
 ```
@@ -51,9 +51,9 @@ helm upgrade resume-assistant . \
 ### Uninstall
 
 ```bash
-helm uninstall resume-assistant --namespace resume-assistant
+helm uninstall JobCopilot --namespace JobCopilot
 # Note: PVCs are NOT deleted by default to prevent data loss
-kubectl delete pvc -n resume-assistant -l app.kubernetes.io/name=resume-assistant
+kubectl delete pvc -n JobCopilot -l app.kubernetes.io/name=JobCopilot
 ```
 
 ---
@@ -66,7 +66,7 @@ kubectl delete pvc -n resume-assistant -l app.kubernetes.io/name=resume-assistan
 |-----------|-------------|---------|
 | `global.infraMode` | Middleware mode: `embedded` or `managed` | `embedded` |
 | `secrets.existingSecret` | Use pre-created Secret instead of Helm-managed | `""` |
-| `ingress.host` | Ingress domain | `resume-assistant.local` |
+| `ingress.host` | Ingress domain | `JobCopilot.local` |
 | `ingress.tls.enabled` | Enable TLS | `false` |
 | `backend.replicaCount` | Backend replicas | `1` |
 | `backend.springProfilesActive` | Spring profile | `dev` |
@@ -98,21 +98,21 @@ secrets:
 
 ```bash
 # Create Secret manually
-kubectl create secret generic resume-assistant-secrets \
-  --namespace=resume-assistant \
+kubectl create secret generic JobCopilot-secrets \
+  --namespace=JobCopilot \
   --from-literal=JWT_SECRET=... \
   --from-literal=POSTGRES_PASSWORD=...
 
 # Reference in values
-helm install resume-assistant . \
-  --set secrets.existingSecret=resume-assistant-secrets
+helm install JobCopilot . \
+  --set secrets.existingSecret=JobCopilot-secrets
 ```
 
 ### Option 3: External Secrets Operator
 
 ```yaml
 secrets:
-  existingSecret: "resume-assistant-eso-secret"
+  existingSecret: "JobCopilot-eso-secret"
 ```
 
 Configure ESO to sync from AWS Secrets Manager, Azure Key Vault, or GCP Secret Manager.
@@ -130,7 +130,7 @@ When `global.infraMode=embedded`, the chart mounts `init.sql` and `init-db.sh` i
 
 To provide `init.sql`:
 ```bash
-helm install resume-assistant . \
+helm install JobCopilot . \
   --set-file postgres.initSql=../../../backend/app/src/main/resources/db/init.sql
 ```
 
@@ -146,7 +146,7 @@ To mount a GCP service account key:
 # Base64-encode the key file
 export GCP_CREDS_B64=$(base64 -w 0 /path/to/gcp-service-account.json)
 
-helm install resume-assistant . \
+helm install JobCopilot . \
   --set secrets.gcpCredentialsJson="$GCP_CREDS_B64"
 ```
 
@@ -161,7 +161,7 @@ The chart will create a separate Secret and mount it as a read-only volume at `/
 helm lint .
 
 # Render templates without installing
-helm template resume-assistant . \
+helm template JobCopilot . \
   -f values.yaml \
   -f values-production.yaml > rendered.yaml
 
@@ -179,17 +179,17 @@ global:
 
 backend:
   image:
-    repository: resume-assistant-backend
+    repository: JobCopilot-backend
     tag: "v1.2.3"
 
 aiService:
   image:
-    repository: resume-assistant-ai-service
+    repository: JobCopilot-ai-service
     tag: "v1.2.3"
 
 frontend:
   image:
-    repository: resume-assistant-frontend
+    repository: JobCopilot-frontend
     tag: "v1.2.3"
 ```
 
