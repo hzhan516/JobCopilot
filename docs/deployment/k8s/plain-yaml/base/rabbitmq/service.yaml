@@ -1,0 +1,23 @@
+# =============================================================================
+# RabbitMQ Service
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: resume-assistant-rabbitmq
+  namespace: resume-assistant
+  labels:
+    app.kubernetes.io/name: resume-assistant
+    app.kubernetes.io/component: rabbitmq
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5672
+      targetPort: amqp
+      name: amqp
+    - port: 15672
+      targetPort: management
+      name: management
+  selector:
+    app.kubernetes.io/name: resume-assistant
+    app.kubernetes.io/component: rabbitmq

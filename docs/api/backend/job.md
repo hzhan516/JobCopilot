@@ -13,20 +13,27 @@ This module provides the capability for job seekers to submit desired job links,
 
 ### 1.1 Submit Job Link
 **Endpoint:** `POST /api/v1/jobs`
-**Description:** Receives a job URL submitted by the user and publishes an asynchronous parsing request to RabbitMQ. Returns the initial status of the task immediately.
+**Description:** Receives a job URL and an optional screenshot uploaded by the user, then publishes an asynchronous parsing request to RabbitMQ. Returns the initial status of the task immediately.
 
 **Request Header:**
 ```http
 Authorization: Bearer <user-jwt-token>
-Content-Type: application/json
+Content-Type: multipart/form-data
 ```
 
-**Request Body (`SubmitJobRequest`):**
-```json
-{
-  "url": "https://www.linkedin.com/jobs/view/12345",
-  "imageCheckEnabled": true
-}
+**Form Fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `url` | String | Yes | Job posting URL. |
+| `screenshot` | File | No | Optional job posting screenshot. The backend forwards it to the AI service as Base64 fallback input. |
+
+**Request Example:**
+```bash
+curl -X POST "http://localhost/api/v1/jobs" \
+  -H "Authorization: Bearer <user-jwt-token>" \
+  -F "url=https://www.linkedin.com/jobs/view/12345" \
+  -F "screenshot=@job-posting.png"
 ```
 
 **Response Body (`JobResponse`):**
@@ -37,7 +44,7 @@ Content-Type: application/json
   "originalUrl": "https://www.linkedin.com/jobs/view/12345",
   "status": "PENDING",
   "parsedContent": null,
-  "imageCheckEnabled": true,
+  "imageCheckEnabled": false,
   "errorMessage": null
 }
 ```
@@ -65,7 +72,7 @@ Authorization: Bearer <user-jwt-token>
     "description": "Full job description...",
     "requirements": ["Java", "Spring Boot", "AWS"]
   },
-  "imageCheckEnabled": true,
+  "imageCheckEnabled": false,
   "errorMessage": null
 }
 ```
@@ -88,7 +95,7 @@ Authorization: Bearer <user-jwt-token>
     "originalUrl": "https://www.linkedin.com/jobs/view/12345",
     "status": "COMPLETED",
     "parsedContent": null,
-    "imageCheckEnabled": true,
+    "imageCheckEnabled": false,
     "errorMessage": null
   }
 ]
@@ -164,7 +171,7 @@ Content-Type: application/json
 **Request Body (`JobMatchRequest`):**
 ```json
 {
-  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
   "query": "Java Spring Boot",
   "topK": 10,
   "filters": {
@@ -226,7 +233,8 @@ To comply with the system architecture, the Java backend no longer directly call
 {
   "jobId": "job-uuid-1234",
   "url": "https://www.linkedin.com/jobs/view/12345",
-  "imageCheckEnabled": true
+  "imageCheckEnabled": false,
+  "screenshotBase64": "base64-encoded-image-or-null"
 }
 ```
 
@@ -329,6 +337,50 @@ Content-Type: application/json
 
 ---
 
+### 1.9 Score Job
+**Endpoint:** `POST /api/v1/jobs/{jobId}/score`
+**Description:** Scores a single job against a resume by calling the AI service suitability endpoint. The scoring result is saved to history, and an asynchronous score label is sent to the AI service for incremental model training.
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+Content-Type: application/json
+```
+
+**Request Body (`JobScoreRequest`):**
+```json
+{
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002"
+}
+```
+
+**Response Body (`JobScoreResponse`):**
+```json
+{
+  "suitable": true,
+  "summary": "The resume matches key requirements such as Java, Spring Boot.",
+  "finalScore": 0.85,
+  "breakdown": {
+    "skillScore": 0.9,
+    "experienceScore": 0.8,
+    "overallScore": 0.85
+  }
+}
+```
+
+**Response Field Descriptions:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `suitable` | Boolean | Whether the candidate is generally a good fit |
+| `summary` | String | 1-2 concise sentences explaining the decision |
+| `finalScore` | Float | Final fused score (0.0-1.0). Uses the adaptive dataset model when available; otherwise falls back to the legacy LLM/dataset weighted score. |
+| `breakdown.skillScore` | Float | Skill match score |
+| `breakdown.experienceScore` | Float | Experience match score |
+| `breakdown.overallScore` | Float | LLM overall score |
+
+---
+
 ## 2. Backend to AI Service Interfaces (Backend to Python AI Service via MQ)
 
 To comply with the system architecture, the Java backend no longer directly calls the AI service via HTTP synchronously; instead, it publishes asynchronous task requests via **RabbitMQ** and listens for processing result callbacks from the AI service.
@@ -343,7 +395,8 @@ To comply with the system architecture, the Java backend no longer directly call
 {
   "jobId": "job-uuid-1234",
   "url": "https://www.linkedin.com/jobs/view/12345",
-  "imageCheckEnabled": true
+  "imageCheckEnabled": false,
+  "screenshotBase64": "base64-encoded-image-or-null"
 }
 ```
 
@@ -372,3 +425,35 @@ To comply with the system architecture, the Java backend no longer directly call
 > **Notes:**
 > - If `status` is `FAILED`, then `errorMessage` must contain the specific reason text causing the failure, and `data` can be empty.
 > - After the AI service finishes processing, it must send the result to the `backend.res.job.parse` routing key, received by `AiResultMessageListener` and handled by `JobFacade.handleJobProcessResult`.
+
+### 2.3 Score Label Request (Backend -> AI Service)
+**Exchange:** `ai.direct.exchange`
+**Routing Key:** `ai.req.feedback`
+**Queue:** `ai.queue.feedback`
+
+**Description:** After `scoreJob()` completes, the backend asynchronously sends the scoring result to the AI service for incremental model training. This is a **fire-and-forget** message; no result callback is expected.
+
+**Message Body:**
+```json
+{
+  "matchId": "feedback-uuid-v4",
+  "userId": "user-uuid",
+  "resumeVersionId": "resume-version-uuid",
+  "jobId": "job-uuid",
+  "feedbackType": "APPLY",
+  "score": 0.85,
+  "context": "{\"resume\":{\"skills\":[\"Python\"]},\"job\":{\"title\":\"Software Engineer\"},\"llmOverallScore\":0.82,\"finalScore\":0.85}",
+  "timestamp": "2026-05-09T16:00:00Z"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `matchId` | String | Unique feedback message ID |
+| `userId` | UUID | User who produced the score |
+| `resumeVersionId` | String | Resume version unique identifier |
+| `jobId` | String | Job unique identifier |
+| `feedbackType` | String | Feedback label. Current scoring flow sends `APPLY` for suitable matches and `IGNORE` otherwise |
+| `score` | Double | Final fused score (0.0-1.0) |
+| `context` | String | JSON string containing resume/job context plus optional `llmOverallScore`, `semanticMatch`, `datasetScore`, and `llmModel` |
+| `timestamp` | String | ISO 8601 timestamp |

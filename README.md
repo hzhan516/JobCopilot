@@ -12,14 +12,15 @@ The **Resume Assistant** is an AI-powered platform designed to streamline the jo
 
 - **Guixing Jia** (@GuixingJia) - Project Manager, Python AI Service & Frontend
 - **Hansheng Zhang** (@hzhan516) - Java Backend & Database Lead
-- **Mu-Hsi Yu** (@muhsiyu) - Frontend & UX Lead, Python AI Service
+- **Mu-Hsi Yu** (@mhsiy) - Frontend & UX Lead, Python AI Service
 
 ## Features
 
-- **Authentication**: Email/password registration plus Google OAuth 2.0 login
+- **Authentication**: Email/password registration (with optional email verification) plus Google OAuth 2.0 login, protected by slider CAPTCHA bot protection
 - **Resume Management**: Upload, parse, version, and export resumes in multiple formats
 - **AI-Powered Parsing**: Extract structured information from resumes and job posts using LiteLLM-compatible models
 - **Job Matching**: Intelligent job recommendations based on resume content and vector similarity
+- **Incremental Job Training Loop**: User scoring behavior feeds back into the AI baseline model via incremental learning, improving match accuracy over time without full retraining
 - **Application Tracking**: Track job application status and manage your job search pipeline
 - **AI Conversation**: Interactive chat assistant for job search advice and resume optimization
 - **Internationalization**: English, Simplified Chinese, and Traditional Chinese UI support
@@ -30,30 +31,38 @@ The **Resume Assistant** is an AI-powered platform designed to streamline the jo
 This project adopts a microservices architecture with the following components:
 
 ```text
-┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-│   Frontend  │──────▶│   Backend   │──────▶│  RabbitMQ   │
-│   (React)   │      │  (Spring    │      │             │
-│             │      │   Boot)     │      └──────┬──────┘
-└─────────────┘      └──────┬──────┘             │
-                            │                    ▼
-                            │             ┌─────────────┐
-                            │             │    AI       │
-                            │             │  (FastAPI)  │
-                            │             └──────┬──────┘
-                            ▼                    ▼
-                     ┌─────────────────────────────┐
-                     │ PostgreSQL 15 + pgvector    │
-                     │ business data + embeddings  │
-                     └─────────────────────────────┘
+┌─────────────┐      ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
+│   Frontend  │──────▶│   Backend   │──────▶│  RabbitMQ   │─────▶│  AI Worker  │
+│   (React)   │      │  (Spring    │      │             │      │ (LightGBM)  │
+│             │      │   Boot)     │      └──────┬──────┘      └──────┬──────┘
+└─────────────┘      └──────┬───┬──┘             │                    │
+                            │   │                │                    ▼
+                            │   │  ┌─────────┐   │             ┌─────────────┐
+                            │   └─▶│  Redis  │   │             │    MinIO    │
+                            │      │   :6379 │◀──┘             │(Model Reg.) │
+                            │      └─────────┘                 └─────────────┘
+                            ▼                    ▼                    ▲
+                     ┌─────────────────────────────┐                  │
+                     │ PostgreSQL 15 + pgvector    │                  │
+                     │ business data + embeddings  │                  │
+                     └─────────────────────────────┘                  │
+                            ▲             ▲                           │
+                            │             │      ┌─────────────┐      │
+                            └─────────────┴──────│   AI API    │──────┘
+                                                 │  (FastAPI)  │
+                                                 └─────────────┘
 ```
 
 | Service       | Technology                | Port         | Description                          |
 |---------------|---------------------------|--------------|--------------------------------------|
-| Frontend      | React 19 + Vite 7         | `${FRONTEND_HOST_PORT:-80}` -> 80 | Web user interface and Nginx reverse proxy |
-| Backend       | Java 21 + Spring Boot 3.5 | 8080 internal | REST API and business logic          |
-| AI Service    | Python 3 + FastAPI + LiteLLM | 8000 internal | AI processing through configured providers |
+| Frontend      | React 19 + Vite 7         | `${FRONTEND_HOST_PORT:-80}` -> 8080 | Web user interface and Nginx reverse proxy |
+| Backend       | Java 21 + Spring Boot 3.5 | 8080 internal | REST API, business logic, and slider CAPTCHA protection |
+| AI API        | Python 3 + FastAPI + LiteLLM | 8000 internal | AI processing, embedding generation, ranking, and chat |
+| AI Worker     | Python 3 + LightGBM       | N/A          | Background worker for incremental model training |
 | Database      | PostgreSQL 15 + pgvector  | 5432 internal | Business data and vector storage     |
 | Message Queue | RabbitMQ 3                | 5672 internal | Async message processing             |
+| Cache         | Redis 7                   | 6379 internal | Distributed state, locks, Pub/Sub    |
+| Model Registry| MinIO                     | 9000 internal | Storage for trained LightGBM models  |
 
 ## Project Structure
 
@@ -70,8 +79,12 @@ This project adopts a microservices architecture with the following components:
 │   ├── infrastructure/        # Persistence, storage, messaging, security, converters
 │   ├── trigger/               # HTTP controllers, MQ listeners, controller tests
 │   └── types/                 # Shared types and constants
-├── ai-service/                # Python FastAPI AI service
+├── ai-service/                # Python AI service (API & Worker)
 │   ├── app/                   # AI service source code
+│   │   ├── api/               # FastAPI stateless endpoints
+│   │   ├── worker/            # Stateful background worker (LightGBM)
+│   │   ├── domain/            # Core AI logic and models
+│   │   └── infrastructure/    # External integrations (MinIO, MQ, DB)
 │   ├── tests/                 # Pytest test suite
 │   ├── requirements.txt       # Python dependencies
 │   └── Dockerfile             # AI service Docker image
@@ -114,6 +127,14 @@ cd resume-assistant
 
 ### 2. Configure Environment Variables
 
+**Recommended: Use the Web Configurator**
+
+Open `docs/deployment/env-setup.html` directly in your browser (no server needed):
+1. Select your language and fill in the required fields (marked with *)
+2. Click **Generate** next to secret fields for secure random values
+3. Click **Download .env** and save it to the project root
+
+**Alternative (CLI):**
 ```bash
 cp .env.example .env
 # Edit .env and fill in the required values
@@ -136,6 +157,14 @@ Key environment variables:
 | `LLM_EMBEDDING_MODEL_DIMENSION` | No       | Embedding output dimension (must match the model) |
 | `SPRING_PROFILES_ACTIVE`        | No       | Spring profile: `dev` (default) or `prod` |
 | `LOG_LEVEL`              | No       | AI service log level: `INFO` (default) or `DEBUG` |
+| `CAPTCHA_ENABLED`        | No       | Enable slider CAPTCHA. Default: `true` |
+| `CAPTCHA_TOLERANCE`      | No       | CAPTCHA drag tolerance in pixels. Default: `8` |
+| `CAPTCHA_TOKEN_EXPIRY`   | No       | CAPTCHA token expiry in seconds. Default: `300` |
+| `CAPTCHA_TRACK_WIDTH`    | No       | CAPTCHA track width in pixels. Default: `300` |
+| `REDIS_HOST`             | No       | Redis hostname. Default: `redis` (Docker) or `localhost` |
+| `REDIS_PORT`             | No       | Redis port. Default: `6379` |
+| `REDIS_PASSWORD`         | No       | Redis AUTH password. Leave empty for no-auth (dev default) |
+| `CAPTCHA_MAX_ATTEMPTS`   | No       | Maximum CAPTCHA attempts per IP. Default: `5` |
 
 For local development, copy `.env.example` to `.env` and provide one API key that matches the LiteLLM model prefix you choose. For example, the default Gemini models use `GEMINI_API_KEY`.
 
@@ -176,7 +205,7 @@ If you run the AI service locally instead of in Docker, source the root `.env`�
 | Backend API         | http://localhost/api                  | REST endpoints through Nginx   |
 | System Health       | http://localhost/health               | Global health check            |
 
-*Note: In the three-tier network architecture, only the configured Frontend port is exposed to the host. Backend, AI, RabbitMQ, and DB services are safely isolated by Docker networks.*
+*Note: In the three-tier network architecture, only the configured Frontend port is exposed to the host. Backend, AI, RabbitMQ, Redis, and DB services are safely isolated by Docker networks.*
 
 *Note: If `FRONTEND_HOST_PORT` is changed in `.env`, replace `http://localhost` with `http://localhost:${FRONTEND_HOST_PORT}`.*
 
@@ -348,6 +377,7 @@ See [docs/deployment/DOCKER_DEPLOY.md](docs/deployment/DOCKER_DEPLOY.md) for det
 
 - Docker & Docker Compose
 - Nginx
+- Redis 7 (distributed state, locks, Pub/Sub)
 - Flyway (database migration)
 
 ## Contributing

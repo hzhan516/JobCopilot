@@ -43,6 +43,9 @@ MATCHES=$(grep -c "vector(${DIM})" "$PROCESSED" || true)
 echo "Substitution verified: found ${MATCHES} occurrence(s) of vector(${DIM})."
 echo "替换验证通过：找到 ${MATCHES} 处 vector(${DIM})。"
 
+# 设置 PGPASSWORD 供 psql 自动使用
+export PGPASSWORD="${POSTGRESQL_PASSWORD:-${POSTGRES_PASSWORD:-}}"
+
 # 执行初始化脚本 / Execute initialization script
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" < "$PROCESSED"
 

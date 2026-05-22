@@ -1,3 +1,6 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+--extra-index-url https://download.pytorch.org/whl/cpu
 # Python AI服务依赖 / Python AI Service Dependencies
 # ================= / =================
 
@@ -25,9 +28,14 @@ httpx==0.28.1
 requests==2.32.3
 playwright==1.55.0
 pytest==8.3.4
-
-# 日志 / Logging
+pytest-asyncio==0.23.6
 structlog==24.4.0
+
+# Redis / 分布式缓存、锁、Pub/Sub
+redis[hiredis]>=5.0.0
+
+# 对象存储 / Object Storage (S3/MinIO兼容)
+boto3>=1.35.0
 
 # LLM网关 / LLM Gateway
 litellm==1.61.11
@@ -35,3 +43,10 @@ tenacity==8.4.1
 
 # Google Auth (Required by LiteLLM for Vertex AI)
 google-auth==2.35.0
+
+# 模型与定时任务 / Machine Learning & Scheduling
+lightgbm==4.5.0
+scikit-learn==1.5.2
+APScheduler==3.10.4
+respx
+pytest-cov

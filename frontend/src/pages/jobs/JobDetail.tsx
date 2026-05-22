@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { jobService } from '@/services/jobService';
@@ -33,6 +33,7 @@ export default function JobDetail() {
   const { t } = useTranslation();
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
+  const hasTrackedClick = useRef(false);
   const [job, setJob] = useState<Job | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [resumes, setResumes] = useState<ResumeGroup[]>([]);
@@ -79,13 +80,17 @@ export default function JobDetail() {
       setResumes(data);
       // Prefer converted over aiOptimized for scoring; original version is fallback-only
       // 默认选择第一个可用的非原版简历（优先 converted，其次 aiOptimized）
-      if (data.length > 0) {
-        const firstAvailable =
-          data[0].convertedVersion ?? data[0].aiOptimizedVersion ?? null;
-        if (firstAvailable) {
-          setSelectedResumeVersionId(firstAvailable.versionId);
+      setSelectedResumeVersionId((prev) => {
+        if (prev) return prev;
+        if (data.length > 0) {
+          const firstAvailable =
+            data[0].convertedVersion ?? data[0].aiOptimizedVersion ?? null;
+          if (firstAvailable) {
+            return firstAvailable.versionId;
+          }
         }
-      }
+        return prev;
+      });
     } catch {
       // Silently degrade
       // 静默降级
@@ -124,17 +129,25 @@ export default function JobDetail() {
       loadJob();
       loadResumes();
       loadScoreHistory();
+      // Track view action securely (Strict Mode safe)
+      if (!hasTrackedClick.current) {
+        hasTrackedClick.current = true;
+        jobService.trackAction(jobId, 'CLICK').catch(err => {
+          console.warn('Failed to track job click', err);
+        });
+      }
     }
   }, [jobId, loadJob, loadResumes, loadScoreHistory]);
 
   // Poll resume parse status every 3s when any resume is pending
   // 有简历正在解析时，每 3 秒刷新一次简历列表
+  const hasPendingResume = resumes.some((group) =>
+    [group.originalVersion, group.convertedVersion, group.aiOptimizedVersion]
+      .filter((v): v is NonNullable<typeof v> => !!v)
+      .some((v) => v.parseStatus === 'PENDING' || v.parseStatus === 'PARSING')
+  );
+
   useEffect(() => {
-    const hasPendingResume = resumes.some((group) =>
-      [group.originalVersion, group.convertedVersion, group.aiOptimizedVersion]
-        .filter((v): v is NonNullable<typeof v> => !!v)
-        .some((v) => v.parseStatus === 'PENDING' || v.parseStatus === 'PARSING')
-    );
     if (!hasPendingResume) return;
 
     const interval = setInterval(() => {
@@ -142,7 +155,7 @@ export default function JobDetail() {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [resumes, loadResumes]);
+  }, [hasPendingResume, loadResumes]);
 
   const handleSave = async () => {
     try {
@@ -187,6 +200,7 @@ export default function JobDetail() {
       const result = await jobService.scoreJob(jobId!, { resumeVersionId: selectedResumeVersionId });
       setScoreResult(result);
       toast.success(t('jobDetail.scoreSuccess'));
+      loadScoreHistory(); // 刷新评分历史
     } catch (error: unknown) {
       const err = error as { response?: { status?: number; data?: { message?: string } } };
       if (err.response?.status === 503) {
@@ -198,6 +212,15 @@ export default function JobDetail() {
       }
     } finally {
       setIsScoring(false);
+    }
+  };
+
+  const handleTrackAction = async (action: 'APPLY' | 'REJECT') => {
+    try {
+      await jobService.trackAction(jobId!, action, selectedResumeVersionId || undefined);
+      toast.success(action === 'APPLY' ? 'Marked as Applied' : 'Marked as Rejected');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to track action');
     }
   };
 
@@ -369,6 +392,16 @@ export default function JobDetail() {
                   </a>
                 </Button>
               )}
+              <div className="flex items-center gap-2 ml-4 pl-4 border-l border-gray-200">
+                <Button variant="default" onClick={() => handleTrackAction('APPLY')} className="bg-green-600 hover:bg-green-700">
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Mark as Applied
+                </Button>
+                <Button variant="destructive" onClick={() => handleTrackAction('REJECT')}>
+                  <X className="w-4 h-4 mr-2" />
+                  Not Interested
+                </Button>
+              </div>
             </>
           )}
         </div>

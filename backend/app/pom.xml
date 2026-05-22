@@ -95,6 +95,28 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Spring Data Redis / 分布式缓存与 Pub/Sub -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- Caffeine - 本地二级缓存（可选降级）/ Local L2 cache (optional fallback) -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
+        <!-- ShedLock - 分布式定时任务锁 / Distributed scheduler locking -->
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-spring</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-provider-redis-spring</artifactId>
+        </dependency>
+
         <!-- ArchUnit - 架构测试 / Architecture tests -->
         <dependency>
             <groupId>com.tngtech.archunit</groupId>

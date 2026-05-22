@@ -1,0 +1,97 @@
+{{- if .Values.aiService.enabled }}
+# =============================================================================
+# AI Service Deployment / Python FastAPI
+# =============================================================================
+{{- $gcpCreds := .Values.secrets.gcpCredentialsJson | default "" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "resume-assistant.fullname" . }}-ai-service
+  namespace: {{ include "resume-assistant.namespace" . }}
+  labels:
+    {{- include "resume-assistant.ai-service.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.aiService.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: ai-service
+      {{- include "resume-assistant.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: ai-service
+        {{- include "resume-assistant.selectorLabels" . | nindent 8 }}
+      {{- with .Values.aiService.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "resume-assistant.serviceAccountName" . }}-ai-service
+      securityContext:
+        {{- toYaml .Values.aiService.podSecurityContext | nindent 8 }}
+      containers:
+        - name: ai-service
+          image: "{{ .Values.global.imageRegistry }}{{ .Values.aiService.image.repository }}:{{ .Values.aiService.image.tag }}"
+          imagePullPolicy: {{ .Values.aiService.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "resume-assistant.fullname" . }}-config
+            - secretRef:
+                name: {{ include "resume-assistant.secretName" . }}
+          env:
+            - name: FILE_STORAGE_PATH
+              value: "/app/uploads"
+            {{- if $gcpCreds }}
+            - name: VERTEX_CREDENTIALS
+              value: "/app/credentials/gcp-service-account.json"
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          {{- with .Values.aiService.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+            {{- if $gcpCreds }}
+            - name: gcp-credentials
+              mountPath: /app/credentials
+              readOnly: true
+            {{- end }}
+          securityContext:
+            {{- toYaml .Values.aiService.securityContext | nindent 12 }}
+      volumes:
+        - name: uploads
+          emptyDir: {}
+        {{- if $gcpCreds }}
+        - name: gcp-credentials
+          secret:
+            secretName: {{ include "resume-assistant.fullname" . }}-gcp-credentials
+            items:
+              - key: gcp-service-account.json
+                path: gcp-service-account.json
+        {{- end }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

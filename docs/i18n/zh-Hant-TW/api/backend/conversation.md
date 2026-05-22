@@ -39,15 +39,16 @@
 | 欄位 | 類型 | 必填 | 說明 |
 |------|------|------|------|
 | `title` | String | 否 | 對話標題，不傳則預設為 "New Conversation" |
-| `resumeVersionId` | String (UUID) | 否 | 關聯的履歷版本 ID |
-| `jobId` | String (UUID) | 否 | 關聯的職位 ID |
+| `resumeVersionId` | String (UUID) | 否 | 關聯的履歷版本 ID；若提供，必須同時提供 `jobId` |
+| `jobId` | String (UUID) | 否 | 關聯的職位 ID；若提供，必須同時提供 `resumeVersionId` |
 
 #### 請求範例
 
 ```json
 {
   "title": "優化工作經驗",
-  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002"
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
+  "jobId": "550e8400-e29b-41d4-a716-446655440010"
 }
 ```
 
@@ -62,7 +63,8 @@
 | `title` | String | 對話標題 |
 | `status` | String | 狀態：ACTIVE, CLOSED |
 | `resumeVersionId` | String (UUID) | 關聯履歷版本 ID |
-| `messages` | Array | 訊息列表（建立時為空） |
+| `jobId` | String (UUID) | 關聯職位 ID |
+| `messages` | Array | 訊息列表。建立對話會立即加入一則預設 `USER` 訊息並啟動首次 AI 請求 |
 | `createdAt` | String (ISO 8601) | 建立時間 |
 | `updatedAt` | String (ISO 8601) | 更新時間 |
 
@@ -78,7 +80,17 @@
     "title": "優化工作經驗",
     "status": "ACTIVE",
     "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
-    "messages": [],
+    "jobId": "550e8400-e29b-41d4-a716-446655440010",
+    "messages": [
+      {
+        "messageId": "550e8400-e29b-41d4-a716-446655440004",
+        "role": "USER",
+        "content": "Compare the current job posting with my resume and tell me the match score.",
+        "sequence": 1,
+        "fileUrl": null,
+        "createdAt": "2024-01-15T10:30:00"
+      }
+    ],
     "createdAt": "2024-01-15T10:30:00",
     "updatedAt": "2024-01-15T10:30:00"
   }
@@ -111,14 +123,14 @@
 | 欄位 | 類型 | 必填 | 說明 |
 |------|------|------|------|
 | `content` | String | 是 | 訊息內容 |
-| `fileUrls` | List<String> | 否 | 關聯檔案 URL 列表（如履歷、附件等） |
+| `fileUrls` | List<String> | 否 | 保留的附件 URL 列表。目前後端接受此欄位，但不會持久化或轉送使用者提供的值到 AI 請求 |
 
 #### 請求範例
 
 ```json
 {
   "content": "幫我優化一下專案經驗部分",
-  "fileUrls": ["https://minio.example.com/resumes/xxx.pdf"]
+  "fileUrls": []
 }
 ```
 
@@ -126,9 +138,9 @@
 
 #### 成功回應 (200)
 
-回傳更新後的完整對話資訊，包含新增的使用者訊息。**注意**：AI 回覆透過非同步 MQ 處理，不會立即出現在回應中，前端需要透過輪詢或 WebSocket 取得最新回覆。
+回傳更新後的完整對話資訊，包含新增的使用者訊息。**注意**：AI 回覆透過非同步 MQ 處理，不會立即出現在回應中，前端會呼叫串流端點等待最新回覆。
 
-若建立對話時未指定標題，且這是該對話的**第一條訊息**，系統會自動將對話標題設定為訊息內容的前 30 個字元。
+若新增訊息時對話標題仍為預設值，系統會自動將標題設定為該訊息內容的前 30 個字元。目前建立對話流程中的預設初始訊息可能會先設定這個標題。
 
 #### 回應範例
 
@@ -324,13 +336,13 @@
 
 #### 成功回應 (200)
 
-回傳檔案上傳成功後的 MinIO 預簽名 URL。
+回傳檔案上傳成功後，由目前設定的儲存後端產生的臨時 URL。
 
 ```json
 {
   "code": 200,
   "message": "Success",
-  "data": "https://minio.example.com/conversations/550e8400-e29b-41d4-a716-446655440003/xxxx_resume.pdf?X-Amz-Algorithm=..."
+  "data": "https://storage.example.com/conversations/550e8400-e29b-41d4-a716-446655440003/xxxx_resume.pdf?X-Amz-Algorithm=..."
 }
 ```
 
@@ -343,12 +355,13 @@
 當使用者呼叫【發送訊息】介面後，後端會執行以下非同步流程：
 
 1. 儲存使用者訊息（`role=USER`）到資料庫
-2. 若對話標題為預設值且是首條訊息，自動生成標題
-3. 組裝 `ConversationRequestCommand`，包含歷史訊息、當前訊息、fileUrls、resumeVersionId
-4. 透過 RabbitMQ 發送到 `ai.req.conversation` 佇列
+2. 若對話標題仍為預設值，根據訊息內容自動生成標題
+3. 組裝 `ConversationRequestCommand`，包含歷史訊息、當前訊息、resumeVersionId、resumeText、primaryJobText、relatedJobTexts、init flag 與 locale
+4. 透過 RabbitMQ 使用 routing key `ai.req.conversation` 發送到 queue `ai.queue.conversation`
 5. Python AI 服務消費該訊息，生成回覆
-6. AI 服務將結果發送到 `backend.res.conversation` 佇列
+6. AI 服務使用 routing key `backend.res.conversation` 將結果發送到 queue `backend.queue.conversation`
 7. `AiResultMessageListener` 監聽到 `CONVERSATION_REPLY` 類型事件，儲存 AI 回覆（`role=ASSISTANT`）到資料庫
+8. 若 AI 結果包含 `resumeModification.modified=true`，後端會建立或更新 `AI_OPTIMIZED` 履歷版本，並將最佳化後的 Markdown 附加到助理回覆內容
 
 ### 8.2 發送給 AI 服務的資料格式
 
@@ -362,8 +375,13 @@
     { "role": "USER", "content": "幫我優化一下專案經驗部分", "fileUrl": null }
   ],
   "currentMessage": "幫我優化一下專案經驗部分",
-  "fileUrls": ["https://minio.example.com/resumes/xxx.pdf"],
-  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002"
+  "fileUrls": [],
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
+  "resumeText": "# Resume Markdown...",
+  "primaryJobText": "Software Engineer\nExample Corp\nJob description...",
+  "relatedJobTexts": ["Backend Engineer\nExample Corp\nRelated job description..."],
+  "init": true,
+  "locale": "zh-TW"
 }
 ```
 
@@ -373,8 +391,13 @@
 | `userId` | String | 使用者 ID |
 | `messageHistory` | List<Map> | 歷史訊息列表（role, content, fileUrl） |
 | `currentMessage` | String | 當前使用者發送的最新訊息 |
-| `fileUrls` | List<String> | 使用者引用的外部檔案 URL 列表 |
+| `fileUrls` | List<String> | 傳給 AI 服務的檔案 URL 列表；目前後端上下文請求會送空列表 |
 | `resumeVersionId` | String | 關聯履歷版本 ID（選用） |
+| `resumeText` | String | 從所選履歷版本或對話 AI 工作副本載入的履歷 Markdown/text |
+| `primaryJobText` | String | 從對話關聯職位載入的目前職位文字 |
+| `relatedJobTexts` | List<String> | 同一使用者其他職位文字，最多 5 筆 |
+| `init` | Boolean | 是否為對話初始化請求 |
+| `locale` | String | 後端根據目前請求解析出的語系 |
 
 ### 8.3 接收 AI 回覆的資料格式
 
@@ -401,6 +424,8 @@
 | `status` | String | `COMPLETED` 或 `FAILED` |
 | `data.content` | String | AI 回覆文本 |
 | `data.fileUrl` | String | AI 生成檔案的 URL（選用） |
+| `data.resumeModification.modified` | Boolean | AI 是否產生了履歷修改 |
+| `data.resumeModification.markdown` | String | `modified=true` 時的完整最佳化履歷 Markdown |
 | `errorMessage` | String | 失敗原因（`status=FAILED` 時存在） |
 
 ---
@@ -412,40 +437,37 @@
 | 狀態碼 | 含義 | 觸發場景 |
 |--------|------|----------|
 | `200` | 成功 | 請求處理成功 |
-| `400` | 請求參數錯誤 | 訊息內容為空、UUID 格式錯誤、分頁參數非法 |
+| `400` | 請求或業務錯誤 | 訊息內容為空、UUID 格式錯誤、分頁參數非法、對話不存在、權限不足、對話已關閉 |
 | `401` | 未認證 | 缺少 JWT Token 或 Token 已過期 |
-| `403` | 權限不足 | 嘗試操作不屬於自己的對話 |
-| `404` | 資源不存在 | 對話 ID 不存在、履歷版本 ID 不存在 |
-| `409` | 業務衝突 | 向已關閉的對話發送訊息 |
 | `500` | 伺服器內部錯誤 | 檔案上傳失敗、MQ 發送異常 |
 
 ### 業務錯誤範例
 
-**向已關閉對話發送訊息 (409)**：
+**向已關閉對話發送訊息 (400)**：
 
 ```json
 {
-  "code": 409,
+  "code": 400,
   "message": "Cannot add message to a closed conversation",
   "data": null
 }
 ```
 
-**存取不屬於自己的對話 (403)**：
+**存取不屬於自己的對話 (400)**：
 
 ```json
 {
-  "code": 403,
+  "code": 400,
   "message": "Access denied",
   "data": null
 }
 ```
 
-**對話不存在 (404)**：
+**對話不存在 (400)**：
 
 ```json
 {
-  "code": 404,
+  "code": 400,
   "message": "Conversation not found",
   "data": null
 }
@@ -470,8 +492,8 @@
 ```java
 {
   "title": String,          // 選用，對話標題
-  "resumeVersionId": String, // 選用，履歷版本 ID
-  "jobId": String           // 選用，關聯職位 ID
+  "resumeVersionId": String, // 選用，但必須與 jobId 同時提供
+  "jobId": String           // 選用，但必須與 resumeVersionId 同時提供
 }
 ```
 
@@ -480,7 +502,7 @@
 ```java
 {
   "content": String,         // 必填，訊息內容
-  "fileUrls": List<String>   // 選用，關聯檔案 URL 列表
+  "fileUrls": List<String>   // 選用，保留的附件 URL 列表；目前後端送給 AI 時使用空列表
 }
 ```
 
@@ -495,8 +517,8 @@
   "resumeVersionId": String,  // 關聯履歷版本 ID
   "jobId": String,            // 關聯職位 ID
   "messages": MessageResponse[], // 訊息列表（可能已分頁）
-  "createdAt": LocalDateTime, // 建立時間
-  "updatedAt": LocalDateTime  // 更新時間
+  "createdAt": OffsetDateTime, // 建立時間
+  "updatedAt": OffsetDateTime  // 更新時間
 }
 ```
 
@@ -509,7 +531,7 @@
   "content": String,          // 內容
   "sequence": int,            // 序號
   "fileUrl": String,          // 關聯檔案 URL（AI 生成檔案等）
-  "createdAt": LocalDateTime  // 建立時間
+  "createdAt": OffsetDateTime // 建立時間
 }
 ```
 
@@ -553,11 +575,10 @@
 > 前端會體驗到 loading 狀態，隨後完整回覆一次性到達。
 >
 > **後續升級為真正串流的路徑：**
-> 1. 更新 AI Service 層，使用 Gemini 的 `generate_content_stream()` 串流 API。
-> 2. 在 AI Service 中新增 REST 串流端點（例如 `/api/v1/conversation/stream`）。
-> 3. 後端透過 `WebClient` 或 `RestTemplate` 直接呼叫 AI Service 的串流端點，
->    將每個 chunk 即時透傳給前端，現有的 `StreamingResponseBody` 架構可復用。
-> 4. MQ 路徑可保留用於非串流場景，或廢棄。
+> 1. 更新 AI Service 層，透過目前設定的 LiteLLM-compatible provider 輸出 token chunks。
+> 2. 在 AI Service 中新增串流端點，或新增串流 MQ event path。
+> 3. 後端將每個 chunk 透過現有 `StreamingResponseBody` 架構即時透傳給前端。
+> 4. 目前的 MQ 完整回覆路徑可保留用於非串流場景。
 
 #### 呼叫時序
 
@@ -586,8 +607,7 @@ AI 回复超时，请稍后重试。
 | 狀態碼 | 含義 | 觸發場景 |
 |-------------|---------|------------------|
 | `401` | 未認證 | 缺少或已過期 JWT Token |
-| `403` | 權限不足 | 嘗試存取不屬於您的對話 |
-| `404` | 資源不存在 | 對話 ID 不存在 |
+| `400` | 對話業務錯誤 | 對話不存在、權限不足，或其他本地化對話領域錯誤 |
 
 ---
 

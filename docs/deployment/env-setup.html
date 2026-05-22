@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resume Assistant — Environment Setup</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // ENV_EXAMPLE_TEMPLATE_PLACEHOLDER_START
+    window.ENV_EXAMPLE_TEMPLATE = "# =============================================================================\n# Resume Assistant \u2014 Environment Variables Template\n# =============================================================================\n# This file defines ALL environment variables consumed by the Docker Compose\n# stack. Copy it to `.env` and fill in the secret values before running\n# `docker-compose up`.\n#\n#   cp .env.example .env\n#   nano .env\n#\n# IMPORTANT SECURITY REMINDERS\n#   - `.env` is gitignored. Never commit it to version control.\n#   - You MUST provide real values for the following variables before\n#     starting the stack in production:\n#       * VITE_GOOGLE_CLIENT_ID   (Google OAuth 2.0 Client ID)\n#       * JWT_SECRET              (min 32 chars, generate with openssl)\n#       * INTERNAL_API_KEY        (shared secret for backend-ai-service)\n#   - All placeholder passwords below (resume_pass, guest) are safe for\n#     local development only. Change them before any non-local deployment.\n#\n# THREE-TIER VARIABLE ORGANIZATION\n#   Tier 0 \u2014 Docker Compose & Host    : project name, host port mappings\n#   Tier 1 \u2014 Public-Facing Layer      : frontend build-time variables\n#   Tier 2 \u2014 Internal Application     : auth, MQ, AI provider keys, models\n#   Tier 3 \u2014 Data Layer               : PostgreSQL credentials and connection\n#\n# For a detailed explanation of each variable, see:\n#   docs/deployment/environment-variables.md\n# =============================================================================\n\n# =============================================================================\n# TIER 0: DOCKER COMPOSE & HOST CONFIGURATION\n# =============================================================================\n# These variables control Docker Compose project naming and host-level port\n# bindings. They affect how containers are labeled on the host but do NOT\n# change inter-container communication (that is handled by Docker networks).\n# =============================================================================\n\n# Docker Compose project name. Used as a prefix for container names, volume\n# names, and network names. Keeping it consistent makes cleanup easier:\n#   docker-compose -p resume-assistant down\nCOMPOSE_PROJECT_NAME=resume-assistant\n\n# Host port mapped to the frontend Nginx container (container port 80).\n# Default is 80. If port 80 is already in use (e.g. by a system web server),\n# change this to an alternate port such as 8081.\n#   curl -f http://localhost:${FRONTEND_HOST_PORT}/health\nFRONTEND_HOST_PORT=80\n\n# =============================================================================\n# TIER 1: PUBLIC-FACING LAYER (Frontend Nginx)\n# =============================================================================\n# Variables in this section are consumed by the frontend build process (Vite)\n# and the Nginx runtime. The frontend is the ONLY service exposed to the\n# internet; all HTTP/HTTPS traffic enters through this tier.\n#\n# Security boundary:\n#   - The browser loads the React SPA from Nginx.\n#   - API calls from the browser use relative paths (e.g. /api/login).\n#   - Nginx intercepts /api/* and reverse-proxies to the backend over the\n#     public-network. The backend itself is NOT exposed to the host.\n# =============================================================================\n\n# Google OAuth 2.0 Client ID. Required for Google Sign-In on the login page.\n# Obtain from the Google Cloud Console:\n#   https://console.cloud.google.com/apis/credentials\n# Create an \"OAuth 2.0 Client ID\" of type \"Web application\" and add\n# http://localhost (or your domain) to the Authorized JavaScript origins.\nVITE_GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com\n\n# Base URL for frontend API calls. This value is baked into the JavaScript\n# bundle at BUILD time.\n#\n# CRITICAL SECURITY WARNING:\n#   This MUST be left EMPTY or set to a RELATIVE path (e.g. `/api`) so that\n#   the browser sends requests back to the SAME origin (Nginx). Nginx then\n#   reverse-proxies them to the backend over the isolated Docker network.\n#\n#   If you set an ABSOLUTE URL here (e.g. `http://backend:8080` or\n#   `http://localhost:8080`), the browser will attempt to connect DIRECTLY\n#   to the backend, bypassing Nginx. This breaks the single-entry-point\n#   security model and may expose the backend port to the internet.\n#\n#   Correct:  VITE_API_BASE_URL=        (empty \u2014 browser uses relative URLs)\n#   Correct:  VITE_API_BASE_URL=/api    (relative path)\n#   Wrong:    VITE_API_BASE_URL=http://localhost:8080/api\nVITE_API_BASE_URL=\n\n# =============================================================================\n# TIER 2: INTERNAL APPLICATION LAYER\n# =============================================================================\n# This tier contains the backend (Spring Boot), the AI service (FastAPI),\n# and the message queue (RabbitMQ). None of these services are exposed to\n# the host or the internet. They communicate exclusively through Docker's\n# internal DNS resolution on the isolated internal-network and db-network.\n#\n# The backend spans all three tiers (public + internal + db) and acts as\n# the security gateway. The AI service and RabbitMQ live strictly in the\n# internal tier. PostgreSQL lives strictly in the database tier.\n# =============================================================================\n\n# -----------------------------------------------------------------------------\n# 2.1 Authentication & Security\n# -----------------------------------------------------------------------------\n# These secrets protect user sessions (JWT) and inter-service REST calls\n# (Internal API Key). They are the two primary defense-in-depth layers.\n# -----------------------------------------------------------------------------\n\n# Symmetric signing key for HS256 JWT tokens. All user-facing API endpoints\n# (login, registration, resume upload, job matching) require a valid JWT\n# signed with this key.\n#\n# Requirements:\n#   - Minimum 32 characters (256 bits).\n#   - Use a cryptographically secure random string.\n#\n# Generate a strong secret:\n#   openssl rand -base64 48\n#\n# Security impact:\n#   - If this key is leaked, an attacker can forge valid JWTs for any user.\n#   - Rotating this key forces ALL active users to re-authenticate.\nJWT_SECRET=change-this-to-a-long-random-secret-at-least-32-characters\n\n# Shared secret between the backend (Spring Boot) and the AI service\n# (FastAPI) REST endpoints. The backend sends this value in the\n# X-Internal-API-Key header on every outbound HTTP request to ai-service.\n# The ai-service middleware rejects requests with a missing or mismatched\n# key (HTTP 401 Unauthorized).\n#\n# Generate a strong secret:\n#   openssl rand -base64 32\n#\n# If left empty, both services skip the check. This is convenient for local\n# development but MUST be set in production.\nINTERNAL_API_KEY=\n\n# -----------------------------------------------------------------------------\n# 2.2 Redis (Shared State Layer)\n# -----------------------------------------------------------------------------\n# Redis provides distributed caching, locks, and Pub/Sub for cross-instance\n# state synchronization. It does NOT replace RabbitMQ.\n# -----------------------------------------------------------------------------\nREDIS_HOST=redis\nREDIS_PORT=6379\nREDIS_PASSWORD=\n\n# -----------------------------------------------------------------------------\n# 2.3 Message Queue (RabbitMQ)\n# -----------------------------------------------------------------------------\n# RabbitMQ decouples the backend from the AI service via asynchronous\n# messaging. The backend publishes commands to ai.queue.*; the AI service\n# consumes them and publishes results to backend.queue.*.\n#\n# Docker network behavior:\n#   - RABBITMQ_HOST must be the Docker service name `rabbitmq` (resolved\n#     on the internal-network).\n#   - Port 5672 is NOT exposed to the host; AMQP traffic stays inside Docker.\n# -----------------------------------------------------------------------------\n\n# Docker DNS hostname of the RabbitMQ container. Do NOT use localhost or\n# a host IP here \u2014 the backend and ai-service reach RabbitMQ through the\n# isolated internal-network.\nRABBITMQ_HOST=rabbitmq\n\n# AMQP port. This is the container port, not a host port. RabbitMQ listens\n# on 5672 inside the internal-network.\nRABBITMQ_PORT=5672\n\n# RabbitMQ management credentials. Override the default guest/guest before\n# any non-local deployment.\nRABBITMQ_USERNAME=guest\nRABBITMQ_PASSWORD=guest\n\n# -----------------------------------------------------------------------------\n# 2.3 AI Provider API Keys (LiteLLM-compatible)\n# -----------------------------------------------------------------------------\n# The AI service uses LiteLLM as a unified routing layer for multiple LLM\n# providers. You configure ONE provider by setting the matching API key and\n# using the matching model prefix in LLM_TEXT_MODEL / LLM_VISION_MODEL /\n# LLM_EMBEDDING_MODEL.\n#\n# Examples of provider selection:\n#\n# Provider 1 \u2014 Google AI Studio (Gemini)  [DEFAULT & RECOMMENDED]\n#   - Set: GEMINI_API_KEY\n#   - Use model prefix: gemini/\n#   - Example: gemini/gemini-2.5-flash\n#   - No credit card or GCP billing required. Get a free key at:\n#     https://aistudio.google.com/app/apikey\n#\n# Provider 2 \u2014 OpenAI\n#   - Set: OPENAI_API_KEY\n#   - Use model prefix: openai/\n#   - Example: openai/gpt-4o-mini\n#\n# Provider 3 \u2014 Anthropic (Claude)\n#   - Set: ANTHROPIC_API_KEY\n#   - Use model prefix: anthropic/\n#   - Example: anthropic/claude-3-haiku-20240307\n#\n# Provider 4 \u2014 Local / Self-hosted (Ollama)\n#   - Set: OLLAMA_API_BASE to your Ollama endpoint\n#   - Use model prefix: ollama/\n#   - Example: ollama/llama3\n#\n# For more details on LiteLLM and provider configuration, see:\n# https://docs.litellm.ai/docs/providers\n# -----------------------------------------------------------------------------\n\n# Google AI Studio API key. Free tier available. This is the default\n# provider because it requires no cloud billing account.\nGEMINI_API_KEY=replace-with-your-gemini-api-key\n\n# OpenAI API key. Required only if you use an openai/ model prefix.\nOPENAI_API_KEY=\n\n# Anthropic API key. Required only if you use an anthropic/ model prefix.\nANTHROPIC_API_KEY=\n\n# Base URL for a local Ollama instance. Used only with ollama/ model prefixes.\n# If Ollama runs on the Docker host, use the host-gateway address:\n#   OLLAMA_API_BASE=http://host.docker.internal:11434\nOLLAMA_API_BASE=http://localhost:11434\n\n# -----------------------------------------------------------------------------\n# 2.4 Model Parameters\n# -----------------------------------------------------------------------------\n# These variables select the LLM models and control their behavior. The\n# model strings follow the LiteLLM format: <provider>/<model-name>.\n#\n# Embedding dimension CRITICAL NOTE:\n#   LLM_EMBEDDING_MODEL_DIMENSION MUST match the output dimension of the\n#   selected embedding model. Mismatched dimensions will cause vector\n#   insertion failures in PostgreSQL pgvector.\n#\n# Common dimension values:\n#   - gemini-embedding-001        \u2192 1536\n#   - text-embedding-3-small      \u2192 1536\n#   - text-embedding-3-large      \u2192 3072\n#   - text-embedding-ada-002      \u2192 1536\n#   - bge-large-en-v1.5 (Ollama)  \u2192 1024\n# -----------------------------------------------------------------------------\n\n# Text generation model (resume optimization, conversation, job ranking).\nLLM_TEXT_MODEL=gemini/gemini-2.5-flash\n\n# Vision model (PDF/image parsing). Can be the same as the text model\n# if the provider supports multimodal input.\nLLM_VISION_MODEL=gemini/gemini-2.5-flash\n\n# Embedding model (vector generation for semantic search).\nLLM_EMBEDDING_MODEL=gemini/gemini-embedding-001\n\n# Output dimension of the embedding model. Must match the model's spec.\n# If you change this after data exists, you must re-index all vectors.\nLLM_EMBEDDING_MODEL_DIMENSION=1536\n\n# Sampling temperature. Lower values (e.g. 0.1) produce highly deterministic\n# output, which is desirable for structured JSON extraction (resume parsing).\n# Higher values (e.g. 0.7) produce more creative but less predictable output.\nLLM_TEMPERATURE=0.1\n\n# HTTP timeout for each LLM request (text, vision, embedding). Increase this\n# if you experience timeout errors with large documents or slow providers.\nLLM_REQUEST_TIMEOUT_SECONDS=60\n\n# Maximum output tokens for each LLM request. Increase this if the AI service\n# returns truncated JSON (json.decoder.JSONDecodeError) on long conversation\n# replies or resume optimization outputs.\n# \u5355\u6b21 LLM \u8bf7\u6c42\u7684\u6700\u5927\u8f93\u51fa token \u6570\u3002\u82e5\u5bf9\u8bdd\u56de\u590d\u6216\u7b80\u5386\u4f18\u5316\u8f93\u51fa\u8f83\u957f\u5bfc\u81f4\n# JSON \u88ab\u622a\u65ad\u5e76\u62a5 json.decoder.JSONDecodeError\uff0c\u8bf7\u589e\u5927\u6b64\u503c\u3002\nLLM_MAX_TOKENS=8192\n\n# -----------------------------------------------------------------------------\n# 2.5 AI Service Runtime Settings\n# -----------------------------------------------------------------------------\n# These variables configure the FastAPI AI service worker process, logging,\n# and Google Cloud Vertex AI integration.\n# -----------------------------------------------------------------------------\n\n# Google Cloud project ID for Vertex AI. Used only when you select a\n# vertex_ai/ model prefix. If you use Google AI Studio (gemini/ prefix),\n# this value is ignored.\nVERTEX_PROJECT_ID=ser594-ai-service\n\n# Google Cloud region for Vertex AI. Common values: us-central1, us-east1,\n# europe-west1, asia-northeast1, and global. Used only with vertex_ai/ model prefix.\nVERTEX_LOCATION=us-central1\n\n# Absolute host path to your Google Cloud Service Account JSON key file.\n# This file is mounted into the ai-service container as a read-only volume\n# at /app/credentials/gcp-service-account.json.\n#\n# CRITICAL: This MUST be an absolute path on the Docker host.\n#   Correct: /home/username/credentials/gcp-key.json\n#   Wrong:   ./gcp-key.json        (treated as named volume)\n#   Wrong:   gcp-key.json          (treated as named volume)\n#\n# If you use Google AI Studio (gemini/ prefix) instead of Vertex AI from gcloud,\n# you can leave this empty.\nVERTEX_CREDENTIALS=use-your-gcp-service-account-json-key-file-if-using-vertex-ai\n\n# Log level for the AI service. Valid values: DEBUG, INFO, WARNING, ERROR.\n# DEBUG prints full LLM prompts and responses (useful for troubleshooting\n# but noisy). INFO is recommended for normal operation.\nLOG_LEVEL=INFO\n\n# Incremental model training parameters are configured in section 2.16 below.\n\n# -----------------------------------------------------------------------------\n# 2.6 Backend REST Callbacks (AI Service \u2192 Backend)\n# -----------------------------------------------------------------------------\n# The AI service calls backend REST endpoints to upsert batch vectors\n# (job vectors, resume vectors) and to perform vector search during job\n# matching. These endpoints are protected by the same INTERNAL_API_KEY\n# middleware used for backend \u2192 ai-service calls.\n#\n# Docker network behavior:\n#   - BACKEND_SERVICE_URL uses the Docker service name `backend` which\n#     resolves on the internal-network. Do NOT use localhost or host IP.\n# -----------------------------------------------------------------------------\n\n# Base URL of the backend REST API as seen from the ai-service container.\nBACKEND_SERVICE_URL=http://backend:8080\n\n# HTTP timeout (seconds) for single-query backend calls (e.g. vector search).\nBACKEND_QUERY_TIMEOUT=5\n\n# HTTP timeout (seconds) for batch upsert operations (e.g. uploading\n# hundreds of job vectors after parsing).\nBACKEND_BATCH_UPSERT_TIMEOUT=30\n\n# Number of vectors per batch upsert request. Larger batches reduce HTTP\n# round-trips but increase memory usage on both sides.\nBACKEND_BATCH_SIZE=100\n\n# -----------------------------------------------------------------------------\n# 2.7 Spring Boot Backend Profile\n# -----------------------------------------------------------------------------\n\n# Active Spring Boot profile. Controls Flyway, JWT lifetime, and DDL behavior.\n#   dev  \u2014 Flyway disabled, 24h JWT, create/update DDL. For local development.\n#   prod \u2014 Flyway enabled, 1h JWT, validate DDL. For production.\nSPRING_PROFILES_ACTIVE=dev\n\n# -----------------------------------------------------------------------------\n# 2.8 Spring Boot Application Base\n# -----------------------------------------------------------------------------\n# These variables control the basic identity and behavior of the backend\n# Spring Boot application.\n# \u8fd9\u4e9b\u53d8\u91cf\u63a7\u5236\u540e\u7aef Spring Boot \u5e94\u7528\u7684\u57fa\u672c\u6807\u8bc6\u548c\u884c\u4e3a\u3002\n\n# Application name displayed in Spring Boot Actuator and logs.\n# Spring Boot \u5e94\u7528\u540d\u79f0\uff0c\u663e\u793a\u5728 Actuator \u548c\u65e5\u5fd7\u4e2d\u3002\nSPRING_APPLICATION_NAME=resume-assistant-backend\n\n# Whether to enable Flyway database migrations. Overrides the profile default.\n#   true  \u2014 Run migration scripts on startup (recommended for production).\n#   false \u2014 Skip migrations (dev default; use init.sql instead).\n# \u662f\u5426\u542f\u7528 Flyway \u6570\u636e\u5e93\u8fc1\u79fb\u3002\u8986\u76d6\u914d\u7f6e\u6587\u4ef6\u9ed8\u8ba4\u503c\u3002\n#   true  \u2014 \u542f\u52a8\u65f6\u6267\u884c\u8fc1\u79fb\u811a\u672c\uff08\u751f\u4ea7\u73af\u5883\u63a8\u8350\uff09\u3002\n#   false \u2014 \u8df3\u8fc7\u8fc1\u79fb\uff08\u5f00\u53d1\u73af\u5883\u9ed8\u8ba4\u503c\uff1b\u4f7f\u7528 init.sql \u4ee3\u66ff\uff09\u3002\nSPRING_FLYWAY_ENABLED=false\n\n# -----------------------------------------------------------------------------\n# 2.9 JWT Token Lifetime\n# -----------------------------------------------------------------------------\n# Token expiration times in milliseconds. Only effective when the backend\n# reads them from environment variables (dev profile does; prod profile\n# defaults to 1h / 7 days unless overridden).\n# \u4ee4\u724c\u8fc7\u671f\u65f6\u95f4\uff08\u6beb\u79d2\uff09\u3002\u4ec5\u5728\u540e\u7aef\u4ece\u73af\u5883\u53d8\u91cf\u8bfb\u53d6\u65f6\u751f\u6548\n#\uff08dev \u914d\u7f6e\u6587\u4ef6\u4f1a\u8bfb\u53d6\uff1bprod \u914d\u7f6e\u6587\u4ef6\u9ed8\u8ba4\u4e3a 1\u5c0f\u65f6 / 7\u5929\uff0c\u9664\u975e\u88ab\u8986\u76d6\uff09\u3002\n\n# Access token expiration (milliseconds).\n#   dev default: 86400000 (24 hours)\n#   prod default: 3600000 (1 hour)\n# Access Token \u8fc7\u671f\u65f6\u95f4\uff08\u6beb\u79d2\uff09\u3002\nJWT_ACCESS_EXPIRATION=86400000\n\n# Refresh token expiration (milliseconds). Same for dev and prod.\n#   default: 604800000 (7 days)\n# Refresh Token \u8fc7\u671f\u65f6\u95f4\uff08\u6beb\u79d2\uff09\u3002\u5f00\u53d1/\u751f\u4ea7\u73af\u5883\u9ed8\u8ba4\u503c\u76f8\u540c\u3002\nJWT_REFRESH_EXPIRATION=604800000\n\n# -----------------------------------------------------------------------------\n# 2.10 AI Service Connection\n# -----------------------------------------------------------------------------\n# URL of the AI service REST API as seen from the backend container.\n# \u4ece\u540e\u7aef\u5bb9\u5668\u89c6\u89d2\u770b\u5230\u7684 AI \u670d\u52a1 REST API \u5730\u5740\u3002\n#\n# Docker note: docker-compose.yml hardcodes this to http://ai-service:8000\n# for the backend container, so changing this in .env has no effect when\n# running inside Docker. Use this only for non-Docker deployments.\n# Docker \u6ce8\u610f\uff1adocker-compose.yml \u5df2\u4e3a\u540e\u7aef\u5bb9\u5668\u786c\u7f16\u7801\u6b64\u503c\u4e3a\n# http://ai-service:8000\uff0c\u56e0\u6b64\u5728 Docker \u5185\u8fd0\u884c\u65f6\u4fee\u6539 .env \u65e0\u6548\u3002\n# \u4ec5\u7528\u4e8e\u975e Docker \u90e8\u7f72\u3002\nAI_SERVICE_BASE_URL=http://localhost:8000\n\n# -----------------------------------------------------------------------------\n# 2.11 File Storage Configuration\n# -----------------------------------------------------------------------------\n# The backend supports pluggable storage backends: minio, local, s3, oss.\n# Switching storage source only requires changing STORAGE_TYPE and the\n# corresponding backend variables below.\n# \u540e\u7aef\u652f\u6301\u53ef\u63d2\u62d4\u5b58\u50a8\u540e\u7aef\uff1aminio\u3001local\u3001s3\u3001oss\u3002\n# \u5207\u6362\u5b58\u50a8\u6e90\u53ea\u9700\u4fee\u6539 STORAGE_TYPE \u548c\u4e0b\u65b9\u5bf9\u5e94\u7684\u540e\u7aef\u53d8\u91cf\u3002\n#\n# Docker note: docker-compose.yml hardcodes STORAGE_TYPE=local and\n# LOCAL_STORAGE_BASE_PATH=/app/uploads for the backend container.\n# Remove those lines in docker-compose.yml if you want .env values to take effect.\n# Docker \u6ce8\u610f\uff1adocker-compose.yml \u5df2\u4e3a\u540e\u7aef\u5bb9\u5668\u786c\u7f16\u7801 STORAGE_TYPE=local\n# \u548c LOCAL_STORAGE_BASE_PATH=/app/uploads\u3002\u82e5\u5e0c\u671b .env \u503c\u751f\u6548\uff0c\u8bf7\u5728\n# docker-compose.yml \u4e2d\u5220\u9664\u5bf9\u5e94\u884c\u3002\n\n# Storage backend type. / \u5b58\u50a8\u540e\u7aef\u7c7b\u578b\u3002\n#   minio \u2014 Self-hosted S3-compatible object storage.\n#   local \u2014 Filesystem storage inside the container (Docker volume).\n#   s3    \u2014 Amazon AWS S3 or any S3-compatible service.\n#   oss   \u2014 Aliyun Object Storage Service.\nSTORAGE_TYPE=minio\n\n# ----------------------------------------\n# MinIO Settings (effective when STORAGE_TYPE=minio)\n# MinIO \u914d\u7f6e\uff08\u5f53 STORAGE_TYPE=minio \u65f6\u751f\u6548\uff09\n# ----------------------------------------\nMINIO_ENDPOINT=http://minio:9000\nMINIO_ACCESS_KEY=minioadmin\nMINIO_SECRET_KEY=minioadmin\nMINIO_BUCKET_NAME=resumes\nMINIO_CONNECT_TIMEOUT=5000\nMINIO_WRITE_TIMEOUT=60000\nMINIO_READ_TIMEOUT=30000\n\n# ----------------------------------------\n# Local Storage Settings (effective when STORAGE_TYPE=local)\n# \u672c\u5730\u5b58\u50a8\u914d\u7f6e\uff08\u5f53 STORAGE_TYPE=local \u65f6\u751f\u6548\uff09\n# ----------------------------------------\nLOCAL_STORAGE_BASE_PATH=./uploads\nLOCAL_STORAGE_RESUME_PATH=resumes\nLOCAL_STORAGE_DATE_SUBDIR=true\nLOCAL_STORAGE_URL_PREFIX=\n\n# ----------------------------------------\n# AI Model Artifact Storage\n# AI \u6a21\u578b\u4ea7\u7269\u5b58\u50a8\u914d\u7f6e\n# ----------------------------------------\n# Model artifacts are stored outside the Docker image in the MinIO model\n# registry. Configure MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY,\n# and MINIO_MODEL_BUCKET in section 2.15 below.\n\n# ----------------------------------------\n# AWS S3 Settings (effective when STORAGE_TYPE=s3)\n# AWS S3 \u914d\u7f6e\uff08\u5f53 STORAGE_TYPE=s3 \u65f6\u751f\u6548\uff09\n# ----------------------------------------\n# AWS region, e.g. us-east-1, ap-northeast-1, cn-north-1\n# AWS \u533a\u57df\uff0c\u5982 us-east-1, ap-northeast-1, cn-north-1\nAWS_S3_REGION=us-east-1\n# Custom endpoint for S3-compatible third-party storage (MinIO, Ceph).\n# Leave empty to use the official AWS endpoint.\n# \u517c\u5bb9 S3 \u7684\u7b2c\u4e09\u65b9\u5b58\u50a8\u81ea\u5b9a\u4e49\u7aef\u70b9\uff08MinIO\u3001Ceph\uff09\u3002\u7559\u7a7a\u5219\u4f7f\u7528 AWS \u5b98\u65b9\u7aef\u70b9\u3002\nAWS_S3_ENDPOINT=\nAWS_S3_ACCESS_KEY=\nAWS_S3_SECRET_KEY=\nAWS_S3_BUCKET_NAME=\n# true=PathStyle, false=VirtualHostedStyle\nAWS_S3_PATH_STYLE=false\nAWS_S3_CONNECTION_TIMEOUT=5000\nAWS_S3_SOCKET_TIMEOUT=50000\nAWS_S3_MAX_CONNECTIONS=50\nAWS_S3_ENCRYPTION_ENABLED=false\nAWS_S3_KMS_KEY_ID=\n\n# ----------------------------------------\n# Aliyun OSS Settings (effective when STORAGE_TYPE=oss)\n# \u963f\u91cc\u4e91 OSS \u914d\u7f6e\uff08\u5f53 STORAGE_TYPE=oss \u65f6\u751f\u6548\uff09\n# ----------------------------------------\n# Access endpoint. Public: https://oss-{region}.aliyuncs.com\n# \u8bbf\u95ee\u57df\u540d/\u7aef\u70b9\u3002\u5916\u7f51\uff1ahttps://oss-{region}.aliyuncs.com\nALIYUN_OSS_ENDPOINT=\nALIYUN_OSS_ACCESS_KEY_ID=\nALIYUN_OSS_ACCESS_KEY_SECRET=\nALIYUN_OSS_BUCKET_NAME=\n# CDN domain for generating access URLs. / \u7528\u4e8e\u751f\u6210\u8bbf\u95ee URL \u7684 CDN \u57df\u540d\u3002\nALIYUN_OSS_CDN_DOMAIN=\nALIYUN_OSS_CONNECTION_TIMEOUT=5000\nALIYUN_OSS_SOCKET_TIMEOUT=50000\nALIYUN_OSS_MAX_CONNECTIONS=50\n# Download buffer size in KB. / \u4e0b\u8f7d\u7f13\u51b2\u533a\u5927\u5c0f\uff08KB\uff09\u3002\nALIYUN_OSS_DOWNLOAD_BUFFER=64\n# Upload part size in MB (for multipart upload). / \u4e0a\u4f20\u5206\u7247\u5927\u5c0f\uff08MB\uff0c\u7528\u4e8e\u5927\u6587\u4ef6\u5206\u7247\u4e0a\u4f20\uff09\u3002\nALIYUN_OSS_UPLOAD_PART_SIZE=5\n# Server-side encryption: AES256, KMS, SM4. Leave empty for no encryption.\n# \u670d\u52a1\u5668\u7aef\u52a0\u5bc6\u65b9\u5f0f\uff1aAES256\u3001KMS\u3001SM4\u3002\u7559\u7a7a\u8868\u793a\u4e0d\u52a0\u5bc6\u3002\nALIYUN_OSS_SSE=\nALIYUN_OSS_KMS_KEY_ID=\n\n# -----------------------------------------------------------------------------\n# 2.12 Email Verification Configuration\n# -----------------------------------------------------------------------------\n# Master switch for email verification during registration.\n#   true  \u2014 Registration requires a 6-digit verification code sent via email.\n#   false \u2014 Registration works without email verification (backward compatible).\n# \u90ae\u7bb1\u9a8c\u8bc1\u603b\u5f00\u5173\u3002\n#   true  \u2014 \u6ce8\u518c\u65f6\u9700\u8981\u8f93\u5165\u901a\u8fc7\u90ae\u4ef6\u53d1\u9001\u76846\u4f4d\u9a8c\u8bc1\u7801\u3002\n#   false \u2014 \u6ce8\u518c\u4e0d\u9700\u8981\u90ae\u7bb1\u9a8c\u8bc1\uff08\u5411\u540e\u517c\u5bb9\uff09\u3002\nEMAIL_VERIFICATION_ENABLED=false\n\n# Sender address displayed in verification emails.\n# \u9a8c\u8bc1\u90ae\u4ef6\u4e2d\u7684\u53d1\u4ef6\u4eba\u5730\u5740\u3002\nEMAIL_FROM=noreply@resume-assistant.local\n\n# SMTP server host. Leave empty if email verification is disabled.\n# SMTP \u670d\u52a1\u5668\u5730\u5740\u3002\u5982\u679c\u5173\u95ed\u90ae\u7bb1\u9a8c\u8bc1\u53ef\u7559\u7a7a\u3002\nSMTP_HOST=\n\n# SMTP server port. Common values: 25, 465 (SSL), 587 (STARTTLS).\n# SMTP \u670d\u52a1\u5668\u7aef\u53e3\u3002\u5e38\u89c1\u503c\uff1a25\u3001465\uff08SSL\uff09\u3001587\uff08STARTTLS\uff09\u3002\nSMTP_PORT=587\n\n# SMTP username (usually the full email address).\n# SMTP \u7528\u6237\u540d\uff08\u901a\u5e38\u4e3a\u5b8c\u6574\u90ae\u7bb1\u5730\u5740\uff09\u3002\nSMTP_USERNAME=\n\n# SMTP password or app-specific password.\n# SMTP \u5bc6\u7801\u6216\u5e94\u7528\u4e13\u7528\u5bc6\u7801\u3002\nSMTP_PASSWORD=\n\n# Verification code expiry time in seconds. Default: 300 (5 minutes).\n# \u9a8c\u8bc1\u7801\u6709\u6548\u671f\uff08\u79d2\uff09\u3002\u9ed8\u8ba4\uff1a300\uff085\u5206\u949f\uff09\u3002\nEMAIL_CODE_EXPIRY=300\n\n# Resend cooldown time in seconds. Default: 60 (1 minute).\n# \u91cd\u53d1\u51b7\u5374\u65f6\u95f4\uff08\u79d2\uff09\u3002\u9ed8\u8ba4\uff1a60\uff081\u5206\u949f\uff09\u3002\nEMAIL_RESEND_COOLDOWN=60\n\n# Maximum failed verification attempts before the code is invalidated.\n# Default: 3.\n# \u9a8c\u8bc1\u7801\u6700\u5927\u9519\u8bef\u5c1d\u8bd5\u6b21\u6570\uff0c\u8d85\u8fc7\u5219\u4f5c\u5e9f\u3002\u9ed8\u8ba4\uff1a3\u3002\nEMAIL_MAX_ATTEMPTS=3\n\n# -----------------------------------------------------------------------------\n# 2.13 CAPTCHA Configuration\n# -----------------------------------------------------------------------------\n# Slider CAPTCHA (human verification) settings. This bot-protection layer\n# is required before registration, login, and Google OAuth flows.\n# \u6ed1\u52a8\u9a8c\u8bc1\u7801\uff08\u4eba\u673a\u9a8c\u8bc1\uff09\u914d\u7f6e\u3002\u5728\u6ce8\u518c\u3001\u767b\u5f55\u548c Google \u6388\u6743\u6d41\u7a0b\u524d\u542f\u7528\u3002\n\n# Master switch for the slider CAPTCHA feature.\n#   true  \u2014 CAPTCHA is required for auth endpoints (recommended).\n#   false \u2014 Auth endpoints skip CAPTCHA validation (useful for testing).\n# \u6ed1\u52a8\u9a8c\u8bc1\u7801\u603b\u5f00\u5173\u3002\n#   true  \u2014 \u8ba4\u8bc1\u63a5\u53e3\u9700\u8981\u5b8c\u6210\u4eba\u673a\u9a8c\u8bc1\uff08\u63a8\u8350\uff09\u3002\n#   false \u2014 \u8ba4\u8bc1\u63a5\u53e3\u8df3\u8fc7\u4eba\u673a\u9a8c\u8bc1\uff08\u4ec5\u7528\u4e8e\u6d4b\u8bd5\uff09\u3002\nCAPTCHA_ENABLED=true\n\n# Pixel tolerance for the slider matching. The user's drag offset is\n# considered valid if it falls within \u00b1tolerance pixels of the target.\n# \u6ed1\u5757\u5339\u914d\u50cf\u7d20\u5bb9\u5dee\u3002\u7528\u6237\u62d6\u52a8\u504f\u79fb\u91cf\u5728\u76ee\u6807\u4f4d\u7f6e \u00b1tolerance \u50cf\u7d20\u8303\u56f4\u5185\u89c6\u4e3a\u901a\u8fc7\u3002\nCAPTCHA_TOLERANCE=8\n\n# Lifetime of a verified CAPTCHA token (in seconds). After this period the\n# token expires and the user must complete the slider again.\n# \u5df2\u9a8c\u8bc1 CAPTCHA token \u7684\u6709\u6548\u671f\uff08\u79d2\uff09\u3002\u8fc7\u671f\u540e\u7528\u6237\u9700\u91cd\u65b0\u5b8c\u6210\u9a8c\u8bc1\u3002\nCAPTCHA_TOKEN_EXPIRY=300\n\n# Width of the slider track in pixels. Must match the frontend component.\n# \u6ed1\u8f68\u5bbd\u5ea6\uff08\u50cf\u7d20\uff09\u3002\u5fc5\u987b\u4e0e\u524d\u7aef\u7ec4\u4ef6\u914d\u7f6e\u4fdd\u6301\u4e00\u81f4\u3002\nCAPTCHA_TRACK_WIDTH=300\n\n# Maximum number of verification attempts per challenge. Exceeding this\n# invalidates the challenge and requires fetching a new one.\n# \u5355\u6761 challenge \u7684\u6700\u5927\u9a8c\u8bc1\u5c1d\u8bd5\u6b21\u6570\u3002\u8d85\u8fc7\u5219 challenge \u4f5c\u5e9f\uff0c\u9700\u91cd\u65b0\u83b7\u53d6\u3002\nCAPTCHA_MAX_ATTEMPTS=5\n\n# -----------------------------------------------------------------------------\n# 2.14 Backend Logging Levels\n# -----------------------------------------------------------------------------\n# These variables control the verbosity of backend logs. They are injected\n# into Spring Boot logging configuration.\n# \u8fd9\u4e9b\u53d8\u91cf\u63a7\u5236\u540e\u7aef\u65e5\u5fd7\u7684\u8be6\u7ec6\u7a0b\u5ea6\uff0c\u6ce8\u5165\u5230 Spring Boot \u65e5\u5fd7\u914d\u7f6e\u4e2d\u3002\n\n# Hibernate SQL log level.\n#   DEBUG \u2014 Prints every SQL statement (useful for development, very noisy).\n#   INFO  \u2014 Minimal SQL logging.\n#   WARN  \u2014 Only warnings and errors.\n# Hibernate SQL log level (org.hibernate.SQL)\nLOG_HIBERNATE_LEVEL=DEBUG\n\n# Application-specific log level for edu.asu.ser594.resumeassistant.\n#   DEBUG \u2014 Prints request details, service calls, and exceptions.\n#   INFO  \u2014 Normal operational messages.\n#   WARN  \u2014 Only warnings and errors.\n#   Application log level (edu.asu.ser594.resumeassistant)\nLOG_APP_LEVEL=DEBUG\n\n# =============================================================================\n# TIER 3: DATA LAYER (PostgreSQL + pgvector)\n# =============================================================================\n# PostgreSQL is the unified storage for relational business data and vector\n# embeddings. The pgvector extension enables cosine-similarity search on\n# high-dimensional vectors. This tier is completely isolated: only the\n# backend can reach PostgreSQL via the dedicated db-network.\n#\n# Security:\n#   - Port 5432 is NOT exposed to the host.\n#   - Network isolation is Layer 1 of defense-in-depth.\n#   - A strong password is Layer 2. Never use the default in production.\n# =============================================================================\n\n# Database name created on first container startup.\nPOSTGRES_DB=resume_assistant\n\n# Database user. The backend connects with these credentials via JDBC.\nPOSTGRES_USER=resume_user\n\n# Database password. Change this before any non-local deployment.\n# The default `resume_pass` is safe for local development only.\nPOSTGRES_PASSWORD=resume_pass\n\n# Docker DNS hostname of the PostgreSQL container. The backend JDBC URL\n# uses this name, resolved on the isolated db-network.\nPOSTGRES_HOST=postgres\n\n# PostgreSQL container port. NOT exposed to the host.\nPOSTGRES_PORT=5432\n\n# -----------------------------------------------------------------------------\n# 2.15 AI Service Model Registry (MinIO)\n# -----------------------------------------------------------------------------\n# The AI service uses the MINIO_ENDPOINT, MINIO_ACCESS_KEY, and\n# MINIO_SECRET_KEY values above, plus this model-specific bucket.\nMINIO_MODEL_BUCKET=ai-models\n\n# -----------------------------------------------------------------------------\n# 2.16 AI Service Worker Config\n# -----------------------------------------------------------------------------\nRETRAIN_INTERVAL_HOURS=24\nMIN_SAMPLES_FOR_RETRAIN=10\n";
+    // ENV_EXAMPLE_TEMPLATE_PLACEHOLDER_END
+  </script>
+  <style>
+    .section-nav-item.active { border-left: 3px solid #2563eb; background-color: #eff6ff; color: #1e40af; }
+    .var-input:focus { box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+    .secret-input { font-family: monospace; }
+    .code-block { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    /* Smooth transitions */
+    .accordion-content { transition: max-height 0.3s ease, opacity 0.3s ease; }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .hidden-force { display: none !important; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <!-- Header -->
+  <header class="sticky top-0 z-50 bg-white border-b shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-gray-900 leading-tight" data-i18n="title">Resume Assistant — Environment Setup</h1>
+          <p class="text-xs text-gray-500" data-i18n="subtitle">Configure your .env file before deployment</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <!-- Progress mini -->
+        <div class="hidden md:flex items-center space-x-2 mr-4">
+          <div class="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div id="progress-bar" class="h-full bg-blue-600 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+          <span id="progress-text" class="text-xs text-gray-600 font-medium">0/0</span>
+        </div>
+        <!-- Language Switcher -->
+        <select id="lang-select" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+          <option value="en">English</option>
+          <option value="zh-CN">简体中文</option>
+          <option value="zh-TW">繁體中文</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="max-w-7xl mx-auto px-4 py-6 flex gap-6">
+    <!-- Left Sidebar Navigation -->
+    <aside class="hidden lg:block w-64 flex-shrink-0">
+      <div class="sticky top-24 space-y-2" id="section-nav">
+        <!-- Nav items injected by JS -->
+      </div>
+    </aside>
+
+    <!-- Right Content Area -->
+    <main class="flex-1 min-w-0">
+      <!-- Search -->
+      <div class="mb-6">
+        <div class="relative">
+          <input type="text" id="search-input" placeholder="Search variables..." 
+            class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            data-i18n-placeholder="searchPlaceholder">
+          <svg class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+      </div>
+
+      <!-- Progress Card -->
+      <div class="bg-white rounded-xl border shadow-sm p-5 mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-semibold text-gray-900" data-i18n="progressTitle">Configuration Progress</h2>
+          <span id="progress-detail" class="text-sm text-gray-600">0/0 required fields completed</span>
+        </div>
+        <div class="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+          <div id="progress-bar-large" class="h-full bg-blue-600 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+        <p class="mt-2 text-sm text-gray-500" data-i18n="progressHint">Fill in the required fields (marked with *) to complete the configuration.</p>
+      </div>
+
+      <!-- Sections Container -->
+      <div id="sections-container" class="space-y-4">
+        <!-- Sections injected by JS -->
+      </div>
+
+      <!-- Bottom Actions -->
+      <div class="mt-8 bg-white rounded-xl border shadow-sm p-5 sticky bottom-4 z-40">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div class="flex-1">
+            <h3 class="font-semibold text-gray-900 mb-1" data-i18n="previewTitle">Generated .env Preview</h3>
+            <textarea id="env-preview" readonly 
+              class="w-full h-32 p-3 text-xs code-block bg-gray-900 text-green-400 rounded-lg border-0 resize-none focus:outline-none"
+              placeholder="Fill in variables to see preview..."></textarea>
+          </div>
+          <div class="flex flex-col gap-3 md:w-auto">
+            <button id="btn-download" class="flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              <span data-i18n="downloadBtn">Download .env</span>
+            </button>
+            <button id="btn-reset" class="flex items-center justify-center space-x-2 px-6 py-2.5 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium rounded-lg transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              <span data-i18n="resetBtn">Reset to Defaults</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <footer class="mt-8 text-center text-sm text-gray-500 pb-8">
+        <p data-i18n="footer">Resume Assistant Environment Configurator</p>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    // ============================================================
+    // 1. 多语言翻译 / i18n Translations
+    // ============================================================
+    const translations = {
+      en: {
+        title: "Resume Assistant — Environment Setup",
+        subtitle: "Configure your .env file before deployment",
+        searchPlaceholder: "Search variables...",
+        progressTitle: "Configuration Progress",
+        progressHint: "Fill in the required fields (marked with *) to complete the configuration.",
+        downloadBtn: "Download .env",
+        resetBtn: "Reset to Defaults",
+        previewTitle: "Generated .env Preview",
+        footer: "Resume Assistant Environment Configurator",
+        required: "Required",
+        recommended: "Recommended",
+        optional: "Optional",
+        generate: "Generate",
+        copy: "Copy",
+        copied: "Copied!",
+        defaultValue: "Default",
+        emptyValue: "Empty",
+        validationMinLength: "Must be at least {min} characters",
+        validationRequired: "This field is required for production",
+        validationRecommended: "This field is recommended for production",
+        sectionRequiredVars: "Required Variables",
+        sectionOptionalVars: "Optional Variables",
+        expandAll: "Expand All",
+        collapseAll: "Collapse All",
+        showPassword: "Show",
+        hidePassword: "Hide",
+        noResults: "No variables match your search.",
+        downloadSuccess: ".env file ready for download",
+        resetConfirm: "Reset all values to defaults?",
+        yes: "Yes",
+        no: "No",
+        general: "General",
+        varsCount: "{n} vars",
+        progressDetail: "{filled}/{total} required completed",
+        progressShort: "{filled}/{total}"
+      },
+      "zh-CN": {
+        title: "智能求职助手 — 环境变量配置",
+        subtitle: "部署前配置您的 .env 文件",
+        searchPlaceholder: "搜索变量...",
+        progressTitle: "配置进度",
+        progressHint: "填写必填项（标记为 *）以完成配置。",
+        downloadBtn: "下载 .env",
+        resetBtn: "恢复默认值",
+        previewTitle: "生成的 .env 预览",
+        footer: "智能求职助手 环境变量配置工具",
+        required: "必填",
+        recommended: "建议填写",
+        optional: "可选",
+        generate: "生成",
+        copy: "复制",
+        copied: "已复制！",
+        defaultValue: "默认值",
+        emptyValue: "空值",
+        validationMinLength: "至少需要 {min} 个字符",
+        validationRequired: "生产环境必须填写",
+        validationRecommended: "生产环境建议填写",
+        sectionRequiredVars: "必填变量",
+        sectionOptionalVars: "可选变量",
+        expandAll: "展开全部",
+        collapseAll: "收起全部",
+        showPassword: "显示",
+        hidePassword: "隐藏",
+        noResults: "没有匹配的变量。",
+        downloadSuccess: ".env 文件已准备好下载",
+        resetConfirm: "确定要恢复所有默认值吗？",
+        yes: "确定",
+        no: "取消",
+        general: "通用",
+        varsCount: "{n} 个变量",
+        progressDetail: "{filled}/{total} 必填项已完成",
+        progressShort: "{filled}/{total}"
+      },
+      "zh-TW": {
+        title: "智能求職助手 — 環境變數配置",
+        subtitle: "部署前配置您的 .env 檔案",
+        searchPlaceholder: "搜尋變數...",
+        progressTitle: "配置進度",
+        progressHint: "填寫必填項（標記為 *）以完成配置。",
+        downloadBtn: "下載 .env",
+        resetBtn: "恢復預設值",
+        previewTitle: "生成的 .env 預覽",
+        footer: "智能求職助手 環境變數配置工具",
+        required: "必填",
+        recommended: "建議填寫",
+        optional: "可選",
+        generate: "生成",
+        copy: "複製",
+        copied: "已複製！",
+        defaultValue: "預設值",
+        emptyValue: "空值",
+        validationMinLength: "至少需要 {min} 個字元",
+        validationRequired: "生產環境必須填寫",
+        validationRecommended: "生產環境建議填寫",
+        sectionRequiredVars: "必填變數",
+        sectionOptionalVars: "可選變數",
+        expandAll: "展開全部",
+        collapseAll: "收起全部",
+        showPassword: "顯示",
+        hidePassword: "隱藏",
+        noResults: "沒有匹配的變數。",
+        downloadSuccess: ".env 檔案已準備好下載",
+        resetConfirm: "確定要恢復所有預設值嗎？",
+        yes: "確定",
+        no: "取消",
+        general: "通用",
+        varsCount: "{n} 個變數",
+        progressDetail: "{filled}/{total} 必填項已完成",
+        progressShort: "{filled}/{total}"
+      }
+    };
+
+    // 关键变量补充描述（纯英文注释的高优先级变量）
+    const extraDescriptions = {
+      'zh-CN': {
+        JWT_SECRET: 'JWT 签名密钥（HS256）。所有面向用户的 API 端点（登录、注册、简历上传、职位匹配）都需要使用此密钥签名的有效 JWT。\n\n要求：\n- 最少 32 个字符（256 位）\n- 使用加密安全的随机字符串\n\n安全影响：如果此密钥泄露，攻击者可以为任意用户伪造有效的 JWT，包括管理员。轮换密钥将强制所有活跃用户重新登录。',
+        INTERNAL_API_KEY: '后端（Spring Boot）与 AI 服务（FastAPI）REST 端点之间的共享密钥。后端在每次向 AI 服务发出的出站 HTTP 请求中，通过 X-Internal-API-Key 头部发送此值。AI 服务中间件会拒绝缺少或不匹配的密钥（HTTP 401 未授权）。\n\n如果留空，双方服务都会跳过校验——这在本地开发中很方便，但生产环境必须设置。',
+        VITE_GOOGLE_CLIENT_ID: 'Google OAuth 2.0 客户端 ID，用于前端登录页面的"使用 Google 登录"功能。\n\n获取方式：访问 Google Cloud Console → APIs & Services → Credentials → 创建 OAuth 2.0 Client ID（类型选择 Web application），并将 http://localhost 添加到 Authorized JavaScript origins。',
+        GEMINI_API_KEY: 'Google AI Studio API 密钥。LiteLLM 的默认提供商，无需信用卡或 GCP 计费账户即可使用免费额度。\n\n获取地址：https://aistudio.google.com/app/apikey\n\n注意：请将此密钥视为机密——任何持有它的人都可以消耗您的额度。',
+        POSTGRES_PASSWORD: 'PostgreSQL 数据库密码。后端通过 JDBC 使用此凭据连接数据库。\n\n安全提醒：即使 PostgreSQL 位于隔离的 Docker 网络中，强密码仍是纵深防御的必备层。如果容器被入侵并获得网络访问权限，弱凭据将允许轻松访问数据库。',
+        RABBITMQ_PASSWORD: 'RabbitMQ AMQP 认证密码。即使攻击者突破了网络，仍需要有效的 MQ 凭据才能发布或消费消息。\n\n请勿重用 POSTGRES_PASSWORD 或 JWT_SECRET 的密码，应独立轮换。',
+        LLM_TEXT_MODEL: '文本生成模型标识符，用于简历优化、对话、职位排名等任务。格式为 <provider>/<model-name>。\n\n默认值 gemini/gemini-2.5-flash 使用 Google AI Studio（免费额度）。如需切换提供商，请同时设置对应的 API 密钥并更改此前缀。',
+        LLM_VISION_MODEL: '视觉/多模态模型标识符，用于解析简历图片/PDF。可与文本模型相同（如果提供商支持多模态输入）。',
+        LLM_EMBEDDING_MODEL: '嵌入模型标识符，用于生成文本嵌入（向量搜索）。\n\n关键提醒：输出维度必须与 LLM_EMBEDDING_MODEL_DIMENSION 匹配。不匹配会导致 PostgreSQL pgvector 中的向量插入失败。',
+        LLM_EMBEDDING_MODEL_DIMENSION: '所选嵌入模型的输出维度。常见值：\n- gemini-embedding-001 / text-embedding-ada-002 → 1536\n- text-embedding-3-large → 3072\n- bge-large-en-v1.5 (Ollama) → 1024\n\n如果更改此值后已有数据存在，必须重新索引所有向量。',
+        STORAGE_TYPE: '文件存储后端类型。\n- minio：自托管 S3 兼容对象存储\n- local：容器内的文件系统存储（Docker 卷）\n- s3：Amazon AWS S3 或兼容服务\n- oss：阿里云对象存储\n\n生产环境多副本部署时，请使用 minio 或 s3，以确保所有实例共享同一对象存储。',
+        EMAIL_VERIFICATION_ENABLED: '注册时邮箱验证总开关。\n- true：注册时需要输入邮件发送的 6 位验证码\n- false：注册不需要邮箱验证（向后兼容）\n\n即使 SMTP 凭据已配置，也只有在此标志为 true 时才会强制执行验证。',
+        CAPTCHA_ENABLED: '滑动验证码（人机验证）总开关。在注册、登录和 Google 授权流程前启用。\n- true：认证接口需要完成人机验证（推荐）\n- false：认证接口跳过人机验证（仅用于测试）'
+      },
+      'zh-TW': {
+        JWT_SECRET: 'JWT 簽名金鑰（HS256）。所有面向用戶的 API 端點（登入、註冊、履歷上傳、職位配對）都需要使用此金鑰簽名的有效 JWT。\n\n要求：\n- 最少 32 個字元（256 位元）\n- 使用加密安全的隨機字串\n\n安全影響：如果此金鑰洩露，攻擊者可以為任意使用者偽造有效的 JWT，包括管理員。輪換金鑰將強制所有活躍使用者重新登入。',
+        INTERNAL_API_KEY: '後端（Spring Boot）與 AI 服務（FastAPI）REST 端點之間的共享金鑰。後端在每次向 AI 服務發出的出站 HTTP 請求中，透過 X-Internal-API-Key 標頭傳送此值。AI 服務中介軟體會拒絕缺少或不匹配的金鑰（HTTP 401 未授權）。\n\n如果留空，雙方服務都會跳过校驗——這在本機開發中很方便，但生產環境必須設定。',
+        VITE_GOOGLE_CLIENT_ID: 'Google OAuth 2.0 用戶端 ID，用於前端登入頁面的「使用 Google 登入」功能。\n\n取得方式：訪問 Google Cloud Console → APIs & Services → Credentials → 建立 OAuth 2.0 Client ID（類型選擇 Web application），並將 http://localhost 新增到 Authorized JavaScript origins。',
+        GEMINI_API_KEY: 'Google AI Studio API 金鑰。LiteLLM 的預設提供者，無需信用卡或 GCP 計費帳戶即可使用免費額度。\n\n取得地址：https://aistudio.google.com/app/apikey\n\n注意：請將此金鑰視為機密——任何持有它的人都可以消耗您的額度。',
+        POSTGRES_PASSWORD: 'PostgreSQL 資料庫密碼。後端透過 JDBC 使用此憑證連線資料庫。\n\n安全提醒：即使 PostgreSQL 位於隔離的 Docker 網路中，強密碼仍是縱深防禦的必備層。如果容器被入侵並獲得網路存取權限，弱憑證將允許輕鬆存取資料庫。',
+        RABBITMQ_PASSWORD: 'RabbitMQ AMQP 認證密碼。即使攻擊者突破了網路，仍需要有效的 MQ 憑證才能發布或消費訊息。\n\n請勿重用 POSTGRES_PASSWORD 或 JWT_SECRET 的密碼，應獨立輪換。',
+        LLM_TEXT_MODEL: '文字生成模型識別碼，用於履歷最佳化、對話、職位排名等任務。格式為 <provider>/<model-name>。\n\n預設值 gemini/gemini-2.5-flash 使用 Google AI Studio（免費額度）。如需切換提供者，請同時設定對應的 API 金鑰並變更此前綴。',
+        LLM_VISION_MODEL: '視覺/多模態模型識別碼，用於解析履歷圖片/PDF。可與文字模型相同（如果提供者支援多模態輸入）。',
+        LLM_EMBEDDING_MODEL: '嵌入模型識別碼，用於生成文字嵌入（向量搜尋）。\n\n關鍵提醒：輸出維度必須與 LLM_EMBEDDING_MODEL_DIMENSION 匹配。不匹配會導致 PostgreSQL pgvector 中的向量插入失敗。',
+        LLM_EMBEDDING_MODEL_DIMENSION: '所選嵌入模型的輸出維度。常見值：\n- gemini-embedding-001 / text-embedding-ada-002 → 1536\n- text-embedding-3-large → 3072\n- bge-large-en-v1.5 (Ollama) → 1024\n\n如果變更此值後已有資料存在，必須重新索引所有向量。',
+        STORAGE_TYPE: '檔案儲存後端類型。\n- minio：自托管 S3 相容物件儲存\n- local：容器內的檔案系統儲存（Docker 卷）\n- s3：Amazon AWS S3 或相容服務\n- oss：阿里雲物件儲存\n\n生產環境多副本部署時，請使用 minio 或 s3，以確保所有實例共享同一物件儲存。',
+        EMAIL_VERIFICATION_ENABLED: '註冊時郵箱驗證總開關。\n- true：註冊時需要輸入郵件發送的 6 位驗證碼\n- false：註冊不需要郵箱驗證（向後相容）\n\n即使 SMTP 憑證已配置，也只有在此標誌為 true 時才會強制執行驗證。',
+        CAPTCHA_ENABLED: '滑動驗證碼（人機驗證）總開關。在註冊、登入和 Google 授權流程前啟用。\n- true：認證介面需要完成人機驗證（推薦）\n- false：認證介面跳過人機驗證（僅用於測試）'
+      }
+    };
+
+    let currentLang = localStorage.getItem('env-setup-lang') || 'en';
+    if (!translations[currentLang]) currentLang = 'en';
+
+    function t(key, vars) {
+      let text = translations[currentLang][key] || translations.en[key] || key;
+      if (vars) {
+        for (const [k, v] of Object.entries(vars)) {
+          text = text.replace(new RegExp('\\{' + k + '\\}', 'g'), v);
+        }
+      }
+      return text;
+    }
+
+    function applyTranslations() {
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[currentLang][key]) {
+          if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+            el.placeholder = t(key);
+          } else {
+            el.textContent = t(key);
+          }
+        }
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        el.placeholder = t(key);
+      });
+      document.getElementById('lang-select').value = currentLang;
+    }
+
+    // ============================================================
+    // 2. 环境变量解析器 / Env Parser
+    // ============================================================
+    function parseEnvExample(template) {
+      const lines = template.split('\n');
+      const sections = [];
+      let currentSection = null;
+      let commentBuffer = [];
+      let lastWasBlank = false;
+
+      function flushSection() {
+        if (currentSection && (currentSection.variables.length > 0 || currentSection.title)) {
+          sections.push(currentSection);
+        }
+      }
+
+      function startNewSection(title, desc) {
+        flushSection();
+        currentSection = { title: title || '', description: desc || '', variables: [] };
+        commentBuffer = [];
+      }
+
+      // Detect if a line is a section header
+      function isSectionHeader(line) {
+        // Patterns like "# ======..." or "# TIER 0: ..." or "# -----------------------------------------------------------------------------"
+        return /^#\s*={5,}/.test(line) || /^#\s*-{5,}/.test(line) || /^#\s*TIER\s+\d/i.test(line);
+      }
+
+      // Extract a section title from a comment line
+      function extractSectionTitle(line) {
+        const m = line.match(/^#\s*={5,}\s*(.*?)\s*={5,}$/);
+        if (m) return m[1].trim();
+        const m2 = line.match(/^#\s*(TIER\s+\d+[:：]\s*.*)$/i);
+        if (m2) return m2[1].trim();
+        const m3 = line.match(/^#\s*(\d+\.\d+\s+.*)$/);
+        if (m3) return m3[1].trim();
+        return '';
+      }
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trimEnd();
+
+        if (isSectionHeader(trimmed)) {
+          // Look ahead for a title in next non-header comment line
+          let title = extractSectionTitle(trimmed);
+          let j = i + 1;
+          while (j < lines.length && !lines[j].trim().startsWith('# =') && !lines[j].trim().startsWith('# -')) {
+            if (lines[j].trim().startsWith('#') && !lines[j].trim().startsWith('# =') && !lines[j].trim().startsWith('# -')) {
+              const possible = lines[j].trim().replace(/^#\s*/, '');
+              if (possible && !possible.startsWith('=') && !possible.startsWith('-')) {
+                title = possible;
+                break;
+              }
+            }
+            j++;
+          }
+          startNewSection(title, commentBuffer.join('\n'));
+          commentBuffer = [];
+          lastWasBlank = false;
+          continue;
+        }
+
+        if (trimmed === '' || /^\s*$/.test(trimmed)) {
+          if (commentBuffer.length > 0 && !lastWasBlank) {
+            // Keep blank line as separator in comments
+            commentBuffer.push('');
+          }
+          lastWasBlank = true;
+          continue;
+        }
+
+        lastWasBlank = false;
+
+        if (trimmed.startsWith('#')) {
+          const content = trimmed.replace(/^#\s?/, '');
+          commentBuffer.push(content);
+          continue;
+        }
+
+        // Try to parse KEY=value
+        const kvMatch = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+        if (kvMatch) {
+          const key = kvMatch[1];
+          let rawValue = kvMatch[2];
+          let displayValue = rawValue;
+
+          // Handle quoted values
+          const hasQuotes = /^(["'])(.*)\1$/.test(rawValue);
+          if (hasQuotes) {
+            displayValue = rawValue.slice(1, -1);
+          } else {
+            // Strip inline comment: first unquoted #
+            const hashIdx = rawValue.indexOf('#');
+            if (hashIdx >= 0) {
+              rawValue = rawValue.slice(0, hashIdx).trimEnd();
+              displayValue = rawValue;
+            }
+          }
+
+          const isSecret = /SECRET|PASSWORD|PASS|KEY|TOKEN|CREDENTIALS/i.test(key);
+          const isRequired = isSecret || ['JWT_SECRET', 'INTERNAL_API_KEY', 'VITE_GOOGLE_CLIENT_ID', 'GEMINI_API_KEY'].includes(key);
+          const isRecommended = ['POSTGRES_PASSWORD', 'RABBITMQ_PASSWORD', 'MINIO_SECRET_KEY'].includes(key);
+
+          // Split comments by language
+          const hasChineseRegex = /[\u4e00-\u9fff]/;
+          const enLines = [];
+          const zhLines = [];
+          for (const cLine of commentBuffer) {
+            if (hasChineseRegex.test(cLine)) {
+              zhLines.push(cLine);
+            } else {
+              enLines.push(cLine);
+            }
+          }
+
+          currentSection = currentSection || { title: '', description: '', variables: [] };
+          currentSection.variables.push({
+            key,
+            rawValue,
+            displayValue,
+            description: commentBuffer.join('\n').trim(),
+            descriptionEn: enLines.join('\n').trim(),
+            descriptionZh: zhLines.join('\n').trim(),
+            isSecret,
+            isRequired,
+            isRecommended,
+            lineIndex: i
+          });
+          commentBuffer = [];
+        }
+      }
+
+      flushSection();
+
+      // Filter out empty sections and merge orphaned variables into a default section
+      const result = [];
+      let defaultSection = null;
+      for (const sec of sections) {
+        if (sec.variables.length > 0) {
+          if (!sec.title && !defaultSection) {
+            sec.title = 'General';
+            defaultSection = sec;
+          }
+          result.push(sec);
+        }
+      }
+      return result;
+    }
+
+    // ============================================================
+    // 3. 状态管理 / State
+    // ============================================================
+    let parsedSections = [];
+    let currentValues = {}; // key -> current input value
+    let searchQuery = '';
+
+    // ============================================================
+    // 4. 随机生成器 / Secret Generator
+    // ============================================================
+    function generateSecret(length) {
+      const bytes = new Uint8Array(length);
+      window.crypto.getRandomValues(bytes);
+      return btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, '').slice(0, length);
+    }
+
+    // ============================================================
+    // 5. 渲染 / Rendering
+    // ============================================================
+    function render() {
+      renderNav();
+      renderSections();
+      renderProgress();
+      renderPreview();
+    }
+
+    function renderNav() {
+      const nav = document.getElementById('section-nav');
+      nav.innerHTML = '';
+      parsedSections.forEach((sec, idx) => {
+        const visibleVars = sec.variables.filter(v => matchesSearch(v));
+        if (visibleVars.length === 0 && searchQuery) return;
+
+        const btn = document.createElement('button');
+        btn.className = 'section-nav-item w-full text-left px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors';
+        btn.innerHTML = `<span class="font-medium">${escapeHtml(sec.title || t('general'))}</span><span class="ml-2 text-xs text-gray-400">${t('varsCount', {n: visibleVars.length})}</span>`;
+        btn.onclick = () => {
+          document.getElementById('section-' + idx).scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+        nav.appendChild(btn);
+      });
+    }
+
+    function matchesSearch(v) {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return v.key.toLowerCase().includes(q) || (v.description && v.description.toLowerCase().includes(q));
+    }
+
+    function renderSections() {
+      const container = document.getElementById('sections-container');
+      container.innerHTML = '';
+
+      let hasAnyVisible = false;
+      parsedSections.forEach((sec, secIdx) => {
+        const visibleVars = sec.variables.filter(v => matchesSearch(v));
+        if (visibleVars.length === 0 && searchQuery) return;
+        hasAnyVisible = true;
+
+        const sectionEl = document.createElement('div');
+        sectionEl.id = 'section-' + secIdx;
+        sectionEl.className = 'bg-white rounded-xl border shadow-sm overflow-hidden';
+
+        // Header
+        const header = document.createElement('div');
+        header.className = 'px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors';
+        header.innerHTML = `
+          <div class="flex items-center space-x-3">
+            <svg class="w-5 h-5 text-blue-600 transform transition-transform accordion-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            <h3 class="font-semibold text-gray-900">${escapeHtml(sec.title || t('general'))}</h3>
+            <span class="text-xs text-gray-500">${t('varsCount', {n: visibleVars.length})}</span>
+          </div>
+        `;
+
+        const body = document.createElement('div');
+        body.className = 'px-5 pb-5 accordion-content';
+        body.style.maxHeight = secIdx < 2 ? 'none' : '0px';
+        body.style.opacity = secIdx < 2 ? '1' : '0';
+        body.style.overflow = 'hidden';
+
+        // Toggle
+        let expanded = secIdx < 2;
+        header.onclick = () => {
+          expanded = !expanded;
+          const icon = header.querySelector('.accordion-icon');
+          if (expanded) {
+            body.style.maxHeight = body.scrollHeight + 'px';
+            body.style.opacity = '1';
+            icon.style.transform = 'rotate(180deg)';
+          } else {
+            body.style.maxHeight = '0px';
+            body.style.opacity = '0';
+            icon.style.transform = 'rotate(0deg)';
+          }
+        };
+        // Init icon rotation for first two
+        if (secIdx < 2) {
+          header.querySelector('.accordion-icon').style.transform = 'rotate(180deg)';
+        }
+
+        // Variables
+        visibleVars.forEach(v => {
+          const val = currentValues[v.key] !== undefined ? currentValues[v.key] : v.displayValue;
+          const isEmpty = val === '';
+          const showWarning = v.isRequired && isEmpty;
+          const showRec = v.isRecommended && isEmpty && !v.isRequired;
+
+          const row = document.createElement('div');
+          row.className = 'py-4 border-t border-gray-100 first:border-t-0';
+          row.dataset.key = v.key;
+
+          const inputType = v.isSecret ? 'password' : 'text';
+          const secretToggle = v.isSecret ? `
+            <button type="button" class="secret-toggle px-3 py-2 text-sm text-gray-500 hover:text-gray-700 border-l border-gray-200" data-key="${v.key}">
+              ${t('showPassword')}
+            </button>
+          ` : '';
+
+          const generateBtn = v.isSecret ? `
+            <button type="button" class="generate-btn ml-2 px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors flex items-center space-x-1" data-key="${v.key}">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+              <span>${t('generate')}</span>
+            </button>
+          ` : '';
+
+          const badge = v.isRequired
+            ? `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">${t('required')}</span>`
+            : v.isRecommended
+            ? `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">${t('recommended')}</span>`
+            : `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">${t('optional')}</span>`;
+
+          const warningHtml = showWarning
+            ? `<p class="mt-1.5 text-xs text-red-600 flex items-center"><svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>${t('validationRequired')}</p>`
+            : showRec
+            ? `<p class="mt-1.5 text-xs text-yellow-600 flex items-center"><svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>${t('validationRecommended')}</p>`
+            : '';
+
+          // Select description based on language
+          let descToShow = '';
+          if (currentLang === 'en') {
+            descToShow = v.descriptionEn || v.description;
+          } else {
+            const extra = extraDescriptions[currentLang] && extraDescriptions[currentLang][v.key];
+            descToShow = extra || v.descriptionZh || v.descriptionEn || v.description;
+          }
+          const descHtml = descToShow
+            ? `<div class="mt-2 text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">${formatDescription(descToShow)}</div>`
+            : '';
+
+          const defaultBadge = (!isEmpty && val !== v.displayValue)
+            ? `<button type="button" class="restore-default text-xs text-blue-600 hover:text-blue-800 underline ml-2" data-key="${v.key}" data-default="${escapeHtml(v.displayValue)}">${t('defaultValue')}: ${escapeHtml(v.displayValue || t('emptyValue'))}</button>`
+            : '';
+
+          row.innerHTML = `
+            <div class="flex items-start justify-between mb-1.5">
+              <label class="text-sm font-semibold text-gray-900 flex items-center flex-wrap">
+                <code class="code-block text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">${escapeHtml(v.key)}</code>
+                ${badge}
+                ${defaultBadge}
+              </label>
+              ${generateBtn}
+            </div>
+            <div class="relative flex">
+              <input type="${inputType}" 
+                value="${escapeHtml(val)}"
+                data-key="${v.key}"
+                class="var-input flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm ${v.isSecret ? 'secret-input' : ''} ${showWarning ? 'border-red-300 bg-red-50' : showRec ? 'border-yellow-300 bg-yellow-50' : ''}"
+                placeholder="${v.displayValue ? '' : t('emptyValue')}">
+              ${secretToggle}
+            </div>
+            ${warningHtml}
+            ${descHtml}
+          `;
+
+          body.appendChild(row);
+        });
+
+        sectionEl.appendChild(header);
+        sectionEl.appendChild(body);
+        container.appendChild(sectionEl);
+
+        // After appending, set proper max-height for expanded sections
+        if (secIdx < 2) {
+          body.style.maxHeight = body.scrollHeight + 'px';
+        }
+      });
+
+      if (!hasAnyVisible) {
+        container.innerHTML = `<div class="text-center py-12 text-gray-500">${t('noResults')}</div>`;
+      }
+
+      attachInputListeners();
+    }
+
+    function formatDescription(desc) {
+      // Convert URLs to links
+      return escapeHtml(desc).replace(
+        /(https?:\/\/[^\s<]+)/g,
+        '<a href="$1" target="_blank" class="text-blue-600 hover:underline">$1</a>'
+      );
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function attachInputListeners() {
+      // Input changes
+      document.querySelectorAll('.var-input').forEach(input => {
+        input.addEventListener('input', (e) => {
+          const key = e.target.dataset.key;
+          currentValues[key] = e.target.value;
+          renderProgress();
+          renderPreview();
+          // Re-render only validation UI for this row to avoid full re-render
+          updateRowValidation(key);
+        });
+      });
+
+      // Secret toggles
+      document.querySelectorAll('.secret-toggle').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const key = e.target.closest('.secret-toggle').dataset.key;
+          const input = document.querySelector(`.var-input[data-key="${key}"]`);
+          if (input) {
+            input.type = input.type === 'password' ? 'text' : 'password';
+            e.target.closest('.secret-toggle').textContent = input.type === 'password' ? t('showPassword') : t('hidePassword');
+          }
+        });
+      });
+
+      // Generate buttons
+      document.querySelectorAll('.generate-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const key = e.target.closest('.generate-btn').dataset.key;
+          const newVal = generateSecret(48);
+          currentValues[key] = newVal;
+          const input = document.querySelector(`.var-input[data-key="${key}"]`);
+          if (input) {
+            input.value = newVal;
+            input.type = 'text'; // briefly show it
+            setTimeout(() => { if (input.type === 'text') input.type = 'password'; }, 2000);
+          }
+          renderProgress();
+          renderPreview();
+          updateRowValidation(key);
+        });
+      });
+
+      // Restore defaults
+      document.querySelectorAll('.restore-default').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const key = e.target.dataset.key;
+          const defVal = e.target.dataset.default;
+          currentValues[key] = defVal;
+          const input = document.querySelector(`.var-input[data-key="${key}"]`);
+          if (input) input.value = defVal;
+          renderProgress();
+          renderPreview();
+          updateRowValidation(key);
+        });
+      });
+    }
+
+    function updateRowValidation(key) {
+      const row = document.querySelector(`div[data-key="${key}"]`);
+      if (!row) return;
+      const v = parsedSections.flatMap(s => s.variables).find(x => x.key === key);
+      if (!v) return;
+      const val = currentValues[key] !== undefined ? currentValues[key] : v.displayValue;
+      const isEmpty = val === '';
+      const showWarning = v.isRequired && isEmpty;
+      const showRec = v.isRecommended && isEmpty && !v.isRequired;
+
+      const input = row.querySelector('.var-input');
+      input.classList.remove('border-red-300', 'bg-red-50', 'border-yellow-300', 'bg-yellow-50');
+      if (showWarning) {
+        input.classList.add('border-red-300', 'bg-red-50');
+      } else if (showRec) {
+        input.classList.add('border-yellow-300', 'bg-yellow-50');
+      }
+
+      // Update warning message
+      let warnEl = row.querySelector('.validation-msg');
+      if (!warnEl) {
+        warnEl = document.createElement('p');
+        warnEl.className = 'validation-msg mt-1.5 text-xs flex items-center';
+        input.parentNode.parentNode.insertBefore(warnEl, input.parentNode.nextSibling);
+      }
+      if (showWarning) {
+        warnEl.className = 'validation-msg mt-1.5 text-xs text-red-600 flex items-center';
+        warnEl.innerHTML = `<svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>${t('validationRequired')}`;
+        warnEl.style.display = '';
+      } else if (showRec) {
+        warnEl.className = 'validation-msg mt-1.5 text-xs text-yellow-600 flex items-center';
+        warnEl.innerHTML = `<svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>${t('validationRecommended')}`;
+        warnEl.style.display = '';
+      } else {
+        warnEl.style.display = 'none';
+      }
+    }
+
+    function renderProgress() {
+      const allVars = parsedSections.flatMap(s => s.variables);
+      const requiredVars = allVars.filter(v => v.isRequired);
+      const filledRequired = requiredVars.filter(v => {
+        const val = currentValues[v.key] !== undefined ? currentValues[v.key] : v.displayValue;
+        return val !== '';
+      }).length;
+
+      const pct = requiredVars.length > 0 ? Math.round((filledRequired / requiredVars.length) * 100) : 100;
+
+      document.getElementById('progress-bar').style.width = pct + '%';
+      document.getElementById('progress-bar-large').style.width = pct + '%';
+      document.getElementById('progress-text').textContent = t('progressShort', {filled: filledRequired, total: requiredVars.length});
+      document.getElementById('progress-detail').textContent = t('progressDetail', {filled: filledRequired, total: requiredVars.length});
+    }
+
+    function renderPreview() {
+      const lines = [];
+      parsedSections.forEach(sec => {
+        if (sec.title) {
+          lines.push('# ' + '='.repeat(60));
+          lines.push('# ' + sec.title);
+          lines.push('# ' + '='.repeat(60));
+        }
+        sec.variables.forEach(v => {
+          const val = currentValues[v.key] !== undefined ? currentValues[v.key] : v.displayValue;
+          if (v.description) {
+            v.description.split('\n').forEach(d => {
+              lines.push('# ' + d);
+            });
+          }
+          lines.push(v.key + '=' + val);
+          lines.push('');
+        });
+      });
+      document.getElementById('env-preview').value = lines.join('\n');
+    }
+
+    // ============================================================
+    // 6. 下载与重置 / Download & Reset
+    // ============================================================
+    document.getElementById('btn-download').addEventListener('click', () => {
+      const content = document.getElementById('env-preview').value;
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '.env';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      if (!confirm(t('resetConfirm'))) return;
+      currentValues = {};
+      render();
+    });
+
+    // ============================================================
+    // 7. 搜索 / Search
+    // ============================================================
+    document.getElementById('search-input').addEventListener('input', (e) => {
+      searchQuery = e.target.value.trim();
+      render();
+    });
+
+    // ============================================================
+    // 8. 语言切换 / Language Switch
+    // ============================================================
+    document.getElementById('lang-select').addEventListener('change', (e) => {
+      currentLang = e.target.value;
+      localStorage.setItem('env-setup-lang', currentLang);
+      applyTranslations();
+      render();
+    });
+
+    // ============================================================
+    // 9. 初始化 / Initialization
+    // ============================================================
+    try {
+      const template = window.ENV_EXAMPLE_TEMPLATE;
+      if (template === "PLACEHOLDER_WILL_BE_REPLACED_BY_GENERATE_SCRIPT") {
+        document.body.innerHTML = '<div class="p-8 text-center text-red-600">Error: env-setup.html has not been initialized. Please run <code>python scripts/generate-env-setup.py</code></div>';
+      } else {
+        parsedSections = parseEnvExample(template);
+        applyTranslations();
+        render();
+      }
+    } catch (err) {
+      document.body.innerHTML = '<div class="p-8 text-center text-red-600">Error parsing environment template: ' + escapeHtml(err.message) + '</div>';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{{- if and (eq .Values.global.infraMode "embedded") .Values.redis.enabled }}
+# =============================================================================
+# Redis Service
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "resume-assistant.fullname" . }}-redis
+  namespace: {{ include "resume-assistant.namespace" . }}
+  labels:
+    {{- include "resume-assistant.redis.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.redis.service.type }}
+  ports:
+    - port: {{ .Values.redis.service.port }}
+      targetPort: redis
+      protocol: TCP
+      name: redis
+  selector:
+    app.kubernetes.io/component: redis
+    {{- include "resume-assistant.selectorLabels" . | nindent 4 }}
+{{- end }}

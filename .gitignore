@@ -199,3 +199,10 @@
 !/backend/logs/README.md
 /.env
 /vertex.json
+/backend/app/uploads/
+/ai-service/coverage.xml
+/ai-service/coverage.xml
+/backend/app/uploads/
+/ai-service/htmlcov/
+/security-override.yaml
+/docs/deployment/k8s/helm/resume-assistant/minimal.yaml

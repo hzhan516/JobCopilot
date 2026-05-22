@@ -1,0 +1,22 @@
+{{- if and .Values.aiService.enabled .Values.observability.prometheus.serviceMonitor.enabled }}
+# =============================================================================
+# AI Service ServiceMonitor (Prometheus Operator)
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "resume-assistant.fullname" . }}-ai-service
+  namespace: {{ include "resume-assistant.namespace" . }}
+  labels:
+    {{- include "resume-assistant.ai-service.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: ai-service
+      {{- include "resume-assistant.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.observability.prometheus.serviceMonitor.interval }}
+      scrapeTimeout: {{ .Values.observability.prometheus.serviceMonitor.scrapeTimeout }}
+{{- end }}

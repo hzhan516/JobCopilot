@@ -7,7 +7,7 @@ import logging
 import os
 import threading
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
@@ -26,8 +26,6 @@ from app.schemas import (
 from app.services.job_matching_service import find_job_matches
 from app.services.suitability_service import evaluate_suitability_with_vertex
 from app.services.vector_service import generate_embedding
-from app.services.backend_client import sync_existing_job_embeddings
-
 
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
@@ -36,26 +34,35 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+# MQ connection reference for graceful shutdown
+_mq_connection = None
+_mq_channel = None
 
-def _start_sync_thread() -> None:
-    """Launch a background thread to sync offline job embeddings into the backend vector store on startup.
-    启动后台线程，在应用启动时将离线职位 embedding 同步到后端向量库，避免冷启动时向量检索为空。"""
-    def _run_sync() -> None:
-        try:
-            sync_existing_job_embeddings()
-        except Exception:
-            logger.exception("Background embedding sync failed")
-
-    sync_thread = threading.Thread(target=_run_sync, name="embedding-sync-thread", daemon=True)
-    sync_thread.start()
-    logger.info("Embedding sync background thread started.")
-
+import asyncio
+from app.api.model_manager import model_manager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _start_mq_consumer_once()
-    _start_sync_thread()
+    await model_manager.load_latest()
+    reload_task = asyncio.create_task(model_manager.watch_for_reloads())
     yield
+    # Shutdown / 优雅关闭
+    logger.info("Shutting down MQ consumers...")
+    reload_task.cancel()
+    global _mq_connection, _mq_channel
+    if _mq_channel and _mq_channel.is_open:
+        try:
+            _mq_channel.stop_consuming()
+        except Exception:
+            pass
+    if _mq_connection and _mq_connection.is_open:
+        try:
+            _mq_connection.close()
+        except Exception:
+            pass
+    logger.info("MQ consumers shut down.")
+
 
 app = FastAPI(
     title="Resume Assistant AI Service",
@@ -63,6 +70,20 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+admin_router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@admin_router.post("/recompute-model")
+def recompute_model(
+    x_internal_api_key: str | None = Header(None, alias="X-Internal-API-Key"),
+):
+    if INTERNAL_API_KEY and x_internal_api_key != INTERNAL_API_KEY:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return {"status": "ok", "message": "Deprecated. Use ai-worker scheduling."}
+
+
+app.include_router(admin_router, prefix="/api/v1")
 
 # ---------------------------------------------------------------------------
 # Internal API Key Middleware (Defense in Depth)
@@ -145,7 +166,7 @@ async def status():
 
 
 def initialize_mq() -> None:
-    global _mq_is_connected
+    global _mq_is_connected, _mq_connection, _mq_channel
     import time
     
     retry_delay = 5
@@ -161,6 +182,8 @@ def initialize_mq() -> None:
             setup_all_queues(channel)
             logger.info("RabbitMQ consumers are ready.")
             _mq_is_connected = True
+            _mq_connection = connection
+            _mq_channel = channel
             start_all_consumers(channel)
             break
         except Exception as e:
@@ -190,17 +213,17 @@ def _start_mq_consumer_once() -> None:
 
 
 @app.post("/api/v1/suitability", response_model=SuitabilityResponse)
-async def evaluate_suitability(request: SuitabilityRequest) -> SuitabilityResponse:
+def evaluate_suitability(request: SuitabilityRequest) -> SuitabilityResponse:
     return evaluate_suitability_with_vertex(request)
 
 
 @app.post("/api/v1/match", response_model=JobMatchResponse)
-async def match_jobs(request: JobMatchRequest) -> JobMatchResponse:
+def match_jobs(request: JobMatchRequest) -> JobMatchResponse:
     return find_job_matches(request)
 
 
 @app.post("/api/v1/ai/embeddings", response_model=EmbeddingResponse)
-async def batch_embeddings(request: EmbeddingRequest) -> EmbeddingResponse:
+def batch_embeddings(request: EmbeddingRequest) -> EmbeddingResponse:
     if not request.texts:
         return EmbeddingResponse(
             embeddings=[],

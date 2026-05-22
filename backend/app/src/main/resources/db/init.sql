@@ -2,9 +2,9 @@
 -- Resume Assistant - Complete Database Initialization Script
 -- 智能求职助手 - 完整数据库初始化脚本
 -- ============================================================================
--- This script merges all Flyway migrations (V1-V12) into a single init file
+-- This script merges all Flyway migrations (V1-V15) into a single init file
 -- for development environments where Flyway is disabled.
--- 本脚本将所有 Flyway 迁移（V1-V12）合并为单个初始化文件，用于禁用 Flyway 的开发环境。
+-- 本脚本将所有 Flyway 迁移（V1-V15）合并为单个初始化文件，用于禁用 Flyway 的开发环境。
 --
 -- ⚠️ IMPORTANT: The vector dimension "vector(默认维度)" below is dynamically
 --    substituted by init-db.sh using LLM_EMBEDDING_MODEL_DIMENSION (default 1536).

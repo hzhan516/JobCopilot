@@ -184,6 +184,9 @@ public class ConversationApplicationService {
         log.info("Uploading attachment for conversation: {}", conversationId);
         getConversationWithOwnershipCheck(conversationId, userId);
 
+        if (fileName == null || fileName.isBlank()) {
+            throw new ConversationException("attachment.filename.required");
+        }
         String objectKey = "conversations/" + conversationId + "/" + UUID.randomUUID() + "_" + fileName;
         fileStorageService.upload(objectKey, inputStream, size, contentType);
 
@@ -262,14 +265,14 @@ public class ConversationApplicationService {
             }
         }
 
-        if (init) {
-            if (conversation.getJobId() != null) {
-                Optional<Job> jobOpt = jobRepository.findById(conversation.getJobId().toString());
-                if (jobOpt.isPresent()) {
-                    primaryJobText = buildJobText(jobOpt.get());
-                }
+        if (conversation.getJobId() != null) {
+            Optional<Job> jobOpt = jobRepository.findById(conversation.getJobId().toString());
+            if (jobOpt.isPresent()) {
+                primaryJobText = buildJobText(jobOpt.get());
             }
+        }
 
+        if (init) {
             relatedJobTexts = loadRelatedJobTexts(conversation.getUserId(), conversation.getJobId());
         }
 

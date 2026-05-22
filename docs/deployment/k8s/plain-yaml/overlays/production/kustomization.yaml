@@ -1,0 +1,85 @@
+# =============================================================================
+# Production Overlay / 生产环境 Overlay
+# =============================================================================
+# Usage:
+#   kubectl apply -k docs/deployment/k8s/plain-yaml/overlays/production/
+#
+# NOTE: This overlay assumes managed middleware (no postgres/rabbitmq/redis
+# in-cluster). Remove the StatefulSet patches if you run middleware in-cluster.
+# 注意：此 overlay 假设使用托管中间件（集群内无 postgres/rabbitmq/redis）。
+# 如果你在集群内运行中间件，请删除 StatefulSet 补丁。
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: resume-assistant-prod
+
+resources:
+  - ../../base
+
+namePrefix: prod-
+
+commonLabels:
+  environment: production
+
+patches:
+  - target:
+      kind: Ingress
+      name: resume-assistant
+    patch: |
+      - op: replace
+        path: /spec/rules/0/host
+        value: resume-assistant.example.com
+      - op: add
+        path: /spec/tls
+        value:
+          - hosts:
+              - resume-assistant.example.com
+            secretName: resume-assistant-tls
+  - target:
+      kind: Deployment
+      name: resume-assistant-backend
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 3
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+  - target:
+      kind: Deployment
+      name: resume-assistant-ai-service
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 3
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+  - target:
+      kind: Deployment
+      name: resume-assistant-frontend
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 3
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"

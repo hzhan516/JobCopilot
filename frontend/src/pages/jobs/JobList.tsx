@@ -60,12 +60,13 @@ export default function JobList() {
 
   // Poll resume parse status every 3s when any resume is pending
   // 有简历正在解析时，每 3 秒轮询一次状态
+  const hasPendingResume = resumes.some((group) =>
+    [group.originalVersion, group.convertedVersion, group.aiOptimizedVersion]
+      .filter((v): v is NonNullable<typeof v> => !!v)
+      .some((v) => v.parseStatus === 'PENDING' || v.parseStatus === 'PARSING')
+  );
+
   useEffect(() => {
-    const hasPendingResume = resumes.some((group) =>
-      [group.originalVersion, group.convertedVersion, group.aiOptimizedVersion]
-        .filter((v): v is NonNullable<typeof v> => !!v)
-        .some((v) => v.parseStatus === 'PENDING' || v.parseStatus === 'PARSING')
-    );
     if (!hasPendingResume) return;
 
     const interval = setInterval(() => {
@@ -75,13 +76,12 @@ export default function JobList() {
           setResumes(data);
         })
         .catch(() => {
-          // Silently degrade
-          // 静默降级
+          // Silent catch
         });
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [resumes]);
+  }, [hasPendingResume]);
 
   const availableResumeVersions = useMemo(
     () =>

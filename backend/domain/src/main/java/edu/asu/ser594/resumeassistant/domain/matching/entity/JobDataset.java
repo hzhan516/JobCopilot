@@ -5,7 +5,6 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -23,7 +22,7 @@ public class JobDataset extends AggregateRoot<Long> {
     private String title;
     private String company;
     private String description;
-    private List<String> requirements;
+    private String[] requirements;
     private String location;
     private String experienceLevel;
     private String source;
@@ -35,7 +34,7 @@ public class JobDataset extends AggregateRoot<Long> {
                       final String title,
                       final String company,
                       final String description,
-                      final List<String> requirements,
+                      final String[] requirements,
                       final String location,
                       final String experienceLevel,
                       final String source,

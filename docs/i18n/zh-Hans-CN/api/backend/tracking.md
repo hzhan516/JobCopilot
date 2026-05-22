@@ -3,21 +3,18 @@
 
 # 求职申请跟踪 (Application Tracking) API 文档
 
-本文档描述求职申请跟踪模块的完整 API，包含状态流转控制、事件历史和统计功能。
+本文档描述求职申请跟踪模块的完整 API，包含状态更新、事件历史、投递日期处理和统计功能。
 
 ---
 
-## 1. 状态流转说明
+## 1. 状态处理说明
 
-```
-PENDING -> APPLIED
-APPLIED -> SCREENING, REJECTED
-SCREENING -> INTERVIEWING, REJECTED
-INTERVIEWING -> OFFER, REJECTED
-OFFER -> ACCEPTED, REJECTED
-```
+支持的状态包括 `PENDING`、`APPLIED`、`SCREENING`、`INTERVIEWING`、`OFFER`、`ACCEPTED`、`REJECTED` 和 `WITHDRAWN`。
 
-任何非法的状态流转都会返回 `400 Bad Request` 并提示 `"Status transition from X to Y is not allowed"`。
+- 创建请求可以包含可选的初始 `status`。如果未提供，后端使用 `PENDING`。
+- 更新记录时可以设置任意合法状态值。当新状态与当前状态不同时，后端会追加一条 `TrackingEvent`。
+- 如果记录创建或更新为 `APPLIED` 且没有 `appliedAt`，后端会将 `appliedAt` 设置为当前日期。
+- `appliedAt` 不能是未来日期。
 
 ---
 
@@ -25,7 +22,7 @@ OFFER -> ACCEPTED, REJECTED
 
 ### 2.1 创建跟踪记录
 **Endpoint:** `POST /api/v1/trackings`  
-**描述:** 创建一条新的求职申请跟踪记录，初始状态为 `PENDING`。
+**描述:** 创建一条新的求职申请跟踪记录。初始状态可选，默认值为 `PENDING`。
 
 **Request Header:**
 ```http
@@ -39,6 +36,7 @@ Content-Type: application/json
   "jobId": "job-001",
   "companyName": "Tech Corp",
   "jobTitle": "Senior Java Developer",
+  "status": "APPLIED",
   "appliedAt": "2026-04-10",
   "notes": "Referral from friend"
 }
@@ -65,7 +63,7 @@ Content-Type: application/json
   },
   "companyName": "Tech Corp",
   "jobTitle": "Senior Java Developer",
-  "status": "PENDING",
+  "status": "APPLIED",
   "appliedAt": "2026-04-10",
   "createdAt": "2026-04-16T10:00:00Z",
   "updatedAt": "2026-04-16T10:00:00Z",
@@ -120,9 +118,9 @@ Content-Type: application/json
 **Endpoint:** `GET /api/v1/trackings/{id}`  
 **描述:** 根据跟踪 ID 获取详情。
 
-### 2.4 更新跟踪记录（含状态流转）
+### 2.4 更新跟踪记录（含状态更新）
 **Endpoint:** `PUT /api/v1/trackings/{id}`  
-**描述:** 更新跟踪记录的公司、职位名称、投递日期、备注和状态。状态变更会触发 `TrackingEvent` 记录。
+**描述:** 更新跟踪记录的公司、职位名称、投递日期、备注和状态。当提交的状态与当前状态不同时，后端会记录一条 `TrackingEvent`。
 
 **Request Body (`UpdateTrackingRequest`):**
 ```json
@@ -143,7 +141,7 @@ Content-Type: application/json
 
 ### 2.6 获取统计信息
 **Endpoint:** `GET /api/v1/trackings/stats`  
-**描述:** 获取当前用户所有跟踪记录的统计分布和成功率。
+**描述:** 获取当前用户所有跟踪记录的统计分布和成功率。`appliedCount` 包含 `APPLIED`、`SCREENING` 和 `INTERVIEWING`；`offerCount` 包含 `OFFER` 和 `ACCEPTED`；`successRate` 为 `offerCount / totalApplications * 100`。
 
 **Response Body (`TrackingStatsResponse`):**
 ```json
@@ -165,9 +163,8 @@ Content-Type: application/json
 
 | HTTP 状态码 | 业务错误码 | 说明 |
 |-------------|------------|------|
-| 400 | 400 | 非法状态流转 (TrackingException) |
-| 400 | 400 | Tracking not found (ID 不存在或不属于当前用户) |
-| 500 | 500 | 数据库异常 |
+| 400 | 400 | 请求校验或参数格式错误 |
+| 500 | 500 | 应用或数据库异常 |
 
 
 ---

@@ -164,6 +164,8 @@ def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
         file_url = str(file_url).strip() or None
         
     resume_modification = result.get("resumeModification")
+    if not isinstance(resume_modification, dict):
+        resume_modification = {"modified": False, "markdown": ""}
     logger.info(
         "Conversation model result received: conversation_id=%s, content_length=%d, has_file_url=%s, has_resume_modification=%s",
         command.conversation_id,

@@ -13,20 +13,27 @@
 
 ### 1.1 提交职位链接 (Submit Job Link)
 **Endpoint:** `POST /api/v1/jobs`
-**描述:** 接收用户提交的职位URL，并将异步解析请求发布到 RabbitMQ。立即返回任务的初始状态。
+**描述:** 接收用户提交的职位 URL 和可选的职位截图，并将异步解析请求发布到 RabbitMQ。立即返回任务的初始状态。
 
 **Request Header:**
 ```http
 Authorization: Bearer <user-jwt-token>
-Content-Type: application/json
+Content-Type: multipart/form-data
 ```
 
-**Request Body (`SubmitJobRequest`):**
-```json
-{
-  "url": "https://www.linkedin.com/jobs/view/12345",
-  "imageCheckEnabled": true
-}
+**Form Fields:**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `url` | String | 是 | 职位发布页面 URL。 |
+| `screenshot` | File | 否 | 可选的职位截图。后端会将其转成 Base64，作为 AI 解析的 fallback 输入。 |
+
+**Request Example:**
+```bash
+curl -X POST "http://localhost/api/v1/jobs" \
+  -H "Authorization: Bearer <user-jwt-token>" \
+  -F "url=https://www.linkedin.com/jobs/view/12345" \
+  -F "screenshot=@job-posting.png"
 ```
 
 **Response Body (`JobResponse`):**
@@ -37,7 +44,7 @@ Content-Type: application/json
   "originalUrl": "https://www.linkedin.com/jobs/view/12345",
   "status": "PENDING",
   "parsedContent": null,
-  "imageCheckEnabled": true,
+  "imageCheckEnabled": false,
   "errorMessage": null
 }
 ```
@@ -65,7 +72,7 @@ Authorization: Bearer <user-jwt-token>
     "description": "Full job description...",
     "requirements": ["Java", "Spring Boot", "AWS"]
   },
-  "imageCheckEnabled": true,
+  "imageCheckEnabled": false,
   "errorMessage": null
 }
 ```
@@ -88,7 +95,7 @@ Authorization: Bearer <user-jwt-token>
     "originalUrl": "https://www.linkedin.com/jobs/view/12345",
     "status": "COMPLETED",
     "parsedContent": null,
-    "imageCheckEnabled": true,
+    "imageCheckEnabled": false,
     "errorMessage": null
   }
 ]
@@ -110,7 +117,25 @@ Authorization: Bearer <user-jwt-token>
 **Response Body (`JobMatchResponse`):**
 与 1.4 响应格式相同。
 
-### 1.6 获取历史匹配列表 (Get Match History)
+### 1.6 从列表隐藏职位 (Hide Job from List)
+**Endpoint:** `DELETE /api/v1/jobs/{jobId}`
+**描述:** 将职位从用户可见的职位列表中隐藏，但保留数据库记录。后端会设置 `hidden_at`，而 `GET /api/v1/jobs` 只返回 `hidden_at` 为 null 的职位。
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+```
+
+**Response Body:**
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": null
+}
+```
+
+### 1.7 获取历史匹配列表 (Get Match History)
 **Endpoint:** `GET /api/v1/jobs/match/history`
 **描述:** 获取当前登录用户的历史匹配记录列表。
 
@@ -133,7 +158,7 @@ Authorization: Bearer <user-jwt-token>
 
 ---
 
-### 1.7 职位智能匹配 (Match Jobs)
+### 1.8 职位智能匹配 (Match Jobs)
 **Endpoint:** `POST /api/v1/jobs/match`
 **描述:** 根据用户简历或查询条件，调用 AI 服务获取匹配的职位推荐列表。
 
@@ -146,7 +171,7 @@ Content-Type: application/json
 **Request Body (`JobMatchRequest`):**
 ```json
 {
-  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
   "query": "Java Spring Boot",
   "topK": 10,
   "filters": {
@@ -194,7 +219,7 @@ Content-Type: application/json
 
 ---
 
-### 1.8 向量搜索职位 (Vector Search Jobs)
+### 1.9 向量搜索职位 (Vector Search Jobs)
 **Endpoint:** `POST /api/v1/jobs/vector-search`
 **描述:** 对 `job_vectors` 表执行近似最近邻（ANN）向量搜索，基于提供的查询向量或查询文本返回语义最相似的职位。
 
@@ -269,6 +294,48 @@ Content-Type: application/json
 - `401` — 未认证（JWT Token 无效或缺失）
 - `503` — AI 服务不可用（提供了 `queryText` 但嵌入生成失败）
 
+### 1.10 职位评分 (Score Job)
+**Endpoint:** `POST /api/v1/jobs/{jobId}/score`
+**描述:** 针对单个职位调用 AI 服务 suitability 端点进行简历匹配评分。评分结果会保存到历史记录，同时后端会异步发送评分标签到 AI 服务用于增量模型训练。
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+Content-Type: application/json
+```
+
+**Request Body (`JobScoreRequest`):**
+```json
+{
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002"
+}
+```
+
+**Response Body (`JobScoreResponse`):**
+```json
+{
+  "suitable": true,
+  "summary": "简历与职位关键要求（如 Java、Spring Boot）匹配度较高。",
+  "finalScore": 0.85,
+  "breakdown": {
+    "skillScore": 0.9,
+    "experienceScore": 0.8,
+    "overallScore": 0.85
+  }
+}
+```
+
+**响应字段说明:**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `suitable` | Boolean | 候选人整体是否适合该职位 |
+| `summary` | String | 1-2 句简洁的评分说明 |
+| `finalScore` | Float | 最终融合得分（0.0-1.0）。有自适应数据集模型时使用模型分数，否则回退到旧版 LLM/数据集加权分数。 |
+| `breakdown.skillScore` | Float | 技能匹配得分 |
+| `breakdown.experienceScore` | Float | 经验匹配得分 |
+| `breakdown.overallScore` | Float | LLM 综合得分 |
+
 ---
 
 ## 2. 后端与 AI 服务层交互接口 (Backend to Python AI Service via MQ)
@@ -285,7 +352,8 @@ Content-Type: application/json
 {
   "jobId": "job-uuid-1234",
   "url": "https://www.linkedin.com/jobs/view/12345",
-  "imageCheckEnabled": true
+  "imageCheckEnabled": false,
+  "screenshotBase64": "base64-encoded-image-or-null"
 }
 ```
 
@@ -310,6 +378,38 @@ Content-Type: application/json
   "eventType": "JOB"
 }
 ```
+
+### 2.3 评分标签请求 (Backend -> AI Service)
+**Exchange:** `ai.direct.exchange`
+**Routing Key:** `ai.req.feedback`
+**Queue:** `ai.queue.feedback`
+
+**描述:** `scoreJob()` 完成后，后端将评分结果异步发送到 AI 服务用于增量模型训练。此消息为**发后即忘**（fire-and-forget），不期待结果回调。
+
+**Message Body:**
+```json
+{
+  "matchId": "feedback-uuid-v4",
+  "userId": "user-uuid",
+  "resumeVersionId": "resume-version-uuid",
+  "jobId": "job-uuid",
+  "feedbackType": "APPLY",
+  "score": 0.85,
+  "context": "{\"resume\":{\"skills\":[\"Python\"]},\"job\":{\"title\":\"Software Engineer\"},\"llmOverallScore\":0.82,\"finalScore\":0.85}",
+  "timestamp": "2026-05-09T16:00:00Z"
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `matchId` | String | 唯一反馈消息 ID |
+| `userId` | UUID | 产生评分的用户 |
+| `resumeVersionId` | String | 简历版本唯一标识 |
+| `jobId` | String | 职位唯一标识 |
+| `feedbackType` | String | 反馈标签；当前评分流程适合时发送 `APPLY`，否则发送 `IGNORE` |
+| `score` | Double | 最终融合得分（0.0-1.0） |
+| `context` | String | JSON 字符串，包含简历/职位上下文以及可选的 `llmOverallScore`、`semanticMatch`、`datasetScore`、`llmModel` |
+| `timestamp` | String | ISO 8601 时间戳 |
 
 > **注意：**
 > - 如果 `status` 为 `FAILED`，则 `errorMessage` 必须包含导致失败的具体原因文本，且 `data` 可以为空。

@@ -11,16 +11,19 @@
 
 - **Guixing Jia** (@GuixingJia) - 项目经理 (PM)，Python AI 服务 & 前端开发
 - **Hansheng Zhang** (@hzhan516) - Java 后端 & 数据库架构负责人
-- **Mu-Hsi Yu** (@muhsiyu) - 前端 & UX 设计负责人，Python AI 服务
+- **Mu-Hsi Yu** (@mhsiy) - 前端 & UX 设计负责人，Python AI 服务
 
 ## 功能特性
 
+- **身份认证**：邮箱/密码注册（支持可选邮件验证码验证）与 Google OAuth 2.0 登录，带滑块 CAPTCHA 人机验证保护
 - **简历管理**：上传、解析和管理多种格式的简历
-- **AI智能解析**：使用 OpenAI 从简历中提取结构化信息
+- **AI智能解析**：使用 LiteLLM 兼容模型从简历和职位中提取结构化信息
 - **职位匹配**：基于简历内容和向量相似度的智能职位推荐
 - **申请追踪**：追踪求职申请状态并管理求职流程
 - **AI对话**：交互式聊天助手，提供求职建议和简历优化指导
+- **国际化**：支持英文、简体中文和繁体中文界面
 - **向量搜索**：基于 PostgreSQL pgvector 扩展的语义搜索
+- **增量式职位训练闭环**：用户评分行为通过增量学习反馈到 AI 基线模型，无需全量重训练即可持续提升匹配准确度
 
 ## 系统架构
 
@@ -28,11 +31,14 @@
 
 ```text
 ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-│     前端    │──────▶│     后端    │◀─────▶│    AI      │
+│     前端    │──────▶│     后端    │◀─────▶│   AI API   │
 │   (React)   │      │ (Spring    │      │ (FastAPI)  │
 │             │      │   Boot)     │      │            │
 └─────────────┘      └──────┬──────┘      └──────▲──────┘
-                            │                      │
+                            │      ┌─────────┐   │
+                            │◀────▶│  Redis  │   │
+                            │      │  :6379  │◀──┘
+                            │      └─────────┘   │
                             ▼                      │
                      ┌─────────────┐               │
                      │  PostgreSQL │               │
@@ -40,18 +46,27 @@
                      └─────────────┘      (消息队列)
                             ▲
                             │
-                     ┌─────────────┐
-                     │   RabbitMQ  │
-                     └─────────────┘
+                     ┌─────────────┐      ┌─────────────┐
+                     │   RabbitMQ  │─────▶│  AI Worker  │
+                     └─────────────┘      │ (LightGBM)  │
+                                          └──────┬──────┘
+                                                 │
+                                          ┌──────▼──────┐
+                                          │    MinIO    │
+                                          │ (模型注册表)│
+                                          └─────────────┘
 ```
 
 | 服务   | 技术栈                       | 端口           | 说明            |
 |------|---------------------------|--------------|---------------|
-| 前端   | React 18 + Vite           | 80           | Nginx托管的Web界面 |
-| 后端   | Java 21 + Spring Boot 3.5 | 8080         | REST API和业务逻辑 |
-| AI服务 | Python 3 + FastAPI        | 8000         | AI处理和OpenAI集成 |
-| 数据库  | PostgreSQL 15 + pgvector  | 5432         | 业务数据和向量存储     |
-| 消息队列 | RabbitMQ 3                | 5672 / 15672 | 异步消息处理        |
+| 前端   | React 19 + Vite 7         | `${FRONTEND_HOST_PORT:-80}` -> 8080 | Nginx 托管的 Web 界面与反向代理 |
+| 后端   | Java 21 + Spring Boot 3.5 | 8080 internal | REST API、业务逻辑及滑块 CAPTCHA 人机验证 |
+| AI API | Python 3 + FastAPI + LiteLLM | 8000 internal | 无状态 API：AI 处理、嵌入生成、排序、对话 |
+| AI Worker | Python 3 + LightGBM | 无 | 有状态后台工作节点：消费 `ai.queue.feedback` 进行增量模型训练 |
+| 模型注册表 | MinIO | 9000 internal | 存储训练好的 LightGBM 模型 |
+| 数据库  | PostgreSQL 15 + pgvector  | 5432 internal | 业务数据和向量存储     |
+| 消息队列 | RabbitMQ 3                | 5672 internal | 异步消息处理        |
+| 缓存     | Redis 7                   | 6379         | 分布式状态、锁、Pub/Sub |
 
 ## 项目结构
 
@@ -69,7 +84,13 @@
 │   ├── trigger/          # 触发器层（控制器、定时任务、监听器）
 │   └── types/            # 共享类型和常量
 ├── ai-service/           # Python AI服务
-│   ├── app/              # FastAPI应用
+│   ├── app/              # AI服务源代码 (DDD架构)
+│   │   ├── api/          # API层 (FastAPI路由)
+│   │   ├── domain/       # 领域层 (业务逻辑)
+│   │   ├── infrastructure/ # 基础设施层 (MinIO, Redis, RabbitMQ)
+│   │   ├── worker/       # Worker层 (LightGBM训练逻辑)
+│   │   ├── main.py       # AI API 启动入口
+│   │   └── worker_main.py # AI Worker 启动入口
 │   ├── requirements.txt  # Python依赖
 │   └── Dockerfile        # AI服务Docker镜像
 ├── docs/                 # 项目文档
@@ -130,6 +151,14 @@ cp .env.example .env
 | `LLM_EMBEDDING_MODEL_DIMENSION` | 是   | 嵌入模型输出维度（必须与所选模型一致） |
 | `SPRING_PROFILES_ACTIVE` | 否   | Spring profile：`dev`（默认）或 `prod` |
 | `LOG_LEVEL`              | 否   | AI service 日志级别：`INFO`（默认）或 `DEBUG` |
+| `CAPTCHA_ENABLED`        | 否   | 是否启用滑块 CAPTCHA。默认：`true` |
+| `CAPTCHA_TOLERANCE`      | 否   | CAPTCHA 拖动容差（像素）。默认：`8` |
+| `CAPTCHA_TOKEN_EXPIRY`   | 否   | CAPTCHA token 过期时间（秒）。默认：`300` |
+| `CAPTCHA_TRACK_WIDTH`    | 否   | CAPTCHA 滑轨宽度（像素）。默认：`300` |
+| `REDIS_HOST`             | 否   | Redis 主机名。默认：`redis`（Docker）或 `localhost` |
+| `REDIS_PORT`             | 否   | Redis 端口。默认：`6379` |
+| `REDIS_PASSWORD`         | 否   | Redis 认证密码。开发环境可留空 |
+| `CAPTCHA_MAX_ATTEMPTS`   | 否   | 每 IP 最大 CAPTCHA 尝试次数。默认：`5` |
 
 本地开发时，请将 `.env.example` 复制为 `.env`，并提供一个与所选 LiteLLM 模型前缀匹配的 API key。例如，默认 Gemini 模型使用 `GEMINI_API_KEY`。
 
@@ -160,7 +189,7 @@ podman compose up -d
 | 前端界面   | http://localhost | 唯一访问入口 (包含 Web 与 API) |
 | 系统健康   | http://localhost/health | 整体健康状态探测端点          |
 
-*注：本项目采用三层网络隔离架构，仅对外暴露前端 80 端口，底层服务（后端、AI、数据库）均不可从宿主机直接访问。*
+*注：本项目采用三层网络隔离架构，仅对外暴露前端 80 端口，底层服务（后端、AI、RabbitMQ、Redis、数据库）均不可从宿主机直接访问。*
 
 *注：要查找 AI 服务的 URL，请运行 `docker compose port ai-service 8000`。*
 
@@ -286,9 +315,9 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ### 前端
 
-- React 18.2
-- Vite 5.0
-- React Router 6
+- React 19.2
+- Vite 7
+- React Router 7
 - Axios
 
 ### 后端
@@ -302,14 +331,16 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ### AI服务
 
 - Python 3.11
-- FastAPI
-- OpenAI API
-- Uvicorn
+- FastAPI 0.115
+- LiteLLM 1.61.11 兼容的文本、视觉与嵌入模型
+- 默认通过 Google AI Studio 使用 Gemini；Vertex AI 为可选项
+- Uvicorn 0.32
 
 ### 运维
 
 - Docker & Docker Compose
 - Nginx
+- Redis 7（分布式状态、锁、Pub/Sub）
 - Flyway（数据库迁移）
 
 ## 贡献指南

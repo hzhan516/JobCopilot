@@ -83,13 +83,17 @@ All API responses follow a unified format:
 |-------|------|----------|-------------|
 | `email` | String | Yes | Email address; must conform to email format |
 | `password` | String | Yes | Password; 6-32 characters |
+| `verificationCode` | String | No | 6-digit code; required when email verification is enabled |
+| `captchaToken` | String | Yes | CAPTCHA verification token from `/v1/auth/captcha/verify` |
 
 **Request Example**:
 
 ```json
 {
   "email": "user@example.com",
-  "password": "password123"
+  "password": "password123",
+  "verificationCode": "123456",
+  "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -133,13 +137,15 @@ All API responses follow a unified format:
 |-------|------|----------|-------------|
 | `email` | String | Yes | Email address |
 | `password` | String | Yes | Password |
+| `captchaToken` | String | Yes | CAPTCHA verification token |
 
 **Request Example**:
 
 ```json
 {
   "email": "user@example.com",
-  "password": "password123"
+  "password": "password123",
+  "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -449,6 +455,10 @@ This module provides application status flow, event recording, and statistical a
 | Email Registration | POST | `/api/v1/auth/register/email` | User email registration | No |
 | Email Login | POST | `/api/v1/auth/login/email` | User email login | No |
 | Google Login | POST | `/api/v1/auth/login/google` | Google OAuth login | No |
+| Send Verification Code | POST | `/api/v1/auth/send-verification-code` | Send email verification code | No |
+| Check Verification Enabled | GET | `/api/v1/auth/email-verification-enabled` | Check if email verification is enabled | No |
+| Get CAPTCHA Challenge | GET | `/api/v1/auth/captcha` | Get slider CAPTCHA challenge | No |
+| Verify CAPTCHA | POST | `/api/v1/auth/captcha/verify` | Verify drag result and issue token | No |
 | Upload Resume | POST | `/api/v1/resumes` | Upload resume file | Yes |
 | Download Resume | GET | `/api/v1/resumes/{versionId}/download` | Download resume file (supports format conversion) | Yes |
 | Get All Groups | GET | `/api/v1/resumes/groups` | Get all resume groups for user | Yes |
@@ -465,6 +475,8 @@ This module provides application status flow, event recording, and statistical a
 | Query Match Results | GET | `/api/v1/jobs/match/{matchId}` | Query match task results | Yes |
 | Get Match History | GET | `/api/v1/jobs/match/history` | Get historical match records | Yes |
 | Vector Search Jobs | POST | `/api/v1/jobs/vector-search` | ANN vector search for jobs | Yes |
+| Score Job | POST | `/api/v1/jobs/{jobId}/score` | Score a job against a resume | Yes |
+| Get Job Dataset | GET | `/api/v1/job-dataset` | Query training dataset (internal) | No |
 | Batch Upsert Job Vectors | POST | `/api/v1/job-vectors/batch` | Batch upsert job vectors (AI layer) | No |
 | Create Conversation | POST | `/api/v1/conversations` | Create new conversation | Yes |
 | Send Message | POST | `/api/v1/conversations/{conversationId}/messages` | Send conversation message | Yes |
@@ -490,8 +502,19 @@ This module provides application status flow, event recording, and statistical a
 
 ```java
 {
-  "email": String,      // Required, email format
-  "password": String    // Required, 6-32 characters
+  "email": String,              // Required, email format
+  "password": String,           // Required, 6-32 characters
+  "verificationCode": String,   // Optional, 6 digits; required when email verification is enabled
+  "captchaToken": String        // Required, obtained from /v1/auth/captcha/verify
+}
+```
+
+#### SendVerificationCodeRequest (Send Verification Code Request)
+
+```java
+{
+  "email": String,         // Required, email format
+  "captchaToken": String   // Required, CAPTCHA verification token (peeked, not consumed)
 }
 ```
 
@@ -499,8 +522,9 @@ This module provides application status flow, event recording, and statistical a
 
 ```java
 {
-  "email": String,      // Required, email format
-  "password": String    // Required
+  "email": String,         // Required, email format
+  "password": String,      // Required
+  "captchaToken": String   // Required, CAPTCHA verification token
 }
 ```
 
@@ -693,6 +717,8 @@ This module provides application status flow, event recording, and statistical a
 |-------|------|
 | `email` | Required, must conform to email format |
 | `password` | Required, length 6-32 characters (for registration) |
+| `verificationCode` | Optional when disabled; Required (6 digits) when email verification is enabled |
+| `captchaToken` | Required for all auth endpoints (register, login, Google login, send verification code) |
 
 ### Resume Upload
 

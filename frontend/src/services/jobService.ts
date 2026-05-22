@@ -75,6 +75,18 @@ export const jobService = {
     throw new Error(response.data.message);
   },
 
+  trackAction: async (jobId: string, action: 'CLICK' | 'APPLY' | 'REJECT', resumeVersionId?: string): Promise<void> => {
+    let url = `/v1/jobs/${jobId}/track?action=${action}`;
+    if (resumeVersionId) {
+      url += `&resumeVersionId=${encodeURIComponent(resumeVersionId)}`;
+    }
+    const response = await apiClient.post<ApiResponse<null>>(url);
+    if (response.data.code === 200) {
+      return;
+    }
+    throw new Error(response.data.message);
+  },
+
   startMatch: async (request: JobMatchRequest): Promise<JobMatchResponse> => {
     const response = await apiClient.post<ApiResponse<JobMatchResponse>>(
       '/v1/jobs/match',

@@ -1,5 +1,6 @@
 import re
 import tempfile
+import uuid
 from pathlib import Path
 
 import httpx
@@ -39,14 +40,16 @@ def _capture_screenshot(url: str) -> str | None:
     screenshots_dir = Path(tempfile.gettempdir()) / "resume_assistant_job_screenshots"
     screenshots_dir.mkdir(parents=True, exist_ok=True)
 
-    screenshot_path = screenshots_dir / f"{next(tempfile._get_candidate_names())}.png"
+    screenshot_path = screenshots_dir / f"{uuid.uuid4().hex}.png"
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
-        page = browser.new_page(viewport={"width": 1440, "height": 2200})
-        page.goto(url, wait_until="networkidle", timeout=30000)
-        page.screenshot(path=str(screenshot_path), full_page=True)
-        browser.close()
+        try:
+            page = browser.new_page(viewport={"width": 1440, "height": 2200})
+            page.goto(url, wait_until="networkidle", timeout=30000)
+            page.screenshot(path=str(screenshot_path), full_page=True)
+        finally:
+            browser.close()
 
     return str(screenshot_path)
 
@@ -54,6 +57,8 @@ def _capture_screenshot(url: str) -> str | None:
 def scrape_job_page(url: str, capture_screenshot: bool) -> ScrapeResult:
     """Fetch a job page, extract plain text, and optionally capture a screenshot for vision fallback.
     抓取职位页面：获取 HTML 后去噪提取文本；当启用图片校验且未提供外部截图时，自动截图备用。"""
+    if not url.startswith(("http://", "https://")):
+        raise ValueError("Only HTTP(S) URLs are supported for job scraping.")
     response = httpx.get(
         url,
         timeout=20.0,

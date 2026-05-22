@@ -1,0 +1,53 @@
+{{- if .Values.ingress.enabled }}
+# =============================================================================
+# Ingress — Single entry point for all HTTP traffic
+# Ingress — 所有 HTTP 流量的单一入口
+# =============================================================================
+# Routes:
+#   /api/*  → backend:8080
+#   /       → frontend:80
+# SPA fallback is handled by frontend nginx try_files.
+# SPA 回退由前端 nginx 的 try_files 处理。
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "resume-assistant.fullname" . }}
+  namespace: {{ include "resume-assistant.namespace" . }}
+  labels:
+    {{- include "resume-assistant.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          # API routes / API 路由
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "resume-assistant.fullname" . }}-backend
+                port:
+                  number: 8080
+          # Default — frontend SPA / 默认 — 前端 SPA
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "resume-assistant.fullname" . }}-frontend
+                port:
+                  number: 80
+{{- end }}

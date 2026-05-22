@@ -14,6 +14,18 @@
 
 ### 1. 設定環境變數
 
+**推薦方式：使用網頁配置工具**
+
+直接用瀏覽器開啟 `docs/deployment/env-setup.html`（無需啟動伺服器）：
+
+1. 在頁面右上角選擇語言（EN / 简体中文 / 繁體中文）
+2. 填寫必填項（標記為紅色星號 *）
+3. 對金鑰類變數（如 `JWT_SECRET`、`INTERNAL_API_KEY`）點擊**生成**按鈕以獲取安全隨機值
+4. 查看頂部進度條，確保所有必填變數已完成
+5. 點擊**下載 .env**，儲存到專案根目錄
+
+**備選方式（命令列）：**
+
 ```bash
 # 複製環境變數範本
 cp .env.example .env
@@ -28,6 +40,10 @@ vim .env
 - 一個相容 LiteLLM 的模型服務金鑰，例如 `GEMINI_API_KEY`、`OPENAI_API_KEY`、`ANTHROPIC_API_KEY` 或 `GROQ_API_KEY`
 - `LLM_TEXT_MODEL`、`LLM_VISION_MODEL` 和 `LLM_EMBEDDING_MODEL`: 與所選模型服務前綴匹配的模型名稱
 - `LLM_EMBEDDING_MODEL_DIMENSION`: 嵌入模型輸出維度（必須與所選模型一致，預設 1536）
+- `CAPTCHA_ENABLED`: 是否啟用 CAPTCHA 驗證（`true`/`false`，預設 `true`）
+- `CAPTCHA_TOLERANCE`: 滑動容差像素（預設 `8`）
+- `CAPTCHA_MAX_ATTEMPTS`: 每個挑戰最大驗證次數（預設 `5`）
+- `CAPTCHA_TOKEN_EXPIRY`: Token 快取 TTL，單位秒（預設 `300`）
 
 預設情況下，專案可以透過 LiteLLM 使用 Gemini 模型，因此本地開發只需要設定 `GEMINI_API_KEY`，除非您選擇其他模型服務。
 
@@ -77,10 +93,12 @@ docker-compose ps
 # 或
 podman-compose ps
 
-# 健康檢查
-curl http://localhost:8080/api/actuator/health
-curl http://localhost:8000/health
+# 透過公開 Nginx 入口進行健康檢查
 curl http://localhost/health
+curl http://localhost/api/actuator/health
+
+# AI 服務預設僅在 Docker 內網暴露；從容器內部檢查
+docker compose exec ai-service python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/health').read().decode())"
 ```
 
 ## 服務存取位址
@@ -89,6 +107,20 @@ curl http://localhost/health
 |--------|------------------|-------------------------|
 | 前端介面   | http://localhost | 統一入口 (包含 Web 與 API 代理) |
 | 系統健康   | http://localhost/health | 整體服務狀態                |
+
+## 服務職責
+
+### AI 服務 (Python FastAPI)
+
+除了履歷/職位剖析、嵌入生成、精排與對話外，AI 服務現已包含**增量模型訓練閉環**：
+
+1. **職位資料集同步**：當職位成功剖析後，後端將其寫入 `job_dataset` 資料表（訓練語料庫）。
+2. **評分標籤消費**：當用戶對職位進行評分時，後端將評分標籤訊息發送至 `ai.queue.feedback` 佇列。
+3. **反饋緩衝**：AI worker 將反饋轉換為帶標籤的特徵樣本，並寫入 Redis 緩衝區。
+4. **LightGBM 重新訓練**：當樣本閾值（`MIN_SAMPLES_FOR_RETRAIN=10`）達成時，worker 將緩衝反饋與 baseline features 合併，訓練 LightGBM ranker，並將 `ranker_model_<version>.txt` 和 `latest_meta.json` 等版本化 artifact 寫入 MinIO。
+5. **熱重載**：model manager 從 MinIO 載入最新模型，並在 worker 發布 Redis `ai.model.reload` 通知時重新載入。
+
+`POST /api/v1/admin/recompute-model` 僅保留相容性並返回棄用提示；定時重新訓練由 `ai-worker` 負責。
 
 ## 常用指令
 
@@ -102,6 +134,7 @@ docker-compose logs -f
 docker-compose logs -f backend
 docker-compose logs -f ai-service
 docker-compose logs -f postgres
+docker-compose logs -f redis
 ```
 
 ### 重新啟動服務
@@ -140,6 +173,7 @@ docker-compose exec postgres psql -U resume_user -d resume_assistant
 
 - `postgres-data`: PostgreSQL 資料庫資料
 - `rabbitmq-data`: RabbitMQ 訊息佇列資料
+- `redis-data`: Redis 快取與狀態資料
 - `shared-storage`: 上傳的履歷檔案（後端和 AI 服務共享）
 
 ```bash
@@ -184,6 +218,14 @@ docker system prune -a --volumes
 # 重新建置
 docker-compose up -d --build --force-recreate
 ```
+
+### CAPTCHA 速率限制觸發
+
+**現象**：請求 CAPTCHA 挑戰時回傳 `429 Too Many Requests`。
+
+**原因**：同一 IP 在 1 分鐘內超過 20 次 CAPTCHA 請求。
+
+**解決**：等待 1 分鐘讓速率限制快取過期，或在 `.env` 中設定 `CAPTCHA_ENABLED=false` 以在本機測試時停用 CAPTCHA。
 
 ### 406 PRECONDITION_FAILED（RabbitMQ）
 

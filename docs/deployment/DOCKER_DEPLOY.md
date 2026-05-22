@@ -14,6 +14,18 @@
 
 ### 1. Configure Environment Variables
 
+**Recommended: Use the Web Configurator**
+
+Open `docs/deployment/env-setup.html` directly in your browser (no server needed):
+
+1. Select your language (EN / 简体中文 / 繁體中文) from the top-right
+2. Fill in the required fields (marked with a red asterisk)
+3. Click **Generate** next to secret fields (e.g. `JWT_SECRET`, `INTERNAL_API_KEY`) for secure random values
+4. Review the progress indicator at the top to ensure all required variables are set
+5. Click **Download .env** and save it to the project root directory
+
+**Alternative (CLI):**
+
 ```bash
 # Copy the environment template
 cp .env.example .env
@@ -28,6 +40,10 @@ Required variables:
 - A LiteLLM-compatible model service key, e.g. `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GROQ_API_KEY`
 - `LLM_TEXT_MODEL`, `LLM_VISION_MODEL`, and `LLM_EMBEDDING_MODEL`: model names matching the selected service prefix
 - `LLM_EMBEDDING_MODEL_DIMENSION`: embedding output dimension (must match the selected model, default 1536)
+- `CAPTCHA_ENABLED`: Enable CAPTCHA verification for auth endpoints (`true`/`false`, default `true`)
+- `CAPTCHA_TOLERANCE`: Slider tolerance in pixels (default `8`)
+- `CAPTCHA_MAX_ATTEMPTS`: Maximum verification attempts per challenge (default `5`)
+- `CAPTCHA_TOKEN_EXPIRY`: Token cache TTL in seconds (default `300`)
 
 By default the project can use Gemini models via LiteLLM, so local development only needs `GEMINI_API_KEY` unless you choose another provider.
 
@@ -76,10 +92,12 @@ docker-compose ps
 # or
 podman-compose ps
 
-# Health checks
-curl http://localhost:8080/api/actuator/health
-curl http://localhost:8000/health
+# Health checks through the public Nginx entry point
 curl http://localhost/health
+curl http://localhost/api/actuator/health
+
+# AI service is internal by default; check it from inside the container
+docker compose exec ai-service python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/health').read().decode())"
 ```
 
 ## Service Endpoints
@@ -89,6 +107,20 @@ curl http://localhost/health
 | Frontend UI      | http://localhost                     | Job seeker interface |
 | Backend API      | http://localhost/api                 | REST API (Proxied)   |
 | System Health    | http://localhost/health              | Global health check  |
+
+## Service Responsibilities
+
+### AI Service (Python FastAPI)
+
+In addition to resume/job parsing, embedding generation, ranking, and conversation, the AI service now includes an **incremental model training loop**:
+
+1. **Job Dataset Sync**: When a job is successfully parsed, the backend writes it to the `job_dataset` table (training corpus).
+2. **Score Label Consumption**: When a user scores a job, the backend sends a score label message to the `ai.queue.feedback` queue.
+3. **Feedback Buffering**: The AI worker converts feedback into labeled feature samples and stores them in a Redis buffer.
+4. **LightGBM Retraining**: When the sample threshold (`MIN_SAMPLES_FOR_RETRAIN=10`) is reached, the worker combines buffered feedback with baseline features, trains a LightGBM ranker, and writes versioned artifacts such as `ranker_model_<version>.txt` plus `latest_meta.json` to MinIO.
+5. **Hot Reload**: The model manager loads the latest model from MinIO and reloads it when the worker publishes a Redis `ai.model.reload` notification.
+
+`POST /api/v1/admin/recompute-model` is kept for compatibility and returns a deprecation message; scheduled retraining is handled by `ai-worker`.
 
 ## Common Commands
 
@@ -102,6 +134,7 @@ docker-compose logs -f
 docker-compose logs -f backend
 docker-compose logs -f ai-service
 docker-compose logs -f postgres
+docker-compose logs -f redis
 ```
 
 ### Restart Services
@@ -140,6 +173,7 @@ Data is persisted via Docker volumes:
 
 - `postgres-data`: PostgreSQL database data
 - `rabbitmq-data`: RabbitMQ message queue data
+- `redis-data`: Redis cache and state data
 - `shared-storage`: Uploaded resume files (shared between backend and AI service)
 
 ```bash
@@ -290,6 +324,14 @@ docker system prune -a --volumes
 # Rebuild
 docker-compose up -d --build --force-recreate
 ```
+
+### CAPTCHA Rate Limit Triggered
+
+**Symptom**: `429 Too Many Requests` when requesting a CAPTCHA challenge.
+
+**Cause**: The same IP has exceeded 20 CAPTCHA requests per minute.
+
+**Fix**: Wait 1 minute for the rate-limit cache to expire, or set `CAPTCHA_ENABLED=false` in `.env` to disable CAPTCHA for local testing.
 
 ## Production Deployment
 

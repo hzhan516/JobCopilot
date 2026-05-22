@@ -34,7 +34,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   });
 
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error' | 'conflict'>('idle');
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSaveEnabledRef = useRef<boolean>(true);
 
   // Local backup to localStorage to prevent data loss on accidental refresh
@@ -51,12 +50,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   // Debounce 自动保存到后端；冲突时自动禁用，防止覆盖循环
   useEffect(() => {
     if (!onAutoSave || readOnly || !autoSaveEnabledRef.current) return;
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-    }
+    
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setAutoSaveStatus('idle');
-    autoSaveTimerRef.current = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       if (!content.trim()) return;
       setAutoSaveStatus('saving');
       try {
@@ -68,21 +65,14 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         const isExplicitError = axios.isAxiosError(err) && err.response != null;
         if (isConflict || isExplicitError) {
           autoSaveEnabledRef.current = false;
-          if (autoSaveTimerRef.current) {
-            clearTimeout(autoSaveTimerRef.current);
-            autoSaveTimerRef.current = null;
-          }
           setAutoSaveStatus('conflict');
         } else {
           setAutoSaveStatus('error');
         }
       }
     }, 3000);
-    return () => {
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current);
-      }
-    };
+    
+    return () => clearTimeout(timer);
   }, [content, onAutoSave, storageKey, readOnly]);
 
   const handleSave = useCallback(() => {

@@ -8,13 +8,23 @@ spring:
   flyway:
     enabled: false
 
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
 # 应用级配置 / Application-level configuration
 app:
+  redis:
+    listener:
+      enabled: false
   embedding:
     dimension: ${LLM_EMBEDDING_MODEL_DIMENSION:1536}
     model-version: ${LLM_EMBEDDING_MODEL:gemini/gemini-embedding-001}
   search:
     max-limit: ${SEARCH_MAX_LIMIT:100}
+  captcha:
+    enabled: false
   rabbitmq:
     queue:
       res:

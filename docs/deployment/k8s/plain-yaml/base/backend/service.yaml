@@ -1,0 +1,20 @@
+# =============================================================================
+# Backend Service
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: resume-assistant-backend
+  namespace: resume-assistant
+  labels:
+    app.kubernetes.io/name: resume-assistant
+    app.kubernetes.io/component: backend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: http
+      name: http
+  selector:
+    app.kubernetes.io/name: resume-assistant
+    app.kubernetes.io/component: backend

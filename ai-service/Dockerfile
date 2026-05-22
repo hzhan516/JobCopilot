@@ -44,6 +44,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # 仅安装运行所需的轻量级依赖 (使用 libpq5 代替 libpq-dev)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    libgomp1 \
     libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -56,7 +57,7 @@ COPY --from=builder /opt/venv /opt/venv
 COPY app/ ./app/
 
 # 创建必要目录并设置非 root 用户
-RUN mkdir -p /app/uploads /app/models_cache && \
+RUN mkdir -p /app/uploads /app/model-artifacts /app/models_cache && \
     adduser --disabled-password --gecos '' appuser && \
     chown -R appuser:appuser /app /opt/venv
 

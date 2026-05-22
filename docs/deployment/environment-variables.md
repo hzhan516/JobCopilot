@@ -5,6 +5,8 @@
 This document describes every environment variable used by the Resume Assistant stack. Variables are organized by functional area, matching the comment blocks in `.env.example`.
 
 > **Quick tip**: Run `cp .env.example .env` before editing. Never commit `.env` to version control.
+>
+> For a guided setup experience, open `docs/deployment/env-setup.html` directly in your browser. It parses `.env.example` in real time and generates a ready-to-use `.env` file — no server required.
 
 ---
 
@@ -20,6 +22,9 @@ This document describes every environment variable used by the Resume Assistant 
 - [L. AI Service Connection](#l-ai-service-connection)
 - [M. File Storage](#m-file-storage)
 - [N. Backend Logging](#n-backend-logging)
+- [O. Email Verification Configuration](#o-email-verification-configuration)
+- [P. CAPTCHA Configuration](#p-captcha-configuration)
+- [R. Redis / Shared State](#r-redis--shared-state)
 - [F. AI Provider Keys](#f-ai-provider-keys)
 - [G. Model Parameters](#g-model-parameters)
 - [H. AI Service Logging](#h-ai-service-logging)
@@ -370,6 +375,16 @@ You only need to configure **one** provider. The choice is determined by the pre
 | **Security notes** | Long timeouts can exhaust worker threads under heavy load. Short timeouts improve resilience but may cause unnecessary retries for slow models. |
 | **Common mistakes** | Setting this too low (< 10s) for large resume files or batch embedding jobs. |
 
+### `LLM_MAX_TOKENS`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Maximum number of output tokens the LLM is allowed to generate for a single request. |
+| **Default** | `8192` |
+| **Valid values** | Positive integer |
+| **Security notes** | Higher values increase cost per request and may increase latency. However, setting this too low causes the model to truncate structured JSON responses (e.g. conversation replies, resume optimization), leading to `JSONDecodeError` downstream. |
+| **Common mistakes** | <ul><li>Leaving the value at a provider-specific default (e.g. 1024 or 2048) without realizing it truncates long outputs.</li><li>Setting an extremely high value (> 32k) with a model that does not support it, causing provider errors.</li><li>Not correlating `json.decoder.JSONDecodeError` logs in the AI service with insufficient `max_tokens`.</li></ul> |
+
 ### `BACKEND_SERVICE_URL`
 
 | Field | Value |
@@ -389,6 +404,15 @@ You only need to configure **one** provider. The choice is determined by the pre
 | **Valid values** | Positive integer (seconds) |
 | **Security notes** | Short timeouts prevent the AI service from hanging if the backend is overloaded. |
 | **Common mistakes** | Setting this too low for batch vector upserts, causing partial data insertion. |
+
+### Incremental Model Training Parameters
+
+The following parameters control the AI worker's incremental job training loop.
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `RETRAIN_INTERVAL_HOURS` | `24` | Interval in hours for the AI worker to check for buffered feedback and retrain. |
+| `MIN_SAMPLES_FOR_RETRAIN` | `10` | Minimum number of buffered feedback samples required before retraining runs. |
 
 ---
 
@@ -625,6 +649,60 @@ If left empty, both the backend interceptor and the AI service middleware skip t
 | **Security notes** | If empty, the backend generates relative URLs. Setting an external CDN improves performance but requires proper access control. |
 | **Common mistakes** | Adding a trailing slash that causes double slashes in URLs. |
 
+### AI Model Artifact Storage (MinIO)
+
+These variables are consumed by the Python AI service and AI worker for incremental matching model artifacts. They are separate from the backend resume file storage settings above.
+
+### `MINIO_ENDPOINT`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | MinIO server URL used by the AI model registry. |
+| **Default** | `http://minio:9000` |
+| **Valid values** | Any HTTP(S) URL |
+| **Security notes** | Use HTTPS in production. Validate TLS certificates or configure the trust store. |
+| **Common mistakes** | Using `http://localhost:9000` from inside Docker or Kubernetes instead of the service name. |
+
+### `MINIO_ACCESS_KEY`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | MinIO access key used by the AI model registry. |
+| **Default** | `minioadmin` |
+| **Valid values** | Any string |
+| **Security notes** | Change the default value immediately outside local development. |
+| **Common mistakes** | Reusing the same credentials between development and production MinIO instances. |
+
+### `MINIO_SECRET_KEY`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | MinIO secret key used by the AI model registry. |
+| **Default** | `minioadmin` |
+| **Valid values** | Any string; recommended length ≥ 16 |
+| **Security notes** | Store in a secret manager. A leaked key grants read/write access to model artifacts. |
+| **Common mistakes** | Committing the secret to Git or sharing it in chat logs. |
+
+### `MINIO_MODEL_BUCKET`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Bucket name for model artifacts such as `ranker_model_<version>.txt` and `latest_meta.json`. |
+| **Default** | `ai-models` |
+| **Valid values** | Any valid S3 bucket name |
+| **Security notes** | Keep model artifacts private because they may encode aggregate user/job matching behavior. |
+| **Common mistakes** | Expecting `AWS_S3_*` variables to control model artifact storage. The AI service uses the `MINIO_*` endpoint, credential, and model bucket variables. |
+
+### `RETRAIN_INTERVAL_HOURS`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Interval in hours for the AI worker to check for new feedback and retrain the LightGBM model. |
+| **Default** | `24` |
+| **Valid values** | Positive integer |
+| **Security notes** | Frequent retraining consumes more CPU and memory resources. |
+| **Common mistakes** | Setting this too low (e.g., `1`) without enough new data, causing unnecessary retraining cycles. |
+
 ### AWS S3 Settings (`STORAGE_TYPE=s3`)
 
 ### `AWS_S3_REGION`
@@ -858,6 +936,188 @@ If left empty, both the backend interceptor and the AI service middleware skip t
 | **Valid values** | Any valid Aliyun KMS key ID |
 | **Security notes** | Using a customer-managed key provides better access control than the default service key. |
 | **Common mistakes** | Specifying a key from a different region or without proper RAM permissions. |
+
+---
+
+## O. Email Verification Configuration
+
+### `EMAIL_VERIFICATION_ENABLED`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Master switch for email verification during user registration. When enabled, new users must enter a 6-digit code sent to their email before registration succeeds. |
+| **Default** | `false` |
+| **Valid values** | `true`, `false` |
+| **Security notes** | Even if SMTP credentials are configured, verification is only enforced when this flag is `true`. This ensures backward compatibility and safe gradual rollouts. |
+| **Common mistakes** | Setting to `true` without configuring `SMTP_HOST`, `SMTP_USERNAME`, and `SMTP_PASSWORD` causes all verification requests to fail at runtime. |
+
+### `EMAIL_FROM`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Sender address displayed in verification emails. |
+| **Default** | `noreply@resume-assistant.local` |
+| **Valid values** | Any valid email address |
+| **Security notes** | Some SMTP providers require the `From` address to be verified or registered in their console. Using an unverified address may cause emails to be rejected or land in spam. |
+| **Common mistakes** | Using a personal Gmail address without enabling "App Passwords" or without configuring SPF/DKIM for the domain. |
+
+### `SMTP_HOST`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Hostname of the SMTP relay server used to send verification emails. |
+| **Default** | *(empty)* |
+| **Valid values** | Any reachable SMTP hostname (e.g., `smtp.gmail.com`, `smtp.office365.com`, `smtp.mailgun.org`) |
+| **Security notes** | Prefer SMTP providers that enforce TLS (port 587 with STARTTLS). Avoid plain-text SMTP on port 25. |
+| **Common mistakes** | Using `localhost` inside a container; containers do not share the host's loopback. Use the Docker host-gateway address if running a local relay: `host.docker.internal`. |
+
+### `SMTP_PORT`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | TCP port for the SMTP relay. |
+| **Default** | `587` |
+| **Valid values** | `25`, `465` (SSL), `587` (STARTTLS), `2525` (alternative) |
+| **Security notes** | Port 587 with STARTTLS is the modern standard. Port 465 is legacy SSL. Port 25 is often blocked by cloud providers. |
+| **Common mistakes** | Using port `465` with STARTTLS or port `587` with implicit SSL; mismatched encryption and port causes connection hangs. |
+
+### `SMTP_USERNAME`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Username for SMTP authentication. Often the full email address. |
+| **Default** | *(empty)* |
+| **Valid values** | Any string accepted by the SMTP server |
+| **Security notes** | Treat this as sensitive configuration. Do not commit real credentials to version control. |
+| **Common mistakes** | For Gmail, using the regular Google password instead of an App Password (which is required when 2FA is enabled). |
+
+### `SMTP_PASSWORD`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Password or app-specific password for SMTP authentication. |
+| **Default** | *(empty)* |
+| **Valid values** | Any string |
+| **Security notes** | Store this in `.env` only. Rotate periodically. If the credential is leaked, an attacker can send emails on your behalf. |
+| **Common mistakes** | Committing `.env` to Git. Using a weak or reused password. Not rotating credentials after a team member departs. |
+
+### `EMAIL_CODE_EXPIRY`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Lifetime of a verification code in seconds before it expires. |
+| **Default** | `300` (5 minutes) |
+| **Valid values** | Positive integer, recommended range `60–900` |
+| **Security notes** | Shorter expiry windows reduce the brute-force window. Too short (< 60s) causes UX friction. |
+| **Common mistakes** | Setting a very long expiry (e.g., 1 hour) makes brute-force attacks more feasible. |
+
+### `EMAIL_RESEND_COOLDOWN`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Minimum seconds a user must wait before requesting another verification code for the same email. |
+| **Default** | `60` (1 minute) |
+| **Valid values** | Positive integer, recommended range `30–300` |
+| **Security notes** | Prevents rapid resend abuse. Pair with the existing check that rejects codes for already-registered emails. |
+| **Common mistakes** | Setting to `0` removes protection against accidental double-clicks and deliberate abuse. |
+
+### `EMAIL_MAX_ATTEMPTS`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Maximum number of failed validation attempts before the verification code is invalidated. |
+| **Default** | `3` |
+| **Valid values** | Positive integer, recommended range `3–5` |
+| **Security notes** | Limits brute-force guessing. After exceeding this threshold, the user must request a new code. |
+| **Common mistakes** | Setting to a high value (e.g., 10) makes 6-digit numeric codes easier to brute-force within the 5-minute expiry window. |
+
+## R. Redis / Shared State
+
+Redis serves as the shared state layer for distributed caching, distributed locks (ShedLock), deduplication sets, and Pub/Sub cross-instance messaging. It does NOT replace RabbitMQ; MQ handles communication, Redis handles state.
+
+### `REDIS_HOST`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Hostname used by backend and AI service to connect to Redis. |
+| **Default** | `redis` (Docker service name) / `localhost` (non-Docker) |
+| **Valid values** | Docker service name, container IP, or external hostname |
+| **Security notes** | Using the Docker service name (`redis`) ensures traffic stays on the internal bridge network. |
+| **Common mistakes** | Using `localhost` from inside a container. |
+
+### `REDIS_PORT`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Redis listener port. |
+| **Default** | `6379` |
+| **Valid values** | `1024–65535` |
+| **Security notes** | Network isolation is the primary defense. Changing the port provides minimal benefit. |
+| **Common mistakes** | Changing this without updating the Redis container command/configuration and the backend/AI-service environment. Redis is not host-exposed by default in Docker Compose. |
+
+### `REDIS_PASSWORD`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Redis AUTH password. |
+| **Default** | *(empty)* |
+| **Valid values** | Any string; leave empty for no-auth (development default) |
+| **Security notes** | In production, set a strong password and configure Redis with `requirepass`. Even with network isolation, password auth is a mandatory defense-in-depth layer. |
+| **Common mistakes** | Leaving the password empty in production deployments. |
+
+---
+
+## P. CAPTCHA Configuration
+
+### `CAPTCHA_ENABLED`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Master switch for the slider CAPTCHA challenge. When enabled, registration and login endpoints require a completed CAPTCHA verification. |
+| **Default** | `true` |
+| **Valid values** | `true`, `false` |
+| **Security notes** | Disabling CAPTCHA removes a layer of bot protection. Only set to `false` in trusted internal networks or automated test environments. |
+| **Common mistakes** | Setting to `false` on public-facing instances without alternative bot mitigation (e.g., rate limiting or WAF rules). |
+
+### `CAPTCHA_TOLERANCE`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Pixel tolerance when validating the slider position. A higher value makes the puzzle easier to solve. |
+| **Default** | `8` |
+| **Valid values** | Non-negative integer, recommended range `4–20` |
+| **Security notes** | Excessive tolerance (e.g., `50`) effectively disables the challenge because any drop position is accepted. |
+| **Common mistakes** | Setting to `0` requires pixel-perfect alignment, causing legitimate users to fail repeatedly and abandon registration. |
+
+### `CAPTCHA_TOKEN_EXPIRY`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Lifetime of a captchaToken in seconds before it expires. |
+| **Default** | `300` (5 minutes) |
+| **Valid values** | Positive integer, recommended range `60–600` |
+| **Security notes** | Shorter expiry windows reduce replay-attack windows. Too short (< 30 s) causes UX friction on slow networks. |
+| **Common mistakes** | Setting a very long expiry (e.g., 1 hour) allows attackers to reuse a single solved challenge for multiple requests. |
+
+### `CAPTCHA_TRACK_WIDTH`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Width of the slider track in pixels. Determines the difficulty range of the challenge. |
+| **Default** | `300` |
+| **Valid values** | Positive integer, recommended range `200–500` |
+| **Security notes** | Narrow tracks (< 150 px) are easier for bots to brute-force because the search space is smaller. |
+| **Common mistakes** | Setting a width that does not match the frontend CSS, causing visual misalignment and failed drops. |
+
+### `CAPTCHA_MAX_ATTEMPTS`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Maximum number of validation attempts allowed for a single challenge before the captchaToken is invalidated. |
+| **Default** | `5` |
+| **Valid values** | Positive integer, recommended range `3–10` |
+| **Security notes** | Limits brute-force guessing of the slider position. After exceeding this threshold, the user must request a new challenge. |
+| **Common mistakes** | Setting to a high value (e.g., 50) defeats the purpose of the challenge by allowing unlimited guesses within the token expiry window. |
 
 ---
 

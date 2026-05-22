@@ -56,6 +56,11 @@ public class JobFacadeImpl implements JobFacade {
     }
 
     @Override
+    public void trackJobAction(String jobId, UUID userId, String actionType, String resumeVersionId) {
+        applicationService.trackUserAction(jobId, userId, actionType, resumeVersionId);
+    }
+
+    @Override
     public List<JobScoreHistoryResponse> getScoreHistory(final UUID userId) {
         return applicationService.getScoreHistory(userId);
     }

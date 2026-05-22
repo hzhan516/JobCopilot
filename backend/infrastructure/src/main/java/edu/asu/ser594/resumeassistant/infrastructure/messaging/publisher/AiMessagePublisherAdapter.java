@@ -1,11 +1,14 @@
 package edu.asu.ser594.resumeassistant.infrastructure.messaging.publisher;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
+
 import edu.asu.ser594.resumeassistant.domain.shared.entity.OutboxMessage;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ConversationRequestCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobRankCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.ResumeParseCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.UserFeedbackCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import edu.asu.ser594.resumeassistant.domain.shared.repository.OutboxMessageRepository;
 import edu.asu.ser594.resumeassistant.infrastructure.messaging.config.RabbitMqConfig;
@@ -58,6 +61,16 @@ public class AiMessagePublisherAdapter implements AiMessagePublisherPort {
     public void sendJobForRanking(JobRankCommand command) {
         log.info("Saving JobRankCommand to outbox for match: {}", command.matchId());
         saveToOutbox(RabbitMqConfig.ROUTING_KEY_REQ_JOB_RANK, command);
+    }
+
+    /**
+     * 发送评分标签到 AI 服务用于增量模型训练
+     * Send score label to AI service for incremental model training
+     */
+    @Override
+    public void sendUserFeedback(UserFeedbackCommand command) {
+        log.info("Saving UserFeedbackCommand to outbox for job: {}", command.jobId());
+        saveToOutbox(RabbitMqConfig.ROUTING_KEY_REQ_MODEL_INCREMENTAL, command);
     }
 
     private void saveToOutbox(String routingKey, Object command) {

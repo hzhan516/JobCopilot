@@ -66,12 +66,13 @@ services:
         # Google OAuth 2.0 Client ID. Required for Google Sign-In.
         # Obtain from https://console.cloud.google.com/apis/credentials
         - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+    image: resume-assistant-frontend
     container_name: resume-assistant-frontend
     ports:
-      # Host port mapping for the Nginx reverse proxy.
-      # FRONTEND_HOST_PORT defaults to 80. Change it in .env if port 80 is
-      # already in use on your machine (e.g. FRONTEND_HOST_PORT=8081).
-      - "${FRONTEND_HOST_PORT:-80}:80"
+     # Host port mapping for the Nginx reverse proxy.
+     # FRONTEND_HOST_PORT defaults to 80. Change it in .env if port 80 is
+     # already in use on your machine (e.g. FRONTEND_HOST_PORT=8081).
+     - "${FRONTEND_HOST_PORT:-80}:8080"
     networks:
       # Frontend lives exclusively in the public tier. It can reach the
       # backend via Docker DNS (backend:8080) because the backend also joins
@@ -85,7 +86,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -125,6 +126,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: resume-assistant-backend
     container_name: resume-assistant-backend
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the line below if you need direct host access to the Spring
@@ -149,8 +151,8 @@ services:
       # Port 5672 is NOT exposed to the host; AMQP traffic stays inside Docker.
       - SPRING_RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - SPRING_RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
-      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_USERNAME:-guest}
-      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
+      - SPRING_RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
+      - SPRING_RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
 
       # --- File Storage ---
       # Local filesystem storage is used for the Docker Compose deployment.
@@ -191,12 +193,31 @@ services:
       # requests with missing or mismatched keys (HTTP 401).
       # If left empty, both sides skip the check (convenient for local dev).
       - INTERNAL_API_KEY=${INTERNAL_API_KEY:-}
+
+      # --- CAPTCHA / Human Verification ---
+      # Slider CAPTCHA settings consumed by CaptchaProperties in the backend.
+      - CAPTCHA_ENABLED=${CAPTCHA_ENABLED:-true}
+      - CAPTCHA_TOLERANCE=${CAPTCHA_TOLERANCE:-8}
+      - CAPTCHA_TOKEN_EXPIRY=${CAPTCHA_TOKEN_EXPIRY:-300}
+      - CAPTCHA_TRACK_WIDTH=${CAPTCHA_TRACK_WIDTH:-300}
+      - CAPTCHA_MAX_ATTEMPTS=${CAPTCHA_MAX_ATTEMPTS:-5}
+
+      # --- Redis Configuration (shared state layer) ---
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+
+      # --- Actuator Health Checks ---
+      # Local compose commonly runs without SMTP credentials while email
+      # verification is disabled, so do not let MailHealthIndicator block
+      # backend/frontend startup.
+      - MANAGEMENT_HEALTH_MAIL_ENABLED=${MANAGEMENT_HEALTH_MAIL_ENABLED:-false}
     volumes:
       # Named volume shared with ai-service. Backend writes uploaded resumes
       # here; ai-service reads them (read-only mount on its side).
       - shared-storage:/app/uploads
-      # Host-mounted directory for persistent backend logs.
-      - ./backend/logs:/app/backend/logs
+      # [REMOVED] Host-mounted directory for persistent backend logs caused Permission Denied on WSL.
+      # Logs can still be accessed via `docker logs resume-assistant-backend`.
     networks:
       # Gateway role: backend bridges all three tiers.
       - public-network
@@ -209,6 +230,8 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -246,6 +269,7 @@ services:
     build:
       context: ./ai-service
       dockerfile: Dockerfile
+    image: resume-assistant-ai-service
     container_name: resume-assistant-ai
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the line below if you want to browse the FastAPI auto-generated
@@ -258,8 +282,8 @@ services:
       # --- RabbitMQ Configuration (internal-network) ---
       - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
-      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME:-guest}
-      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
 
       # --- File Storage (shared with backend, read-only) ---
       - FILE_STORAGE_PATH=/app/uploads
@@ -297,6 +321,19 @@ services:
       # --- Logging ---
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
 
+      # --- Redis Configuration (shared state layer) ---
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+
+      # --- AI Model Artifact Storage ---
+      # Model artifacts are stored in MinIO so ai-service and ai-worker can
+      # share trained ranking models without baking them into the Docker image.
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_MODEL_BUCKET=${MINIO_MODEL_BUCKET:-ai-models}
+
       # --- Defense-in-Depth: Internal API Key ---
       # Must match the INTERNAL_API_KEY set in the backend environment.
       # If empty, the middleware skips validation (dev convenience).
@@ -316,6 +353,10 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     restart: on-failure
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -325,7 +366,59 @@ services:
       start_period: 60s
 
   # ============================================================================
-  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 3 of 3)
+  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 3 of 4)
+  # ============================================================================
+  # Redis  serves as the shared state layer for distributed caching, locks,
+  # and Pub/Sub bridging between backend instances and AI service instances.
+  # It does NOT replace RabbitMQ; MQ handles communication, Redis handles state.
+  #
+  # Network membership:
+  #   public-network   — no
+  #   internal-network — yes (backend and ai-service read/write)
+  #   db-network       — no
+  # ============================================================================
+  redis:
+    image: docker.io/library/redis:7-alpine
+    container_name: resume-assistant-redis
+    volumes:
+      - redis-data:/data
+    networks:
+      - internal-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  # ============================================================================
+  # TIER 2 — INTERNAL APPLICATION LAYER
+  # ============================================================================
+  # MinIO provides S3-compatible object storage for AI model artifacts generated
+  # by the incremental learning worker and loaded by ai-service.
+  # ============================================================================
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: resume-assistant-minio
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio-data:/data
+    networks:
+      - internal-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ============================================================================
+  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 4 of 4)
   # ============================================================================
   # RabbitMQ is the asynchronous message broker between backend and ai-service.
   # It implements the Outbox pattern: the backend publishes commands to
@@ -348,11 +441,11 @@ services:
   #   - The Management UI (port 15672) is NOT exposed to the internet.
   #     Access it via SSH tunnel when needed:
   #       ssh -L 15672:localhost:15672 <your-host>
-  #   - Override default guest/guest credentials via RABBITMQ_USERNAME and
-  #     RABBITMQ_PASSWORD in .env.
+  #   - Override default guest/guest credentials via RABBITMQ_DEFAULT_USER and
+  #     RABBITMQ_DEFAULT_PASS in .env.
   # ============================================================================
   rabbitmq:
-    image: docker.io/library/rabbitmq:3-management-alpine
+    image: public.ecr.aws/docker/library/rabbitmq:3.13-management-alpine
     container_name: resume-assistant-rabbitmq
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the lines below if you need direct host access to the AMQP
@@ -407,6 +500,45 @@ services:
   #     network isolation.
   #   - pgvector extension is pre-installed in the ankane/pgvector image.
   # ============================================================================
+
+  ai-worker:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    image: resume-assistant-ai-service
+    container_name: resume-assistant-ai-worker
+    command: ["python", "-m", "app.worker_main"]
+    env_file:
+      - .env
+    environment:
+      - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_MODEL_BUCKET=${MINIO_MODEL_BUCKET:-ai-models}
+      - BACKEND_SERVICE_URL=${BACKEND_SERVICE_URL:-http://backend:8080}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-}
+      - RETRAIN_INTERVAL_HOURS=${RETRAIN_INTERVAL_HOURS:-24}
+      - MIN_SAMPLES_FOR_RETRAIN=${MIN_SAMPLES_FOR_RETRAIN:-10}
+    networks:
+      - internal-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: on-failure
+    healthcheck:
+      disable: true
+
   postgres:
     image: docker.io/ankane/pgvector:latest
     container_name: resume-assistant-postgres
@@ -505,7 +637,15 @@ volumes:
   rabbitmq-data:
     driver: local
 
+  # Redis persistent data (RDB/AOF).
+  redis-data:
+    driver: local
+
   # Shared storage for uploaded resume files (PDF, DOCX).
   # Backend writes here; ai-service mounts it read-only.
   shared-storage:
+    driver: local
+
+  # AI model artifacts stored by MinIO.
+  minio-data:
     driver: local

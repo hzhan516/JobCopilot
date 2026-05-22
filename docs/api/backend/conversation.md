@@ -65,7 +65,7 @@
 | `status` | String | Status: ACTIVE, CLOSED |
 | `resumeVersionId` | String (UUID) | Associated resume version ID |
 | `jobId` | String (UUID) | Associated job ID |
-| `messages` | Array | Message list (empty when newly created) |
+| `messages` | Array | Message list. Creating a conversation immediately adds a preset `USER` message and starts the initial AI request |
 | `createdAt` | String (ISO 8601) | Creation time |
 | `updatedAt` | String (ISO 8601) | Update time |
 
@@ -82,7 +82,16 @@
     "status": "ACTIVE",
     "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
     "jobId": "550e8400-e29b-41d4-a716-446655440010",
-    "messages": [],
+    "messages": [
+      {
+        "messageId": "550e8400-e29b-41d4-a716-446655440004",
+        "role": "USER",
+        "content": "Compare the current job posting with my resume and tell me the match score.",
+        "sequence": 1,
+        "fileUrl": null,
+        "createdAt": "2024-01-15T10:30:00"
+      }
+    ],
     "createdAt": "2024-01-15T10:30:00",
     "updatedAt": "2024-01-15T10:30:00"
   }
@@ -115,14 +124,14 @@
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `content` | String | Yes | Message content |
-| `fileUrls` | List<String> | No | Associated file URL list (e.g. resumes, attachments, etc.) |
+| `fileUrls` | List<String> | No | Reserved attachment URL list. Current backend accepts the field but does not persist or forward client-provided values to the AI request |
 
 #### Request Example
 
 ```json
 {
   "content": "帮我优化一下项目经验部分",
-  "fileUrls": ["https://minio.example.com/resumes/xxx.pdf"]
+  "fileUrls": []
 }
 ```
 
@@ -130,9 +139,9 @@
 
 #### Success Response (200)
 
-Returns the updated complete conversation information, including the newly added user message. **Note**: The AI reply is processed asynchronously via MQ and will not appear in the response immediately; the frontend needs to poll or use WebSocket to get the latest reply.
+Returns the updated complete conversation information, including the newly added user message. **Note**: The AI reply is processed asynchronously via MQ and will not appear in the response immediately; the frontend calls the stream endpoint to wait for the latest reply.
 
-If no title was specified when creating the conversation, and this is the **first message** in the conversation, the system will automatically set the conversation title to the first 30 characters of the message content.
+If the conversation title is still the default value when a message is added, the system automatically sets the title to the first 30 characters of that message content. In the current create flow, the preset initial message can set this title before the user's next message.
 
 #### Response Example
 
@@ -328,13 +337,13 @@ Returns all conversation lists for the current user (without message details).
 
 #### Success Response (200)
 
-Returns a temporary storage URL after successful file upload.
+Returns a temporary URL from the configured storage backend after successful file upload.
 
 ```json
 {
   "code": 200,
   "message": "Success",
-  "data": "https://minio.example.com/conversations/550e8400-e29b-41d4-a716-446655440003/xxxx_resume.pdf?X-Amz-Algorithm=..."
+  "data": "https://storage.example.com/conversations/550e8400-e29b-41d4-a716-446655440003/xxxx_resume.pdf?X-Amz-Algorithm=..."
 }
 ```
 
@@ -378,11 +387,10 @@ Returns a `text/plain` streaming response. The HTTP connection remains open unti
 > arriving at once.
 >
 > To upgrade to true token-by-token streaming in the future:
-> 1. Update the AI Service layer to use Gemini's `generate_content_stream()` API.
-> 2. Expose a new REST streaming endpoint in the AI Service (e.g. `/api/v1/conversation/stream`).
-> 3. Have the backend call the AI Service's streaming endpoint directly via `WebClient` or `RestTemplate`,
->    and proxy each chunk to the frontend through the existing `StreamingResponseBody` infrastructure.
-> 4. The MQ path can be kept for non-streaming scenarios or retired.
+> 1. Update the AI Service layer to emit token chunks through the configured LiteLLM-compatible provider.
+> 2. Expose a streaming endpoint or streaming MQ event path from the AI Service.
+> 3. Have the backend proxy each chunk to the frontend through the existing `StreamingResponseBody` infrastructure.
+> 4. The current MQ full-reply path can be kept for non-streaming scenarios.
 
 #### Calling Sequence
 
@@ -411,8 +419,7 @@ AI 回复超时，请稍后重试。
 | Status Code | Meaning | Trigger Scenario |
 |-------------|---------|------------------|
 | `401` | Not authenticated | Missing or expired JWT Token |
-| `403` | Insufficient permissions | Attempting to access a conversation that does not belong to you |
-| `404` | Resource does not exist | Conversation ID does not exist |
+| `400` | Conversation business error | Conversation does not exist, access denied, or other localized conversation-domain error |
 
 ---
 
@@ -423,11 +430,11 @@ AI 回复超时，请稍后重试。
 After the user calls the [Send Message] interface, the backend executes the following asynchronous flow:
 
 1. Save user message (`role=USER`) to the database
-2. If the conversation title is the default value and this is the first message, automatically generate the title
+2. If the conversation title is still the default value, automatically generate the title from the message content
 3. Assemble `ConversationRequestCommand`, including history messages, current message, resumeVersionId, resumeText, primaryJobText, relatedJobTexts, init flag, and locale
-4. Send via RabbitMQ to the `ai.req.conversation` queue
+4. Send via RabbitMQ using routing key `ai.req.conversation` to queue `ai.queue.conversation`
 5. Python AI service consumes the message and generates a reply
-6. AI service sends the result to the `backend.res.conversation` queue
+6. AI service sends the result using routing key `backend.res.conversation` to queue `backend.queue.conversation`
 7. `AiResultMessageListener` listens for `CONVERSATION_REPLY` type events and saves the AI reply (`role=ASSISTANT`) to the database
 8. If the AI result includes `resumeModification.modified=true`, the backend creates or updates an `AI_OPTIMIZED` resume version and appends the optimized Markdown to the assistant message content
 
@@ -509,40 +516,37 @@ After the user calls the [Send Message] interface, the backend executes the foll
 | Status Code | Meaning | Trigger Scenario |
 |-------------|---------|------------------|
 | `200` | Success | Request processed successfully |
-| `400` | Request parameter error | Message content empty, UUID format error, invalid pagination parameters |
+| `400` | Request or business error | Message content empty, UUID format error, invalid pagination parameters, conversation not found, access denied, closed conversation |
 | `401` | Not authenticated | Missing JWT Token or Token expired |
-| `403` | Insufficient permissions | Attempting to operate a conversation that does not belong to you |
-| `404` | Resource does not exist | Conversation ID does not exist, resume version ID does not exist |
-| `409` | Business conflict | Sending a message to a closed conversation |
 | `500` | Internal server error | File upload failure, MQ send exception |
 
 ### Business Error Examples
 
-**Send message to closed conversation (409)**:
+**Send message to closed conversation (400)**:
 
 ```json
 {
-  "code": 409,
+  "code": 400,
   "message": "Cannot add message to a closed conversation",
   "data": null
 }
 ```
 
-**Access conversation not belonging to you (403)**:
+**Access conversation not belonging to you (400)**:
 
 ```json
 {
-  "code": 403,
+  "code": 400,
   "message": "Access denied",
   "data": null
 }
 ```
 
-**Conversation does not exist (404)**:
+**Conversation does not exist (400)**:
 
 ```json
 {
-  "code": 404,
+  "code": 400,
   "message": "Conversation not found",
   "data": null
 }
@@ -577,7 +581,7 @@ After the user calls the [Send Message] interface, the backend executes the foll
 ```java
 {
   "content": String,         // Required, message content
-  "fileUrls": List<String>   // Optional, associated file URL list
+  "fileUrls": List<String>   // Optional, reserved attachment URL list; current backend sends an empty list to AI
 }
 ```
 
@@ -592,8 +596,8 @@ After the user calls the [Send Message] interface, the backend executes the foll
   "resumeVersionId": String,  // Associated resume version ID
   "jobId": String,            // Associated job ID
   "messages": MessageResponse[], // Message list (may be paginated)
-  "createdAt": LocalDateTime, // Creation time
-  "updatedAt": LocalDateTime  // Update time
+  "createdAt": OffsetDateTime, // Creation time
+  "updatedAt": OffsetDateTime  // Update time
 }
 ```
 
@@ -606,7 +610,7 @@ After the user calls the [Send Message] interface, the backend executes the foll
   "content": String,          // Content
   "sequence": int,            // Sequence number
   "fileUrl": String,          // Associated file URL (AI generated files, etc.)
-  "createdAt": LocalDateTime  // Creation time
+  "createdAt": OffsetDateTime // Creation time
 }
 ```
 

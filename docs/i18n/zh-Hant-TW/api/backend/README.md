@@ -83,13 +83,15 @@ Authorization: Bearer <access_token>
 |------|------|------|------|
 | `email` | String | 是 | 郵箱地址，需符合郵箱格式 |
 | `password` | String | 是 | 密碼，長度 6-32 字元 |
+| `captchaToken` | String | 是 | 滑動驗證碼驗證 token（從 `/v1/auth/captcha/verify` 獲取） |
 
 **請求範例**:
 
 ```json
 {
   "email": "user@example.com",
-  "password": "password123"
+  "password": "password123",
+  "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -133,19 +135,83 @@ Authorization: Bearer <access_token>
 |------|------|------|------|
 | `email` | String | 是 | 郵箱地址 |
 | `password` | String | 是 | 密碼 |
+| `captchaToken` | String | 是 | 滑動驗證碼驗證 token |
 
 **請求範例**:
 
 ```json
 {
   "email": "user@example.com",
-  "password": "password123"
+  "password": "password123",
+  "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
 **成功回應** (200):
 
 與郵箱註冊回應格式相同。
+
+---
+
+#### 1.3 Google 登入
+
+- **URL**: `POST /api/v1/auth/login/google`
+- **認證**: 不需要
+- **Content-Type**: `application/json`
+
+**請求參數**:
+
+| 欄位 | 類型 | 必填 | 說明 |
+|------|------|------|------|
+| `idToken` | String | 是 | Google ID Token |
+| `captchaToken` | String | 是 | 滑動驗證碼驗證 token |
+
+**請求範例**:
+
+```json
+{
+  "idToken": "eyJhbGciOiJSUzI1NiIs...",
+  "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**成功回應** (200):
+
+與郵箱登入回應格式相同。
+
+---
+
+#### 1.4 傳送驗證碼
+
+- **URL**: `POST /api/v1/auth/send-verification-code`
+- **認證**: 不需要
+- **Content-Type**: `application/json`
+
+**請求參數**:
+
+| 欄位 | 類型 | 必填 | 說明 |
+|------|------|------|------|
+| `email` | String | 是 | 郵箱地址，需符合郵箱格式 |
+| `captchaToken` | String | 是 | 滑動驗證碼驗證 token（預檢，不消耗） |
+
+**請求範例**:
+
+```json
+{
+  "email": "user@example.com",
+  "captchaToken": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**成功回應** (200):
+
+```json
+{
+  "code": 200,
+  "message": "驗證碼已傳送，請查收郵件",
+  "data": null
+}
+```
 
 ---
 
@@ -449,6 +515,12 @@ Authorization: Bearer <access_token>
 | 郵箱註冊 | POST | `/api/v1/auth/register/email` | 使用者郵箱註冊 | 否 |
 | 郵箱登入 | POST | `/api/v1/auth/login/email` | 使用者郵箱登入 | 否 |
 | Google 登入 | POST | `/api/v1/auth/login/google` | Google OAuth 登入 | 否 |
+| 傳送驗證碼 | POST | `/api/v1/auth/send-verification-code` | 傳送郵箱驗證碼 | 否 |
+| 查詢驗證開關 | GET | `/api/v1/auth/email-verification-enabled` | 查詢郵箱驗證是否開啟 | 否 |
+| 取得滑動驗證碼挑戰 | GET | `/api/v1/auth/captcha` | 取得滑動驗證碼挑戰 | 否 |
+| 驗證滑動驗證碼 | POST | `/api/v1/auth/captcha/verify` | 驗證拖動結果並頒發 token | 否 |
+| 傳送驗證碼 | POST | `/api/v1/auth/send-verification-code` | 傳送郵箱驗證碼 | 否 |
+| 查詢驗證開關 | GET | `/api/v1/auth/email-verification-enabled` | 查詢郵箱驗證是否開啟 | 否 |
 | 上傳履歷 | POST | `/api/v1/resumes` | 上傳履歷檔案 | 是 |
 | 下載履歷 | GET | `/api/v1/resumes/{versionId}/download` | 下載履歷檔案（支援格式轉換） | 是 |
 | 取得所有組 | GET | `/api/v1/resumes/groups` | 取得使用者所有履歷組 | 是 |
@@ -465,6 +537,8 @@ Authorization: Bearer <access_token>
 | 查詢配對結果 | GET | `/api/v1/jobs/match/{matchId}` | 查詢配對任務結果 | 是 |
 | 取得配對歷史 | GET | `/api/v1/jobs/match/history` | 取得歷史配對記錄 | 是 |
 | 向量搜尋職位 | POST | `/api/v1/jobs/vector-search` | ANN 向量搜尋職位 | 是 |
+| 職位評分 | POST | `/api/v1/jobs/{jobId}/score` | 對職位進行履歷匹配評分 | 是 |
+| 獲取職位數據集 | GET | `/api/v1/job-dataset` | 查詢訓練數據集（內部接口） | 否 |
 | 批次 Upsert 職位向量 | POST | `/api/v1/job-vectors/batch` | 批次 Upsert 職位向量（AI 層） | 否 |
 | 建立對話 | POST | `/api/v1/conversations` | 建立新對話 | 是 |
 | 發送訊息 | POST | `/api/v1/conversations/{conversationId}/messages` | 發送對話訊息 | 是 |
@@ -490,8 +564,19 @@ Authorization: Bearer <access_token>
 
 ```java
 {
-  "email": String,      // 必填，郵箱格式
-  "password": String    // 必填，6-32 字元
+  "email": String,              // 必填，郵箱格式
+  "password": String,           // 必填，6-32 字元
+  "verificationCode": String,   // 可選，6 位數字；開啟郵箱驗證時必填
+  "captchaToken": String        // 必填，從 /v1/auth/captcha/verify 獲取
+}
+```
+
+#### SendVerificationCodeRequest (傳送驗證碼請求)
+
+```java
+{
+  "email": String,         // 必填，郵箱格式
+  "captchaToken": String   // 必填，滑動驗證碼驗證 token（預檢，不消耗）
 }
 ```
 
@@ -499,8 +584,9 @@ Authorization: Bearer <access_token>
 
 ```java
 {
-  "email": String,      // 必填，郵箱格式
-  "password": String    // 必填
+  "email": String,         // 必填，郵箱格式
+  "password": String,      // 必填
+  "captchaToken": String   // 必填，滑動驗證碼驗證 token
 }
 ```
 
@@ -614,6 +700,8 @@ Authorization: Bearer <access_token>
 |------|------|
 | `email` | 必填，必須符合郵箱格式 |
 | `password` | 必填，長度 6-32 字元（註冊時） |
+| `verificationCode` | 關閉時可選；開啟時必須填寫（6 位數字） |
+| `captchaToken` | 所有認證介面必填（註冊、登入、Google 登入、傳送驗證碼） |
 
 ### 履歷上傳
 

@@ -705,17 +705,25 @@
 
 ### D. 資料庫表參考
 
-| 表名                | 描述               |
-|-------------------|------------------|
-| users             | 使用者帳戶資訊           |
-| resumes           | 履歷中繼資料            |
-| resume_embeddings | 履歷向量嵌入（pgvector） |
-| jobs              | 職位資訊             |
-| job_embeddings    | 職位向量嵌入（pgvector） |
-| conversations     | 對話會話             |
-| messages          | 對話訊息             |
-| job_applications  | 職位申請記錄           |
-| interviews        | 面試安排             |
+| 表名                   | 描述                    |
+|----------------------|-----------------------|
+| users                | 使用者帳戶資訊               |
+| user_profiles        | 使用者個人資料               |
+| user_credentials     | 使用者本機登入憑證             |
+| user_oauth_bindings  | 第三方登入綁定               |
+| resume_groups        | 履歷分組中繼資料              |
+| resume_versions      | 履歷版本與檔案資訊             |
+| resume_vectors       | 履歷向量嵌入（pgvector）      |
+| jobs                 | 職位資訊                  |
+| job_vectors          | 職位向量嵌入（pgvector）      |
+| job_scores           | 職位評分記錄                |
+| job_dataset          | 職位訓練/評估語料             |
+| job_match_results    | 職位匹配結果                |
+| conversations        | 對話會話                  |
+| messages             | 對話訊息                  |
+| application_trackings | 求職申請追蹤記錄              |
+| model_training_logs  | 模型訓練日誌                |
+| outbox_message       | 交易寄件匣訊息               |
 
 ### E. 參考資料
 

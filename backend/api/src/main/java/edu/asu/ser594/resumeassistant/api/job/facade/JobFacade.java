@@ -78,6 +78,17 @@ public interface JobFacade {
     JobScoreResponse scoreJob(String jobId, UUID userId, JobScoreRequest request);
 
     /**
+     * 追踪真实用户反馈行为，并发送至 AI 队列以支持增量学习。
+     * Track user action (CLICK, APPLY, REJECT) for AI incremental learning.
+     *
+     * @param jobId      职位 ID / The job ID.
+     * @param userId     用户 ID / The user ID.
+     * @param actionType      操作类型 / Action type (CLICK, APPLY, REJECT)
+     * @param resumeVersionId 关联的简历 ID（可选） / Associated resume version ID (optional)
+     */
+    void trackJobAction(String jobId, UUID userId, String actionType, String resumeVersionId);
+
+    /**
      * 获取用户的评分历史记录
      * Gets the score history for a user.
      *

@@ -53,6 +53,7 @@
       "errorInvalidCredentials": "Invalid email or password",
       "or": "or",
       "googleLoginFailed": "Google login failed, please try again",
+      "googleLogin": "Sign in with Google",
       "errors": {
         "emailRequired": "Please enter your email address",
         "emailInvalid": "Please enter a valid email address",
@@ -81,6 +82,11 @@
       "errorEmailExists": "Email already registered",
       "errorValidation": "Validation failed, please check your input",
       "errorGeneric": "Registration failed, please try again later",
+      "verificationCodeLabel": "Verification Code",
+      "verificationCodePlaceholder": "Enter 6-digit code",
+      "sendCode": "Send Code",
+      "resendCode": "Resend",
+      "sendCodeSuccess": "Verification code sent",
       "errors": {
         "emailRequired": "Please enter your email address",
         "emailInvalid": "Please enter a valid email address",
@@ -97,6 +103,14 @@
         "strong": "Strong",
         "hint": "Recommend including uppercase, lowercase, numbers and special characters, 8+ chars"
       }
+    },
+    "captcha": {
+      "dragHint": "Drag the slider to the target",
+      "success": "Verification passed",
+      "fail": "Verification failed, please try again",
+      "required": "Please complete the security verification",
+      "modalTitle": "Security Verification",
+      "modalDesc": "Please complete the verification to continue"
     }
   },
   "dashboard": {
@@ -276,6 +290,8 @@
     "selectResumePlaceholder": "Choose a ready resume...",
     "selectJob": "Select Job",
     "selectJobPlaceholder": "Choose an imported job...",
+    "selectedResumeLabel": "Resume: {{name}}",
+    "selectedJobLabel": "Job: {{name}}",
     "resumeRequired": "Please select a resume",
     "jobRequired": "Please select a job",
     "noAvailableJobs": "No available jobs. Please import a job from the Job Matching page first.",

@@ -8,6 +8,10 @@ import edu.asu.ser594.resumeassistant.api.job.dto.request.UpdateJobRequest;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobScoreHistoryResponse;
 import edu.asu.ser594.resumeassistant.api.job.dto.response.JobScoreResponse;
+import edu.asu.ser594.resumeassistant.domain.embedding.entity.JobVector;
+import edu.asu.ser594.resumeassistant.domain.embedding.entity.ResumeVector;
+import edu.asu.ser594.resumeassistant.domain.embedding.repository.JobVectorRepository;
+import edu.asu.ser594.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
 import edu.asu.ser594.resumeassistant.domain.job.entity.Job;
 import edu.asu.ser594.resumeassistant.domain.job.entity.JobScoreRecord;
 import edu.asu.ser594.resumeassistant.domain.job.exception.JobContentNotReadyException;
@@ -15,12 +19,15 @@ import edu.asu.ser594.resumeassistant.domain.job.exception.JobException;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobRepository;
 import edu.asu.ser594.resumeassistant.domain.job.repository.JobScoreRepository;
 import edu.asu.ser594.resumeassistant.domain.job.valueobject.ParsedJobContent;
+import edu.asu.ser594.resumeassistant.domain.matching.entity.JobDataset;
+import edu.asu.ser594.resumeassistant.domain.matching.repository.JobDatasetRepository;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeGroup;
 import edu.asu.ser594.resumeassistant.domain.resume.entity.ResumeVersion;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeGroupRepository;
 import edu.asu.ser594.resumeassistant.domain.resume.repository.ResumeVersionRepository;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import edu.asu.ser594.resumeassistant.domain.shared.event.ai.JobParseCommand;
+import edu.asu.ser594.resumeassistant.domain.shared.event.ai.UserFeedbackCommand;
 import edu.asu.ser594.resumeassistant.domain.shared.exception.AiServiceUnavailableException;
 import edu.asu.ser594.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -56,6 +64,9 @@ public class JobApplicationService {
     private final JobScoreRepository jobScoreRepository;
     private final ResumeVersionRepository resumeVersionRepository;
     private final ResumeGroupRepository resumeGroupRepository;
+    private final JobDatasetRepository jobDatasetRepository;
+    private final ResumeVectorRepository resumeVectorRepository;
+    private final JobVectorRepository jobVectorRepository;
     private final AiMessagePublisherPort aiMessagePublisherPort;
     private final VectorFacade vectorFacade;
     private final RestTemplate restTemplate;
@@ -76,6 +87,10 @@ public class JobApplicationService {
     @Transactional
     public JobResponse submitJob(UUID userId, SubmitJobRequest request) {
         log.info("Submitting new job for async processing for user: {}", userId);
+
+        if (request.url() == null || request.url().isBlank()) {
+            throw new IllegalArgumentException("Job URL is required / 职位 URL 不能为空");
+        }
 
         if (request.screenshotBase64() != null && !request.screenshotBase64().isEmpty()) {
             long base64Len = request.screenshotBase64().length();
@@ -146,6 +161,27 @@ public class JobApplicationService {
                 log.info("Vector generated and saved for job: {}", job.getId());
             } catch (Exception e) {
                 log.error("Failed to generate vector for job: {}", job.getId(), e);
+            }
+
+            // 写入训练数据集（非阻塞）/ Write to training dataset (non-blocking)
+            try {
+                ParsedJobContent pc = job.getParsedContent();
+                JobDataset dataset = JobDataset.builder()
+                        .externalId(job.getId())
+                        .title(pc.title())
+                        .company(pc.company())
+                        .description(pc.description())
+                        .requirements(pc.requirements() != null ? pc.requirements().toArray(new String[0]) : new String[0])
+                        .location(pc.location())
+                        .experienceLevel(null)
+                        .source("USER_SUBMITTED")
+                        .rawData(objectMapper.convertValue(event.data(), Map.class))
+                        .build();
+                jobDatasetRepository.save(dataset);
+                log.info("Job {} saved to training dataset", job.getId());
+            } catch (Exception e) {
+                log.error("Failed to save job to dataset: {}", job.getId(), e);
+                // 非阻塞：训练数据写入失败不应影响主流程
             }
         } else {
             job.markFailed(event.errorMessage() != null ? event.errorMessage() : "Unknown AI processing error");
@@ -338,10 +374,14 @@ public class JobApplicationService {
                     "requirements", pc.requirements() != null ? pc.requirements() : List.of()
             );
 
-            Map<String, Object> suitabilityRequest = Map.of(
-                    "resume", resumeMap,
-                    "job", jobMap
-            );
+            Float semanticMatch = calculateSemanticMatch(request.resumeVersionId(), jobId);
+
+            Map<String, Object> suitabilityRequest = new HashMap<>();
+            suitabilityRequest.put("resume", resumeMap);
+            suitabilityRequest.put("job", jobMap);
+            if (semanticMatch != null) {
+                suitabilityRequest.put("semanticMatch", semanticMatch);
+            }
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -360,6 +400,9 @@ public class JobApplicationService {
             String summary = (String) responseBody.get("summary");
             Number finalScoreNum = (Number) responseBody.get("finalScore");
             float finalScore = finalScoreNum != null ? finalScoreNum.floatValue() : 0.0f;
+            String llmModel = (String) responseBody.get("llmModel");
+            Number datasetScoreNum = (Number) responseBody.get("datasetScore");
+            Float datasetScore = datasetScoreNum != null ? datasetScoreNum.floatValue() : null;
 
             @SuppressWarnings("unchecked")
             Map<String, Object> breakdownMap = (Map<String, Object>) responseBody.get("breakdown");
@@ -401,6 +444,44 @@ public class JobApplicationService {
         } catch (Exception e) {
             log.error("Failed to score job {} against resume {}", jobId, request.resumeVersionId(), e);
             throw new RuntimeException("Failed to score job: " + e.getMessage(), e);
+        }
+    }
+
+    private Float calculateSemanticMatch(String resumeVersionId, String jobId) {
+        try {
+            ResumeVector resumeVector = resumeVectorRepository.findByResumeVersionId(resumeVersionId).orElse(null);
+            JobVector jobVector = jobVectorRepository.findByJobId(jobId).orElse(null);
+            if (resumeVector == null || jobVector == null
+                    || resumeVector.getEmbedding() == null || jobVector.getEmbedding() == null) {
+                return null;
+            }
+
+            float[] resumeEmbedding = resumeVector.getEmbedding();
+            float[] jobEmbedding = jobVector.getEmbedding();
+            int length = Math.min(resumeEmbedding.length, jobEmbedding.length);
+            if (length == 0) {
+                return null;
+            }
+
+            double dot = 0.0;
+            double resumeNorm = 0.0;
+            double jobNorm = 0.0;
+            for (int i = 0; i < length; i++) {
+                dot += resumeEmbedding[i] * jobEmbedding[i];
+                resumeNorm += resumeEmbedding[i] * resumeEmbedding[i];
+                jobNorm += jobEmbedding[i] * jobEmbedding[i];
+            }
+            if (resumeNorm == 0.0 || jobNorm == 0.0) {
+                return null;
+            }
+
+            double cosineSimilarity = dot / (Math.sqrt(resumeNorm) * Math.sqrt(jobNorm));
+            double normalized = Math.max(0.0, Math.min(1.0, (cosineSimilarity + 1.0) / 2.0));
+            return (float) normalized;
+        } catch (Exception e) {
+            log.warn("Failed to calculate semantic match for jobId={}, resumeVersionId={}: {}",
+                    jobId, resumeVersionId, e.getMessage());
+            return null;
         }
     }
 
@@ -449,5 +530,36 @@ public class JobApplicationService {
                 job.isImageCheckEnabled(),
                 job.getErrorMessage()
         );
+    }
+
+    /**
+     * Track user action (CLICK, APPLY, REJECT) for AI incremental learning.
+     * 追踪真实用户反馈行为，并发送至 AI 队列以支持增量学习。
+     */
+    @Transactional
+    public void trackUserAction(String jobId, UUID userId, String actionType, String resumeVersionId) {
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new JobException("job.not.found"));
+
+        if (!job.getUserId().equals(userId)) {
+            throw new JobException("access.denied");
+        }
+
+        try {
+            UserFeedbackCommand feedbackCmd = new UserFeedbackCommand(
+                    java.util.UUID.randomUUID().toString(),
+                    userId,
+                    resumeVersionId, // Passing the specific resume context
+                    jobId,
+                    actionType,
+                    0.0,
+                    "{}",
+                    java.time.Instant.now()
+            );
+            aiMessagePublisherPort.sendUserFeedback(feedbackCmd);
+            log.info("User action '{}' tracked and sent to outbox for jobId={}, resumeVersionId={}", actionType, jobId, resumeVersionId);
+        } catch (Exception e) {
+            log.error("Failed to send user action '{}' to outbox for jobId={}: {}", actionType, jobId, e.getMessage());
+        }
     }
 }

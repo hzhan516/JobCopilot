@@ -2,6 +2,7 @@ import json
 import logging
 import re
 import base64
+import threading
 from typing import Any
 
 import litellm
@@ -13,10 +14,15 @@ from app.config import (
     LLM_VISION_MODEL,
     LLM_TEMPERATURE,
     LLM_REQUEST_TIMEOUT_SECONDS,
+    LLM_MAX_TOKENS,
 )
 
 logger = logging.getLogger(__name__)
 
+# 全局并发锁：防止 FastAPI 的 I/O 并发瞬间打爆 Vertex AI 导致 429
+# Global Semaphore: Threading bounded semaphore to cap concurrent LLM requests
+MAX_CONCURRENT_LLM_REQUESTS = 5
+_llm_semaphore = threading.BoundedSemaphore(MAX_CONCURRENT_LLM_REQUESTS)
 
 # Exponential backoff for transient LLM failures (rate limits, connection drops).
 # 指数退避重试：针对 LLM 服务商的瞬时限流或网络抖动，避免请求堆积放大故障。
@@ -44,7 +50,13 @@ def _extract_json_text(raw_text: str) -> str:
     if not match:
         raise ValueError(f"LLM response did not contain a JSON object: {raw_text}")
 
-    return match.group(0)
+    extracted = match.group(0)
+    # Brace-mismatch is a strong signal of truncated JSON.
+    # 大括号不匹配是 JSON 被截断的典型信号，提前拦截可避免下游解析产生晦涩错误。
+    if extracted.count("{") != extracted.count("}"):
+        raise ValueError(f"Extracted JSON is incomplete: braces mismatch in {extracted[:200]}")
+
+    return extracted
 
 
 def _safe_json_loads(text: str) -> dict[str, Any]:
@@ -101,17 +113,29 @@ def _generate_text(model: str, messages: list[dict[str, Any]]) -> str:
     执行文本补全：带重试机制与空响应兜底，防止下游因空字符串导致解析异常。"""
     logger.debug("LLM request: model=%s, messages_count=%d", model, len(messages))
     try:
-        response = completion(
-            model=model,
-            messages=messages,
-            temperature=LLM_TEMPERATURE,
-            timeout=LLM_REQUEST_TIMEOUT_SECONDS,
-        )
+        with _llm_semaphore:
+            response = completion(
+                model=model,
+                messages=messages,
+                temperature=LLM_TEMPERATURE,
+                max_tokens=LLM_MAX_TOKENS,
+                timeout=LLM_REQUEST_TIMEOUT_SECONDS,
+            )
     except Exception:
         logger.exception("LLM completion failed: model=%s", model)
         raise
 
-    content = response.choices[0].message.content
+    if not response.choices:
+        raise ValueError("LiteLLM returned no choices.")
+    choice = response.choices[0]
+    finish_reason = getattr(choice, "finish_reason", None)
+    if finish_reason == "length":
+        raise ValueError(
+            f"LLM response was truncated due to token limit (finish_reason=length). "
+            f"Consider increasing LLM_MAX_TOKENS (current={LLM_MAX_TOKENS})."
+        )
+
+    content = choice.message.content
     if not content:
         raise ValueError("LiteLLM returned an empty response.")
 

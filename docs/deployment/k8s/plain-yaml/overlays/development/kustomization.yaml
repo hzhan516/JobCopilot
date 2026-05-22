@@ -1,0 +1,26 @@
+# =============================================================================
+# Development Overlay / 开发环境 Overlay
+# =============================================================================
+# Usage:
+#   kubectl apply -k docs/deployment/k8s/plain-yaml/overlays/development/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: resume-assistant-dev
+
+resources:
+  - ../../base
+
+namePrefix: dev-
+
+commonLabels:
+  environment: development
+
+patches:
+  - target:
+      kind: Ingress
+      name: resume-assistant
+    patch: |
+      - op: replace
+        path: /spec/rules/0/host
+        value: dev.resume-assistant.local

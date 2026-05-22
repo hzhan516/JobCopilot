@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import { Download, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import type { DownloadFormat } from '@/types/resume.ts';
 import { downloadResume } from '@/utils/file.ts';
 
@@ -26,6 +27,7 @@ export function DownloadButton({ versionId, filename = 'resume' }: DownloadButto
       await downloadResume(versionId, format, filename);
     } catch (error) {
       console.error(t('resume.download.error'), error);
+      toast.error(t('resume.download.error'));
     } finally {
       setIsDownloading(false);
     }

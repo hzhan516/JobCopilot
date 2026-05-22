@@ -705,17 +705,25 @@
 
 ### D. 数据库表参考
 
-| 表名                | 描述               |
-|-------------------|------------------|
-| users             | 用户账户信息           |
-| resumes           | 简历元数据            |
-| resume_embeddings | 简历向量嵌入（pgvector） |
-| jobs              | 职位信息             |
-| job_embeddings    | 职位向量嵌入（pgvector） |
-| conversations     | 对话会话             |
-| messages          | 对话消息             |
-| job_applications  | 职位申请记录           |
-| interviews        | 面试安排             |
+| 表名                   | 描述                    |
+|----------------------|-----------------------|
+| users                | 用户账户信息                |
+| user_profiles        | 用户个人资料                |
+| user_credentials     | 用户本地登录凭证              |
+| user_oauth_bindings  | 第三方登录绑定               |
+| resume_groups        | 简历分组元数据               |
+| resume_versions      | 简历版本与文件信息             |
+| resume_vectors       | 简历向量嵌入（pgvector）      |
+| jobs                 | 职位信息                  |
+| job_vectors          | 职位向量嵌入（pgvector）      |
+| job_scores           | 职位评分记录                |
+| job_dataset          | 职位训练/评估语料             |
+| job_match_results    | 职位匹配结果                |
+| conversations        | 对话会话                  |
+| messages             | 对话消息                  |
+| application_trackings | 求职申请追踪记录              |
+| model_training_logs  | 模型训练日志                |
+| outbox_message       | 事务发件箱消息               |
 
 ### E. 参考资料
 

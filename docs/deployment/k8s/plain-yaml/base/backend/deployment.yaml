@@ -1,0 +1,78 @@
+# =============================================================================
+# Backend Deployment / Java Spring Boot
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resume-assistant-backend
+  namespace: resume-assistant
+  labels:
+    app.kubernetes.io/name: resume-assistant
+    app.kubernetes.io/component: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: resume-assistant
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: resume-assistant
+        app.kubernetes.io/component: backend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: backend
+          image: resume-assistant-backend:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: resume-assistant-config
+            - secretRef:
+                name: resume-assistant-secrets
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "dev"
+            - name: FILE_STORAGE_PATH
+              value: "/app/uploads"
+            - name: LOCAL_STORAGE_BASE_PATH
+              value: "/app/uploads"
+          ports:
+            - name: http
+              containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /api/actuator/health
+              port: http
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /api/actuator/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+            - name: logs
+              mountPath: /app/backend/logs
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: uploads
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}

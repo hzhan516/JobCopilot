@@ -4,7 +4,7 @@ from typing import Any
 
 import requests
 
-from app.config import BACKEND_QUERY_TIMEOUT, BACKEND_SERVICE_URL
+from app.config import BACKEND_QUERY_TIMEOUT, BACKEND_SERVICE_URL, INTERNAL_API_KEY
 from app.schemas import JobMatchRequest, JobMatchResponse, MatchFactors, MatchItem
 from app.services.vector_service import generate_embedding
 
@@ -55,6 +55,7 @@ def find_job_matches(request: JobMatchRequest) -> JobMatchResponse:
         query_embedding = None
 
     try:
+        headers = {"X-Internal-API-Key": INTERNAL_API_KEY} if INTERNAL_API_KEY else {}
         response = requests.post(
             f"{BACKEND_SERVICE_URL.rstrip('/')}/api/v1/jobs/vector-search",
             json={
@@ -63,6 +64,7 @@ def find_job_matches(request: JobMatchRequest) -> JobMatchResponse:
                 "limit": request.top_k,
                 "filters": request.filters,
             },
+            headers=headers,
             timeout=BACKEND_QUERY_TIMEOUT,
         )
         response.raise_for_status()

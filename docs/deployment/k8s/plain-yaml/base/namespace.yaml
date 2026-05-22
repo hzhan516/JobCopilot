@@ -1,0 +1,10 @@
+# =============================================================================
+# Namespace / 命名空间
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: resume-assistant
+  labels:
+    app.kubernetes.io/name: resume-assistant
+    app.kubernetes.io/managed-by: kubectl

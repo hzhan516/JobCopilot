@@ -13,7 +13,8 @@ Resume Assistant（智能求职助手）是一个以**三层 Docker 网络架构
                             |
                             v
                     +---------------+
-                    |  Nginx : 80   |  <-- 唯一公网入口
+                    | Host:80 ->    |  <-- 唯一公网入口
+                    | Nginx : 8080  |
                     |  (frontend)   |
                     +---------------+
                             |
@@ -21,32 +22,41 @@ Resume Assistant（智能求职助手）是一个以**三层 Docker 网络架构
             |                               |
             v                               v
    +------------------+           +------------------+
-   |  backend : 8080  |           |  ai-service:8000 |
-   |  (Spring Boot)   |<--------->|  (FastAPI)       |
+   |  backend : 8080  |           | ai-service:8000  |
+   |  (Spring Boot)   |<--------->|  (AI API)        |
    +------------------+           +------------------+
             |                               |
             |      +------------------+     |
-            +----->| rabbitmq : 5672  |<----+
-                   | (Message Queue)  |
-                   +------------------+
-            |
-            v
-   +------------------+
-   | postgres : 5432  |
-   | (PostgreSQL +    |
-   |  pgvector)       |
-   +------------------+
+            |      | rabbitmq : 5672  |<----+
+            |      | (Message Queue)  |     |
+            |      +------------------+     |
+            |      +------------------+     |
+            +----->|  redis   : 6379  |<----+
+                   |  (缓存与锁)      |     |
+                   +------------------+     |
+            |                               |
+            v                               v
+   +------------------+           +------------------+
+   | postgres : 5432  |           |  ai-worker       |
+   | (PostgreSQL +    |           |  (LightGBM)      |
+   |  pgvector)       |           +------------------+
+   +------------------+                   |
+                                          v
+                                  +------------------+
+                                  |  minio : 9000    |
+                                  |  (模型注册表)    |
+                                  +------------------+
 ```
 
 ### 网络分层
 
 | 网络 | 服务 | 外部暴露 | 用途 |
 |------|------|----------|------|
-| **公网（Public）** | `frontend`（Nginx） | 仅端口 `80` | 所有 HTTP/HTTPS 流量的单一入口 |
-| **内网（Internal）** | `backend`、`ai-service`、`rabbitmq` | 无（仅 Docker DNS） | 服务间通过容器名通信 |
-| **数据库网（Database）** | `postgres` | 无（仅 Docker DNS） | 隔离的持久化数据存储 |
+| **公网（Public）** | `frontend`（Nginx）、`backend` | 宿主机 `${FRONTEND_HOST_PORT:-80}` 转发到 `frontend:8080` | 所有 HTTP/HTTPS 流量的单一入口 |
+| **内网（Internal）** | `backend`、`ai-service`、`ai-worker`、`rabbitmq`、`redis`、`minio` | 无（仅 Docker DNS） | 服务间通过容器名通信 |
+| **数据库网（Database）** | `backend`、`postgres` | 无（仅 Docker DNS） | 隔离的持久化数据存储 |
 
-> **开发模板说明**：当前 `docker-compose.yml` 模板为方便本地调试，额外映射了宿主机端口（`8080`、`8000`、`5432`、`5672`、`15672`）。在**生产部署**中，仅应将 `frontend:80` 暴露给宿主机。
+> **开发模板说明**：当前 `docker-compose.yml` 默认只暴露前端。后端（`8080`）、AI 服务（`8000`）、PostgreSQL（`5432`）、RabbitMQ（`5672`）和 RabbitMQ Management（`15672`）的宿主机端口仅保留为已注释的开发调试示例。在**生产部署**中，仅应暴露前端宿主机端口。
 
 ## 3. 服务清单
 
@@ -54,8 +64,8 @@ Resume Assistant（智能求职助手）是一个以**三层 Docker 网络架构
 
 | 属性 | 值 |
 |------|-----|
-| **网络** | `resume-network`（公网 + 内网） |
-| **宿主机端口** | `80`（生产目标；模板使用 `8081:80` 用于开发） |
+| **网络** | `public-network` |
+| **宿主机端口** | `${FRONTEND_HOST_PORT:-80}:8080` |
 | **职责** | 静态单页应用托管与所有 API 流量的反向代理。 |
 | **安全说明** | Nginx 将 `/api/*` 代理至 `backend:8080`。环境变量 `VITE_API_BASE_URL` **必须为空或相对路径**（例如 `/api`）。若设为绝对 URL（如 `http://backend:8080`），浏览器将直接连接后端，绕过 Nginx，破坏单入口安全模型。 |
 
@@ -63,26 +73,26 @@ Resume Assistant（智能求职助手）是一个以**三层 Docker 网络架构
 
 | 属性 | 值 |
 |------|-----|
-| **网络** | `resume-network`（公网 + 内网 + 数据库网） |
-| **宿主机端口** | 生产环境无（模板暴露 `8080:8080` 用于开发） |
-| **职责** | REST API 网关、JWT 身份验证、业务逻辑编排、RabbitMQ 生产者。 |
+| **网络** | `public-network`、`internal-network`、`db-network` |
+| **宿主机端口** | 默认无；`8080:8080` 是已注释的开发调试示例 |
+| **职责** | REST API 网关、JWT 身份验证、CAPTCHA 验证、业务逻辑编排、RabbitMQ 生产者。 |
 | **安全说明** | 唯一跨越三层网络的服务。通过 Docker DNS 与 PostgreSQL（`postgres:5432`）和 RabbitMQ（`rabbitmq:5672`）通信。所有发往 `ai-service` 的出站 REST 请求均携带 `X-Internal-API-Key` 请求头。 |
 
 ### 3.3 AI 服务（FastAPI）
 
 | 属性 | 值 |
 |------|-----|
-| **网络** | `resume-network`（仅内网） |
-| **宿主机端口** | 生产环境无（模板暴露 `8000:8000` 用于开发） |
-| **职责** | 大语言模型（LLM）推理、嵌入向量生成、简历/职位解析、职位排序。 |
+| **网络** | `internal-network` |
+| **宿主机端口** | 默认无；`8000:8000` 是已注释的开发调试示例 |
+| **职责** | 大语言模型（LLM）推理、嵌入向量生成、简历/职位解析、职位排序、适配度评分，以及自适应模型产物加载。 |
 | **安全说明** | REST 端点 `/api/v1/ai/embeddings` 受 `X-Internal-API-Key` 中间件保护。MQ 消费者监听四个队列：`ai.queue.job.parse`、`ai.queue.resume.parse`、`ai.queue.conversation`、`ai.queue.job.rank`。不访问数据库。 |
 
 ### 3.4 PostgreSQL（含 pgvector）
 
 | 属性 | 值 |
 |------|-----|
-| **网络** | `resume-network`（仅数据库网） |
-| **宿主机端口** | 生产环境无（模板暴露 `5432:5432` 用于开发） |
+| **网络** | `db-network` |
+| **宿主机端口** | 默认无；`5432:5432` 是已注释的开发调试示例 |
 | **职责** | 业务数据与嵌入向量的统一存储。 |
 | **安全说明** | 使用 `pgvector` 扩展进行相似度检索。仅能从 Docker 网络内的 `backend` 访问。即使具备网络隔离，强密码 `POSTGRES_PASSWORD` 仍是纵深防御的必备措施。 |
 
@@ -90,18 +100,27 @@ Resume Assistant（智能求职助手）是一个以**三层 Docker 网络架构
 
 | 属性 | 值 |
 |------|-----|
-| **网络** | `resume-network`（仅内网） |
-| **宿主机端口** | 生产环境无（模板暴露 `5672:5672` 和 `15672:15672` 用于开发） |
+| **网络** | `internal-network` |
+| **宿主机端口** | 默认无；`5672:5672` 和 `15672:15672` 是已注释的开发调试示例 |
 | **职责** | 后端与 AI 服务之间的异步消息代理（Outbox 模式，消息队列）。 |
 | **安全说明** | 通过环境变量覆盖默认的 `guest/guest` 凭据。管理面板（`:15672`）绝不应暴露于公网；通过 SSH 隧道访问：`ssh -L 15672:localhost:15672 <host>`。消息大小限制设为 10 MB（`max_message_size 10485760`），以容纳向量和简历摘要。 |
 
+### 3.6 Redis（缓存与锁）
+
+| 属性 | 值 |
+|------|-----|
+| **网络** | `internal-network` |
+| **宿主机端口** | 生产环境无 |
+| **职责** | 分布式状态存储：CAPTCHA 挑战/token、验证码、对话流桥接、增量模型统计、去重集合、分布式锁（ShedLock）。 |
+| **安全说明** | 无外部访问。开发环境密码认证可选（`REDIS_PASSWORD` 可为空），生产环境建议启用。数据通过 `redis-data` 命名卷持久化。 |
+
 ## 4. 纵深防御（Defense in Depth）
 
-本部署实现了四层独立的安全层。攻破一层不会自动导致下一层失守。
+本部署实现了五层独立的安全层。攻破一层不会自动导致下一层失守。
 
 ### 第一层：网络隔离
 
-仅 `frontend` 服务（Nginx，端口 `80`）面向公网暴露。其他所有服务通过 Docker 内部 DNS（`<service-name>`）通信。对宿主机的外部端口扫描只能发现端口 `80`。
+仅 `frontend` 服务通过宿主机 `${FRONTEND_HOST_PORT:-80}` 面向公网暴露，并转发到容器内 Nginx 的 `8080` 端口。其他所有服务通过 Docker 内部 DNS（`<service-name>`）通信。对宿主机的外部端口扫描应只能发现配置的前端宿主机端口。
 
 ### 第二层：应用层 API 密钥
 
@@ -116,6 +135,10 @@ Resume Assistant（智能求职助手）是一个以**三层 Docker 网络架构
 ### 第四层：RabbitMQ 凭据
 
 AMQP 连接需要用户名和密码。默认的 `guest/guest` 通过环境变量覆盖。即使某个容器被攻破，访问消息代理仍需要独立的凭据。
+
+### 第五层：人机验证（CAPTCHA）
+
+所有认证端点（注册、登录）均要求有效的 CAPTCHA 挑战-响应。后端维护前缀隔离的 Redis 缓存（String 存储挑战/token，Sorted Set 存储 IP 速率限制滑动窗口）用于存储挑战和一次性 token，并实施基于 IP 的速率限制（每分钟 20 次请求）。即使攻击者绕过网络隔离并持有有效凭据，也无法在不解决 CAPTCHA 挑战的情况下以编程方式完成认证。
 
 ## 5. 快速开始
 
@@ -160,7 +183,7 @@ curl -f http://localhost/health
 
 ```yaml
 ports:
-  - "8081:80"   # 或宿主机上任意空闲端口
+  - "8081:8080"   # 或宿主机上任意空闲端口
 ```
 
 然后通过 `http://localhost:8081` 访问应用。

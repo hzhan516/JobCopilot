@@ -5,80 +5,22 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 
 from app.config import LLM_REQUEST_TIMEOUT_SECONDS, LLM_TEXT_MODEL
 from app.schemas import JobRankCommand, JobRankResultPayload, JobRankResultItem, MatchFactors
-
+from app.api.model_manager import model_manager
+from app.domain.ml.features import extract_features, FEATURE_COLUMNS
 
 logger = logging.getLogger(__name__)
 
-
-def _tokenize(text: str) -> set[str]:
-    """Tokenize into lowercase alphanumeric tokens of length >= 2.
-    分词策略：过滤单字符与纯符号，保留长度 >= 2 的字母数字 token，用于轻量 lexical 匹配。"""
-    token = []
-    tokens: set[str] = set()
-
-    for char in text.lower():
-        if char.isalnum():
-            token.append(char)
-        else:
-            if len(token) >= 2:
-                tokens.add("".join(token))
-            token = []
-
-    if len(token) >= 2:
-        tokens.add("".join(token))
-
-    return tokens
-
+FALLBACK_WEIGHTS = {"skill": 0.35, "experience": 0.25, "semantic": 0.40}
 
 def _clip_score(value: float) -> float:
     return max(0.0, min(1.0, value))
 
-
-def _rank_single_job(
-    job_id: str,
-    command: JobRankCommand,
-) -> JobRankResultItem:
-    """Rank a single job using lexical overlap weighted against pre-computed semantic similarity.
-    单职位排序：结合 query-resume 与 title/description 的 lexical overlap 及后端预计算的 semantic match，
-    权重分配为 0.35/0.25/0.40，保证语义相似度占主导的同时保留关键词匹配的区分度。"""
-    details = command.job_details.get(job_id, {})
-    if not isinstance(details, dict):
-        details = {}
-
-    title = str(details.get("title", "")).strip()
-    company = str(details.get("company", "")).strip()
-    description = str(details.get("description", "")).strip()
-    
-    semantic_match = float(details.get("semanticMatch", 0.0))
-
-    query_text = " ".join(part for part in [command.query, command.resume_text] if part).strip()
-    query_tokens = _tokenize(query_text)
-    title_tokens = _tokenize(title)
-    description_tokens = _tokenize(description)
-
-    skill_match = 0.0 if not query_tokens else len(query_tokens & title_tokens) / len(query_tokens)
-    experience_match = 0.0 if not query_tokens else len(query_tokens & description_tokens) / len(query_tokens)
-
-    match_score = _clip_score((skill_match * 0.35) + (experience_match * 0.25) + (semantic_match * 0.40))
-
-    short_description = description.replace("\n", " ")
-    if len(short_description) > 280:
-        short_description = short_description[:277].rstrip() + "..."
-
-    return JobRankResultItem(
-        jobId=job_id,
-        title=title,
-        company=company,
-        matchScore=round(match_score, 4),
-        matchFactors=MatchFactors(
-            skillMatch=round(_clip_score(max(skill_match, semantic_match)), 4),
-            experienceMatch=round(_clip_score(max(experience_match, semantic_match)), 4),
-            locationMatch=0.0,
-        ),
-        description=short_description,
-        matchReason=None,
+def _fallback_rank_score(features: dict[str, float]) -> float:
+    return _clip_score(
+        features["skill_overlap_ratio"] * FALLBACK_WEIGHTS["skill"]
+        + features["experience_overlap_ratio"] * FALLBACK_WEIGHTS["experience"]
+        + features["semantic_match"] * FALLBACK_WEIGHTS["semantic"]
     )
-
 
 @retry(
     stop=stop_after_attempt(2),
@@ -90,8 +32,6 @@ def _rank_single_job(
     ))
 )
 def _safe_llm_call(prompt: str) -> str:
-    """Retry wrapper for LLM calls used to generate match reasons.
-    LLM 调用重试包装器：仅对瞬态异常（超时、限流、连接错误）重试，避免对业务逻辑错误浪费 token。"""
     response = litellm.completion(
         model=LLM_TEXT_MODEL,
         messages=[{"role": "user", "content": prompt}],
@@ -99,18 +39,14 @@ def _safe_llm_call(prompt: str) -> str:
         max_tokens=150,
         timeout=min(10.0, LLM_REQUEST_TIMEOUT_SECONDS),
     )
+    if not response.choices:
+        raise ValueError("LiteLLM returned no choices.")
     return response.choices[0].message.content.strip()
 
-
-def _generate_match_reason(command: JobRankCommand, job: JobRankResultItem) -> str | None:
-    """Generate a concise natural-language match reason for top-ranked jobs.
-    为头部职位生成匹配理由：仅对 top-3 调用 LLM 以控制成本；prompt 中嵌入 XML 标签隔离不可信数据，
-    防止提示注入攻击影响模型行为。"""
+async def _generate_match_reason(command: JobRankCommand, job: JobRankResultItem) -> str | None:
     if not command.resume_text:
         return None
 
-    # Truncate inputs to prevent token overflow and reduce latency.
-    # 截断输入防止 token 溢出并降低延迟。
     resume_snippet = command.resume_text[:3000]
     
     details = command.job_details.get(job.job_id, {})
@@ -135,33 +71,80 @@ Company: {job.company}
 Details: {job_desc}
 </job_description>
 """
-
     try:
         return _safe_llm_call(prompt)
     except Exception:
         logger.exception("Failed to generate match reason for job_id=%s after retries", job.job_id)
         return None
 
-
-def rank_jobs(command: JobRankCommand) -> JobRankResultPayload:
-    """Rank recalled jobs and optionally attach LLM-generated match reasons for the top candidates.
-    职位精排主入口：先按混合得分排序，再为 top-3 生成可解释性理由，兼顾排序效率与用户体验。"""
+async def rank_jobs(command: JobRankCommand) -> JobRankResultPayload:
     rank_start = time.perf_counter()
 
-    ranked_results = [
-        _rank_single_job(job_id, command)
-        for job_id in command.recalled_job_ids
-    ]
+    job_features = []
+    for job_id in command.recalled_job_ids:
+        details = command.job_details.get(job_id, {})
+        if not isinstance(details, dict):
+            details = {}
+        features = extract_features(details, command.query, command.resume_text)
+        job_features.append((job_id, features))
+
+    if not job_features:
+        return JobRankResultPayload(
+            matchId=command.match_id,
+            status="COMPLETED",
+            rankTimeMs=0,
+            rankedResults=[],
+            errorMessage=None,
+        )
+
+    try:
+        feature_matrix = [
+            [features[col] for col in FEATURE_COLUMNS]
+            for _, features in job_features
+        ]
+        model_scores = await model_manager.predict(feature_matrix)
+        use_model = True
+    except Exception as e:
+        logger.debug(f"Model inference not available ({e}); falling back to heuristic ranking")
+        model_scores = [_fallback_rank_score(features) for _, features in job_features]
+        use_model = False
+
+    ranked_results = []
+    for (job_id, features), score in zip(job_features, model_scores):
+        details = command.job_details.get(job_id, {})
+        if not isinstance(details, dict):
+            details = {}
+
+        description = str(details.get("description", "")).replace("\n", " ")
+        if len(description) > 280:
+            description = description[:277].rstrip() + "..."
+
+        ranked_results.append(
+            JobRankResultItem(
+                jobId=job_id,
+                title=str(details.get("title", "")).strip(),
+                company=str(details.get("company", "")).strip(),
+                matchScore=round(_clip_score(float(score)), 4),
+                matchFactors=MatchFactors(
+                    skillMatch=round(_clip_score(features["skill_overlap_ratio"]), 4),
+                    experienceMatch=round(_clip_score(features["experience_overlap_ratio"]), 4),
+                    locationMatch=round(_clip_score(features.get("location_match", 0.0)), 4),
+                ),
+                description=description,
+                matchReason=None,
+            )
+        )
+
     ranked_results.sort(key=lambda item: item.match_score, reverse=True)
 
-    # RAG-style generation: only top-3 get LLM match reasons to balance cost vs. value.
-    # RAG 生成策略：仅对 top-3 调用 LLM 生成匹配理由，在成本与可解释性之间取平衡。
     for i in range(min(3, len(ranked_results))):
-        reason = _generate_match_reason(command, ranked_results[i])
+        reason = await _generate_match_reason(command, ranked_results[i])
         if reason:
             ranked_results[i].match_reason = reason
 
     rank_time_ms = int((time.perf_counter() - rank_start) * 1000)
+
+    logger.info(f"Ranked {len(ranked_results)} jobs in {rank_time_ms} ms (model={'lightgbm' if use_model else 'fallback'})")
 
     return JobRankResultPayload(
         matchId=command.match_id,

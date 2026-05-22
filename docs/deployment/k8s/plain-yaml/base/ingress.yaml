@@ -1,0 +1,48 @@
+# =============================================================================
+# Ingress — Single entry point
+# Ingress — 单一入口点
+# =============================================================================
+# Requires an Ingress Controller (nginx-ingress, traefik, etc.)
+# 需要 Ingress Controller（nginx-ingress、traefik 等）
+# Update the host to your actual domain.
+# 请将 host 更新为你的实际域名。
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: resume-assistant
+  namespace: resume-assistant
+  labels:
+    app.kubernetes.io/name: resume-assistant
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    # Uncomment for cert-manager TLS auto-issuance
+    # 取消注释以启用 cert-manager TLS 自动颁发
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  # Uncomment for TLS
+  # 取消注释以启用 TLS
+  # tls:
+  #   - hosts:
+  #       - resume-assistant.example.com
+  #     secretName: resume-assistant-tls
+  rules:
+    - host: resume-assistant.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: resume-assistant-backend
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: resume-assistant-frontend
+                port:
+                  number: 80

@@ -5,6 +5,18 @@ spring:
   application:
     name: ${SPRING_APPLICATION_NAME:resume-assistant-backend}
 
+  # Redis 配置 / Redis configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      lettuce:
+        pool:
+          max-active: 32
+          max-idle: 16
+          min-idle: 8
+
   # 数据库（从环境变量读取）/ Database (read from environment variables)
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/resume_assistant}
@@ -29,6 +41,22 @@ spring:
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME:guest}
     password: ${SPRING_RABBITMQ_PASSWORD:guest}
+
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 # 文件存储配置（从环境变量读取，支持动态切换存储源）
 # File storage config (read from environment variables, supports dynamic storage switching)
@@ -61,6 +89,18 @@ app:
     model-version: ${LLM_EMBEDDING_MODEL:gemini/gemini-embedding-001}
   search:
     max-limit: ${SEARCH_MAX_LIMIT:100}
+  email:
+    enabled: ${EMAIL_VERIFICATION_ENABLED:false}
+    from: ${EMAIL_FROM:noreply@resume-assistant.local}
+    code-expiry-seconds: ${EMAIL_CODE_EXPIRY:300}
+    resend-cooldown-seconds: ${EMAIL_RESEND_COOLDOWN:60}
+    max-attempts: ${EMAIL_MAX_ATTEMPTS:3}
+  captcha:
+    enabled: ${CAPTCHA_ENABLED:true}
+    tolerance: ${CAPTCHA_TOLERANCE:8}
+    token-expiry-seconds: ${CAPTCHA_TOKEN_EXPIRY:300}
+    track-width: ${CAPTCHA_TRACK_WIDTH:300}
+    max-attempts: ${CAPTCHA_MAX_ATTEMPTS:5}
   rabbitmq:
     queue:
       res:

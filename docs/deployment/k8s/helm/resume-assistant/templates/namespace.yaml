@@ -1,0 +1,11 @@
+{{- if .Values.namespace.create }}
+# =============================================================================
+# Namespace
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "resume-assistant.namespace" . }}
+  labels:
+    {{- include "resume-assistant.labels" . | nindent 4 }}
+  {{- end }}

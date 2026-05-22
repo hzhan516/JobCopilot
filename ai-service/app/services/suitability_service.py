@@ -1,15 +1,13 @@
 import json
 import logging
 import re
-from pathlib import Path
 
 from app.schemas import SuitabilityBreakdown, SuitabilityRequest, SuitabilityResponse
+from app.config import LLM_TEXT_MODEL
 from app.services.llm_client import generate_json_from_text_prompt
 
 
-BASELINE_MODEL_FILE = Path(__file__).resolve().parents[2] / "data_pipeline" / "output" / "baseline_model.json"
 logger = logging.getLogger(__name__)
-
 
 def _normalize_items(items: list[str]) -> set[str]:
     normalized: set[str] = set()
@@ -39,86 +37,6 @@ def _calculate_experience_score(experience_items: list[dict]) -> float:
 
     return 1.0
 
-
-def _load_dataset_model_artifact() -> dict | None:
-    if not BASELINE_MODEL_FILE.exists():
-        return None
-
-    with BASELINE_MODEL_FILE.open("r", encoding="utf-8") as file:
-        payload = json.load(file)
-
-    return payload.get("model_artifact")
-
-
-def _tokenize_text(text: str) -> set[str]:
-    tokens = re.findall(r"[a-zA-Z]+", text.lower())
-    return {token for token in tokens if len(token) >= 3}
-
-
-def _build_experience_text(experience_items: list[dict]) -> str:
-    parts: list[str] = []
-
-    for item in experience_items:
-        if not isinstance(item, dict):
-            continue
-
-        for key in ("title", "summary", "company"):
-            value = item.get(key)
-            if value:
-                parts.append(str(value))
-
-    return " ".join(parts)
-
-
-def _calculate_dataset_score(request: SuitabilityRequest) -> float | None:
-    """Compute a data-driven suitability score if an offline baseline model artifact exists.
-    数据集模型评分：加载离线训练产出的加权特征基线模型，
-    对技能重叠率、标题关键词重叠、经验描述重叠三个维度做归一化加权求和，
-    在 LLM 不可用时提供可解释的降级评分。"""
-    artifact = _load_dataset_model_artifact()
-    if not artifact:
-        return None
-
-    resume_skills = _normalize_items(request.resume.skills)
-    job_requirements = _normalize_items(request.job.requirements)
-
-    if job_requirements:
-        skill_overlap_ratio = len(resume_skills & job_requirements) / len(job_requirements)
-    else:
-        skill_overlap_ratio = 0.0
-
-    title_tokens = _tokenize_text(request.job.title)
-    title_keyword_overlap = len(resume_skills & title_tokens)
-
-    resume_experience_text = _build_experience_text(request.resume.experience)
-    job_text = " ".join([
-        request.job.title,
-        request.job.description,
-    ])
-
-    experience_description_overlap = len(
-        _tokenize_text(resume_experience_text) & _tokenize_text(job_text)
-    )
-
-    raw_features = {
-        "skill_overlap_ratio": skill_overlap_ratio,
-        "title_keyword_overlap": float(title_keyword_overlap),
-        "experience_description_overlap": float(experience_description_overlap),
-    }
-
-    feature_weights = artifact.get("feature_weights", {})
-    normalization = artifact.get("normalization", {})
-    bias = float(artifact.get("bias", 0.0))
-
-    score = bias
-
-    for key, value in raw_features.items():
-        weight = float(feature_weights.get(key, 0.0))
-        normalizer = float(normalization.get(key, 1.0)) or 1.0
-        normalized_value = min(value / normalizer, 1.0)
-        score += weight * normalized_value
-
-    return round(_clamp_score(score), 2)
 
 
 def evaluate_suitability_baseline(request: SuitabilityRequest) -> SuitabilityResponse:
@@ -162,6 +80,7 @@ def evaluate_suitability_baseline(request: SuitabilityRequest) -> SuitabilityRes
         vertexScore=overall_score,
         datasetScore=None,
         finalScore=overall_score,
+        llmModel=None,
     )
 
 
@@ -205,9 +124,9 @@ Job:
 
 
 def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> SuitabilityResponse:
-    """Evaluate suitability using Vertex AI LLM and ensemble with baseline/dataset scores.
+    """Evaluate suitability using the configured LLM and optional incremental model scores.
     人岗匹配度评估主入口：优先使用 LLM 做深度语义评估；若 LLM 异常则降级到基线规则；
-    最终得分融合 LLM 评分（70%）与离线数据集模型评分（30%），兼顾准确性与可解释性。"""
+    有增量自适应模型时使用模型输出作为最终分数，否则兼容旧版 70/30 加权模型。"""
     baseline_response = evaluate_suitability_baseline(request)
     prompt = _build_vertex_suitability_prompt(request)
 
@@ -233,20 +152,8 @@ def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> Suitability
             baseline_response.final_score,
         )
 
-        dataset_score = _calculate_dataset_score(request)
-        final_score = round(
-            overall_score if dataset_score is None else ((overall_score * 0.7) + (dataset_score * 0.3)),
-            2,
-        )
+        final_score = round(overall_score, 2)
         suitable = final_score >= 0.6
-
-        if vertex_suitable != suitable:
-            logger.info(
-                "Suitability decision adjusted by final score: vertex=%s, final=%s",
-                vertex_suitable,
-                suitable,
-            )
-
 
         return SuitabilityResponse(
             suitable=suitable,
@@ -257,8 +164,9 @@ def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> Suitability
                 overallScore=round(overall_score, 2),
             ),
             vertexScore=round(overall_score, 2),
-            datasetScore=dataset_score,
+            datasetScore=None,
             finalScore=final_score,
+            llmModel=LLM_TEXT_MODEL,
         )
 
     except Exception:

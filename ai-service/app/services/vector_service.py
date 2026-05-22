@@ -6,7 +6,6 @@ from app.config import (
     LLM_EMBEDDING_MODEL_DIMENSION,
     LLM_REQUEST_TIMEOUT_SECONDS,
 )
-from app.schemas import AiResultEvent
 
 
 # Exponential backoff for transient embedding API failures.

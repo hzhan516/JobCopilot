@@ -3,23 +3,44 @@ package edu.asu.ser594.resumeassistant.infrastructure.messaging.stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * 对话流式回复服务测试 / Conversation stream service tests
+ * <p>
+ * 使用 Mockito 模拟 Redis 依赖，验证本地快速路径与跨实例桥接逻辑。
  */
 @DisplayName("ConversationStreamService Tests")
 class ConversationStreamServiceTest {
 
     private ConversationStreamService streamService;
+    private StringRedisTemplate redisTemplate;
+    private RedisMessageListenerContainer redisContainer;
 
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() {
-        streamService = new ConversationStreamService();
+        redisTemplate = mock(StringRedisTemplate.class);
+        redisContainer = mock(RedisMessageListenerContainer.class);
+        ValueOperations<String, String> valueOps = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        when(redisTemplate.hasKey(anyString())).thenReturn(false);
+        streamService = new ConversationStreamService(redisTemplate, redisContainer);
+    }
+
+    private void mockRedisEarlyReply(String conversationId, String reply) {
+        ValueOperations<String, String> valueOps = redisTemplate.opsForValue();
+        when(valueOps.get("ra:conv:early:" + conversationId)).thenReturn(reply);
     }
 
     @Test
@@ -54,6 +75,7 @@ class ConversationStreamServiceTest {
 
         // When: 先完成回复，再等待 / Complete first, then await
         streamService.completeReply(conversationId, earlyReply);
+        mockRedisEarlyReply(conversationId, earlyReply);
         String actualReply = streamService.awaitReply(conversationId, 5, TimeUnit.SECONDS);
 
         // Then

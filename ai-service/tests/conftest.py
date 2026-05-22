@@ -1,10 +1,207 @@
 import json
 from collections.abc import Iterator
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
+# Patch Redis BEFORE importing any app modules that create singletons at import time
+_redis_mock = MagicMock()
+_redis_strings: dict[str, str] = {}
+_redis_hashes: dict[str, dict[str, str]] = {}
+_redis_sets: dict[str, set[str]] = {}
+_redis_lua_scripts: dict[str, str] = {}
+_redis_pubsub = MagicMock()
+
+
+def _redis_get(key: str) -> str | None:
+    return _redis_strings.get(key)
+
+
+def _redis_set(key: str, value: str, **kwargs) -> None:
+    _redis_strings[key] = value
+
+
+def _redis_setex(key: str, seconds: int, value: str) -> None:
+    _redis_strings[key] = value
+
+
+def _redis_delete(*keys: str) -> int:
+    count = 0
+    for k in keys:
+        if k in _redis_strings:
+            del _redis_strings[k]
+            count += 1
+        if k in _redis_hashes:
+            del _redis_hashes[k]
+            count += 1
+        if k in _redis_sets:
+            del _redis_sets[k]
+            count += 1
+    return count
+
+
+def _redis_hget(key: str, field: str) -> str | None:
+    return _redis_hashes.get(key, {}).get(field)
+
+
+def _redis_hset(key: str, **kwargs) -> int:
+    if key not in _redis_hashes:
+        _redis_hashes[key] = {}
+    mapping = kwargs.get("mapping", {})
+    for f, v in mapping.items():
+        _redis_hashes[key][f] = v
+    return len(mapping)
+
+
+def _redis_hgetall(key: str) -> dict[str, str]:
+    return dict(_redis_hashes.get(key, {}))
+
+
+def _redis_hincrby(key: str, field: str, amount: int = 1) -> int:
+    if key not in _redis_hashes:
+        _redis_hashes[key] = {}
+    current = int(_redis_hashes[key].get(field, 0))
+    new_val = current + amount
+    _redis_hashes[key][field] = str(new_val)
+    return new_val
+
+
+def _redis_sadd(key: str, *members: str) -> int:
+    if key not in _redis_sets:
+        _redis_sets[key] = set()
+    before = len(_redis_sets[key])
+    _redis_sets[key].update(members)
+    return len(_redis_sets[key]) - before
+
+
+def _redis_sismember(key: str, member: str) -> bool:
+    return member in _redis_sets.get(key, set())
+
+
+def _redis_scard(key: str) -> int:
+    return len(_redis_sets.get(key, set()))
+
+
+def _redis_smembers(key: str) -> set[str]:
+    return set(_redis_sets.get(key, set()))
+
+
+def _redis_spop(key: str, count: int = 1) -> list[str]:
+    s = _redis_sets.get(key, set())
+    popped = []
+    for _ in range(min(count, len(s))):
+        item = s.pop()
+        popped.append(item)
+    return popped
+
+
+def _redis_publish(channel: str, message: str) -> int:
+    return 0
+
+
+def _redis_script_load(script: str) -> str:
+    sha = f"sha:{hash(script) & 0xFFFFFFFF:08x}"
+    _redis_lua_scripts[sha] = script
+    return sha
+
+
+def _redis_evalsha(sha: str, numkeys: int, *args) -> list:
+    if sha in _redis_lua_scripts:
+        key = args[0]
+        new_val = float(args[1])
+        cap = float(args[2])
+        h = _redis_hashes.setdefault(key, {"sum": "0", "count": "0"})
+        sum_val = float(h["sum"])
+        count_val = float(h["count"])
+        if count_val >= cap:
+            ratio = cap / (cap + 1)
+            sum_val *= ratio
+            count_val *= ratio
+        sum_val += new_val
+        count_val += 1
+        h["sum"] = str(sum_val)
+        h["count"] = str(count_val)
+        return [str(sum_val), str(count_val)]
+    return []
+
+
+def _redis_has_key(key: str) -> bool:
+    return key in _redis_strings or key in _redis_hashes or key in _redis_sets
+
+
+_redis_mock.get = _redis_get
+_redis_mock.set = _redis_set
+_redis_mock.setex = _redis_setex
+_redis_mock.delete = _redis_delete
+_redis_mock.hget = _redis_hget
+_redis_mock.hset = _redis_hset
+_redis_mock.hgetall = _redis_hgetall
+_redis_mock.hincrby = _redis_hincrby
+_redis_mock.sadd = _redis_sadd
+_redis_mock.sismember = _redis_sismember
+_redis_mock.scard = _redis_scard
+_redis_mock.smembers = _redis_smembers
+_redis_mock.spop = _redis_spop
+_redis_mock.publish = _redis_publish
+_redis_mock.script_load = _redis_script_load
+_redis_mock.evalsha = _redis_evalsha
+_redis_mock.has_key = _redis_has_key
+_redis_mock.pubsub = MagicMock(return_value=_redis_pubsub)
+
+# Pipeline mock
+_redis_pipeline_commands: list = []
+
+
+def _redis_pipeline():
+    pipe = MagicMock()
+    _redis_pipeline_commands.clear()
+
+    def _pipe_evalsha(sha, numkeys, *args):
+        _redis_pipeline_commands.append(("evalsha", sha, numkeys, args))
+        return pipe
+
+    def _pipe_execute():
+        results = []
+        for cmd, sha, numkeys, args in _redis_pipeline_commands:
+            if cmd == "evalsha":
+                results.append(_redis_evalsha(sha, numkeys, *args))
+        return results
+
+    pipe.evalsha = _pipe_evalsha
+    pipe.execute = _pipe_execute
+    return pipe
+
+
+_redis_mock.pipeline = _redis_pipeline
+
+# Apply patch before any app imports
+
+# Object storage patch
+_storage_mock = MagicMock()
+_storage_store: dict[str, bytes] = {}
+
+
+def _storage_put(bucket: str, key: str, body: bytes) -> None:
+    _storage_store[f"{bucket}/{key}"] = body if isinstance(body, bytes) else body.encode("utf-8")
+
+
+def _storage_get(bucket: str, key: str) -> bytes | None:
+    return _storage_store.get(f"{bucket}/{key}")
+
+
+_storage_mock.put_object = _storage_put
+_storage_mock.get_object = _storage_get
+
+
+# Patch boto3.client to prevent MinIO connection during module import
+try:
+    boto3_patcher = patch("boto3.client")
+    boto3_patcher.start()
+except ImportError:
+    pass # If boto3 is not installed, we can't patch it, but import app.main will fail anyway
+
+# Now safe to import app.main
 import app.main as main_module
 
 
@@ -102,6 +299,24 @@ def mock_rabbitmq(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock, MagicMock
 
 
 @pytest.fixture
+def mock_redis(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    """Return the pre-configured in-memory Redis mock."""
+    # Reset in-memory stores between tests
+    _redis_strings.clear()
+    _redis_hashes.clear()
+    _redis_sets.clear()
+    _redis_lua_scripts.clear()
+    return _redis_mock
+
+
+@pytest.fixture
+def mock_object_storage(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    """Return the pre-configured in-memory object storage mock."""
+    _storage_store.clear()
+    return _storage_mock
+
+
+@pytest.fixture
 def mock_dependencies(mock_litellm: MagicMock, mock_httpx: tuple[MagicMock, MagicMock], mock_rabbitmq: tuple[MagicMock, MagicMock]) -> dict[str, object]:
     return {
         "litellm": mock_litellm,
@@ -110,3 +325,35 @@ def mock_dependencies(mock_litellm: MagicMock, mock_httpx: tuple[MagicMock, Magi
         "rabbitmq_connection": mock_rabbitmq[0],
         "rabbitmq_channel": mock_rabbitmq[1],
     }
+
+# New Infrastructure Mocks for Refactored AI Service
+
+@pytest.fixture
+def mock_minio_registry(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    registry_mock = MagicMock()
+    registry_mock.get_latest_meta.return_value = None
+    registry_mock.upload_model.return_value = "fake_key.txt"
+    monkeypatch.setattr("app.api.model_manager.MinioModelRegistry", lambda: registry_mock)
+    monkeypatch.setattr("app.worker.scheduler.trainer.MinioModelRegistry", lambda: registry_mock)
+    return registry_mock
+
+from unittest.mock import MagicMock, AsyncMock
+
+@pytest.fixture
+def mock_redis_buffer(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    buffer_mock = MagicMock()
+    buffer_mock.drain = AsyncMock(return_value=[])
+    buffer_mock.acquire_lock = AsyncMock(return_value=True)
+    buffer_mock.append = AsyncMock(return_value=None)
+    buffer_mock.broadcast_reload = AsyncMock(return_value=None)
+    buffer_mock.release_lock = AsyncMock(return_value=None)
+    monkeypatch.setattr("app.worker.scheduler.trainer.RedisBuffer", lambda: buffer_mock)
+    monkeypatch.setattr("app.worker.consumers.feedback.RedisBuffer", lambda: buffer_mock)
+    return buffer_mock
+
+@pytest.fixture
+def mock_internal_api(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    api_mock = MagicMock()
+    api_mock.get_baseline_features_async = AsyncMock(return_value=[])
+    monkeypatch.setattr("app.worker.scheduler.trainer.InternalApiClient", lambda: api_mock)
+    return api_mock

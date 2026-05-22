@@ -1,7 +1,13 @@
 from unittest.mock import MagicMock, patch
 
 from app.schemas import JobMatchRequest
-from app.services.job_matching_service import _clip_score, find_job_matches
+from app.services.job_matching_service import (
+    _clip_score,
+    _extract_search_results,
+    _to_float,
+    _truncate_description,
+    find_job_matches,
+)
 
 
 def test_clip_score():
@@ -10,6 +16,39 @@ def test_clip_score():
     assert _clip_score(-0.5) == 0.0
     assert _clip_score(1.0) == 1.0
     assert _clip_score(0.0) == 0.0
+
+
+def test_truncate_description():
+    assert _truncate_description("Short description") == "Short description"
+    assert _truncate_description("   Padded description   ") == "Padded description"
+    assert _truncate_description("Line 1\nLine 2") == "Line 1 Line 2"
+    
+    long_desc = "A" * 300
+    truncated = _truncate_description(long_desc)
+    assert len(truncated) == 283  # 280 + 3 for "..."
+    assert truncated.endswith("...")
+    assert truncated.startswith("A" * 280)
+
+
+def test_extract_search_results():
+    # List payload
+    assert _extract_search_results([{"id": 1}, {"id": 2}]) == [{"id": 1}, {"id": 2}]
+    # Dict payload with data
+    assert _extract_search_results({"data": [{"id": 1}]}) == [{"id": 1}]
+    # Invalid payloads
+    assert _extract_search_results(None) == []
+    assert _extract_search_results("string") == []
+    assert _extract_search_results({"other": []}) == []
+    assert _extract_search_results([1, 2, {"id": 1}]) == [{"id": 1}]
+
+
+def test_to_float():
+    assert _to_float(1.5) == 1.5
+    assert _to_float("2.5") == 2.5
+    assert _to_float(1) == 1.0
+    assert _to_float("invalid") == 0.0
+    assert _to_float(None) == 0.0
+    assert _to_float("invalid", default=1.0) == 1.0
 
 
 @patch("app.services.job_matching_service.requests.post")
@@ -94,6 +133,59 @@ def test_find_job_matches_handles_backend_failure(mock_generate_embedding, mock_
     assert response.matches == []
     assert response.recall_time == 0
     assert response.rank_time == 0
+
+
+@patch("app.services.job_matching_service.requests.post")
+@patch("app.services.job_matching_service.generate_embedding")
+def test_find_job_matches_data_assembly_and_clipping(mock_generate_embedding, mock_post):
+    mock_generate_embedding.return_value = [0.1, 0.2]
+
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = [
+        {
+            "jobId": "job-1",
+            "title": "Python Developer",
+            "company": "Tech Inc",
+            "similarity": 1.5,  # Should be clipped to 1.0
+            "matchFactors": {
+                "skillMatch": 1.2,  # Should be clipped to 1.0
+                "experienceMatch": -0.5,  # Should be clipped to 0.0
+                "locationMatch": "invalid",  # Should default to 0.0
+            },
+            "description": "A" * 300,  # Should be truncated
+        },
+        {
+            # Missing fields
+            "jobId": "job-2",
+        }
+    ]
+    mock_post.return_value = mock_response
+
+    request = JobMatchRequest(userId="user1", query="Python", topK=2)
+    response = find_job_matches(request)
+
+    assert response.total == 2
+    assert len(response.matches) == 2
+
+    match1 = response.matches[0]
+    assert match1.job_id == "job-1"
+    assert match1.match_score == 1.0
+    assert match1.match_factors.skill_match == 1.0
+    assert match1.match_factors.experience_match == 0.0
+    assert match1.match_factors.location_match == 0.0
+    assert len(match1.description) == 283
+    assert match1.description.endswith("...")
+
+    match2 = response.matches[1]
+    assert match2.job_id == "job-2"
+    assert match2.title == ""
+    assert match2.company == ""
+    assert match2.match_score == 0.0
+    assert match2.match_factors.skill_match == 0.0
+    assert match2.match_factors.experience_match == 0.0
+    assert match2.match_factors.location_match == 0.0
+    assert match2.description == ""
 
 
 def test_find_job_matches_empty_query():

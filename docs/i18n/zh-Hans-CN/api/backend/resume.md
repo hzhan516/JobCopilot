@@ -155,7 +155,7 @@ curl -X POST http://localhost:8080/api/v1/resumes \
 **重要说明**: 
 - `versionId` 参数是上传接口返回的 `originalVersionId`
 - 不要使用 `groupId` 作为下载参数
-- 当前版本仅支持返回原始文件，格式转换功能将在后续版本实现
+- 后端已通过文档转换器支持导出格式转换。支持的目标格式为 `pdf`、`docx`、`html`、`md` 和 `txt`。
 
 #### 请求示例 (cURL)
 
@@ -165,7 +165,7 @@ curl -X GET http://localhost:8080/api/v1/resumes/550e8400-e29b-41d4-a716-4466554
   -H "Authorization: Bearer <your_access_token>" \
   --output resume.pdf
 
-# 指定导出格式（当前返回原始文件，文件名会修改）
+# 指定导出格式
 curl -X GET "http://localhost:8080/api/v1/resumes/550e8400-e29b-41d4-a716-446655440001/download?format=pdf" \
   -H "Authorization: Bearer <your_access_token>" \
   --output resume.pdf

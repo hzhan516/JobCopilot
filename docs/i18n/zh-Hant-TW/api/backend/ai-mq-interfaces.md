@@ -11,10 +11,10 @@
 ## 1. 互動原則
 
 - **單向非同步**：Java 後端透過 MQ 發送任務請求，Python AI 服務處理完成後透過 MQ 返回結果。
-- **無直接 HTTP 耦合**：除健康檢查外，Java 後端不直接 HTTP 呼叫 AI 服務；所有耗時操作均走訊息佇列。
+- **AI 處理優先走非同步流程**：剖析、對話、排序等耗時任務透過 MQ 處理。後端也會透過同步 REST 呼叫 AI 服務的輕量 embedding、適配度評分和模型重算端點。
 - **統一 Exchange**：所有 MQ 訊息共用 `ai.direct.exchange`（DirectExchange）。
 - **事務發件箱（Outbox）**：後端**不直接**發送 MQ 訊息，而是將訊息與業務資料在同一個本地資料庫交易中持久化到 `outbox_message` 表。`OutboxRelayScheduler` 每 2 秒輪詢 PENDING 記錄並非同步投遞到 RabbitMQ。
-- **死信佇列（DLQ）**：全部 8 個業務佇列均配置了 `x-dead-letter-exchange: ai.dlx.exchange`。當 Python 消費者以 `nack(requeue=false)` 拒絕訊息時，訊息會自動路由到 `ai.dlq.queue`，避免靜默丟失。
+- **死信佇列（DLQ）**：所有工作流佇列均配置了 `x-dead-letter-exchange: ai.dlx.exchange`。當 Python 消費者以 `nack(requeue=false)` 拒絕訊息時，訊息會自動路由到 `ai.dlq.queue`，避免靜默丟失。
 
 ---
 
@@ -58,6 +58,7 @@
 | Response ← AI | 對話回覆結果 | `backend.res.conversation` | `backend.queue.conversation` | Python AI | Java Backend |
 | Request → AI | 職位精排 | `ai.req.job.rank` | `ai.queue.job.rank` | Java Backend | Python AI |
 | Response ← AI | 職位精排結果 | `backend.res.job.rank` | `backend.queue.job.rank` | Python AI | Java Backend |
+| Request → AI | 使用者反饋 | `ai.req.feedback` | `ai.queue.feedback` | Java Backend | Python AI Worker |
 | DLX → DLQ | 死信 | `dlq.routing.key` | `ai.dlq.queue` | 業務佇列（自動轉發） | 維運/監控（可手動消費） |
 
 > **Outbox 說明**：上表中的 "Java Backend" 生產者實際上是 `OutboxRelayScheduler`，它從 `outbox_message` 表讀取記錄後轉發到 RabbitMQ。原始業務方法（如 `JobApplicationService.submitJob`）僅寫入 Outbox 表。
@@ -76,7 +77,8 @@
 {
   "jobId": "job-uuid-1234",
   "url": "https://www.linkedin.com/jobs/view/12345",
-  "imageCheckEnabled": true
+  "imageCheckEnabled": false,
+  "screenshotBase64": "iVBORw0KGgoAAAANSUhEUgAA..."
 }
 ```
 
@@ -84,7 +86,8 @@
 |------|------|------|
 | `jobId` | String | 職位唯一識別 |
 | `url` | String | 職位詳情頁 URL |
-| `imageCheckEnabled` | boolean | 是否啟用視覺驗證 |
+| `imageCheckEnabled` | boolean | 是否啟用視覺驗證；目前 HTTP 職位提交路徑會設定為 `false` |
+| `screenshotBase64` | String | 選用，使用者上傳的截圖 Base64，用於 AI 剖析 fallback |
 
 ---
 
@@ -95,16 +98,16 @@
 ```json
 {
   "resumeId": "resume-uuid-5678",
-  "fileUrl": "https://minio.example.com/resumes/xxx.pdf",
-  "fileType": "PDF"
+  "fileUrl": "https://storage.example.com/resumes/xxx.pdf",
+  "format": "application/pdf"
 }
 ```
 
 | 欄位 | 類型 | 說明 |
 |------|------|------|
 | `resumeId` | String | 履歷版本唯一識別 |
-| `fileUrl` | String | 履歷檔案在 MinIO 上的 URL |
-| `fileType` | String | 檔案類型，如 PDF、DOCX |
+| `fileUrl` | String | 目前配置的儲存後端生成的臨時檔案 URL |
+| `format` | String | 上傳檔案的 content type，例如 `application/pdf` 或 DOCX MIME type |
 
 ---
 
@@ -120,8 +123,13 @@
     { "role": "USER", "content": "幫我優化一下專案經驗部分", "fileUrl": null }
   ],
   "currentMessage": "幫我優化一下專案經驗部分",
-  "fileUrls": ["https://minio.example.com/resumes/xxx.pdf"],
-  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002"
+  "fileUrls": [],
+  "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
+  "resumeText": "# Resume Markdown...",
+  "primaryJobText": "Software Engineer\nExample Corp\nJob description...",
+  "relatedJobTexts": ["Backend Engineer\nExample Corp\nRelated job description..."],
+  "init": true,
+  "locale": "zh-TW"
 }
 ```
 
@@ -131,8 +139,80 @@
 | `userId` | String | 使用者 ID |
 | `messageHistory` | List<Map> | 歷史訊息列表（role, content, fileUrl） |
 | `currentMessage` | String | 當前使用者發送的最新訊息 |
-| `fileUrls` | List<String> | 使用者引用的外部檔案 URL 列表 |
+| `fileUrls` | List<String> | 發送給 AI 服務的檔案 URL 列表；目前後端上下文請求會發送空列表 |
 | `resumeVersionId` | String | 關聯履歷版本 ID（選用） |
+| `resumeText` | String | 從所選履歷版本或對話 AI 工作副本載入的履歷 Markdown/text |
+| `primaryJobText` | String | 從對話關聯職位載入的目前職位文本 |
+| `relatedJobTexts` | List<String> | 最多 5 條其他已完成職位文本，用於上下文 |
+| `init` | Boolean | 是否為對話初始化請求 |
+| `locale` | String | 使用者介面語言環境，例如 `en`、`zh-CN` 或 `zh-TW` |
+
+---
+
+### 3.4 JobRankCommand — 職位精排請求
+
+**發送時機**：後端向量檢索召回可見職位後，`MatchingApplicationService.startMatching()` 將精排命令寫入 Outbox 表。
+
+```json
+{
+  "matchId": "match-uuid-1234",
+  "userId": "user-uuid",
+  "resumeVersionId": "resume-uuid",
+  "resumeText": "# Resume Markdown...",
+  "query": "backend engineer",
+  "recalledJobIds": ["job-uuid-1", "job-uuid-2"],
+  "jobDetails": {
+    "job-uuid-1": {
+      "title": "Backend Engineer",
+      "company": "Example Corp",
+      "description": "Build APIs and distributed services...",
+      "semanticMatch": 0.82
+    }
+  }
+}
+```
+
+| 欄位 | 類型 | 說明 |
+|------|------|------|
+| `matchId` | String | 職位匹配任務 ID |
+| `userId` | String | 使用者 ID |
+| `resumeVersionId` | String | 履歷版本 ID |
+| `resumeText` | String | 已解析履歷文本或目前履歷內容 |
+| `query` | String | 使用者查詢文本，可為空 |
+| `recalledJobIds` | List<String> | 後端向量召回並過濾隱藏職位後的職位 ID |
+| `jobDetails` | Map<String, Object> | 每個召回職位的詳情，包含 title、company、description 與 semanticMatch |
+
+---
+
+### 3.5 UserFeedbackCommand — 反饋標籤（增量訓練）
+
+**發送時機**：`JobApplicationService.scoreJob()` 完成後，將評分結果序列化並寫入 Outbox 表，路由鍵為 `ai.req.feedback`。
+
+**說明**：此為**發送後即忘**（fire-and-forget）訊息。AI worker 消費後將帶標籤的特徵樣本寫入 Redis，並用於定時 LightGBM 重新訓練，無需向後端回傳結果。
+
+```json
+{
+  "matchId": "feedback-uuid-v4",
+  "userId": "user-uuid",
+  "resumeVersionId": "resume-version-uuid",
+  "jobId": "job-uuid",
+  "feedbackType": "APPLY",
+  "score": 0.85,
+  "context": "{\"resume\":{\"skills\":[\"Python\"]},\"job\":{\"title\":\"Software Engineer\"},\"llmOverallScore\":0.82,\"finalScore\":0.85}",
+  "timestamp": "2026-05-09T16:00:00Z"
+}
+```
+
+| 欄位 | 類型 | 說明 |
+|------|------|------|
+| `matchId` | String | 唯一反饋訊息 ID |
+| `userId` | UUID | 產生評分的使用者 |
+| `resumeVersionId` | String | 履歷版本唯一識別 |
+| `jobId` | String | 職位唯一識別 |
+| `feedbackType` | String | 反饋標籤；目前評分流程適合時發送 `APPLY`，否則發送 `IGNORE` |
+| `score` | Double | 最終融合得分（0.0-1.0） |
+| `context` | String | JSON 字串，包含履歷/職位上下文以及可選的 `llmOverallScore`、`semanticMatch`、`datasetScore`、`llmModel` |
+| `timestamp` | String | ISO 8601 時間戳 |
 
 ---
 
@@ -217,7 +297,11 @@
   "status": "COMPLETED",
   "data": {
     "content": "根據您的履歷，我建議從以下幾個方面優化工作經驗...",
-    "fileUrl": "https://minio.example.com/conversations/xxx/optimized_resume.pdf"
+    "fileUrl": null,
+    "resumeModification": {
+      "modified": true,
+      "markdown": "# Optimized Resume\n\n..."
+    }
   },
   "errorMessage": null,
   "eventType": null
@@ -228,19 +312,64 @@
 |-------------|------|------|
 | `content` | String | AI 回覆的文本內容 |
 | `fileUrl` | String | AI 生成檔案的 URL（選用） |
+| `resumeModification.modified` | Boolean | AI 是否改寫或優化了履歷 |
+| `resumeModification.markdown` | String | `modified=true` 時返回的完整優化後履歷 Markdown |
 
 ---
 
-## 5. 檔案上傳與 MinIO
+### 4.4 職位精排結果（type = JOB_RANK）
+
+**消費端**：`AiResultMessageListener.onJobRankResult()` → `MatchingFacade.saveJobRankResult()`
+
+```json
+{
+  "referenceId": "match-uuid-1234",
+  "type": "JOB_RANK",
+  "status": "COMPLETED",
+  "data": {
+    "rankTimeMs": 125,
+    "rankedResults": [
+      {
+        "jobId": "job-uuid-1",
+        "title": "Backend Engineer",
+        "company": "Example Corp",
+        "matchScore": 0.84,
+        "matchFactors": {
+          "skillMatch": 0.82,
+          "experienceMatch": 0.74,
+          "locationMatch": 0.0
+        },
+        "description": "Build APIs and distributed services...",
+        "matchReason": "Your backend and API experience aligns with the role requirements."
+      }
+    ]
+  },
+  "errorMessage": null,
+  "eventType": null
+}
+```
+
+| data 子欄位 | 類型 | 說明 |
+|-------------|------|------|
+| `rankTimeMs` | Integer | AI 精排耗時，單位毫秒 |
+| `rankedResults` | List<Map> | 精排後的職位列表 |
+| `rankedResults[].jobId` | String | 職位 ID |
+| `rankedResults[].matchScore` | Float | 最終精排分數 |
+| `rankedResults[].matchFactors` | Object | 技能、經驗和地點匹配拆分 |
+| `rankedResults[].matchReason` | String | 選用，LLM 為高排名職位生成的匹配說明 |
+
+---
+
+## 5. 檔案上傳與儲存
 
 ### 5.1 後端檔案上傳 API
 
-前端或 AI 層可將生成的檔案流上傳至後端，由後端轉存到 MinIO：
+前端或 AI 層可將生成的檔案流上傳至後端，由後端透過目前設定的儲存後端保存：
 
 - **履歷上傳**：`POST /api/v1/resumes`（`multipart/form-data`）
 - **對話附件上傳**：`POST /api/v1/conversations/{conversationId}/files`（`multipart/form-data`）
 
-### 5.2 MinIO 儲存路徑約定
+### 5.2 儲存路徑約定
 
 | 業務 | 物件鍵前綴範例 |
 |------|----------------|
@@ -249,7 +378,7 @@
 
 ### 5.3 預簽名 URL
 
-`MinioFileStorageService.generatePresignedUrl()` 為上傳成功的檔案生成臨時存取 URL（預設 7 天有效期）。
+`FileStorageService.generatePresignedUrl()` 為上傳成功的檔案生成臨時存取 URL（預設 7 天有效期）。
 
 ---
 

@@ -83,9 +83,12 @@ job seekers.
 | ----------------- | ----------------------------------- | ----------------------- | ------------------------------- |
 | **Frontend**      | React + TypeScript + Tailwind CSS   | React 19, Vite 7        | User interface                  |
 | **Backend**       | Java + Spring Boot                  | Java 21, Spring Boot 3  | Business logic, API, auth       |
-| **AI Service**    | Python FastAPI + LiteLLM            | Python 3.11+            | Parsing, embeddings, ranking, chat |
+| **AI API**        | Python FastAPI + LiteLLM            | Python 3.11+            | Parsing, embeddings, ranking, chat |
+| **AI Worker**     | Python LightGBM                     | Python 3.11+            | Background worker for incremental model training |
 | **Database**      | PostgreSQL + pgvector               | PostgreSQL 15           | Business data + vector data     |
 | **Message Queue** | RabbitMQ                            | RabbitMQ 3              | Async AI task processing        |
+| **Cache**         | Redis                               | Redis 7                 | Distributed state, locks, Pub/Sub |
+| **Model Registry**| MinIO                               | RELEASE.2024            | Storage for trained LightGBM models |
 | **Deployment**    | Docker Compose + Nginx              | Compose v2              | Containerized local deployment  |
 
 ---
@@ -123,7 +126,7 @@ job seekers.
 │                                          │                                          │
 │  ┌───────────────────────────────────────▼──────────────────────────────────────┐   │
 │  │                        Application Service Layer                               │   │
-│  │  Resume | Job | Conversation | Tracking Application Services                │   │
+│  │  Resume | Job | Conversation | Tracking | Captcha Application Services       │   │
 │  └───────────────────────────────────────▼──────────────────────────────────────┘   │
 │                                          │                                          │
 │  ┌───────────────────────────────────────▼──────────────────────────────────────┐   │
@@ -146,7 +149,7 @@ job seekers.
 │                              PYTHON AI SERVICE LAYER                                 │
 │  ┌─────────────────────────────────────────────────────────────────────────────┐   │
 │  │                          Message Consumers                                     │   │
-│  │  Resume Parse | Job Parse | Conversation | Job Rank Consumers                │   │
+│  │  Resume Parse | Job Parse | Conversation | Job Rank | Model Incremental     │   │
 │  └───────────────────────────────────────▼──────────────────────────────────────┘   │
 │                                          │                                          │
 │  ┌───────────────────────────────────────▼──────────────────────────────────────┐   │
@@ -157,6 +160,14 @@ job seekers.
 │  │  │ (PDF/DOCX +  │  │ (LiteLLM     │  │ (pgvector +  │  │ (Context +   │      │   │
 │  │  │  LiteLLM)    │  │  Embeddings) │  │  Ranking)    │  │  Memory)     │      │   │
 │  │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘      │   │
+│  └─────────────────────────────────────────────────────────────────────────────┘   │
+│                                          │                                          │
+│  ┌───────────────────────────────────────▼──────────────────────────────────────┐   │
+│  │                           AI Worker (LightGBM)                                 │   │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                        │   │
+│  │  │ Incremental  │  │ Model        │  │ MinIO        │                        │   │
+│  │  │ Training     │  │ Evaluation   │  │ Registry     │                        │   │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘                        │   │
 │  └─────────────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────────────┘
                                           │
@@ -178,6 +189,16 @@ job seekers.
 │  ┌─────────────────────────────────────────────────────────────────────────────┐   │
 │  │                              RabbitMQ                                         │   │
 │  │  - Message Broker for Async Communication                                     │   │
+│  └─────────────────────────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐   │
+│  │                              Redis 7                                          │   │
+│  │  - Distributed Caching (CAPTCHA, verification codes)                          │   │
+│  │  - Pub/Sub (conversation streaming, model invalidation)                       │   │
+│  │  - Distributed Locks (ShedLock, startup sync)                                 │   │
+│  └─────────────────────────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐   │
+│  │                              MinIO                                            │   │
+│  │  - Model Registry for LightGBM artifacts                                      │   │
 │  └─────────────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -241,6 +262,69 @@ job seekers.
 │   │                │                  │                  │              │            │
 └─────────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+### 3.3 Incremental Job Training Loop Data Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                      Incremental Job Training Loop (Job Scoring)                     │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                      │
+│  User          Frontend         Java Backend         RabbitMQ       Python AI        │
+│   │                │                  │                  │              │            │
+│   │  Submit Job    │                  │                  │              │            │
+│   │───────────────>│                  │                  │              │            │
+│   │                │  POST /api/v1/jobs                 │              │            │
+│   │                │─────────────────>│                  │              │            │
+│   │                │                  │  Parse Complete  │              │            │
+│   │                │                  │  Write job_dataset              │            │
+│   │                │                  │  (Training Corpus)              │            │
+│   │                │                  │                  │              │            │
+│   │  Score Job     │                  │                  │              │            │
+│   │───────────────>│                  │                  │              │            │
+│   │                │  POST /api/v1/jobs/{id}/score      │              │            │
+│   │                │─────────────────>│                  │              │            │
+│   │                │                  │  Call AI /suitability          │              │
+│   │                │                  │  Save ScoreRecord│              │            │
+│   │                │                  │  Publish Feedback               │            │
+│   │                │                  │  ai.req.feedback               │              │
+│   │                │                  │─────────────────>│              │            │
+│   │                │  Return Result   │                  │              │            │
+│   │                │<─────────────────│                  │              │            │
+│   │                │                  │                  │  Consume     │            │
+│   │                │                  │                  │─────────────>│            │
+│   │                │                  │                  │              │  Buffer    │
+│   │                │                  │                  │              │  feedback  │
+│   │                │                  │                  │              │            │
+│   │                │                  │                  │              │  Train     │
+│   │                │                  │                  │              │  LightGBM  │
+│   │                │                  │                  │              │  (if threshold)
+│   │                │                  │                  │              │            │
+│   │                │                  │                  │              │  Generate  │
+│   │                │                  │                  │              │  model artifact
+│   │                │                  │                  │              │            │
+│   │                │                  │                  │              │  Reload    │
+│   │                │                  │                  │              │  Model     │
+│   │                │                  │                  │              │            │
+│   │  Next Score    │                  │                  │              │  Load New  │
+│   │───────────────>│                  │                  │              │  Model     │
+│   │                │  POST /api/v1/jobs/{id}/score      │              │  (auto)    │
+│   │                │─────────────────>│  Call AI /suitability          │            │
+│   │                │                  │  (uses new weights)             │            │
+│   │                │<─────────────────│                  │              │            │
+│   │                │                  │                  │              │            │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Design Points:**
+
+1. **Dual Write**: Parsed jobs are written to both the `jobs` table (user-facing, soft-deletable) and the `job_dataset` table (training corpus, persistent).
+2. **Fire-and-Forget MQ**: Score labels are sent via Outbox to `ai.queue.feedback`. Delivery failures do not block the scoring response.
+3. **Redis Feedback Buffer**: The AI worker converts score feedback into labeled feature samples and stores them in a Redis buffer.
+4. **MinIO Model Artifacts**: The AI worker trains a LightGBM ranker from baseline features plus buffered feedback, then writes `ranker_model_<version>.txt` and `latest_meta.json` to MinIO.
+5. **Redis-Driven Model Reload**: The model manager loads the latest model from MinIO and reloads it when the worker publishes an `ai.model.reload` notification.
 
 ---
 
@@ -380,6 +464,7 @@ job seekers.
 | **Job**          | Job, JobRequirement, JobMatch                          | JobService, JobMatchingService     | JobRepository, JobEmbeddingRepository       |
 | **Conversation** | Conversation, Message, SuggestedChange                 | ConversationService, ChatService   | ConversationRepository                      |
 | **Tracking**     | JobApplication, Interview, ApplicationStatus           | TrackingService                    | TrackingRepository                          |
+| **CAPTCHA**      | CaptchaChallenge, CaptchaToken                         | CaptchaService                     | -                                           |
 
 #### 4.2.3 API Controllers
 
@@ -436,6 +521,16 @@ public class TrackingController {
 
     @PutMapping("/applications/{id}/status")
     public ResponseEntity<ApplicationDTO> updateStatus(@PathVariable Long id, @RequestBody StatusUpdateRequest request);
+}
+
+@RestController
+@RequestMapping("/api/v1")
+public class CaptchaController {
+    @GetMapping("/auth/captcha")
+    public ResponseEntity<CaptchaChallengeResponse> getCaptcha();
+
+    @PostMapping("/auth/captcha/verify")
+    public ResponseEntity<CaptchaVerifyResponse> verifyCaptcha(@RequestBody CaptchaVerifyRequest request);
 }
 ```
 
@@ -908,6 +1003,25 @@ LIMIT 10;
 Frontend ──▶ POST /api/v1/resumes ──▶ Store in shared-storage volume ──▶ Publish MQ task ──▶ AI service reads file
 ```
 
+### 5.5 Redis Cache Design (CAPTCHA)
+
+The CAPTCHA subsystem uses Redis for distributed caching with prefix-isolated keys, enabling cross-instance consistency and horizontal scalability:
+
+| Cache Name | Purpose | Redis Key | Type | TTL |
+| ---------- | ------- | --------- | ---- | --- |
+| **Challenge Store** | Stores slider CAPTCHA challenges (target positions) | `ra:captcha:challenge:{id}` | String | 5 minutes |
+| **Token Store** | Stores one-time verification tokens | `ra:captcha:token:{id}` | String | 5 minutes |
+| **Rate Limit Window** | Tracks request timestamps per IP | `ra:captcha:ratelimit:{ip}` | Sorted Set | 1 minute |
+
+**IP Rate Limiting**: Each IP address is limited to **20 CAPTCHA requests per minute**. Excess requests receive HTTP 429.
+
+**Security Features**:
+- Prefix isolation prevents cache key collisions between challenge, token, and rate-limit entries
+- One-time token: Each `captchaToken` can only be redeemed once (consumed on validation)
+- Max attempts: 5 verification attempts per challenge before invalidation
+- V1 DOM-level verification: Frontend performs challenge solving without exposing the answer
+- V2 Graphics2D puzzle evolution: Image-based challenges rendered server-side with Java 2D
+
 ---
 
 ## 6. Integration Architecture
@@ -1041,6 +1155,8 @@ Frontend ──▶ POST /api/v1/resumes ──▶ Store in shared-storage volume
 | `/api/v1/auth/login/google`                 | POST   | Google login                                  | No            |
 | `/api/v1/auth/refresh`                      | POST   | Refresh access token                          | Yes           |
 | `/api/v1/auth/logout`                       | POST   | Logout                                        | Yes           |
+| `/api/v1/auth/captcha`                      | GET    | Get CAPTCHA challenge                         | No            |
+| `/api/v1/auth/captcha/verify`               | POST   | Verify CAPTCHA and exchange for token         | No            |
 | `/api/v1/profile`                           | GET    | Get current user profile                      | Yes           |
 | `/api/v1/profile`                           | PUT    | Update user profile                           | Yes           |
 | `/api/v1/profile/avatar`                    | PUT    | Update avatar URL                             | Yes           |
@@ -1157,8 +1273,8 @@ Error Response:
 │  │  │                     1. Resume Parser Module                       │  │ │
 │  │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │  │ │
 │  │  │  │ PDF Extractor│  │ Docx         │  │ LiteLLM      │          │  │ │
-│  │  │  │ (PDF/DOCX)   │  │ Extractor    │  │ Structured   │          │  │ │
-│  │  │  │              │  │ (python-docx)│  │ Output       │          │  │ │
+│  │  │  │ (pypdf)      │  │ Extractor    │  │ Structured   │          │  │ │
+│  │  │  │              │  │ (OpenXML ZIP)│  │ Output       │          │  │ │
 │  │  │  └──────────────┘  └──────────────┘  └──────────────┘          │  │ │
 │  │  │                              │                                  │  │ │
 │  │  │                              ▼                                  │  │ │
@@ -1218,8 +1334,8 @@ Error Response:
 │       ▼                                                                      │
 │  ┌─────────────────────────┐                                                │
 │  │  Step 1: Text Extraction │                                               │
-│  │  - PyPDF2 for PDF files  │                                               │
-│  │  - python-docx for DOCX  │                                               │
+│  │  - pypdf for PDF files   │                                               │
+│  │  - OpenXML ZIP for DOCX  │                                               │
 │  └───────────┬─────────────┘                                               │
 │              │ Raw Text                                                     │
 │              ▼                                                              │
@@ -1533,6 +1649,7 @@ The actual cost depends on the configured LiteLLM provider and model. The curren
 | **SQL Injection**     | Parameterized Queries | JPA/Hibernate prepared statements                   |
 | **XSS Prevention**    | Output Encoding       | React automatic escaping                            |
 | **Rate Limiting**     | Bucket Algorithm      | 100 requests/minute per IP                          |
+| **Human Verification**| CAPTCHA (Redis)       | Challenge-response with IP rate limit (20/min)      |
 
 ### 8.3 Data Protection
 
@@ -1551,7 +1668,7 @@ The actual cost depends on the configured LiteLLM provider and model. The curren
 ### 9.1 Docker Compose Configuration
 
 ```yaml
-# docker-compose.yml.example (Simplified)
+# docker-compose.yml (Simplified)
 version: '3.8'
 
 services:
@@ -1559,77 +1676,98 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "80:80"
+      - "${FRONTEND_HOST_PORT:-80}:8080"
     depends_on:
       - backend
     networks:
-      - job-assistant-network
+      - public-network
 
   # 2. Java Backend Service
   backend:
     build: ./backend
-    ports:
-      - "8080:8080"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/jobassistant
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/resume_assistant
       - SPRING_RABBITMQ_HOST=rabbitmq
       - JWT_SECRET=${JWT_SECRET}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
     depends_on:
       - postgres
       - rabbitmq
     networks:
-      - job-assistant-network
+      - public-network
+      - internal-network
+      - db-network
 
   # 3. Python AI Service
   ai-service:
     build: ./ai-service
-    ports:
-      - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:5432/jobassistant
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - RABBITMQ_HOST=rabbitmq
+      - BACKEND_SERVICE_URL=http://backend:8080
+      - LLM_TEXT_MODEL=${LLM_TEXT_MODEL:-gemini/gemini-2.5-flash}
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_MODEL_BUCKET=${MINIO_MODEL_BUCKET:-ai-models}
     depends_on:
-      - postgres
       - rabbitmq
+      - redis
+      - minio
     networks:
-      - job-assistant-network
+      - internal-network
+    volumes:
+      - shared-storage:/app/uploads:ro
 
   # 4. PostgreSQL Database
   postgres:
-    image: ankane/pgvector:latest
-    ports:
-      - "5432:5432"
+    image: docker.io/ankane/pgvector:latest
     environment:
-      - POSTGRES_DB=jobassistant
-      - POSTGRES_USER=jobassistant
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-resume_assistant}
+      - POSTGRES_USER=${POSTGRES_USER:-resume_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     networks:
-      - job-assistant-network
+      - db-network
 
   # 5. RabbitMQ Message Queue
   rabbitmq:
     image: rabbitmq:3-management
-    ports:
-      - "5672:5672"
-      - "15672:15672"
     environment:
-      - RABBITMQ_DEFAULT_USER=jobassistant
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq-data:/var/lib/rabbitmq
     networks:
-      - job-assistant-network
+      - internal-network
+
+  # 6. Redis Shared State
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    networks:
+      - internal-network
+
+  # 7. MinIO Model Registry
+  minio:
+    image: quay.io/minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    volumes:
+      - minio-data:/data
+    networks:
+      - internal-network
 
 volumes:
-  postgres_data:
-  rabbitmq_data:
+  postgres-data:
+  rabbitmq-data:
+  redis-data:
+  shared-storage:
+  minio-data:
 
 networks:
-  job-assistant-network:
+  public-network:
+    driver: bridge
+  internal-network:
+    driver: bridge
+  db-network:
     driver: bridge
 ```
 
@@ -1646,14 +1784,14 @@ networks:
 │  │  │                    Docker Network (bridge)                        │  │ │
 │  │  │                                                                  │  │ │
 │  │  │  ┌─────────────┐                                                │  │ │
-│  │  │  │  Frontend   │  Port: 80 (host) -> 80 (container)             │  │ │
+│  │  │  │  Frontend   │  Host: ${FRONTEND_HOST_PORT:-80} -> 8080       │  │ │
 │  │  │  │  (Nginx +   │                                                │  │ │
 │  │  │  │   React)    │                                                │  │ │
 │  │  │  └──────┬──────┘                                                │  │ │
 │  │  │         │ HTTPS/REST                                             │  │ │
 │  │  │         ▼                                                        │  │ │
 │  │  │  ┌─────────────┐                                                │  │ │
-│  │  │  │  Backend    │  Port: 8080 (host) -> 8080 (container)         │  │ │
+│  │  │  │  Backend    │  Port: 8080 (internal only)                   │  │ │
 │  │  │  │  (Spring    │                                                │  │ │
 │  │  │  │   Boot)     │                                                │  │ │
 │  │  │  └──────┬──────┘                                                │  │ │
@@ -1662,7 +1800,7 @@ networks:
 │  │  │    │         │                                                   │  │ │
 │  │  │    ▼         ▼ RabbitMQ                                          │  │ │
 │  │  │  ┌─────────────┐  ┌─────────────┐                                │  │ │
-│  │  │  │  AI Service │  │  RabbitMQ   │  Port: 5672, 15672            │  │ │
+│  │  │  │  AI Service │  │  RabbitMQ   │  Port: 5672 (internal only)   │  │ │
 │  │  │  │  (FastAPI)  │  │             │                                │  │ │
 │  │  │  │  Port: 8000 │  │             │                                │  │ │
 │  │  │  └──────┬──────┘  └─────────────┘                                │  │ │
@@ -1671,7 +1809,7 @@ networks:
 │  │  │                        │ JDBC                                     │  │ │
 │  │  │                        ▼                                         │  │ │
 │  │  │  ┌─────────────────────────────────────────┐                     │  │ │
-│  │  │  │  PostgreSQL 15 + pgvector              │  Port: 5432          │  │ │
+│  │  │  │  PostgreSQL 15 + pgvector              │  Port: 5432 internal │  │ │
 │  │  │  │  - Business data                        │                     │  │ │
 │  │  │  │  - Vector embeddings                    │                     │  │ │
 │  │  │  └─────────────────────────────────────────┘                     │  │ │
@@ -1679,8 +1817,11 @@ networks:
 │  │  └──────────────────────────────────────────────────────────────────┘  │ │
 │  │                                                                         │ │
 │  │  Volumes:                                                               │ │
-│  │  - postgres_data:/var/lib/postgresql/data                              │ │
-│  │  - rabbitmq_data:/var/lib/rabbitmq                                     │ │
+│  │  - postgres-data:/var/lib/postgresql/data                             │ │
+│  │  - rabbitmq-data:/var/lib/rabbitmq                                     │ │
+│  │  - redis-data:/data                                                   │ │
+│  │  - shared-storage:/app/uploads                                        │ │
+│  │  - minio-data:/data                                                   │ │
 │  │                                                                         │ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
 │                                                                             │
@@ -1691,12 +1832,13 @@ networks:
 
 | Service             | Container Port | Host Port | Purpose           |
 | ------------------- | -------------- | --------- | ----------------- |
-| Frontend            | 80             | 80        | Web application   |
-| Backend             | 8080           | 8080      | REST API          |
-| AI Service          | 8000           | 8000      | AI processing API |
-| PostgreSQL          | 5432           | 5432      | Database access   |
-| RabbitMQ            | 5672           | 5672      | Message broker    |
-| RabbitMQ Management | 15672          | 15672     | Web management UI |
+| Frontend            | 8080           | `${FRONTEND_HOST_PORT:-80}` | Web application and API reverse proxy |
+| Backend             | 8080           | Not exposed by default      | Internal REST API behind Nginx |
+| AI Service          | 8000           | Not exposed by default      | Internal AI processing API |
+| PostgreSQL          | 5432           | Not exposed by default      | Database access from backend |
+| RabbitMQ            | 5672           | Not exposed by default      | Internal message broker |
+| RabbitMQ Management | 15672          | Not exposed by default      | Dev-only management UI if port mapping is uncommented |
+| Redis               | 6379           | Not exposed by default      | Internal shared state for AI model adaptation |
 
 ---
 
@@ -1709,7 +1851,7 @@ networks:
 | API Response Time (p95)  | < 200ms | For non-AI endpoints       |
 | Resume Upload Processing | < 30s   | End-to-end with AI parsing |
 | Job Match Query          | < 500ms | Vector similarity search   |
-| Chat Response            | < 3s    | First token from LLM       |
+| Chat Response            | < 3s    | Full AI reply delivery     |
 | Concurrent Users         | 1000    | Supported simultaneously   |
 | System Availability      | 99.9%   | Uptime target              |
 
