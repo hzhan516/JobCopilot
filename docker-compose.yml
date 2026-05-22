@@ -142,17 +142,17 @@ services:
       # The JDBC URL uses the Docker DNS hostname `postgres` which resolves
       # to the postgres container's IP on the isolated db-network. Port 5432
       # is NOT exposed to the host; only the backend can reach it.
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-resume_assistant}
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-resume_user}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:?Database name is required}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:?Database user is required}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:?Database password is required}
 
       # --- RabbitMQ Configuration (Tier 2 connectivity via internal-network) ---
       # The RabbitMQ hostname `rabbitmq` resolves on the internal-network.
       # Port 5672 is NOT exposed to the host; AMQP traffic stays inside Docker.
       - SPRING_RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - SPRING_RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
-      - SPRING_RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
-      - SPRING_RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
+      - SPRING_RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:?RabbitMQ username is required}
+      - SPRING_RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:?RabbitMQ password is required}
 
       # --- File Storage ---
       # Local filesystem storage is used for the Docker Compose deployment.
@@ -167,7 +167,7 @@ services:
       # characters. Generate a strong secret with:
       #   openssl rand -base64 48
       # If this key is compromised, all active user sessions become invalid.
-      - JWT_SECRET=${JWT_SECRET:-your-256-bit-secret-key-change-in-production}
+      - JWT_SECRET=${JWT_SECRET:?JWT Secret must be provided in .env}
 
       # --- Embedding Dimension ---
       # Must match the output dimension of the embedding model configured in
@@ -205,7 +205,7 @@ services:
       # --- Redis Configuration (shared state layer) ---
       - REDIS_HOST=${REDIS_HOST:-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?Redis password is required}
 
       # --- Actuator Health Checks ---
       # Local compose commonly runs without SMTP credentials while email
@@ -282,8 +282,8 @@ services:
       # --- RabbitMQ Configuration (internal-network) ---
       - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:?RabbitMQ username is required}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:?RabbitMQ password is required}
 
       # --- File Storage (shared with backend, read-only) ---
       - FILE_STORAGE_PATH=/app/uploads
@@ -324,15 +324,15 @@ services:
       # --- Redis Configuration (shared state layer) ---
       - REDIS_HOST=${REDIS_HOST:-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?Redis password is required}
 
       # --- AI Model Artifact Storage ---
       # Model artifacts are stored in MinIO so ai-service and ai-worker can
       # share trained ranking models without baking them into the Docker image.
       - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
-      - MINIO_MODEL_BUCKET=${MINIO_MODEL_BUCKET:-ai-models}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:?MinIO access key is required}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:?MinIO secret key is required}
+      - MINIO_MODEL_BUCKET=${MINIO_MODEL_BUCKET:?MinIO model bucket is required}
 
       # --- Defense-in-Depth: Internal API Key ---
       # Must match the INTERNAL_API_KEY set in the backend environment.
@@ -403,8 +403,8 @@ services:
     container_name: resume-assistant-minio
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
-      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:?MinIO root user is required}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:?MinIO root password is required}
     volumes:
       - minio-data:/data
     networks:
@@ -513,15 +513,15 @@ services:
     environment:
       - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:?RabbitMQ username is required}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:?RabbitMQ password is required}
       - REDIS_HOST=${REDIS_HOST:-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?Redis password is required}
       - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
-      - MINIO_MODEL_BUCKET=${MINIO_MODEL_BUCKET:-ai-models}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:?MinIO access key is required}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:?MinIO secret key is required}
+      - MINIO_MODEL_BUCKET=${MINIO_MODEL_BUCKET:?MinIO model bucket is required}
       - BACKEND_SERVICE_URL=${BACKEND_SERVICE_URL:-http://backend:8080}
       - INTERNAL_API_KEY=${INTERNAL_API_KEY:-}
       - RETRAIN_INTERVAL_HOURS=${RETRAIN_INTERVAL_HOURS:-24}
@@ -550,9 +550,9 @@ services:
     env_file:
       - .env
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-resume_assistant}
-      - POSTGRES_USER=${POSTGRES_USER:-resume_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
+      - POSTGRES_DB=${POSTGRES_DB:?Database name is required}
+      - POSTGRES_USER=${POSTGRES_USER:?Database user is required}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Database password is required}
     volumes:
       # Named volume for persistent database files.
       - postgres-data:/var/lib/postgresql/data
@@ -565,7 +565,7 @@ services:
       - db-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-resume_user} -d ${POSTGRES_DB:-resume_assistant}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?Database user is required} -d ${POSTGRES_DB:?Database name is required}"]
       interval: 10s
       timeout: 5s
       retries: 5
