@@ -390,9 +390,9 @@ See [docs/deployment/DOCKER_DEPLOY.md](docs/deployment/DOCKER_DEPLOY.md) for det
 
 ## License
 
-This project is developed for academic purposes at Arizona State University (SER594 course).
+This project is developed for academic purposes at JobCopilot Open Source (JobCopilot course).
 
 ## Acknowledgments
 
-- Arizona State University
-- SER594 Course Team
+- JobCopilot Open Source
+- JobCopilot Course Team

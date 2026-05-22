@@ -4,10 +4,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: resume-assistant-rabbitmq
-  namespace: resume-assistant
+  name: jobcopilot-rabbitmq
+  namespace: jobcopilot
   labels:
-    app.kubernetes.io/name: resume-assistant
+    app.kubernetes.io/name: jobcopilot
     app.kubernetes.io/component: rabbitmq
 spec:
   type: ClusterIP
@@ -19,5 +19,5 @@ spec:
       targetPort: management
       name: management
   selector:
-    app.kubernetes.io/name: resume-assistant
+    app.kubernetes.io/name: jobcopilot
     app.kubernetes.io/component: rabbitmq

@@ -1,0 +1,210 @@
+package io.jobcopilot.resumeassistant.infrastructure.messaging.config;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * RabbitMQ topology configuration defining all queues, exchanges and bindings
+ * used for backend-to-AI-service asynchronous communication.
+ * 定义后端与 AI 服务异步通信所需的全部队列、交换机和绑定关系
+ */
+@Configuration
+public class RabbitMqConfig {
+
+    public static final String EXCHANGE_AI_DIRECT = "ai.direct.exchange";
+
+    public static final String EXCHANGE_DLX = "ai.dlx.exchange";
+    public static final String QUEUE_DLQ = "ai.dlq.queue";
+    public static final String ROUTING_KEY_DLQ = "dlq.routing.key";
+
+    public static final String ROUTING_KEY_REQ_JOB_PARSE = "ai.req.job.parse";
+    public static final String QUEUE_REQ_JOB_PARSE = "ai.queue.job.parse";
+    public static final String ROUTING_KEY_RES_JOB_PARSE = "backend.res.job.parse";
+    public static final String QUEUE_RES_JOB_PARSE = "backend.queue.job.parse";
+
+    public static final String ROUTING_KEY_REQ_RESUME_PARSE = "ai.req.resume.parse";
+    public static final String QUEUE_REQ_RESUME_PARSE = "ai.queue.resume.parse";
+    public static final String ROUTING_KEY_RES_RESUME_PARSE = "backend.res.resume.parse";
+    public static final String QUEUE_RES_RESUME_PARSE = "backend.queue.resume.parse";
+
+    public static final String ROUTING_KEY_REQ_CONVERSATION = "ai.req.conversation";
+    public static final String QUEUE_REQ_CONVERSATION = "ai.queue.conversation";
+    public static final String ROUTING_KEY_RES_CONVERSATION = "backend.res.conversation";
+    public static final String QUEUE_RES_CONVERSATION = "backend.queue.conversation";
+
+    public static final String ROUTING_KEY_REQ_JOB_RANK = "ai.req.job.rank";
+    public static final String QUEUE_REQ_JOB_RANK = "ai.queue.job.rank";
+    public static final String ROUTING_KEY_RES_JOB_RANK = "backend.res.job.rank";
+    public static final String QUEUE_RES_JOB_RANK = "backend.queue.job.rank";
+
+    public static final String ROUTING_KEY_REQ_MODEL_INCREMENTAL = "ai.req.feedback";
+    public static final String QUEUE_REQ_MODEL_INCREMENTAL = "ai.queue.feedback";
+
+    @Bean
+    public MessageConverter jackson2JsonMessageConverter() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        return new Jackson2JsonMessageConverter(objectMapper);
+    }
+
+    @Bean
+    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, MessageConverter messageConverter) {
+        RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+        rabbitTemplate.setMessageConverter(messageConverter);
+        return rabbitTemplate;
+    }
+
+    @Bean
+    public DirectExchange aiDirectExchange() {
+        return new DirectExchange(EXCHANGE_AI_DIRECT);
+    }
+
+    @Bean
+    public DirectExchange dlxExchange() {
+        return new DirectExchange(EXCHANGE_DLX);
+    }
+
+    @Bean
+    public Queue dlqQueue() {
+        return QueueBuilder.durable(QUEUE_DLQ).build();
+    }
+
+    @Bean
+    public Binding dlqBinding(Queue dlqQueue, DirectExchange dlxExchange) {
+        return BindingBuilder.bind(dlqQueue).to(dlxExchange).with(ROUTING_KEY_DLQ);
+    }
+
+    // ========== Job parse queue bindings ==========
+
+    @Bean
+    public Queue reqJobParseQueue() {
+        return QueueBuilder.durable(QUEUE_REQ_JOB_PARSE)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Binding reqJobParseBinding(Queue reqJobParseQueue, DirectExchange aiDirectExchange) {
+        return BindingBuilder.bind(reqJobParseQueue).to(aiDirectExchange).with(ROUTING_KEY_REQ_JOB_PARSE);
+    }
+
+    @Bean
+    public Queue resJobParseQueue() {
+        return QueueBuilder.durable(QUEUE_RES_JOB_PARSE)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Binding resJobParseBinding(Queue resJobParseQueue, DirectExchange aiDirectExchange) {
+        return BindingBuilder.bind(resJobParseQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_JOB_PARSE);
+    }
+
+    // ========== Resume parse queue bindings ==========
+
+    @Bean
+    public Queue reqResumeParseQueue() {
+        return QueueBuilder.durable(QUEUE_REQ_RESUME_PARSE)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Binding reqResumeParseBinding(Queue reqResumeParseQueue, DirectExchange aiDirectExchange) {
+        return BindingBuilder.bind(reqResumeParseQueue).to(aiDirectExchange).with(ROUTING_KEY_REQ_RESUME_PARSE);
+    }
+
+    @Bean
+    public Queue resResumeParseQueue() {
+        return QueueBuilder.durable(QUEUE_RES_RESUME_PARSE)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Binding resResumeParseBinding(Queue resResumeParseQueue, DirectExchange aiDirectExchange) {
+        return BindingBuilder.bind(resResumeParseQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_RESUME_PARSE);
+    }
+
+    // ========== Conversation queue bindings ==========
+
+    @Bean
+    public Queue reqConversationQueue() {
+        return QueueBuilder.durable(QUEUE_REQ_CONVERSATION)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Binding reqConversationBinding(Queue reqConversationQueue, DirectExchange aiDirectExchange) {
+        return BindingBuilder.bind(reqConversationQueue).to(aiDirectExchange).with(ROUTING_KEY_REQ_CONVERSATION);
+    }
+
+    @Bean
+    public Queue resConversationQueue() {
+        return QueueBuilder.durable(QUEUE_RES_CONVERSATION)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Binding resConversationBinding(Queue resConversationQueue, DirectExchange aiDirectExchange) {
+        return BindingBuilder.bind(resConversationQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_CONVERSATION);
+    }
+
+    // ========== Job rank queue bindings ==========
+
+    @Bean
+    public Queue reqJobRankQueue() {
+        return QueueBuilder.durable(QUEUE_REQ_JOB_RANK)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Binding reqJobRankBinding(Queue reqJobRankQueue, DirectExchange aiDirectExchange) {
+        return BindingBuilder.bind(reqJobRankQueue).to(aiDirectExchange).with(ROUTING_KEY_REQ_JOB_RANK);
+    }
+
+    @Bean
+    public Queue resJobRankQueue() {
+        return QueueBuilder.durable(QUEUE_RES_JOB_RANK)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Binding resJobRankBinding(Queue resJobRankQueue, DirectExchange aiDirectExchange) {
+        return BindingBuilder.bind(resJobRankQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_JOB_RANK);
+    }
+
+    // ========== Model incremental queue bindings ==========
+
+    @Bean
+    public Queue reqModelIncrementalQueue() {
+        return QueueBuilder.durable(QUEUE_REQ_MODEL_INCREMENTAL)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Binding reqModelIncrementalBinding(Queue reqModelIncrementalQueue, DirectExchange aiDirectExchange) {
+        return BindingBuilder.bind(reqModelIncrementalQueue).to(aiDirectExchange).with(ROUTING_KEY_REQ_MODEL_INCREMENTAL);
+    }
+}

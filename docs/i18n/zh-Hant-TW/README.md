@@ -354,9 +354,9 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ## 授權條款
 
-本專案為亞利桑那州立大學（Arizona State University, SER594 課程）學術目的開發。
+本專案為亞利桑那州立大學（JobCopilot Open Source, JobCopilot 課程）學術目的開發。
 
 ## 致謝
 
 - 亞利桑那州立大學
-- SER594 課程教學團隊
+- JobCopilot 課程教學團隊

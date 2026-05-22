@@ -1,0 +1,158 @@
+package io.jobcopilot.resumeassistant.domain.user.entity;
+
+import io.jobcopilot.resumeassistant.types.enums.CredentialType;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * 用户凭证实体单元测试
+ * UserCredential Entity Unit Tests
+ * <p>
+ * 遵循DDD原则测试用户凭证实体：
+ * Tests the UserCredential entity following DDD principles:
+ * - 创建后凭证值不可变
+ * - Immutable credential value after creation
+ * - 密码凭证工厂方法
+ * - Factory method for password credentials
+ * - 构建器模式
+ * - Builder pattern
+ */
+@DisplayName("UserCredential Entity Tests")
+class UserCredentialTest {
+
+    private static final UUID TEST_USER_ID = UUID.randomUUID();
+    private static final String HASHED_PASSWORD = "$2a$10$hashedpassword123...";
+
+    @Test
+    @DisplayName("Should create password credential with factory method")
+    void shouldCreatePasswordCredentialWithFactoryMethod() {
+        // 当
+        // When
+        UserCredential credential = UserCredential.createPassword(TEST_USER_ID, HASHED_PASSWORD);
+
+        // 那么
+        // Then
+        assertThat(credential).isNotNull();
+        assertThat(credential.getId()).isNotNull();
+        assertThat(credential.getUserId()).isEqualTo(TEST_USER_ID);
+        assertThat(credential.getCredentialType()).isEqualTo(CredentialType.PASSWORD);
+        assertThat(credential.getCredentialValue()).isEqualTo(HASHED_PASSWORD);
+        assertThat(credential.getLastChangedAt()).isNotNull();
+        assertThat(credential.getCreatedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should generate unique ID for each credential")
+    void shouldGenerateUniqueIdForEachCredential() {
+        // 当
+        // When
+        UserCredential credential1 = UserCredential.createPassword(TEST_USER_ID, HASHED_PASSWORD);
+        UserCredential credential2 = UserCredential.createPassword(TEST_USER_ID, HASHED_PASSWORD + "2");
+
+        // 那么
+        // Then
+        assertThat(credential1.getId()).isNotEqualTo(credential2.getId());
+    }
+
+    @Test
+    @DisplayName("Should build credential with builder pattern")
+    void shouldBuildCredentialWithBuilderPattern() {
+        // 给定
+        // Given
+        UUID id = UUID.randomUUID();
+        LocalDateTime now = LocalDateTime.now();
+
+        // 当
+        // When
+        UserCredential credential = UserCredential.builder()
+                .id(id)
+                .userId(TEST_USER_ID)
+                .credentialType(CredentialType.PASSWORD)
+                .credentialValue(HASHED_PASSWORD)
+                .lastChangedAt(now)
+                .createdAt(now)
+                .build();
+
+        // 那么
+        // Then
+        assertThat(credential.getId()).isEqualTo(id);
+        assertThat(credential.getUserId()).isEqualTo(TEST_USER_ID);
+        assertThat(credential.getCredentialType()).isEqualTo(CredentialType.PASSWORD);
+        assertThat(credential.getCredentialValue()).isEqualTo(HASHED_PASSWORD);
+    }
+
+    @Test
+    @DisplayName("Should maintain immutability of all fields")
+    void shouldMaintainImmutabilityOfAllFields() {
+        // 给定
+        // Given
+        UserCredential credential = UserCredential.createPassword(TEST_USER_ID, HASHED_PASSWORD);
+        UUID originalId = credential.getId();
+        UUID originalUserId = credential.getUserId();
+        CredentialType originalType = credential.getCredentialType();
+        String originalValue = credential.getCredentialValue();
+        LocalDateTime originalLastChanged = credential.getLastChangedAt();
+        LocalDateTime originalCreated = credential.getCreatedAt();
+
+        // 那么 - 所有getter返回相同值
+        // Then - all getters return the same values
+        assertThat(credential.getId()).isEqualTo(originalId);
+        assertThat(credential.getUserId()).isEqualTo(originalUserId);
+        assertThat(credential.getCredentialType()).isEqualTo(originalType);
+        assertThat(credential.getCredentialValue()).isEqualTo(originalValue);
+        assertThat(credential.getLastChangedAt()).isEqualTo(originalLastChanged);
+        assertThat(credential.getCreatedAt()).isEqualTo(originalCreated);
+    }
+
+    @Test
+    @DisplayName("Should implement Entity interface correctly")
+    void shouldImplementEntityInterfaceCorrectly() {
+        // 给定
+        // Given
+        UserCredential credential = UserCredential.createPassword(TEST_USER_ID, HASHED_PASSWORD);
+
+        // 那么
+        // Then
+        assertThat(credential.getId()).isNotNull();
+        assertThat(credential).isInstanceOf(io.jobcopilot.resumeassistant.domain.shared.entity.Entity.class);
+    }
+
+    @Test
+    @DisplayName("Should set timestamps on creation")
+    void shouldSetTimestampsOnCreation() {
+        // 当
+        // When
+        UserCredential credential = UserCredential.createPassword(TEST_USER_ID, HASHED_PASSWORD);
+
+        // 那么
+        // Then
+        assertThat(credential.getCreatedAt()).isNotNull();
+        assertThat(credential.getLastChangedAt()).isNotNull();
+        assertThat(credential.getCreatedAt()).isEqualTo(credential.getLastChangedAt());
+    }
+
+    @Test
+    @DisplayName("Should store different credential values")
+    void shouldStoreDifferentCredentialValues() {
+        // 给定
+        // Given
+        String password1 = "hashed_password_1";
+        String password2 = "hashed_password_2";
+
+        // 当
+        // When
+        UserCredential credential1 = UserCredential.createPassword(TEST_USER_ID, password1);
+        UserCredential credential2 = UserCredential.createPassword(TEST_USER_ID, password2);
+
+        // 那么
+        // Then
+        assertThat(credential1.getCredentialValue()).isEqualTo(password1);
+        assertThat(credential2.getCredentialValue()).isEqualTo(password2);
+        assertThat(credential1.getCredentialValue()).isNotEqualTo(credential2.getCredentialValue());
+    }
+}

@@ -4,21 +4,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: resume-assistant-frontend
-  namespace: resume-assistant
+  name: jobcopilot-frontend
+  namespace: jobcopilot
   labels:
-    app.kubernetes.io/name: resume-assistant
+    app.kubernetes.io/name: jobcopilot
     app.kubernetes.io/component: frontend
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: resume-assistant
+      app.kubernetes.io/name: jobcopilot
       app.kubernetes.io/component: frontend
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: resume-assistant
+        app.kubernetes.io/name: jobcopilot
         app.kubernetes.io/component: frontend
     spec:
       securityContext:
@@ -27,7 +27,7 @@ spec:
         fsGroup: 101
       containers:
         - name: frontend
-          image: resume-assistant-frontend:latest
+          image: jobcopilot-frontend:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -60,4 +60,4 @@ spec:
       volumes:
         - name: nginx-config
           configMap:
-            name: resume-assistant-nginx-config
+            name: jobcopilot-nginx-config

@@ -47,7 +47,7 @@ RUN --mount=type=cache,target=/root/.m2 \
 FROM docker.io/eclipse-temurin:21-jre-alpine
 
 # 标签信息
-LABEL maintainer="SER594 Team"
+LABEL maintainer="JobCopilot Labs"
 LABEL description="智能求职助手 - Java后端服务"
 
 # 安装必要的工具

@@ -1,0 +1,11 @@
+{{- if .Values.namespace.create }}
+# =============================================================================
+# Namespace
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "jobcopilot.namespace" . }}
+  labels:
+    {{- include "jobcopilot.labels" . | nindent 4 }}
+  {{- end }}

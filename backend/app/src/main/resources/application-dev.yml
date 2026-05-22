@@ -3,7 +3,7 @@
 
 spring:
   application:
-    name: ${SPRING_APPLICATION_NAME:resume-assistant-backend}
+    name: ${SPRING_APPLICATION_NAME:jobcopilot-backend}
 
   # Redis 配置 / Redis configuration
   data:
@@ -71,7 +71,7 @@ app:
     max-limit: ${SEARCH_MAX_LIMIT:100}
   email:
     enabled: ${EMAIL_VERIFICATION_ENABLED:false}
-    from: ${EMAIL_FROM:noreply@resume-assistant.local}
+    from: ${EMAIL_FROM:noreply@jobcopilot.local}
     code-expiry-seconds: ${EMAIL_CODE_EXPIRY:300}
     resend-cooldown-seconds: ${EMAIL_RESEND_COOLDOWN:60}
     max-attempts: ${EMAIL_MAX_ATTEMPTS:3}
@@ -196,7 +196,7 @@ storage:
 logging:
   level:
     org.hibernate.SQL: ${LOG_HIBERNATE_LEVEL:DEBUG}
-    edu.asu.ser594.resumeassistant: ${LOG_APP_LEVEL:DEBUG}
+    io.jobcopilot.resumeassistant: ${LOG_APP_LEVEL:DEBUG}
 
 # ============================================
 # RabbitMQ 消息队列配置 / RabbitMQ message queue configuration

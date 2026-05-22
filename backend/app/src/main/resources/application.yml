@@ -3,7 +3,7 @@
 
 spring:
   application:
-    name: resume-assistant-backend
+    name: jobcopilot-backend
 
   # 激活的 profile / Active profile
   profiles:

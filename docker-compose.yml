@@ -66,8 +66,8 @@ services:
         # Google OAuth 2.0 Client ID. Required for Google Sign-In.
         # Obtain from https://console.cloud.google.com/apis/credentials
         - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
-    image: resume-assistant-frontend
-    container_name: resume-assistant-frontend
+    image: jobcopilot-frontend
+    container_name: jobcopilot-frontend
     ports:
      # Host port mapping for the Nginx reverse proxy.
      # FRONTEND_HOST_PORT defaults to 80. Change it in .env if port 80 is
@@ -126,8 +126,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: resume-assistant-backend
-    container_name: resume-assistant-backend
+    image: jobcopilot-backend
+    container_name: jobcopilot-backend
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the line below if you need direct host access to the Spring
     # Boot actuator or API docs during local debugging. In production the
@@ -217,7 +217,7 @@ services:
       # here; ai-service reads them (read-only mount on its side).
       - shared-storage:/app/uploads
       # [REMOVED] Host-mounted directory for persistent backend logs caused Permission Denied on WSL.
-      # Logs can still be accessed via `docker logs resume-assistant-backend`.
+      # Logs can still be accessed via `docker logs jobcopilot-backend`.
     networks:
       # Gateway role: backend bridges all three tiers.
       - public-network
@@ -269,8 +269,8 @@ services:
     build:
       context: ./ai-service
       dockerfile: Dockerfile
-    image: resume-assistant-ai-service
-    container_name: resume-assistant-ai
+    image: jobcopilot-ai-service
+    container_name: jobcopilot-ai
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the line below if you want to browse the FastAPI auto-generated
     # Swagger UI (http://localhost:8000/docs) during local development.
@@ -292,7 +292,7 @@ services:
       # VERTEX_CREDENTIALS inside the container always points to the mounted
       # file path. The HOST path is configured in .env (must be absolute).
       # See the volumes section below for the bind-mount definition.
-      - VERTEX_PROJECT_ID=${VERTEX_PROJECT_ID:-ser594-ai-service}
+      - VERTEX_PROJECT_ID=${VERTEX_PROJECT_ID:-jobcopilot-ai-service}
       - VERTEX_LOCATION=${VERTEX_LOCATION:-global}
       - VERTEX_CREDENTIALS=/app/credentials/gcp-service-account.json
 
@@ -379,7 +379,7 @@ services:
   # ============================================================================
   redis:
     image: docker.io/library/redis:7-alpine
-    container_name: resume-assistant-redis
+    container_name: jobcopilot-redis
     volumes:
       - redis-data:/data
     networks:
@@ -400,7 +400,7 @@ services:
   # ============================================================================
   minio:
     image: quay.io/minio/minio:latest
-    container_name: resume-assistant-minio
+    container_name: jobcopilot-minio
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
       - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:?MinIO root user is required}
@@ -446,7 +446,7 @@ services:
   # ============================================================================
   rabbitmq:
     image: public.ecr.aws/docker/library/rabbitmq:3.13-management-alpine
-    container_name: resume-assistant-rabbitmq
+    container_name: jobcopilot-rabbitmq
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the lines below if you need direct host access to the AMQP
     # port (for local debugging tools) or the Management UI.
@@ -505,8 +505,8 @@ services:
     build:
       context: ./ai-service
       dockerfile: Dockerfile
-    image: resume-assistant-ai-service
-    container_name: resume-assistant-ai-worker
+    image: jobcopilot-ai-service
+    container_name: jobcopilot-ai-worker
     command: ["python", "-m", "app.worker_main"]
     env_file:
       - .env
@@ -541,7 +541,7 @@ services:
 
   postgres:
     image: docker.io/ankane/pgvector:latest
-    container_name: resume-assistant-postgres
+    container_name: jobcopilot-postgres
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the line below if you need to connect with a local database
     # GUI (e.g. pgAdmin, DBeaver) during development.
@@ -625,7 +625,7 @@ networks:
 # directory on the host (typically /var/lib/docker/volumes/).
 #
 # For production, consider backing up these volumes regularly:
-#   docker run --rm -v resume-assistant_postgres-data:/data -v $(pwd):/backup \
+#   docker run --rm -v jobcopilot_postgres-data:/data -v $(pwd):/backup \
 #     alpine tar czf /backup/postgres-backup.tar.gz -C /data .
 # =============================================================================
 volumes:

@@ -27,7 +27,7 @@ RUN npm run build
 # -----------------------------------------------------------------------------
 FROM docker.io/library/nginx:1.27-alpine
 
-LABEL maintainer="SER594 Team"
+LABEL maintainer="JobCopilot Labs"
 LABEL description="Resume Assistant Frontend"
 
 # Install curl for Docker healthcheck (nginx:alpine does not include wget or curl by default)

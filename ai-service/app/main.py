@@ -146,7 +146,7 @@ async def health_check():
     return {
         "status": "healthy",
         "mq_connected": True,
-        "vertex_project_configured": os.getenv("VERTEX_PROJECT_ID") is not None and os.getenv("VERTEX_PROJECT_ID") != "ser594-ai-service",
+        "vertex_project_configured": os.getenv("VERTEX_PROJECT_ID") is not None and os.getenv("VERTEX_PROJECT_ID") != "jobcopilot-ai-service",
         "vertex_location": os.getenv("VERTEX_LOCATION", "global"),
     }
 

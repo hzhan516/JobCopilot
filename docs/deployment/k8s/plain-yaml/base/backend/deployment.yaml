@@ -4,21 +4,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: resume-assistant-backend
-  namespace: resume-assistant
+  name: jobcopilot-backend
+  namespace: jobcopilot
   labels:
-    app.kubernetes.io/name: resume-assistant
+    app.kubernetes.io/name: jobcopilot
     app.kubernetes.io/component: backend
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: resume-assistant
+      app.kubernetes.io/name: jobcopilot
       app.kubernetes.io/component: backend
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: resume-assistant
+        app.kubernetes.io/name: jobcopilot
         app.kubernetes.io/component: backend
     spec:
       securityContext:
@@ -28,13 +28,13 @@ spec:
         fsGroup: 1000
       containers:
         - name: backend
-          image: resume-assistant-backend:latest
+          image: jobcopilot-backend:latest
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
-                name: resume-assistant-config
+                name: jobcopilot-config
             - secretRef:
-                name: resume-assistant-secrets
+                name: jobcopilot-secrets
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "dev"

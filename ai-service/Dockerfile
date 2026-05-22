@@ -32,7 +32,7 @@ RUN pip install --no-cache-dir --upgrade pip wheel setuptools && \
 FROM docker.io/library/python:3.11-slim
 
 # 标签信息
-LABEL maintainer="SER594 Team"
+LABEL maintainer="JobCopilot Labs"
 LABEL description="智能求职助手 - Python AI服务"
 
 # 环境变量设置

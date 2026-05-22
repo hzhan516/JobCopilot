@@ -4,22 +4,22 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: resume-assistant-postgres
-  namespace: resume-assistant
+  name: jobcopilot-postgres
+  namespace: jobcopilot
   labels:
-    app.kubernetes.io/name: resume-assistant
+    app.kubernetes.io/name: jobcopilot
     app.kubernetes.io/component: postgres
 spec:
   replicas: 1
-  serviceName: resume-assistant-postgres
+  serviceName: jobcopilot-postgres
   selector:
     matchLabels:
-      app.kubernetes.io/name: resume-assistant
+      app.kubernetes.io/name: jobcopilot
       app.kubernetes.io/component: postgres
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: resume-assistant
+        app.kubernetes.io/name: jobcopilot
         app.kubernetes.io/component: postgres
     spec:
       securityContext:
@@ -45,7 +45,7 @@ spec:
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: resume-assistant-secrets
+                  name: jobcopilot-secrets
                   key: POSTGRES_PASSWORD
             - name: LLM_EMBEDDING_MODEL_DIMENSION
               value: "1536"

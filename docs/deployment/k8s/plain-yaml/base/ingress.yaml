@@ -9,10 +9,10 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: resume-assistant
-  namespace: resume-assistant
+  name: jobcopilot
+  namespace: jobcopilot
   labels:
-    app.kubernetes.io/name: resume-assistant
+    app.kubernetes.io/name: jobcopilot
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
@@ -26,23 +26,23 @@ spec:
   # 取消注释以启用 TLS
   # tls:
   #   - hosts:
-  #       - resume-assistant.example.com
-  #     secretName: resume-assistant-tls
+  #       - jobcopilot.example.com
+  #     secretName: jobcopilot-tls
   rules:
-    - host: resume-assistant.local
+    - host: jobcopilot.local
       http:
         paths:
           - path: /api
             pathType: Prefix
             backend:
               service:
-                name: resume-assistant-backend
+                name: jobcopilot-backend
                 port:
                   number: 8080
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: resume-assistant-frontend
+                name: jobcopilot-frontend
                 port:
                   number: 80

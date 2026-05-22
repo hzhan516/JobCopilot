@@ -295,7 +295,7 @@ jobs:
           context: ./frontend
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/resume-assistant-frontend:master-${{ steps.vars.outputs.sha_short }}
+            ghcr.io/${{ github.repository_owner }}/jobcopilot-frontend:master-${{ steps.vars.outputs.sha_short }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
           build-args: |
@@ -307,7 +307,7 @@ jobs:
           context: ./backend
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/resume-assistant-backend:master-${{ steps.vars.outputs.sha_short }}
+            ghcr.io/${{ github.repository_owner }}/jobcopilot-backend:master-${{ steps.vars.outputs.sha_short }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
 
@@ -317,6 +317,6 @@ jobs:
           context: ./ai-service
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/resume-assistant-ai-service:master-${{ steps.vars.outputs.sha_short }}
+            ghcr.io/${{ github.repository_owner }}/jobcopilot-ai-service:master-${{ steps.vars.outputs.sha_short }}
           cache-from: type=gha,scope=ai-service
           cache-to: type=gha,mode=max,scope=ai-service

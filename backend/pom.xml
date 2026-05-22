@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>edu.asu.ser594</groupId>
-    <artifactId>resume-assistant-backend</artifactId>
+    <groupId>io.jobcopilot</groupId>
+    <artifactId>jobcopilot-backend</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
 
@@ -75,27 +75,27 @@
 
             <!-- 内部模块依赖管理 -->
             <dependency>
-                <groupId>edu.asu.ser594</groupId>
+                <groupId>io.jobcopilot</groupId>
                 <artifactId>types</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>edu.asu.ser594</groupId>
+                <groupId>io.jobcopilot</groupId>
                 <artifactId>domain</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>edu.asu.ser594</groupId>
+                <groupId>io.jobcopilot</groupId>
                 <artifactId>api</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>edu.asu.ser594</groupId>
+                <groupId>io.jobcopilot</groupId>
                 <artifactId>infrastructure</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>edu.asu.ser594</groupId>
+                <groupId>io.jobcopilot</groupId>
                 <artifactId>trigger</artifactId>
                 <version>${project.version}</version>
             </dependency>

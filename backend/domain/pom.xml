@@ -5,8 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>edu.asu.ser594</groupId>
-        <artifactId>resume-assistant-backend</artifactId>
+        <groupId>io.jobcopilot</groupId>
+        <artifactId>jobcopilot-backend</artifactId>
         <version>1.0.0</version>
     </parent>
 
@@ -17,7 +17,7 @@
     <dependencies>
         <!-- 依赖types模块 -->
         <dependency>
-            <groupId>edu.asu.ser594</groupId>
+            <groupId>io.jobcopilot</groupId>
             <artifactId>types</artifactId>
         </dependency>
 

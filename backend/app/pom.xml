@@ -5,8 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>edu.asu.ser594</groupId>
-        <artifactId>resume-assistant-backend</artifactId>
+        <groupId>io.jobcopilot</groupId>
+        <artifactId>jobcopilot-backend</artifactId>
         <version>1.0.0</version>
     </parent>
 
@@ -18,7 +18,7 @@
     <dependencies>
         <!-- 依赖trigger层（传递依赖api、domain、infrastructure） -->
         <dependency>
-            <groupId>edu.asu.ser594</groupId>
+            <groupId>io.jobcopilot</groupId>
             <artifactId>trigger</artifactId>
         </dependency>
 
@@ -131,7 +131,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>edu.asu.ser594.resumeassistant.Application</mainClass>
+                    <mainClass>io.jobcopilot.resumeassistant.Application</mainClass>
                     <executable>true</executable>
                 </configuration>
                 <executions>

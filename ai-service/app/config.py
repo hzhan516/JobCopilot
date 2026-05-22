@@ -37,7 +37,7 @@ MODEL_INCREMENTAL_ROUTING_KEY = "ai.req.model.incremental"
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
-VERTEX_PROJECT_ID = os.getenv("VERTEX_PROJECT_ID", "ser594-ai-service")
+VERTEX_PROJECT_ID = os.getenv("VERTEX_PROJECT_ID", "jobcopilot-ai-service")
 VERTEX_LOCATION = os.getenv("VERTEX_LOCATION", "global")
 VERTEX_CREDENTIALS = os.getenv("VERTEX_CREDENTIALS")
 

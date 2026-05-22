@@ -9,14 +9,14 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: resume-assistant-root
+  name: jobcopilot-root
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
-    repoURL: https://github.com/your-org/resume-assistant.git
+    repoURL: https://github.com/your-org/jobcopilot.git
     targetRevision: HEAD
     path: docs/deployment/k8s/argocd/applications
   destination:

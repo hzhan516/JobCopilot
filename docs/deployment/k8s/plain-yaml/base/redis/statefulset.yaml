@@ -4,22 +4,22 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: resume-assistant-redis
-  namespace: resume-assistant
+  name: jobcopilot-redis
+  namespace: jobcopilot
   labels:
-    app.kubernetes.io/name: resume-assistant
+    app.kubernetes.io/name: jobcopilot
     app.kubernetes.io/component: redis
 spec:
   replicas: 1
-  serviceName: resume-assistant-redis
+  serviceName: jobcopilot-redis
   selector:
     matchLabels:
-      app.kubernetes.io/name: resume-assistant
+      app.kubernetes.io/name: jobcopilot
       app.kubernetes.io/component: redis
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: resume-assistant
+        app.kubernetes.io/name: jobcopilot
         app.kubernetes.io/component: redis
     spec:
       securityContext:
