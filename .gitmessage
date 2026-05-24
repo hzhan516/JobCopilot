@@ -1,0 +1,10 @@
+# <type>(<scope>): <subject>
+#
+# Why this change?
+#
+# What changed?
+#
+# Refs: RES-XXX
+#
+# Types: feat|fix|perf|refactor|docs|test|chore|ci|style|revert
+# Breaking: add ! after type or BREAKING CHANGE: in footer

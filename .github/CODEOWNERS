@@ -1,0 +1,55 @@
+# Default owners for everything in the repo — require 2-person review
+*                      @hzhan516 @guixingj
+
+# ───────────────────────────────────────────────
+# Backend (Hexagonal Architecture)
+# ───────────────────────────────────────────────
+/backend/api/          @hzhan516 @guixingj
+/backend/app/          @hzhan516 @guixingj
+/backend/domain/       @hzhan516 @guixingj
+/backend/infrastructure/ @hzhan516 @guixingj
+/backend/trigger/      @hzhan516 @guixingj
+/backend/types/        @hzhan516 @guixingj
+/backend/pom.xml       @hzhan516 @guixingj
+
+# ───────────────────────────────────────────────
+# Frontend
+# ───────────────────────────────────────────────
+/frontend/             @guixingj @mhsiy
+
+# ───────────────────────────────────────────────
+# AI Service
+# ───────────────────────────────────────────────
+/ai-service/           @mhsiy @hzhan516
+
+# ───────────────────────────────────────────────
+# Evaluation & Scripts
+# ───────────────────────────────────────────────
+/eval/                 @mhsiy @hzhan516
+/scripts/              @mhsiy @hzhan516
+
+# ───────────────────────────────────────────────
+# Infrastructure & Deployment (Container-First)
+# ───────────────────────────────────────────────
+/docker-compose*.yml   @hzhan516 @mhsiy
+/Dockerfile*           @hzhan516 @mhsiy
+/.env.example          @hzhan516 @mhsiy
+/docs/deployment/      @hzhan516 @mhsiy
+
+# ───────────────────────────────────────────────
+# CI/CD & GitHub
+# ───────────────────────────────────────────────
+/.github/              @hzhan516 @guixingj
+
+# ───────────────────────────────────────────────
+# Documentation (All i18n variants)
+# ───────────────────────────────────────────────
+/docs/                 @guixingj @mhsiy
+*.md                   @guixingj @mhsiy
+
+# ───────────────────────────────────────────────
+# Security-sensitive areas — require extra review
+# ───────────────────────────────────────────────
+/backend/domain/auth/   @hzhan516 @guixingj
+/backend/infrastructure/security/ @hzhan516 @guixingj
+/frontend/src/auth/     @guixingj @mhsiy
