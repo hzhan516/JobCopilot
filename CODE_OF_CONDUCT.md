@@ -1,5 +1,7 @@
 # Contributor Covenant Code of Conduct
 
+> **Languages:** English (current) | [简体中文](docs/i18n/zh-CN/CODE_OF_CONDUCT.md) | [繁體中文](docs/i18n/zh-TW/CODE_OF_CONDUCT.md)
+
 ## Our Pledge
 
 We as members, contributors, and leaders pledge to make participation in our

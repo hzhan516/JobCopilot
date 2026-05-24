@@ -1,5 +1,7 @@
 # 为 JobCopilot ResumeAssistant 做出贡献
 
+> **Languages:** [English](../../CONTRIBUTING.md) | 简体中文 (current) | [繁體中文](../zh-TW/CONTRIBUTING.md)
+
 首先，感谢您考虑为 JobCopilot 做出贡献！本项目基于六边形架构（端口与适配器），是一个 AI 驱动的简历与职位匹配助手。我们正在从学习项目转型为开源就绪产品，您的贡献至关重要。
 
 ## 目录

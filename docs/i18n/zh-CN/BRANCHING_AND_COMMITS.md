@@ -1,5 +1,7 @@
 # 分支策略与提交规范
 
+> **Languages:** [English](../../BRANCHING_AND_COMMITS.md) | 简体中文 (current) | [繁體中文](../zh-TW/BRANCHING_AND_COMMITS.md)
+
 本文档定义了 JobCopilot ResumeAssistant 项目的 Git 工程标准，涵盖分支策略、提交规范、代码审查流程和发布管理。
 
 > **状态：** 已采纳  
