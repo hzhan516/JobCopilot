@@ -23,7 +23,7 @@
 ## Checklist
 - [ ] Self-reviewed my code
 - [ ] Added/updated tests
-- [ ] Updated documentation (English + zh-CN + zh-TW if applicable)
+- [ ] Updated documentation (English + zh-Hans-CN + zh-Hant-TW if applicable)
 - [ ] No new warnings
 - [ ] Breaking changes documented
 - [ ] Migration guide included (if breaking)

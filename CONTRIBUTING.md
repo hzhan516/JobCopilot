@@ -1,6 +1,6 @@
 # Contributing to JobCopilot ResumeAssistant
 
-> **Languages:** English (current) | [简体中文](docs/i18n/zh-CN/CONTRIBUTING.md) | [繁體中文](docs/i18n/zh-TW/CONTRIBUTING.md)
+> **Languages:** English (current) | [简体中文](docs/i18n/zh-Hans-CN/CONTRIBUTING.md) | [繁體中文](docs/i18n/zh-Hant-TW/CONTRIBUTING.md)
 
 First off, thank you for considering contributing to JobCopilot! This project is built on Hexagonal Architecture (Ports & Adapters) and serves as an AI-powered resume and job matching assistant. We are transitioning from a learning project to an open-source-ready product, and your contributions are vital.
 
@@ -382,8 +382,8 @@ Before submitting a PR, verify:
 
 All user-facing or contributor-facing documentation must be provided in **three languages**:
 - **English** (primary, root directory)
-- **简体中文** (`docs/i18n/zh-CN/`)
-- **繁體中文** (`docs/i18n/zh-TW/`)
+- **简体中文** (`docs/i18n/zh-Hans-CN/`)
+- **繁體中文** (`docs/i18n/zh-Hant-TW/`)
 
 | Document | Location | Requires i18n? |
 |----------|----------|---------------|

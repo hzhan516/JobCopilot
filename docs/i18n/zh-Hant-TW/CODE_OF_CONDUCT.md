@@ -1,6 +1,6 @@
 # 貢獻者公約行為準則
 
-> **Languages:** [English](../../CODE_OF_CONDUCT.md) | [简体中文](../zh-CN/CODE_OF_CONDUCT.md) | 繁體中文 (current)
+> **Languages:** [English](../../CODE_OF_CONDUCT.md) | [简体中文](../zh-Hans-CN/CODE_OF_CONDUCT.md) | 繁體中文 (current)
 
 ## 我們的承諾
 

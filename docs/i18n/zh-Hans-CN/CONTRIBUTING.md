@@ -1,6 +1,6 @@
 # 为 JobCopilot ResumeAssistant 做出贡献
 
-> **Languages:** [English](../../CONTRIBUTING.md) | 简体中文 (current) | [繁體中文](../zh-TW/CONTRIBUTING.md)
+> **Languages:** [English](../../CONTRIBUTING.md) | 简体中文 (current) | [繁體中文](../zh-Hant-TW/CONTRIBUTING.md)
 
 首先，感谢您考虑为 JobCopilot 做出贡献！本项目基于六边形架构（端口与适配器），是一个 AI 驱动的简历与职位匹配助手。我们正在从学习项目转型为开源就绪产品，您的贡献至关重要。
 
@@ -374,8 +374,8 @@ cd backend && mvn test -pl app -Dtest="*ArchitectureTest*"
 
 所有面向用户或贡献者的文档必须提供 **三种语言**：
 - **英语**（主文件，根目录）
-- **简体中文** (`docs/i18n/zh-CN/`)
-- **繁體中文** (`docs/i18n/zh-TW/`)
+- **简体中文** (`docs/i18n/zh-Hans-CN/`)
+- **繁體中文** (`docs/i1../zh-Hant-TW/`)
 
 | 文档 | 位置 | 需要 i18n? |
 |----------|----------|---------------|
