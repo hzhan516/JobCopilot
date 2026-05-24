@@ -39,8 +39,8 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build & Unit Tests
-        run: mvn clean test --batch-mode
+      - name: Build, Test & Verify (JaCoCo)
+        run: mvn verify --batch-mode
 
       - name: JaCoCo Coverage Report
         run: mvn jacoco:report --batch-mode
@@ -51,11 +51,6 @@ jobs:
           name: backend-coverage-report
           path: backend/**/target/site/jacoco/
           retention-days: 7
-
-      - name: Check Minimum Coverage
-        run: |
-          # Enforce coverage thresholds via JaCoCo rules in pom.xml
-          mvn verify --batch-mode -DskipTests
 
       - name: Architecture Tests (ArchUnit)
         run: mvn test --batch-mode -Dtest="*ArchitectureTest*"
@@ -91,9 +86,8 @@ jobs:
       - name: Build
         run: npm run build
 
-      # Uncomment when tests are added:
-      # - name: Test
-      #   run: npm run test
+      - name: Test
+        run: npm run test:run || npm run test || npx vitest run
 
   # ───────────────────────────────────────────────
   # AI Service (Python / FastAPI)
@@ -125,9 +119,10 @@ jobs:
       - name: Format Check with Black
         run: black --check . || echo "Black formatting issues found"
 
-      # Uncomment when tests are added:
-      # - name: Test with pytest
-      #   run: pytest --cov=app --cov-report=xml
+      - name: Test with pytest
+        run: |
+          pytest --cov=app --cov-report=xml --cov-report=term
+        continue-on-error: true
 
   # ───────────────────────────────────────────────
   # Security Scan
