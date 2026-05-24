@@ -4,7 +4,7 @@ import litellm
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from app.config import LLM_REQUEST_TIMEOUT_SECONDS, LLM_TEXT_MODEL
-from app.schemas import JobRankCommand, JobRankResultPayload, JobRankResultItem, MatchFactors
+from app.schemas import JobRankCommand, JobRankResultPayload, JobRankResultItem, MatchFactors, JobDetail
 from app.api.model_manager import model_manager
 from app.domain.ml.features import extract_features, FEATURE_COLUMNS
 
@@ -49,11 +49,11 @@ async def _generate_match_reason(command: JobRankCommand, job: JobRankResultItem
 
     resume_snippet = command.resume_text[:3000]
     
-    details = command.job_details.get(job.job_id, {})
-    if not isinstance(details, dict):
-        details = {}
+    details = command.job_details.get(job.job_id)
+    if details is None:
+        details = JobDetail()
         
-    job_desc = str(details.get("description", ""))[:2000]
+    job_desc = (details.description or "")[:2000]
     
     prompt = f"""You are an expert career advisor.
 Your task is to briefly explain in 1-2 sentences why this job is a good fit for the candidate, focusing ONLY on matching skills and experience.
@@ -82,9 +82,9 @@ async def rank_jobs(command: JobRankCommand) -> JobRankResultPayload:
 
     job_features = []
     for job_id in command.recalled_job_ids:
-        details = command.job_details.get(job_id, {})
-        if not isinstance(details, dict):
-            details = {}
+        details = command.job_details.get(job_id)
+        if details is None:
+            details = JobDetail()
         features = extract_features(details, command.query, command.resume_text)
         job_features.append((job_id, features))
 
@@ -111,19 +111,19 @@ async def rank_jobs(command: JobRankCommand) -> JobRankResultPayload:
 
     ranked_results = []
     for (job_id, features), score in zip(job_features, model_scores):
-        details = command.job_details.get(job_id, {})
-        if not isinstance(details, dict):
-            details = {}
+        details = command.job_details.get(job_id)
+        if details is None:
+            details = JobDetail()
 
-        description = str(details.get("description", "")).replace("\n", " ")
+        description = (details.description or "").replace("\n", " ")
         if len(description) > 280:
             description = description[:277].rstrip() + "..."
 
         ranked_results.append(
             JobRankResultItem(
                 jobId=job_id,
-                title=str(details.get("title", "")).strip(),
-                company=str(details.get("company", "")).strip(),
+                title=(details.title or "").strip(),
+                company=(details.company or "").strip(),
                 matchScore=round(_clip_score(float(score)), 4),
                 matchFactors=MatchFactors(
                     skillMatch=round(_clip_score(features["skill_overlap_ratio"]), 4),

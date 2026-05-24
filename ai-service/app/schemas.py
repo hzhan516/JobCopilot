@@ -14,6 +14,127 @@ class AppBaseModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+# ── Experience ──────────────────────────────────────────────────────────
+class ExperienceItem(AppBaseModel):
+    """Single work-experience entry extracted from a resume.
+    工作经历条目：从简历解析中提取的单条工作经历。"""
+
+    company: str | None = None
+    title: str | None = None
+    duration: str | None = None
+    summary: str | None = None
+
+
+# ── Job detail (replaces dict[str, Any] in job_details) ──────────────
+class JobDetail(AppBaseModel):
+    """Structured job information used in ranking and feature extraction.
+    结构化职位信息：用于精排排序与特征提取，替换 loose dict[str, Any]。"""
+
+    title: str | None = None
+    company: str | None = None
+    description: str | None = None
+    requirements: list[str] = Field(default_factory=list)
+    salary: str | None = None
+    location: str | None = None
+
+
+# ── AiResultEvent.data union members ────────────────────────────────────
+class JobParseData(AppBaseModel):
+    """Payload for JOB_PARSE completion events.
+    职位解析完成事件的 data 负载。"""
+
+    parsed_content: ParsedJobContent = Field(alias="parsedContent")
+
+
+class ResumeParseData(AppBaseModel):
+    """Payload for RESUME_PARSE completion events.
+    简历解析完成事件的 data 负载。"""
+
+    parsed_content: ParsedResumeContent = Field(alias="parsedContent")
+    summary: str = ""
+
+
+class ResumeModification(AppBaseModel):
+    """Resume rewrite metadata returned by conversation replies.
+    对话回复中返回的简历修改元数据。"""
+
+    modified: bool = False
+    markdown: str = ""
+
+
+class ConversationData(AppBaseModel):
+    """Payload for CONVERSATION_REPLY completion events.
+    对话回复完成事件的 data 负载。"""
+
+    content: str
+    file_url: str | None = Field(default=None, alias="fileUrl")
+    resume_modification: ResumeModification = Field(
+        default_factory=ResumeModification, alias="resumeModification"
+    )
+
+
+# ── Feedback ────────────────────────────────────────────────────────────
+class FeedbackCommand(AppBaseModel):
+    """Command consumed from the feedback MQ queue.
+    反馈队列消费命令：替代 loose dict 操作。"""
+
+    match_id: str = Field(alias="matchId")
+    user_id: str = Field(alias="userId")
+    resume_version_id: str = Field(alias="resumeVersionId")
+    job_id: str = Field(alias="jobId")
+    feedback_type: str = Field(alias="feedbackType")
+    score: float | None = None
+    context: str | None = None
+    timestamp: str | None = None
+
+
+# ── Vector upsert DTOs (align with Java backend) ──────────────────────
+class JobVectorItem(AppBaseModel):
+    """Single job vector entry for batch upsert to the backend.
+    单个职位向量条目：对齐 Java BatchJobVectorUpsertRequest.JobVectorItem。"""
+
+    job_id: str = Field(alias="jobId")
+    embedding: list[float]
+    title: str = ""
+    description: str = ""
+    requirements: list[str] = Field(default_factory=list)
+    raw_content: str = Field(default="", alias="rawContent")
+    source_file: str = Field(default="", alias="sourceFile")
+    model_version: str = Field(default="", alias="modelVersion")
+
+
+class ResumeVectorItem(AppBaseModel):
+    """Single resume vector entry for batch upsert to the backend.
+    单个简历向量条目：对齐 Java BatchResumeVectorUpsertRequest.ResumeVectorItem。"""
+
+    resume_version_id: str = Field(alias="resumeVersionId")
+    embedding: list[float]
+
+
+class BatchVectorUpsertResponse(AppBaseModel):
+    """Response from backend batch vector upsert endpoint.
+    后端批量向量写入响应：对齐 Java Batch*VectorUpsertResponse。"""
+
+    total: int = 0
+    success: int = 0
+    failed: int = 0
+    skipped: int = 0
+    failed_ids: list[str] = Field(default_factory=list, alias="failedIds")
+
+
+# ── Baseline feature (replaces list[dict[str, Any]]) ────────────────────
+class BaselineFeature(AppBaseModel):
+    """Baseline feature record fetched from backend for model training.
+    基线特征记录：从后端获取用于模型训练，替换 loose dict[str, Any]。"""
+
+    job_id: str = Field(alias="jobId")
+    title: str = ""
+    description: str = ""
+    requirements: list[str] = Field(default_factory=list)
+    semantic_match: float = Field(default=0.0, alias="semanticMatch")
+
+
+# ── MQ commands ───────────────────────────────────────────────────────
 class JobParseCommand(AppBaseModel):
     """Command to trigger job-posting extraction from a URL with optional screenshot verification.
     触发职位解析的命令：从招聘页面 URL 提取结构化字段，支持截图交叉验证以提高准确率。"""
@@ -79,7 +200,7 @@ class JobRankCommand(AppBaseModel):
     resume_text: str = Field(default="", alias="resumeText")
     query: str | None = Field(default=None)
     recalled_job_ids: list[str] = Field(default_factory=list, alias="recalledJobIds")
-    job_details: dict[str, Any] = Field(default_factory=dict, alias="jobDetails")
+    job_details: dict[str, JobDetail] = Field(default_factory=dict, alias="jobDetails")
 
 
 class ScrapeResult(AppBaseModel):
@@ -109,7 +230,7 @@ class ParsedResumeContent(AppBaseModel):
     name: str | None = None
     email: str | None = None
     skills: list[str] = Field(default_factory=list)
-    experience: list[dict[str, Any]] = Field(default_factory=list)
+    experience: list[ExperienceItem] = Field(default_factory=list)
 
 
 class AiResultEvent(AppBaseModel):
@@ -119,9 +240,18 @@ class AiResultEvent(AppBaseModel):
     reference_id: str = Field(alias="referenceId")
     type: str
     status: str
-    data: dict[str, Any] | None = None
+    data: JobParseData | ResumeParseData | ConversationData | None = None
     error_message: str | None = Field(default=None, alias="errorMessage")
     event_type: str | None = Field(default=None, alias="eventType")
+
+    def model_dump(self, **kwargs):
+        """Override to produce a flat dict so legacy MQ consumers keep working.
+        覆盖序列化：向后端 MQ 消费者输出扁平 dict，兼容现有解析逻辑。"""
+        base = super().model_dump(**kwargs)
+        data = base.pop("data", None)
+        if data is not None:
+            base.update(data)
+        return base
 
 
 class EmbeddingRequest(AppBaseModel):
@@ -191,6 +321,18 @@ class MatchFactors(AppBaseModel):
     skill_match: float = Field(alias="skillMatch")
     experience_match: float = Field(alias="experienceMatch")
     location_match: float = Field(alias="locationMatch")
+
+
+class VectorSearchResult(AppBaseModel):
+    """Single raw result from backend vector-search endpoint.
+    后端向量搜索原始结果条目：反序列化后映射为 MatchItem。"""
+
+    job_id: str = Field(default="", alias="jobId")
+    title: str = ""
+    company: str = ""
+    description: str = ""
+    similarity: float = 0.0
+    match_factors: MatchFactors = Field(default_factory=MatchFactors, alias="matchFactors")
 
 
 class MatchItem(AppBaseModel):

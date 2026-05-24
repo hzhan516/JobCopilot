@@ -5,7 +5,7 @@ from typing import Any
 import requests
 
 from app.config import BACKEND_QUERY_TIMEOUT, BACKEND_SERVICE_URL, INTERNAL_API_KEY
-from app.schemas import JobMatchRequest, JobMatchResponse, MatchFactors, MatchItem
+from app.schemas import JobMatchRequest, JobMatchResponse, MatchFactors, MatchItem, VectorSearchResult
 from app.services.vector_service import generate_embedding
 
 logger = logging.getLogger(__name__)
@@ -22,12 +22,12 @@ def _truncate_description(description: str) -> str:
     return normalized
 
 
-def _extract_search_results(payload: Any) -> list[dict[str, Any]]:
+def _extract_search_results(payload: Any) -> list[VectorSearchResult]:
     if isinstance(payload, list):
-        return [item for item in payload if isinstance(item, dict)]
+        return [VectorSearchResult.model_validate(item) for item in payload if isinstance(item, dict)]
 
     if isinstance(payload, dict) and isinstance(payload.get("data"), list):
-        return [item for item in payload["data"] if isinstance(item, dict)]
+        return [VectorSearchResult.model_validate(item) for item in payload["data"] if isinstance(item, dict)]
 
     return []
 
@@ -77,21 +77,18 @@ def find_job_matches(request: JobMatchRequest) -> JobMatchResponse:
 
     matches = []
     for result in search_results:
-        match_factors = result.get("matchFactors") or {}
-        similarity = _clip_score(_to_float(result.get("similarity")))
-
         matches.append(
             MatchItem(
-                jobId=str(result.get("jobId", "")),
-                title=str(result.get("title", "")),
-                company=str(result.get("company", "")),
-                matchScore=round(similarity, 4),
+                jobId=result.job_id,
+                title=result.title,
+                company=result.company,
+                matchScore=round(_clip_score(result.similarity), 4),
                 matchFactors=MatchFactors(
-                    skillMatch=round(_clip_score(_to_float(match_factors.get("skillMatch"))), 4),
-                    experienceMatch=round(_clip_score(_to_float(match_factors.get("experienceMatch"))), 4),
-                    locationMatch=round(_clip_score(_to_float(match_factors.get("locationMatch"))), 4),
+                    skillMatch=round(_clip_score(result.match_factors.skill_match), 4),
+                    experienceMatch=round(_clip_score(result.match_factors.experience_match), 4),
+                    locationMatch=round(_clip_score(result.match_factors.location_match), 4),
                 ),
-                description=_truncate_description(str(result.get("description", ""))),
+                description=_truncate_description(result.description),
             )
         )
 

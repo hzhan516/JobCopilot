@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from urllib.parse import urlparse
 
-from app.schemas import AiResultEvent, ConversationRequestCommand
+from app.schemas import AiResultEvent, ConversationRequestCommand, ConversationData, ResumeModification
 from app.services.file_parser import download_file_bytes, extract_resume_text
 from app.services.llm_client import generate_json_from_text_prompt
 
@@ -178,11 +178,14 @@ def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
         referenceId=command.conversation_id,
         type="CONVERSATION_REPLY",
         status="COMPLETED",
-        data={
-            "content": content,
-            "fileUrl": file_url,
-            "resumeModification": resume_modification
-        },
+        data=ConversationData(
+            content=content,
+            fileUrl=file_url,
+            resumeModification=ResumeModification(
+                modified=bool(resume_modification.get("modified", False)),
+                markdown=str(resume_modification.get("markdown", "")),
+            ),
+        ),
         errorMessage=None,
         eventType=None,
     )

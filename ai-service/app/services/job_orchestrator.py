@@ -1,4 +1,4 @@
-from app.schemas import AiResultEvent, JobParseCommand
+from app.schemas import AiResultEvent, JobParseCommand, JobParseData
 from app.services.job_parser import (
     is_job_content_incomplete,
     parse_job_from_image,
@@ -63,7 +63,7 @@ def process_job(command: JobParseCommand) -> AiResultEvent:
         referenceId=command.job_id,
         type="JOB_PARSE",
         status="COMPLETED",
-        data=parsed_content.model_dump(),
+        data=JobParseData(parsed_content=parsed_content),
         errorMessage=None,
         eventType="JOB",
     )

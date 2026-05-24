@@ -37,6 +37,7 @@ from app.mq.publisher import publish_ai_result, publish_job_rank_result
 from app.schemas import (
     AiResultEvent,
     ConversationRequestCommand,
+    FeedbackCommand,
     JobRankCommand,
     JobParseCommand,
     ResumeParseCommand,

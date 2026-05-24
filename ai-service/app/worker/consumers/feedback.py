@@ -1,32 +1,31 @@
 import json
 import logging
 import asyncio
+from app.schemas import FeedbackCommand
 from app.infrastructure.redis.client import RedisBuffer
 
 logger = logging.getLogger(__name__)
 
 def handle_feedback_message(ch, method, properties, body: bytes):
     try:
-        data = json.loads(body.decode("utf-8"))
-        logger.info(f"Received feedback: {data.get('jobId')} - {data.get('feedbackType')}")
+        command = FeedbackCommand.model_validate(json.loads(body.decode("utf-8")))
+        logger.info(f"Received feedback: {command.job_id} - {command.feedback_type}")
         
         label = 0
-        fb_type = data.get("feedbackType")
-        if fb_type in ("APPLY", "CLICK", "EXPLICIT_THUMBS_UP"):
+        if command.feedback_type in ("APPLY", "CLICK", "EXPLICIT_THUMBS_UP"):
             label = 1
             
-        context_str = data.get("context", "{}")
         features = {}
-        if context_str:
+        if command.context:
             try:
-                features = json.loads(context_str)
+                features = json.loads(command.context)
             except:
                 pass
         
         sample = {
             "type": "feedback",
-            "user_id": data.get("userId"),
-            "job_id": data.get("jobId"),
+            "user_id": command.user_id,
+            "job_id": command.job_id,
             "label": label,
             "features": features
         }

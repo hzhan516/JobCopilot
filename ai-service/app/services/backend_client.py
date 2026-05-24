@@ -14,6 +14,12 @@ from app.config import (
 
 logger = logging.getLogger(__name__)
 
+from app.schemas import (
+    BatchVectorUpsertResponse,
+    JobVectorItem,
+    ResumeVectorItem,
+)
+
 JOB_VECTOR_BATCH_URL = f"{BACKEND_SERVICE_URL.rstrip('/')}/api/v1/job-vectors/batch"
 RESUME_VECTOR_BATCH_URL = f"{BACKEND_SERVICE_URL.rstrip('/')}/api/v1/resume-vectors/batch"
 
@@ -26,13 +32,13 @@ RETRY_STRATEGY = retry(
 
 
 @RETRY_STRATEGY
-def batch_upsert_job_vectors(items: list[dict]) -> dict:
+def batch_upsert_job_vectors(items: list[JobVectorItem]) -> BatchVectorUpsertResponse:
     """Batch upsert job embeddings to the backend vector store.
     批量写入职位向量：后端可能因并发或 GC 出现瞬时失败，因此配置重试与超时。"""
     if not items:
-        return {"total": 0, "success": 0, "failed": 0, "skipped": 0, "failedJobIds": []}
+        return BatchVectorUpsertResponse()
 
-    payload = {"items": items}
+    payload = {"items": [item.model_dump(by_alias=True) for item in items]}
     try:
         headers = {"X-Internal-API-Key": INTERNAL_API_KEY} if INTERNAL_API_KEY else {}
         response = requests.post(
@@ -44,27 +50,25 @@ def batch_upsert_job_vectors(items: list[dict]) -> dict:
         response.raise_for_status()
         body = response.json()
         if isinstance(body, dict) and "data" in body:
-            return body["data"]
-        return body
+            body = body["data"]
+        return BatchVectorUpsertResponse.model_validate(body)
     except Exception:
         logger.exception("Failed to batch upsert job vectors to backend, url=%s", JOB_VECTOR_BATCH_URL)
-        return {
-            "total": len(items),
-            "success": 0,
-            "failed": len(items),
-            "skipped": 0,
-            "failedJobIds": [item.get("jobId") for item in items],
-        }
+        return BatchVectorUpsertResponse(
+            total=len(items),
+            failed=len(items),
+            failed_ids=[item.job_id for item in items],
+        )
 
 
 @RETRY_STRATEGY
-def batch_upsert_resume_vectors(items: list[dict]) -> dict:
+def batch_upsert_resume_vectors(items: list[ResumeVectorItem]) -> BatchVectorUpsertResponse:
     """Batch upsert resume embeddings to the backend vector store.
     批量写入简历向量：与职位向量使用相同的重试策略，保证双写一致性。"""
     if not items:
-        return {"total": 0, "success": 0, "failed": 0, "skipped": 0, "failedResumeVersionIds": []}
+        return BatchVectorUpsertResponse()
 
-    payload = {"items": items}
+    payload = {"items": [item.model_dump(by_alias=True) for item in items]}
     try:
         headers = {"X-Internal-API-Key": INTERNAL_API_KEY} if INTERNAL_API_KEY else {}
         response = requests.post(
@@ -76,17 +80,15 @@ def batch_upsert_resume_vectors(items: list[dict]) -> dict:
         response.raise_for_status()
         body = response.json()
         if isinstance(body, dict) and "data" in body:
-            return body["data"]
-        return body
+            body = body["data"]
+        return BatchVectorUpsertResponse.model_validate(body)
     except Exception:
         logger.exception("Failed to batch upsert resume vectors to backend, url=%s", RESUME_VECTOR_BATCH_URL)
-        return {
-            "total": len(items),
-            "success": 0,
-            "failed": len(items),
-            "skipped": 0,
-            "failedResumeVersionIds": [item.get("resumeVersionId") for item in items],
-        }
+        return BatchVectorUpsertResponse(
+            total=len(items),
+            failed=len(items),
+            failed_ids=[item.resume_version_id for item in items],
+        )
 
 
 def _build_job_vector_item(
@@ -98,26 +100,26 @@ def _build_job_vector_item(
     raw_content: str = "",
     source_file: str = "",
     model_version: str = "",
-) -> dict:
-    return {
-        "jobId": reference_id,
-        "embedding": embedding,
-        "title": title,
-        "description": description,
-        "requirements": requirements or [],
-        "rawContent": raw_content,
-        "sourceFile": source_file,
-        "modelVersion": model_version or LLM_EMBEDDING_MODEL,
-    }
+) -> JobVectorItem:
+    return JobVectorItem(
+        job_id=reference_id,
+        embedding=embedding,
+        title=title,
+        description=description,
+        requirements=requirements or [],
+        raw_content=raw_content,
+        source_file=source_file,
+        model_version=model_version or LLM_EMBEDDING_MODEL,
+    )
 
 
 def _build_resume_vector_item(
     reference_id: str,
     embedding: list[float],
-) -> dict:
-    return {
-        "resumeVersionId": reference_id,
-        "embedding": embedding,
-    }
+) -> ResumeVectorItem:
+    return ResumeVectorItem(
+        resume_version_id=reference_id,
+        embedding=embedding,
+    )
 
 

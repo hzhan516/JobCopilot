@@ -68,9 +68,9 @@ def publish_ai_result(
 def publish_json_payload(
     channel: pika.adapters.blocking_connection.BlockingChannel,
     routing_key: str,
-    payload: dict,
+    payload: BaseModel,
 ) -> None:
-    message_body = json.dumps(payload, ensure_ascii=False)
+    message_body = json.dumps(payload.model_dump(by_alias=True), ensure_ascii=False)
 
     channel.basic_publish(
         exchange=AI_DIRECT_EXCHANGE,
@@ -88,25 +88,22 @@ def publish_job_rank_result(
     match_id: str,
     status: str,
     rank_time_ms: int,
-    ranked_results: list[dict],
+    ranked_results: list[JobRankResultItem],
     error_message: str | None = None,
 ) -> None:
     """Publish a job-ranking result wrapped in the unified AiResultEvent schema.
     将职位精排结果以统一的 AiResultEvent 格式发布到 MQ，降低后端消费端的解析复杂度。"""
-    event = AiResultEvent(
-        referenceId=match_id,
-        type="JOB_RANK",
+    payload = JobRankResultPayload(
+        matchId=match_id,
         status=status,
-        data={
-            "rankTimeMs": rank_time_ms,
-            "rankedResults": ranked_results,
-        } if status == "COMPLETED" else None,
+        rankTimeMs=rank_time_ms,
+        rankedResults=ranked_results,
         errorMessage=error_message,
     )
 
     routing_key = JOB_RANK_RESULT_ROUTING_KEY
     message_body = json.dumps(
-        event.model_dump(by_alias=True),
+        payload.model_dump(by_alias=True),
         ensure_ascii=False,
     )
 
