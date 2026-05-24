@@ -1,6 +1,7 @@
-package io.jobcopilot.resumeassistant.application.embedding.service;
+package io.jobcopilot.resumeassistant.infrastructure.embedding.adapter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.jobcopilot.resumeassistant.domain.embedding.port.VectorEmbeddingPort;
 import io.jobcopilot.resumeassistant.domain.shared.exception.AiServiceUnavailableException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -8,7 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -17,16 +18,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 嵌入向量生成服务
- * Embedding generation service
- * <p>
- * 负责调用 AI Service 将文本转换为向量。
- * Responsible for calling the AI Service to convert text into embedding vectors.
+ * Infrastructure adapter that calls the AI Service embedding endpoint via REST.
+ * Implements VectorEmbeddingPort so the domain layer stays free of HTTP and Spring.
+ * 通过 REST 调用 AI 服务嵌入端点的基础设施适配器。实现 VectorEmbeddingPort，使领域层与 HTTP 和 Spring 解耦。
  */
 @Slf4j
-@Service
+@Component
 @RequiredArgsConstructor
-public class EmbeddingService {
+public class VectorEmbeddingRestAdapter implements VectorEmbeddingPort {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -35,20 +34,16 @@ public class EmbeddingService {
     private String aiServiceBaseUrl;
 
     /**
-     * 调用 AI Service 生成单条文本的嵌入向量
-     * Call AI Service to generate embedding vector for a single text
+     * {@inheritDoc}
      *
-     * <p>对接契约 / Integration contract（由 AI 端实现）：
+     * <p>Integration contract (implemented by the AI side) / 对接契约（由 AI 端实现）：
      * <ul>
      *   <li>Endpoint: POST /api/v1/ai/embeddings</li>
      *   <li>Request body: {"texts": ["..."], "model": "..."}</li>
      *   <li>Response body: {"embeddings": [[0.1, 0.2, ...]], "modelUsed": "...", "count": 1}</li>
      * </ul>
-     *
-     * @param text 输入文本 / Input text
-     * @return 嵌入向量 / Embedding vector
-     * @throws AiServiceUnavailableException 当 AI 服务不可用时 / When AI service is unavailable
      */
+    @Override
     public float[] generate(String text) {
         if (text == null || text.isBlank()) {
             throw new IllegalArgumentException("Text for embedding generation must not be blank");

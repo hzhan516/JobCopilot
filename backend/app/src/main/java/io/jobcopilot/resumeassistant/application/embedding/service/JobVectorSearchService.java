@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jobcopilot.resumeassistant.api.job.dto.request.VectorSearchRequest;
 import io.jobcopilot.resumeassistant.api.job.dto.response.VectorSearchResponse;
+import io.jobcopilot.resumeassistant.domain.embedding.port.VectorEmbeddingPort;
 import io.jobcopilot.resumeassistant.domain.embedding.repository.JobVectorRepository;
 import io.jobcopilot.resumeassistant.domain.embedding.valueobject.JobVectorSearchResult;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +26,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class JobVectorSearchService {
 
-    private final EmbeddingService embeddingService;
+    private final VectorEmbeddingPort vectorEmbeddingPort;
     private final JobVectorRepository jobVectorRepository;
     private final ObjectMapper objectMapper;
 
@@ -49,7 +50,7 @@ public class JobVectorSearchService {
             if (request.queryText() == null || request.queryText().isBlank()) {
                 throw new IllegalArgumentException("Either queryText or queryEmbedding must be provided");
             }
-            embedding = embeddingService.generate(request.queryText());
+            embedding = vectorEmbeddingPort.generate(request.queryText());
             log.debug("Generated embedding from query text, dimension: {}", embedding.length);
         }
 

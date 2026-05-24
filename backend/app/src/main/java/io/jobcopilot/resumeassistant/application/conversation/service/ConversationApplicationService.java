@@ -1,7 +1,7 @@
 package io.jobcopilot.resumeassistant.application.conversation.service;
 
 import io.jobcopilot.resumeassistant.api.conversation.port.ConversationStreamPort;
-import io.jobcopilot.resumeassistant.api.embedding.facade.VectorFacade;
+import io.jobcopilot.resumeassistant.domain.embedding.port.VectorGenerationPort;
 import io.jobcopilot.resumeassistant.application.conversation.command.CreateConversationCommand;
 import io.jobcopilot.resumeassistant.application.conversation.command.SendMessageCommand;
 import io.jobcopilot.resumeassistant.domain.conversation.entity.Conversation;
@@ -46,7 +46,7 @@ public class ConversationApplicationService {
     private final ResumeVersionRepository resumeVersionRepository;
     private final ResumeGroupRepository resumeGroupRepository;
     private final AiMessagePublisherPort aiMessagePublisherPort;
-    private final VectorFacade vectorFacade;
+    private final VectorGenerationPort vectorGenerationPort;
     private final FileStorageService fileStorageService;
     private final MessageProvider messageProvider;
     private final ConversationStreamPort streamPort;
@@ -382,7 +382,7 @@ public class ConversationApplicationService {
             conversation.setAiOptimizedVersionId(aiVersion.getId());
             conversationRepository.save(conversation);
 
-            vectorFacade.generateAndSaveVector(aiVersion.getId().toString(), "RESUME", markdown);
+            vectorGenerationPort.generateAndSaveVector(aiVersion.getId().toString(), "RESUME", markdown);
             log.info("Created AI optimized working copy: {} for conversation: {}", aiVersion.getId(), conversation.getId());
         } else {
             ResumeVersion workingVersion = resumeVersionRepository.findById(workingVersionId)
@@ -391,7 +391,7 @@ public class ConversationApplicationService {
             if (workingVersion.getStatus() == ResumeVersion.Status.ACTIVE) {
                 workingVersion.editContent(markdown);
                 resumeVersionRepository.save(workingVersion);
-                vectorFacade.generateAndSaveVector(workingVersion.getId().toString(), "RESUME", markdown);
+                vectorGenerationPort.generateAndSaveVector(workingVersion.getId().toString(), "RESUME", markdown);
                 log.info("Updated AI optimized working copy: {} for conversation: {}", workingVersion.getId(), conversation.getId());
             } else {
                 // The working copy was archived by another conversation creating a new AI_OPTIMIZED version
@@ -404,7 +404,7 @@ public class ConversationApplicationService {
                 conversation.setAiOptimizedVersionId(aiVersion.getId());
                 conversationRepository.save(conversation);
 
-                vectorFacade.generateAndSaveVector(aiVersion.getId().toString(), "RESUME", markdown);
+                vectorGenerationPort.generateAndSaveVector(aiVersion.getId().toString(), "RESUME", markdown);
                 log.info("Re-created AI optimized working copy: {} for conversation: {}", aiVersion.getId(), conversation.getId());
             }
         }

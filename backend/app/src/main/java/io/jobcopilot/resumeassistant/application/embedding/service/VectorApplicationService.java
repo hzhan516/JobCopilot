@@ -3,20 +3,20 @@ package io.jobcopilot.resumeassistant.application.embedding.service;
 import io.jobcopilot.resumeassistant.api.embedding.config.EmbeddingConfig;
 import io.jobcopilot.resumeassistant.domain.embedding.entity.JobVector;
 import io.jobcopilot.resumeassistant.domain.embedding.entity.ResumeVector;
+import io.jobcopilot.resumeassistant.domain.embedding.port.VectorEmbeddingPort;
 import io.jobcopilot.resumeassistant.domain.embedding.repository.JobVectorRepository;
 import io.jobcopilot.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
 /**
  * Synchronous embedding gateway that bridges domain write operations with the AI service.
- * Every vector write is wrapped in a transaction so failures can be recorded as FAILED rows
- * instead of silently dropping the request.
- * 同步嵌入网关，衔接领域写操作与 AI 服务。每次向量写入均包裹在事务中，使失败可被记录为 FAILED 行而非静默丢弃请求
+ * The expensive HTTP call to the AI service happens outside any explicit transaction,
+ * while the lightweight DB write is handled by the repository's implicit short transaction.
+ * 同步嵌入网关，衔接领域写操作与 AI 服务。耗时的 HTTP 调用发生在显式事务外，轻量的 DB 写入由仓库的隐式短事务处理。
  */
 @Slf4j
 @Service
@@ -26,23 +26,21 @@ public class VectorApplicationService {
     private final ResumeVectorRepository resumeVectorRepository;
     private final JobVectorRepository jobVectorRepository;
     private final EmbeddingConfig embeddingConfig;
-    private final EmbeddingService embeddingService;
+    private final VectorEmbeddingPort vectorEmbeddingPort;
     private final FailedVectorPersistenceService failedVectorPersistenceService;
 
     /**
-     * Generates an embedding for the given text, validates dimension alignment against the
-     * configured model, and persists the result. Dimension mismatches are treated as hard failures
+     * Validates dimension alignment, then persists the result. Dimension mismatches are treated as hard failures
      * to prevent silent corruption of the vector index.
-     * 为给定文本生成嵌入向量，根据配置的模型校验维度一致性，然后持久化结果。维度不匹配被视为硬失败，以防止向量索引被静默污染
+     * 根据配置的模型校验维度一致性，然后持久化结果。维度不匹配被视为硬失败，以防止向量索引被静默污染
      *
      * @param referenceId Entity ID / 实体 ID
      * @param entityType  Entity type ("JOB" or "RESUME") / 实体类型
      * @param text        Text to embed / 待嵌入文本
      */
-    @Transactional
     public void generateAndSaveVector(String referenceId, String entityType, String text) {
         try {
-            float[] embedding = embeddingService.generate(text);
+            float[] embedding = vectorEmbeddingPort.generate(text);
 
             if (embedding.length != embeddingConfig.getDimension()) {
                 log.error("向量维度不匹配: 期望 {}, 实际 {}。referenceId: {}, entityType: {}",

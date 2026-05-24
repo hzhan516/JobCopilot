@@ -1,6 +1,6 @@
 package io.jobcopilot.resumeassistant.application.matching.service;
 
-import io.jobcopilot.resumeassistant.api.embedding.facade.VectorFacade;
+import io.jobcopilot.resumeassistant.domain.embedding.port.VectorGenerationPort;
 import io.jobcopilot.resumeassistant.application.matching.command.SaveMatchResultCommand;
 import io.jobcopilot.resumeassistant.application.matching.command.StartJobMatchCommand;
 import io.jobcopilot.resumeassistant.application.matching.query.GetMatchResultQuery;
@@ -44,7 +44,7 @@ public class MatchingApplicationService {
     private final JobMatchResultRepository jobMatchResultRepository;
     private final MatchingModelRepository matchingModelRepository;
     private final AiMessagePublisherPort aiMessagePublisherPort;
-    private final VectorFacade vectorFacade;
+    private final VectorGenerationPort vectorGenerationPort;
     private final VectorSearchPort vectorSearchPort;
 
     /**
@@ -83,7 +83,7 @@ public class MatchingApplicationService {
 
             if (!vectorText.isEmpty()) {
                 try {
-                    vectorFacade.generateAndSaveVector(command.resumeVersionId(), "RESUME", vectorText);
+                    vectorGenerationPort.generateAndSaveVector(command.resumeVersionId(), "RESUME", vectorText);
                     log.info("Synchronously generated vector for missing resume vector, versionId={}", command.resumeVersionId());
                 } catch (Exception e) {
                     log.error("Failed to generate vector for versionId={}", command.resumeVersionId(), e);
