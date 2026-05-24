@@ -537,7 +537,11 @@ services:
         condition: service_healthy
     restart: on-failure
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "ps aux | grep -v grep | grep -q 'worker_main' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   postgres:
     image: docker.io/ankane/pgvector:latest
