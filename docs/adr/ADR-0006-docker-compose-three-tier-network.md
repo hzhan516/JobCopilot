@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](ADR-0006-docker-compose-three-tier-network.md) | [简体中文](../i18n/zh-Hans-CN/adr/ADR-0006-docker-compose-three-tier-network.md) | [繁體中文](../i18n/zh-Hant-TW/adr/ADR-0006-docker-compose-three-tier-network.md)
+
 # ADR-0006: Docker Compose Three-Tier Network Architecture
 
 | Attribute | Value |

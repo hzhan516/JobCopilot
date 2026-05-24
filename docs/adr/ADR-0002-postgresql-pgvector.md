@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](ADR-0002-postgresql-pgvector.md) | [简体中文](../i18n/zh-Hans-CN/adr/ADR-0002-postgresql-pgvector.md) | [繁體中文](../i18n/zh-Hant-TW/adr/ADR-0002-postgresql-pgvector.md)
+
 # ADR-0002: Adopt PostgreSQL + pgvector as Unified Storage for Structured and Vector Data
 
 | Attribute | Value |

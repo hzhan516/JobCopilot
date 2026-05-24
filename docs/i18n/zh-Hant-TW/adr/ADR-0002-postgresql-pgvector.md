@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](../../../adr/ADR-0002-postgresql-pgvector.md) | [简体中文](../../zh-Hans-CN/adr/ADR-0002-postgresql-pgvector.md) | [繁體中文](ADR-0002-postgresql-pgvector.md)
+
 # ADR-0002: 採用 PostgreSQL + pgvector 作為向量與結構化資料統一存儲
 
 | 屬性 | 內容 |

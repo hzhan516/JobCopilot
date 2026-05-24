@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](../../../adr/ADR-0005-embedding-port-abstraction.md) | [简体中文](../../zh-Hans-CN/adr/ADR-0005-embedding-port-abstraction.md) | [繁體中文](ADR-0005-embedding-port-abstraction.md)
+
 # ADR-0005: Embedding 服務抽象為 `EmbeddingPort` — 向量生成與業務逻辑解耦
 
 | 屬性 | 內容 |

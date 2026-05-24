@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](../../../adr/ADR-0001-hexagonal-architecture.md) | [简体中文](../../zh-Hans-CN/adr/ADR-0001-hexagonal-architecture.md) | [繁體中文](ADR-0001-hexagonal-architecture.md)
+
 # ADR-0001: 採用六边形架構（Hexagonal Architecture）作為後端核心架構範式
 
 | 屬性 | 內容 |

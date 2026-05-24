@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](../../../adr/ADR-0004-redis-cache-lock.md) | [简体中文](../../zh-Hans-CN/adr/ADR-0004-redis-cache-lock.md) | [繁體中文](ADR-0004-redis-cache-lock.md)
+
 # ADR-0004: 採用 Redis 作為分布式缓存與分布式鎖基礎設施
 
 | 屬性 | 內容 |

@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](../../../adr/ADR-0003-rabbitmq-outbox.md) | [简体中文](ADR-0003-rabbitmq-outbox.md) | [繁體中文](../../zh-Hant-TW/adr/ADR-0003-rabbitmq-outbox.md)
+
 # ADR-0003: 采用 RabbitMQ + Outbox 模式实现异步消息通信
 
 | 属性 | 内容 |

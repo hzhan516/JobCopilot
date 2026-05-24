@@ -1,3 +1,6 @@
+<!-- Language Switcher / 语言切换 / 語言切換 -->
+> [English](ADR-0004-redis-cache-lock.md) | [简体中文](../i18n/zh-Hans-CN/adr/ADR-0004-redis-cache-lock.md) | [繁體中文](../i18n/zh-Hant-TW/adr/ADR-0004-redis-cache-lock.md)
+
 # ADR-0004: Adopt Redis as Distributed Cache and Distributed Lock Infrastructure
 
 | Attribute | Value |
