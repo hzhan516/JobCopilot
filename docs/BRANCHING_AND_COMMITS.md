@@ -1,6 +1,6 @@
 # Branching Strategy & Commit Standards
 
-> **Languages:** English (current) | [简体中文](zh-CN/BRANCHING_AND_COMMITS.md) | [繁體中文](zh-TW/BRANCHING_AND_COMMITS.md)
+> **Languages:** English (current) | [简体中文](i18n/zh-CN/BRANCHING_AND_COMMITS.md) | [繁體中文](i18n/zh-TW/BRANCHING_AND_COMMITS.md)
 
 This document defines the Git engineering standards for the JobCopilot ResumeAssistant project. It covers branching strategy, commit conventions, code review workflows, and release management.
 
