@@ -241,7 +241,7 @@ If the database has already been initialized, adding a new `.sql` file will **no
    docker-compose up -d
    ```
 
-> **Production Note**: Production uses `spring.flyway.enabled=true` (see `application-prod.yml`). Flyway automatically applies pending migrations on startup, so new tables are handled seamlessly.
+> **Production Note**: Production uses `spring.flyway.enabled=true` (see `application-prod.yml`). Flyway applies pending migrations on startup automatically.
 
 ## Troubleshooting
 

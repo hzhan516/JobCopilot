@@ -2,7 +2,7 @@
 
 > **Languages:** [English](../../CONTRIBUTING.md) | [简体中文](../zh-Hans-CN/CONTRIBUTING.md) | 繁體中文 (current)
 
-首先，感謝您考慮為 JobCopilot 做出貢獻！本專案基於六邊形架構（端口與適配器），是一個 AI 驅動的履歷與職位匹配助手。我們正在從學習專案轉型為開源就緒產品，您的貢獻至關重要。
+本專案基於六邊形架構（端口與適配器），正從學習專案轉向開源產品。歡迎貢獻。
 
 ## 目錄
 
@@ -482,4 +482,4 @@ git push upstream v1.2.1
 - [Semantic Versioning](https://semver.org/)
 - [Contributor Covenant](https://www.contributor-covenant.org/)
 
-感謝您讓 JobCopilot 變得更好！🚀
+感謝您讓 JobCopilot 變得更好！

@@ -3,7 +3,7 @@
 
 # JobCopilot
 
-The **JobCopilot** is an AI-powered platform designed to streamline the job hunting process for new graduates and career changers. It automatically parses user-uploaded resumes, evaluates them against job market data using semantic vector matching, and provides an interactive AI copilot to iteratively optimize resume content. By combining secure document management, asynchronous AI processing, and personalized recommendations, the system saves users hours of manual tailoring while increasing their interview chances.
+The **JobCopilot** is an AI-powered platform for new graduates and career changers. It parses uploaded resumes, evaluates them against job market data using semantic vector matching, and provides an interactive AI copilot to iteratively improve resume content. Secure document management, asynchronous AI processing, and personalized recommendations save users time and improve interview rates.
 
 **Deployment:** The system is verified through Docker Compose. Copy `.env.example` to `.env`, configure the required values, then run `docker compose --env-file .env up -d --build`. The frontend is available at `http://localhost` by default, or `http://localhost:${FRONTEND_HOST_PORT}` if a custom port is configured.
 

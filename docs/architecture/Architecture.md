@@ -30,9 +30,9 @@
 
 ### 2.1 System Purpose
 
-The Intelligent Job Assistant is a comprehensive job search platform that leverages artificial intelligence to help job
-seekers optimize their resumes, discover relevant job opportunities, and track their application progress. The system
-combines modern web technologies with advanced AI capabilities to provide an intelligent, conversational experience for
+The Intelligent Job Assistant is a job search platform that uses AI to help job
+seekers improve their resumes, find relevant opportunities, and track application progress. The system
+combines web technologies with AI capabilities to provide a conversational interface for
 job seekers.
 
 ### 2.2 Key Features
