@@ -10,9 +10,50 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+
+/**
+ * Per-message relay executor with an independent REQUIRES_NEW transaction.
+ * Isolates each RabbitMQ publish + DB state update so a failure on one
+ * message never rolls back already-completed deliveries in the same batch.
+ */
+@Component
+@RequiredArgsConstructor
+class OutboxRelayTransactionService {
+
+    private final OutboxMessageRepository outboxMessageRepository;
+    private final RabbitTemplate rabbitTemplate;
+    private final ObjectMapper objectMapper;
+
+    /**
+     * Attempts to deliver a single outbox message to RabbitMQ.
+     * The update of the outbox row (markSent / markFailed) runs in its
+     * own transaction so network failures do not leak to sibling messages.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean relay(OutboxMessage message) {
+        try {
+            Object payloadObject = objectMapper.readValue(message.getPayload(), Object.class);
+            rabbitTemplate.convertAndSend(
+                    message.getExchange(),
+                    message.getRoutingKey(),
+                    payloadObject
+            );
+            message.markSent();
+            outboxMessageRepository.save(message);
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to relay outbox message: {}, exchange: {}, routingKey: {}",
+                    message.getId(), message.getExchange(), message.getRoutingKey(), e);
+            message.markFailed();
+            outboxMessageRepository.save(message);
+            return false;
+        }
+    }
+}
 
 /**
  * Relays pending outbox records to RabbitMQ on a fixed schedule, implementing the Transactional Outbox
@@ -25,8 +66,7 @@ import java.util.List;
 public class OutboxRelayScheduler {
 
     private final OutboxMessageRepository outboxMessageRepository;
-    private final RabbitTemplate rabbitTemplate;
-    private final ObjectMapper objectMapper;
+    private final OutboxRelayTransactionService relayTransactionService;
 
     /**
      * Polls every 2 seconds for PENDING outbox rows and attempts delivery.
@@ -35,7 +75,7 @@ public class OutboxRelayScheduler {
      */
     @Scheduled(fixedDelay = 2000)
     @SchedulerLock(name = "OutboxRelay", lockAtMostFor = "5m", lockAtLeastFor = "1s")
-    @Transactional
+    @Transactional(readOnly = true)
     public void relayPendingMessages() {
         List<OutboxMessage> pendingMessages = outboxMessageRepository.findByStatus(OutboxStatus.PENDING);
 
@@ -49,21 +89,9 @@ public class OutboxRelayScheduler {
         int failCount = 0;
 
         for (OutboxMessage message : pendingMessages) {
-            try {
-                Object payloadObject = objectMapper.readValue(message.getPayload(), Object.class);
-                rabbitTemplate.convertAndSend(
-                        message.getExchange(),
-                        message.getRoutingKey(),
-                        payloadObject
-                );
-                message.markSent();
-                outboxMessageRepository.save(message);
+            if (relayTransactionService.relay(message)) {
                 successCount++;
-            } catch (Exception e) {
-                log.error("Failed to relay outbox message: {}, exchange: {}, routingKey: {}",
-                        message.getId(), message.getExchange(), message.getRoutingKey(), e);
-                message.markFailed();
-                outboxMessageRepository.save(message);
+            } else {
                 failCount++;
             }
         }

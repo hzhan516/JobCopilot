@@ -11,7 +11,6 @@ import io.jobcopilot.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -28,7 +27,6 @@ public class JobSubmissionService {
     private final JobRepository jobRepository;
     private final AiMessagePublisherPort aiMessagePublisherPort;
 
-    @Transactional
     public JobResponse submit(UUID userId, SubmitJobRequest request) {
         log.info("Submitting new job for async processing for user: {}", userId);
         if (request.url() == null || request.url().isBlank()) {
