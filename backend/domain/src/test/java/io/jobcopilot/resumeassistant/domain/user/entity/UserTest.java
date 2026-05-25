@@ -212,6 +212,7 @@ class UserTest {
                 .authProvider(OAuthProvider.EMAIL)
                 .createdAt(now)
                 .updatedAt(now)
+                .version(0L)
                 .build();
 
         // 那么
@@ -250,6 +251,7 @@ class UserTest {
                     .status(status)
                     .createdAt(LocalDateTime.now())
                     .updatedAt(LocalDateTime.now())
+                    .version(0L)
                     .build();
 
             assertThat(user.getStatus()).isEqualTo(status);

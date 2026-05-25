@@ -32,6 +32,7 @@ public class User extends AggregateRoot<UUID> {
     private UserStatus status;
     private OAuthProvider authProvider;
     private LocalDateTime updatedAt;
+    private long version;
 
     /**
      * 全参构造函数 - 由 Lombok @Builder 使用
@@ -40,7 +41,7 @@ public class User extends AggregateRoot<UUID> {
      * Note: @Builder generated code can access package-level or private all-args constructor
      */
     User(UUID id, String email, LocalDateTime createdAt, boolean emailVerified, UserRole role,
-         UserStatus status, OAuthProvider authProvider, LocalDateTime updatedAt) {
+         UserStatus status, OAuthProvider authProvider, LocalDateTime updatedAt, long version) {
         this.id = id;
         this.email = email;
         this.createdAt = createdAt;
@@ -49,6 +50,7 @@ public class User extends AggregateRoot<UUID> {
         this.status = status;
         this.authProvider = authProvider;
         this.updatedAt = updatedAt;
+        this.version = version;
     }
 
     /**
@@ -71,6 +73,7 @@ public class User extends AggregateRoot<UUID> {
                 .authProvider(authProvider)
                 .createdAt(now)
                 .updatedAt(now)
+                .version(0L)
                 .build();
     }
 

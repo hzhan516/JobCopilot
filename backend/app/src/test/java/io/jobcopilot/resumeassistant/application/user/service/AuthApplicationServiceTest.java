@@ -102,6 +102,7 @@ class AuthApplicationServiceTest {
                 .role(UserRole.JOB_SEEKER)
                 .status(UserStatus.ACTIVE)
                 .authProvider(OAuthProvider.EMAIL)
+                .version(0L)
                 .build();
 
         testProfile = UserProfile.builder()

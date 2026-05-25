@@ -19,7 +19,7 @@
 | 4 | **跨聚合寫入作業各自獨立交易** | 不同聚合根（Job、Resume、Conversation…）的寫入作業不應共用交易；用 `Propagation.REQUIRES_NEW` 或拆分至獨立 Service。 |
 | 5 | **Scheduler / 非同步任務必須獨立交易邊界** | 定時任務執行週期長，預設交易應最小化；涉及 Outbox 模式時，relay 與 cleanup 分交易。 |
 | 6 | **所有 `@Transactional` 必須顯式宣告 `timeout`** | 防止慢查詢、鎖等待或意外網路 I/O 導致無限長交易占用連線池。純 DB 操作 30s；含 batch/sync 的 60s。 |
-| 7 | **聚合根必須有樂觀鎖（`@Version`）** | 防止併發寫場景下的遺失更新。當前已應用到 `Job`、`ResumeGroup`、`Conversation`、`JobMatchResult`。 |
+| 7 | **聚合根必須有樂觀鎖（`@Version`）** | 防止併發寫場景下的遺失更新。當前已應用到 `Job`、`ResumeGroup`、`Conversation`、`JobMatchResult`、`ApplicationTracking`、`User`。 |
 
 ---
 
