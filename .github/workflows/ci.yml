@@ -151,10 +151,10 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-      - name: Maven Dependency Check
+      - name: Dependency Vulnerability Check (OWASP)
         run: |
           cd backend
-          mvn org.owasp:dependency-check-maven:check --batch-mode || true
+          mvn verify --batch-mode -DskipTests
         continue-on-error: true
 
   # ───────────────────────────────────────────────
