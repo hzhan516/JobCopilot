@@ -62,6 +62,10 @@ public class JobMatchResultJpaEntity {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @jakarta.persistence.PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();

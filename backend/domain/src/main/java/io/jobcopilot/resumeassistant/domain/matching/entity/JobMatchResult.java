@@ -33,6 +33,7 @@ public class JobMatchResult extends AggregateRoot<String> {
     private Long rankTimeMs;
     private String modelVersion;
     private LocalDateTime completedAt;
+    private long version;
 
     @Builder
     public JobMatchResult(final String id,
@@ -46,7 +47,8 @@ public class JobMatchResult extends AggregateRoot<String> {
                           final Long rankTimeMs,
                           final String modelVersion,
                           final LocalDateTime createdAt,
-                          final LocalDateTime completedAt) {
+                          final LocalDateTime completedAt,
+                          final long version) {
         this.id = id;
         this.userId = userId;
         this.resumeVersionId = resumeVersionId;
@@ -59,6 +61,7 @@ public class JobMatchResult extends AggregateRoot<String> {
         this.modelVersion = modelVersion;
         this.createdAt = createdAt;
         this.completedAt = completedAt;
+        this.version = version;
     }
 
     /**
@@ -87,6 +90,7 @@ public class JobMatchResult extends AggregateRoot<String> {
                 .rankedResults(new ArrayList<>())
                 .modelVersion(modelVersion)
                 .createdAt(LocalDateTime.now())
+                .version(0L)
                 .build();
     }
 
