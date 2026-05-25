@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Configuration;
  * 同时仍允许在应用层进行依赖注入。
  */
 @Configuration
-public class DomainServiceConfig {
+public class ApplicationDomainServiceConfig {
 
     @Bean
     public ResumeConverterService resumeConverterService(FileStorageService fileStorageService,
