@@ -37,7 +37,7 @@
 
 ## 3. 当前已知问题
 
-### 3.1 事务内发送 MQ —— `JobSubmissionService.submit()`
+### 3.1 [已修复] 事务内发送 MQ —— `JobSubmissionService.submit()`
 
 **文件**：`app/.../JobSubmissionService.java:31`
 
@@ -55,11 +55,11 @@ public JobResponse submit(UUID userId, SubmitJobRequest request) {
 1. MQ 发送失败 → 整个事务回滚 → 已 save 的 Job 丢失，但用户已收到提交成功响应。
 2. MQ 发送成功但事务回滚 → 消息已发出但 DB 无记录 → 消费者找不到 Job。
 
-**修复方案**：实际已采用 **Outbox 模式**。`AiMessagePublisherPort` 实现仅在事务内写入 `outbox` 表；`OutboxRelayScheduler` 轮询后发送至 RabbitMQ。
+**状态**：✅ **已修复** — 无需代码修改。`AiMessagePublisherPort` 实际已采用 **Outbox 模式**（事务内仅写入 `outbox` 表；`OutboxRelayScheduler` 轮询后发送至 RabbitMQ）。审计期间确认。
 
 ---
 
-### 3.2 Scheduler 事务边界模糊
+### 3.2 [已修复] Scheduler 事务边界模糊
 
 **文件**：`app/.../OutboxRelayScheduler.java:38`
 
@@ -70,13 +70,15 @@ public void relayPendingMessages() { ... }
 
 **风险**：整个 relay 过程在一个事务内：读取 pending → 逐个发送 → 更新状态。如果消息量大，事务极长。
 
-**修复方案**：
+**状态**：✅ **已修复**，commit `618757f6`。
+
+**已应用的修复**：
 - 读取 pending 用 `@Transactional(readOnly = true)`。
 - 提取 `OutboxRelayTransactionService`，使用 `@Transactional(propagation = Propagation.REQUIRES_NEW)`；每条消息的 RabbitMQ `convertAndSend` + `outboxMessageRepository.save` 运行在独立事务中，防止单条失败或网络阻塞导致整批回滚。
 
 ---
 
-### 3.3 `JobApplicationService.submitJob()` 与 `JobSubmissionService.submit()` 重复
+### 3.3 [已修复] `JobApplicationService.submitJob()` 与 `JobSubmissionService.submit()` 双层 `@Transactional` 冗余
 
 **文件**：
 - `JobApplicationService.java:53`（`@Transactional`）
@@ -84,8 +86,9 @@ public void relayPendingMessages() { ... }
 
 `JobApplicationService.submitJob()` 调用 `JobSubmissionService.submit()`，两者都有 `@Transactional`。Spring 默认 `REQUIRED`，内层会加入外层事务。虽然功能正常，但**架构上冗余**：事务边界应在最外层统一声明，内层纯业务逻辑不应重复注解。
 
-**修复方案**：去掉 `JobSubmissionService.submit()` 的 `@Transactional`，事务由 `JobApplicationService` 控制。
+**状态**：✅ **已修复**，commit `618757f6`。
 
+**已应用的修复**：去掉 `JobSubmissionService.submit()` 的 `@Transactional`，事务由 `JobApplicationService.submitJob()` 统一控制。
 ---
 
 ### 3.4 `MatchingApplicationService.startJobMatch()` 含向量生成

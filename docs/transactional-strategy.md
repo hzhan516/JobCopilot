@@ -37,7 +37,7 @@
 
 ## 3. Known Issues
 
-### 3.1 Sending MQ Inside Transaction — `JobSubmissionService.submit()`
+### 3.1 [FIXED] Sending MQ Inside Transaction — `JobSubmissionService.submit()`
 
 **File**: `app/.../JobSubmissionService.java:31`
 
@@ -55,11 +55,11 @@ public JobResponse submit(UUID userId, SubmitJobRequest request) {
 1. MQ send fails → entire tx rolls back → saved Job is lost, but user already received success response.
 2. MQ send succeeds but tx rolls back → message sent but no DB record → consumer cannot find Job.
 
-**Fix**: Already uses **Outbox Pattern**. `AiMessagePublisherPort` implementation only writes to `outbox` table inside the transaction; `OutboxRelayScheduler` polls and sends to RabbitMQ.
+**Status**: ✅ **Fixed** — No code change required. `AiMessagePublisherPort` already uses the **Outbox Pattern** (only writes to the `outbox` table inside the transaction; `OutboxRelayScheduler` polls and sends to RabbitMQ). Verified during audit.
 
 ---
 
-### 3.2 Scheduler Transaction Boundary Ambiguity
+### 3.2 [FIXED] Scheduler Transaction Boundary Ambiguity
 
 **File**: `app/.../OutboxRelayScheduler.java:38`
 
@@ -70,13 +70,15 @@ public void relayPendingMessages() { ... }
 
 **Risk**: Entire relay runs in one transaction: read pending → send one by one → update status. If message volume is large, the transaction becomes extremely long.
 
-**Fix**:
+**Status**: ✅ **Fixed** in commit `618757f6`.
+
+**Fix applied**:
 - Polling uses `@Transactional(readOnly = true)`.
-- Extract `OutboxRelayTransactionService` with `@Transactional(propagation = Propagation.REQUIRES_NEW)`; each message's RabbitMQ `convertAndSend` + `outboxMessageRepository.save` runs in an independent transaction, preventing a single network failure or congestion from rolling back already-completed deliveries in the same batch.
+- Extracted `OutboxRelayTransactionService` with `@Transactional(propagation = Propagation.REQUIRES_NEW)`; each message's RabbitMQ `convertAndSend` + `outboxMessageRepository.save` runs in an independent transaction, preventing a single network failure or congestion from rolling back already-completed deliveries in the same batch.
 
 ---
 
-### 3.3 Duplicate `@Transactional` on `JobApplicationService.submitJob()` and `JobSubmissionService.submit()`
+### 3.3 [FIXED] Duplicate `@Transactional` on `JobApplicationService.submitJob()` and `JobSubmissionService.submit()`
 
 **Files**:
 - `JobApplicationService.java:53` (`@Transactional`)
@@ -84,8 +86,9 @@ public void relayPendingMessages() { ... }
 
 `JobApplicationService.submitJob()` calls `JobSubmissionService.submit()`, both annotated with `@Transactional`. Spring defaults to `REQUIRED`, so the inner layer joins the outer transaction. Functionally correct, but **architecturally redundant**: transaction boundaries should be declared at the outermost layer; inner pure-business-logic layers should not repeat the annotation.
 
-**Fix**: Removed `@Transactional` from `JobSubmissionService.submit()`; transaction boundary is now controlled exclusively by `JobApplicationService.submitJob()`.
+**Status**: ✅ **Fixed** in commit `618757f6`.
 
+**Fix applied**: Removed `@Transactional` from `JobSubmissionService.submit()`; transaction boundary is now controlled exclusively by `JobApplicationService.submitJob()`.
 ---
 
 ### 3.4 `MatchingApplicationService.startJobMatch()` Contains Vector Generation
