@@ -50,6 +50,10 @@ public class ApplicationTrackingJpaEntity {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 

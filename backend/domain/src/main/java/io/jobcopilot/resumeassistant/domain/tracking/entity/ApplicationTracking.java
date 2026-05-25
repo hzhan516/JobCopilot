@@ -29,6 +29,7 @@ public class ApplicationTracking extends AggregateRoot<String> {
     private String notes;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private long version;
 
     @Builder
     public ApplicationTracking(final String id,
@@ -41,6 +42,7 @@ public class ApplicationTracking extends AggregateRoot<String> {
                                final String notes,
                                final LocalDateTime createdAt,
                                final LocalDateTime updatedAt,
+                               final long version,
                                final List<TrackingEvent> events) {
         this.id = id;
         this.userId = userId;
@@ -52,6 +54,7 @@ public class ApplicationTracking extends AggregateRoot<String> {
         this.notes = notes;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.version = version;
         this.events = events != null ? new ArrayList<>(events) : new ArrayList<>();
     }
 
@@ -109,6 +112,7 @@ public class ApplicationTracking extends AggregateRoot<String> {
                 .notes(notes)
                 .createdAt(now)
                 .updatedAt(now)
+                .version(0L)
                 .events(new ArrayList<>())
                 .build();
         return tracking;

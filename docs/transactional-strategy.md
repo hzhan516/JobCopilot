@@ -19,7 +19,7 @@
 | 4 | **Cross-aggregate writes have independent transactions** | Writes to different aggregate roots (Job, Resume, Conversation, etc.) should not share a transaction; use `Propagation.REQUIRES_NEW` or split to independent Services. |
 | 5 | **Schedulers / async tasks must have independent transaction boundaries** | Scheduled tasks run long; default transaction should be minimal; when using Outbox, relay and cleanup are separate transactions. |
 | 6 | **All `@Transactional` must declare explicit `timeout`** | Prevent infinite connection hold from slow queries, lock waits, or accidental network I/O inside the transaction. Pure DB ops: 30s; batch/sync: 60s. |
-| 7 | **Aggregate roots must have optimistic locking (`@Version`)** | Prevent lost updates in concurrent write scenarios. Currently applied to `Job`, `ResumeGroup`, `Conversation`, `JobMatchResult`. |
+| 7 | **Aggregate roots must have optimistic locking (`@Version`)** | Prevent lost updates in concurrent write scenarios. Currently applied to `Job`, `ResumeGroup`, `Conversation`, `JobMatchResult`, `ApplicationTracking`. |
 
 ---
 
