@@ -17,9 +17,8 @@ public interface JobRepository {
      * Saves a job to the repository.
      *
      * @param job 职位聚合根 / The job to save.
-     * @return 保存后的实体 / The saved job.
      */
-    Job save(Job job);
+    void save(Job job);
 
     /**
      * 根据ID查询职位

@@ -26,10 +26,9 @@ public class JobRepositoryImpl implements JobRepository {
      * 保存职位 / Save job
      */
     @Override
-    public Job save(Job job) {
+    public void save(Job job) {
         JobJpaEntity entity = jobMapper.toEntity(job);
-        JobJpaEntity savedEntity = jpaJobRepository.save(entity);
-        return jobMapper.toDomain(savedEntity);
+        jpaJobRepository.save(entity);
     }
 
     /**

@@ -89,7 +89,7 @@ class JobApplicationServiceTest {
         SubmitJobRequest request = new SubmitJobRequest(url, false, null);
 
         Job job = Job.create(userId, url, false);
-        when(jobRepository.save(any(Job.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(jobRepository).save(any(Job.class));
 
         // 执行 / When
         JobResponse response = jobApplicationService.submitJob(userId, request);
@@ -187,7 +187,7 @@ class JobApplicationServiceTest {
         Job job = Job.create(userId, "http://example.com", false);
 
         when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
-        when(jobRepository.save(any(Job.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(jobRepository).save(any(Job.class));
 
         // 执行 / When
         jobApplicationService.deleteJob(jobId, userId);

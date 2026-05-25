@@ -38,11 +38,11 @@ public class JobSubmissionService {
 
         Job job = Job.create(userId, request.url(), request.imageCheckEnabled());
         job.markScraping();
-        job = jobRepository.save(job);
+        jobRepository.save(job);
 
         try {
             job.markParsing();
-            job = jobRepository.save(job);
+            jobRepository.save(job);
             aiMessagePublisherPort.sendJobForParsing(new JobParseCommand(
                     job.getId(), job.getOriginalUrl(), job.isImageCheckEnabled(), request.screenshotBase64()));
             return JobResponseMapper.toResponse(job);
