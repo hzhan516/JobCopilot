@@ -97,8 +97,18 @@ MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
 MINIO_MODEL_BUCKET = os.getenv("MINIO_MODEL_BUCKET", "ai-models")
 
-# Internal API Auth
-INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "")
+ENV = os.getenv("ENV", "dev")
+
+# Internal API Auth — mandatory in non-dev environments
+# 内部 API Key：开发环境可省略，生产环境强制要求，防止 AI 服务端点被外部直接访问。
+INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY")
+if ENV != "dev" and not INTERNAL_API_KEY:
+    raise RuntimeError("INTERNAL_API_KEY environment variable is required in non-dev environments")
+
+# Embedding rate limits
+# Embedding 限流配置：防止单请求耗尽 LLM 额度或导致 OOM。
+EMBEDDING_MAX_BATCH_SIZE = int(os.getenv("EMBEDDING_MAX_BATCH_SIZE", "32"))
+EMBEDDING_MAX_TEXT_LENGTH = int(os.getenv("EMBEDDING_MAX_TEXT_LENGTH", "100000"))
 
 # Model Training Settings
 RETRAIN_INTERVAL_HOURS = int(os.getenv("RETRAIN_INTERVAL_HOURS", "24"))
