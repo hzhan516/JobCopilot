@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    url: https://github.com/hzhan516/ser594_Team6-ResumeAssistant/discussions
+    about: Please ask and answer questions here.
+  - name: Security vulnerability
+    url: https://github.com/hzhan516/ser594_Team6-ResumeAssistant/security/advisories/new
+    about: Please report security vulnerabilities privately.

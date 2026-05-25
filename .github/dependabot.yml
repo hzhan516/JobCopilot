@@ -1,7 +1,3 @@
-# Dependabot configuration
-# Monitors dependency updates and security advisories across all project modules.
-# Docs: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
-
 version: 2
 updates:
   # ───────────────────────────────────────────────
@@ -40,6 +36,24 @@ updates:
           - "org.mockito:*"
           - "org.assertj:*"
           - "com.tngtech.archunit:*"
+      # Group Hibernate / JPA
+      hibernate:
+        patterns:
+          - "org.hibernate.orm:*"
+          - "org.hibernate:*"
+          - "com.pgvector:*"
+      # Group security / JWT
+      security:
+        patterns:
+          - "io.jsonwebtoken:*"
+          - "org.springframework.security:*"
+      # Group PDF / document processing
+      documents:
+        patterns:
+          - "com.itextpdf:*"
+          - "org.apache.pdfbox:*"
+          - "org.apache.poi:*"
+          - "com.github.librepdf:*"
 
   # ───────────────────────────────────────────────
   # Frontend — npm (TypeScript / React / Vite)
@@ -76,6 +90,7 @@ updates:
           - "vite*"
           - "@vitejs/*"
           - "rollup*"
+          - "esbuild*"
       # Group testing libraries
       testing:
         patterns:
@@ -90,6 +105,12 @@ updates:
           - "class-variance-authority"
           - "clsx"
           - "tailwind-merge"
+      # Group i18n
+      i18n:
+        patterns:
+          - "i18next"
+          - "react-i18next"
+          - "i18next-*"
 
   # ───────────────────────────────────────────────
   # AI Service — pip (Python / FastAPI)
@@ -129,6 +150,7 @@ updates:
           - "uvicorn*"
           - "pydantic*"
           - "sqlalchemy*"
+          - "starlette"
 
   # ───────────────────────────────────────────────
   # GitHub Actions workflows

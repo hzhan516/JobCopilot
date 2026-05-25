@@ -26,6 +26,10 @@
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
+        <!-- Build toolchain requirements -->
+        <maven.min.version>3.9.6</maven.min.version>
+        <jdk.min.version>21</jdk.min.version>
+
         <!-- 框架版本 -->
         <spring-boot.version>3.5.7</spring-boot.version>
         <postgresql.version>42.7.4</postgresql.version>
@@ -260,6 +264,44 @@
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>3.5.0</version>
+                    <executions>
+                        <execution>
+                            <id>enforce-environment</id>
+                            <goals>
+                                <goal>enforce</goal>
+                            </goals>
+                            <configuration>
+                                <rules>
+                                    <!-- Require Maven version -->
+                                    <requireMavenVersion>
+                                        <version>${maven.min.version}</version>
+                                    </requireMavenVersion>
+                                    <!-- Require JDK version -->
+                                    <requireJavaVersion>
+                                        <version>${jdk.min.version}</version>
+                                    </requireJavaVersion>
+                                    <!-- Ban specific dependencies -->
+                                    <bannedDependencies>
+                                        <excludes>
+                                            <!-- Prevent accidental Spring framework in domain module -->
+                                            <exclude>org.springframework:*:*</exclude>
+                                        </excludes>
+                                        <searchTransitive>false</searchTransitive>
+                                    </bannedDependencies>
+                                    <!-- Require explicit dependency versions (no snapshots in releases) -->
+                                    <requireReleaseDeps>
+                                        <onlyWhenRelease>true</onlyWhenRelease>
+                                        <message>No snapshot dependencies allowed in releases</message>
+                                    </requireReleaseDeps>
+                                </rules>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.13.0</version>
                     <configuration>
@@ -340,6 +382,19 @@
                                 <exclude>**/*Application.class</exclude>
                             </excludes>
                         </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Enforce build environment constraints (Maven version, JDK version, no snapshots in release) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>

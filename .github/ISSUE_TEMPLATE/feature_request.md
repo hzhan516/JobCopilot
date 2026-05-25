@@ -4,7 +4,6 @@ about: Suggest an idea for this project
 title: "[FEAT] "
 labels: enhancement
 assignees: ''
-
 ---
 
 ## Is your feature request related to a problem?
@@ -28,5 +27,10 @@ Add any other context, mockups, or screenshots about the feature request here.
 
 ## Willingness to contribute
 - [ ] I am willing to submit a PR to implement this feature
-- [ ] I would need guidance to implement this feature
-- [ ] I am just suggesting the idea
+
+---
+**Checklist:**
+- [ ] I have searched existing issues and discussions to ensure this is not a duplicate
+- [ ] I have provided a clear and descriptive title
+- [ ] I have described the use case and expected behavior
+- [ ] I have considered the impact on existing users

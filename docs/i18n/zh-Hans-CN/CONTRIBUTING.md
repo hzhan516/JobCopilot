@@ -1,485 +1,401 @@
-# 为 JobCopilot ResumeAssistant 做出贡献
+# 贡献指南
 
-> **Languages:** [English](../../CONTRIBUTING.md) | 简体中文 (current) | [繁體中文](../zh-Hant-TW/CONTRIBUTING.md)
+> **语言**: [English](../../CONTRIBUTING.md) | **简体中文** | [繁體中文](./zh-Hant-TW/CONTRIBUTING.md)
 
-本项目基于六边形架构（端口与适配器），正从学习项目转向开源产品。欢迎贡献。
+感谢您对 ResumeAssistant 的兴趣！本文档提供指南和说明，帮助您快速上手。
+
+---
 
 ## 目录
 
+- [行为准则](#行为准则)
 - [快速开始](#快速开始)
-- [开发环境](#开发环境)
+- [开发环境搭建](#开发环境搭建)
+- [项目结构](#项目结构)
 - [分支策略](#分支策略)
 - [提交规范](#提交规范)
-- [代码风格](#代码风格)
+- [Pull Request 流程](#pull-request-流程)
+- [架构指南](#架构指南)
 - [测试要求](#测试要求)
-- [拉取请求流程](#拉取请求流程)
-- [架构合规性](#架构合规性)
+- [代码风格](#代码风格)
 - [文档](#文档)
 - [发布流程](#发布流程)
 - [社区](#社区)
 
 ---
 
-## 快速开始
+## 行为准则
 
-1. 在 GitHub 上**Fork**本仓库。
-2. 在本地**Clone**您的 fork：
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/ser594_Team6-ResumeAssistant.git
-   cd ser594_Team6-ResumeAssistant
-   ```
-3. **设置 upstream** 远程：
-   ```bash
-   git remote add upstream https://github.com/original-owner/ser594_Team6-ResumeAssistant.git
-   ```
-4. 按照我们的[分支命名规范](#分支策略)创建一个分支。
+本项目遵循尊重、建设性协作的标准。参与即表示您同意：
+
+- 在所有互动中保持尊重和包容
+- 优雅地接受建设性批评
+- 关注对社区和项目最有益的事项
+- 对其他社区成员展现同理心
 
 ---
 
-## 开发环境
+## 快速开始
 
 ### 前置条件
 
-| 组件 | 所需版本 |
-|-----------|----------------|
-| Java | 21 (LTS) |
-| Maven | 3.9+ |
-| Node.js | 20+ (前端) |
-| Python | 3.11+ (AI 服务) |
-| Docker & Docker Compose | 最新稳定版 |
-| PostgreSQL | 15+ (需 pgvector 扩展) |
-| MinIO | 最新版 (对象存储) |
-| RabbitMQ | 3.12+ (消息队列) |
+| 组件 | 最低版本 | 推荐版本 |
+|-----------|----------------|-------------|
+| Java      | 21             | 21 (LTS)    |
+| Maven     | 3.9.6          | 3.9.9       |
+| Node.js   | 20.11.0        | 20.x LTS    |
+| Python    | 3.11           | 3.11+       |
+| Docker    | 24.0.0         | 27.x        |
+| Docker Compose | 2.20.0    | 2.29+       |
 
-### 快速启动
+> 验证环境：`java -version`、`mvn -v`、`node -v`、`python3 --version`、`docker --version`
+
+### Fork 与克隆
+
+```bash
+# 在 GitHub 上 Fork 仓库，然后克隆您的 Fork
+git clone https://github.com/YOUR_USERNAME/ser594_Team6-ResumeAssistant.git
+cd ser594_Team6-ResumeAssistant
+
+# 添加上游远程仓库
+git remote add upstream https://github.com/hzhan516/ser594_Team6-ResumeAssistant.git
+```
+
+---
+
+## 开发环境搭建
+
+### 方案 A：Docker Compose（推荐首次贡献者使用）
+
+```bash
+cp .env.example .env
+# 编辑 .env 配置您的参数
+docker compose -f docker-compose.yml.example up -d
+```
+
+### 方案 B：本地开发
 
 ```bash
 # 1. 启动基础设施服务
-docker compose -f docker-compose.yml.example up -d postgres minio rabbitmq
+docker compose -f docker-compose.infra.yml up -d
 
-# 2. 配置环境
-cp .env.example .env
-# 根据您的本地设置编辑 .env
+# 2. 后端
+cd backend
+mvn clean install -DskipTests
+mvn spring-boot:run -pl app
 
-# 3. 构建后端
-cd backend && mvn clean install -DskipTests
+# 3. 前端（新终端）
+cd frontend
+npm install
+npm run dev
 
-# 4. 启动后端服务
-cd backend/trigger && mvn spring-boot:run
-
-# 5. 启动前端（另一个终端）
-cd frontend && npm install && npm run dev
-
-# 6. 启动 AI 服务（另一个终端）
-cd ai-service && pip install -r requirements.txt && uvicorn app.main:app --reload
+# 4. AI 服务（新终端，可选）
+cd ai-service
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
 ```
+
+### 环境变量
+
+将 `.env.example` 复制为 `.env` 并配置：
+- 数据库凭证（PostgreSQL + pgvector）
+- MinIO / S3 兼容存储
+- RabbitMQ 连接
+- OpenAI / Embedding API 密钥
+- Google OAuth 凭证
+
+详见 `docs/deployment/` 详细配置参考。
+
+---
+
+## 项目结构
+
+```
+├── backend/           # Java / Spring Boot（DDD 六边形架构）
+│   ├── app/           # 应用层（Service、Scheduler）
+│   ├── domain/        # 领域层（Entity、Value Object、Port）
+│   ├── api/           # API 层（DTO、Command、Query）
+│   ├── infrastructure/# 适配器（DB、MQ、HTTP、文件存储）
+│   ├── trigger/       # REST Controller、WebSocket、事件监听器
+│   └── types/         # 共享类型与常量
+├── frontend/          # TypeScript / React / Vite / TailwindCSS
+├── ai-service/        # Python / FastAPI（Embedding、LLM 推理）
+├── docs/              # 文档（英文 + i18n）
+└── .github/           # CI/CD、模板、Dependabot
+```
+
+### 架构原则
+
+- **领域驱动设计（DDD）**：业务逻辑位于 `domain/`；无框架依赖
+- **六边形架构（Ports & Adapters）**：领域定义端口；基础设施实现适配器
+- **Outbox 模式**：所有异步消息通过数据库 outbox 表确保可靠性
+- **CQRS**：在适用场景分离命令与查询职责
 
 ---
 
 ## 分支策略
 
-我们使用 **GitHub Flow** —— 简单、轻量，针对持续交付优化。
+我们采用简化的 Git Flow 模型：
 
+| 分支 | 用途 | 保护规则 |
+|--------|---------|------------|
+| `main` | 生产就绪版本 | 受保护；需要 PR + 1 个审查 |
+| `develop` | 下一个版本的集成分支 | 受保护；需要 PR |
+| `feature/*` | 新功能 | 通过 PR 合并到 `develop` |
+| `fix/*` | Bug 修复 | 通过 PR 合并到 `develop` |
+| `hotfix/*` | 紧急生产修复 | 通过 PR 合并到 `main` + `develop` |
+| `sanitize-for-oss` | 开源准备 / 清理 | 长期分支；定期 rebase |
+
+### 工作流程
+
+```bash
+# 开始新功能
+git checkout develop
+git pull upstream develop
+git checkout -b feature/your-feature-name
+
+# 工作、提交、推送
+git add .
+git commit -m "feat(matching): add vector caching for recall"
+git push origin feature/your-feature-name
+
+# 针对 develop 开启 Pull Request（hotfix 则针对 main）
 ```
-main (受保护)
-  ↑
-feat/PROJ-123-user-authentication
-  ↑
-fix/PROJ-456-login-timeout
-  ↑
-hotfix/PROJ-789-payment-crash
-```
-
-### 分支命名规范
-
-```
-{type}/{ticket-id}-{short-description}
-```
-
-| 类型 | 用途 |
-|------|---------|
-| `feat` | 新功能 |
-| `fix` | Bug 修复 |
-| `hotfix` | 生产环境紧急修复 |
-| `chore` | 维护、依赖更新 |
-| `docs` | 仅文档变更 |
-| `refactor` | 代码重构，无行为变更 |
-| `test` | 测试添加或修复 |
-| `perf` | 性能改进 |
-| `ci` | CI/CD 配置 |
-| `style` | 仅代码格式化 |
-
-**规则：**
-- 全部小写，空格用连字符替代
-- 类型前缀后最多 50 个字符
-- 有 ticket/issue 编号时必须包含
-- 合并后分支自动删除
-
-### 分支生命周期目标
-
-| 分支类型 | 目标生命周期 | 最大生命周期 |
-|-------------|----------------|------------------|
-| Feature | 1-3 天 | 5 天 |
-| Bug fix | <1 天 | 2 天 |
-| Hotfix | <4 小时 | 1 天 |
-
-**规则：** 如果分支超过最大生命周期，必须拆分为更小的 PR。
 
 ---
 
 ## 提交规范
 
-我们强制执行 **Conventional Commits**。每条提交信息必须遵循此格式：
+我们使用 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/) 规范：
 
-```
-<type>(<scope>): <subject>
-
-<body>
-
-<footer>
-```
-
-### 类型参考
-
-| 类型 | 使用时机 | 示例 |
+| 类型 | 描述 | 示例 |
 |------|-------------|---------|
-| `feat` | 新功能 | `feat(api): add resume upload endpoint` |
-| `fix` | Bug 修复 | `fix(db): resolve N+1 query in job listing` |
-| `perf` | 性能改进 | `perf(vector): optimize cosine similarity calculation` |
-| `refactor` | 无行为变更 | `refactor(job): extract ScreenshotValidator from ApplicationService` |
-| `docs` | 文档 | `docs(deploy): add Docker Desktop troubleshooting` |
-| `test` | 仅测试 | `test(auth): add SSO edge cases` |
-| `chore` | 构建/工具 | `chore(deps): bump Spring Boot to 3.5.8` |
-| `ci` | CI/CD 变更 | `ci: add JaCoCo coverage threshold check` |
-| `style` | 仅格式化 | `style: apply Spotless formatting` |
-| `revert` | 回退之前提交 | `revert: feat(api): add resume upload endpoint` |
+| `feat` | 新功能 | `feat(auth): add Google OAuth login` |
+| `fix` | Bug 修复 | `fix(tx): resolve nested transaction in matching` |
+| `docs` | 仅文档 | `docs(deploy): add Kubernetes deployment guide` |
+| `style` | 代码风格（格式化） | `style(frontend): apply prettier to components` |
+| `refactor` | 重构 | `refactor(domain): extract JobValidator from service` |
+| `perf` | 性能优化 | `perf(embedding): batch vector generation` |
+| `test` | 添加或修正测试 | `test(matching): add MatchTransactionService tests` |
+| `chore` | 维护 / 依赖 | `chore(deps): bump Spring Boot to 3.5.7` |
+| `ci` | CI/CD 变更 | `ci: add OWASP dependency check` |
+| `build` | 构建系统变更 | `build: configure maven-enforcer-plugin` |
+| `revert` | 回滚提交 | `revert: rollback vector cache (regression)` |
 
-### 范围参考
+### 作用域规范
 
-| 范围 | 区域 |
-|-------|------|
-| `api` | API 层（DTO、Facade） |
-| `app` | 应用层（ApplicationServices） |
-| `domain` | 领域层（实体、值对象、端口） |
-| `infra` | 基础设施层（适配器、配置） |
-| `trigger` | 触发层（控制器、事件监听器） |
-| `db` | 数据库（迁移、Schema） |
-| `deploy` | 部署配置 |
-| `docs` | 文档 |
-| `ci` | CI/CD 流水线 |
-| `frontend` | 前端应用 |
-| `ai` | AI 服务（Python） |
+使用组件级作用域：`auth`、`job`、`resume`、`matching`、`embedding`、`conversation`、`tracking`、`domain`、`infrastructure`、`frontend`、`ai`、`deploy`、`docs`。
 
-### 质量规则
+### 破坏性变更
 
-1. **原子提交** —— 每次提交一个逻辑变更
-2. **祈使语气** —— "add feature" 而非 "added feature"
-3. **主题 ≤ 72 字符** —— 必须能放入 `git log --oneline`
-4. **正文每行 72 字符** —— 终端可读
-5. **引用 Issue** —— `Fixes #123` 或 `Refs PROJ-456`
-6. **main 上不允许 WIP 提交** —— 先 squash 或交互式 rebase
-7. **破坏性变更必须显式声明：**
-   ```
-   feat(api)!: change auth header format
-   
-   BREAKING CHANGE: Authorization header now requires "Bearer " prefix.
-   Migration: Update all API clients to include "Bearer " before token.
-   ```
+在描述前加 `!` 或添加 `BREAKING CHANGE:` 脚注：
+
+```
+feat(api)!: remove deprecated v1 endpoints
+
+BREAKING CHANGE: /api/v1/* 端点已移除。请迁移至 /api/v2/*。
+```
 
 ---
 
-## 代码风格
+## Pull Request 流程
 
-### Java（后端）
+### 提交前
 
-- **格式化器：** Spotless Maven 插件（Google Java Format）
-- **执行：** `cd backend && mvn spotless:apply`
-- **检查：** `cd backend && mvn spotless:check`
+1. **更新分支**：`git pull upstream develop`（或 `main`）
+2. **本地运行质量检查**：
+   ```bash
+   # 后端
+   cd backend && mvn clean verify
 
-### TypeScript（前端）
+   # 前端
+   cd frontend && npm run lint && npm run test:run
 
-- **格式化器：** Prettier
-- **Linter：** ESLint
-- **执行：** `cd frontend && npm run lint:fix`
+   # AI 服务
+   cd ai-service && ruff check . && pytest
+   ```
+3. **为新逻辑编写或更新测试**
+4. **如果用户可见行为变更，更新文档**
+5. **审查您的 diff** — 保持变更聚焦且最小化
 
-### Python（AI 服务）
+### PR 模板
 
-- **格式化器：** Black
-- **Linter：** Ruff
-- **执行：** `cd ai-service && ruff check . && black .`
+PR 必须包含：
 
-### 架构规则（强制）
+- **What**：变更的清晰描述
+- **Why**：动机和上下文（关联 issue：`Fixes #123`）
+- **How**：关键实现决策
+- **Testing**：如何验证变更
+- **Checklist**：确认以下所有项
 
-我们的后端遵循 **六边形架构（端口与适配器）**。违规将在代码审查中被拒绝。
+### 审查标准
 
-| 层级 | 可依赖 | 禁止依赖 |
-|-------|-------------|-------------------|
-| `trigger` | `app`, `api` | `domain`, `infrastructure` |
-| `app` | `domain`, `api` | `infrastructure`, `trigger` |
-| `domain` | 仅 `types` | `app`, `infrastructure`, `trigger`, `api` |
-| `infrastructure` | `domain`, `app`, `api` | — |
-| `api` | 仅 `types` | `app`, `domain`, `infrastructure`, `trigger` |
-| `types` | 无（纯共享类型） | 任何层级 |
+- [ ] 代码遵循 DDD 六边形架构
+- [ ] `domain/` 模块无框架依赖
+- [ ] 新增/更新的测试覆盖修改行 ≥60%
+- [ ] 无 `@Transactional` 与网络 I/O（HTTP、MQ、文件）混用
+- [ ] ESLint / Prettier 通过（前端）
+- [ ] Maven 构建含测试通过
+- [ ] 如有适用，文档已更新
+- [ ] 提交信息遵循 Conventional Commits
 
-**关键约束：**
-- ApplicationService 不得超过 **150 行** —— 拆分为 DomainService 或用例
-- `app` 或 `domain` 中禁止出现 `RestTemplate` / `HttpClient` / `JdbcTemplate`
-- `domain` 中禁止 Spring 注解（`@Component`, `@Service`, `@Autowired`）
-- 外部 API 响应禁止使用 `Map<String, Object>` —— 使用严格 DTO
-- 领域实体必须有**行为方法**，不能只有 getter/setter
+### 审查流程
 
-我们使用 **ArchUnit** 测试自动执行这些规则。运行：
-```bash
-cd backend && mvn test -pl app -Dtest="*ArchitectureTest*"
+1. 作者针对 `develop` 开启 PR
+2. CI 检查必须通过（构建、测试、Lint、安全扫描）
+3. 至少需要一个维护者审查
+4. 使用 fixup 提交处理审查反馈
+5. 维护者 squash 合并
+
+---
+
+## 架构指南
+
+### DDD 分层规则
+
 ```
+┌─────────────────────────────────────┐
+│  trigger  (Controllers, WebSocket)   │  ◄── HTTP / WebSocket 入口
+├─────────────────────────────────────┤
+│  app      (Application Services)     │  ◄── 编排、事务边界
+├─────────────────────────────────────┤
+│  domain   (Entities, Ports, VO)    │  ◄── 纯业务逻辑
+├─────────────────────────────────────┤
+│  infra    (Adapters, Repositories) │  ◄── DB、MQ、HTTP、存储
+└─────────────────────────────────────┘
+```
+
+| 规则 | 执行方式 |
+|------|-------------|
+| `domain/` 零 Spring / Hibernate 导入（`javax.validation` 除外） | ArchUnit 测试：`noClasses().that().resideInAPackage("..domain..")..should().dependOnClassesThat().resideInAPackage("org.springframework..")` |
+| 领域接口（Ports）位于 `domain/**/port/` | 代码审查 |
+| Application Services 持有 `@Transactional`，Domain Services 不持有 | 检查清单 |
+| 基础设施适配器实现领域端口 | 编译期 |
+
+### 事务安全
+
+- **命令**：`@Transactional`（读写）
+- **查询**：`@Transactional(readOnly = true)`
+- **事务内不做网络 I/O**：HTTP 调用、MQ 发送、文件上传必须在 `@Transactional` 外
+- **Outbox 模式**：所有异步消息先写入 `outbox` 表；scheduler 中继
+
+详见 `docs/transactional-strategy.md` 完整策略。
 
 ---
 
 ## 测试要求
 
-### 最低覆盖率（CI 强制执行）
+### 后端（Java）
 
-| 层级 | 最低覆盖率 |
-|-------|-----------------|
-| `domain` | 80% |
-| `app` | 70% |
-| `infrastructure` | 50% |
-| `trigger` | 60% |
+| 测试类型 | 工具 | 最低覆盖率 |
+|-----------|------|-----------------|
+| 单元测试 | JUnit 5 + Mockito | 60% 指令 / 行，40% 分支 |
+| 架构测试 | ArchUnit | 100%（必须通过） |
+| 集成测试 | `@SpringBootTest` | 仅关键流程 |
 
-### 所需测试类型
+```bash
+# 运行所有后端测试含覆盖率
+cd backend && mvn clean verify
 
-1. **单元测试** —— JUnit 5 + Mockito + AssertJ
-   ```bash
-   cd backend && mvn test
-   ```
+# 运行特定模块测试
+cd backend/app && mvn test
+```
 
-2. **架构测试** —— ArchUnit
-   ```bash
-   cd backend && mvn test -Dtest="*ArchitectureTest*"
-   ```
+### 前端（TypeScript）
 
-3. **集成测试** —— Spring Boot Test + Testcontainers
-   ```bash
-   cd backend && mvn verify -Pintegration-test
-   ```
+| 测试类型 | 工具 | 要求 |
+|-----------|------|-------------|
+| 单元测试 | Vitest + React Testing Library | 所有含逻辑组件 |
+| E2E 测试 | Playwright（规划中） | 关键用户旅程 |
 
-### 编写优质测试
+```bash
+cd frontend
+npm run test:run        # 一次性运行
+npm run test:coverage   # 含覆盖率报告
+```
 
-- 测试**行为**，而非实现
-- 测试名称使用 **Given-When-Then** 结构：
-  ```java
-  @Test
-  void shouldRejectScreenshotLargerThan5MB() { ... }
-  ```
-- Mock 外部依赖；用真实对象测试领域逻辑
-- 集成测试必须清理数据库状态（`@Transactional` 或 `@Sql`）
+### AI 服务（Python）
 
----
+| 测试类型 | 工具 | 要求 |
+|-----------|------|-------------|
+| 单元测试 | pytest | 所有服务函数 |
+| 代码检查 | ruff | 必须通过 |
 
-## 拉取请求流程
-
-### 创建 PR 之前
-
-1. Rebase 到最新 `main`：
-   ```bash
-   git fetch upstream
-   git rebase upstream/main
-   ```
-2. 运行完整检查套件：
-   ```bash
-   cd backend && mvn clean verify
-   cd frontend && npm run lint && npm run test
-   cd ai-service && ruff check . && pytest
-   ```
-3. 确保分支符合命名规范
-4. Squash WIP 提交：`git rebase -i upstream/main`
-
-### PR 模板
-
-打开 PR 时模板会自动填充。填写所有部分：
-
-- **What** —— 一句话描述
-- **Why** —— 链接到 Issue 或解释问题
-- **How** —— 技术方案和关键决策
-- **Testing** —— 已执行测试清单
-- **Screenshots** —— UI 变更时提供
-- **Checklist** —— 自审清单
-
-### PR 大小指南
-
-| 大小 | 变更行数 | 预期审查时间 |
-|------|--------------|---------------------|
-| XS | <10 | 5 分钟 |
-| S | 10-50 | 15 分钟 |
-| M | 50-200 | 30 分钟 |
-| L | 200-500 | 60 分钟 |
-
-**规则：** >500 行的 PR 缺陷率高出 40%。积极拆分。
-
-### 审查流程
-
-| 变更类型 | 最少批准数 | 要求的审查者 |
-|-------------|------------------|-------------------|
-| Feature | 2 | 1 名领域专家 |
-| Bug fix | 1 | 任何团队成员 |
-| Hotfix | 1 | On-call + 负责人 |
-| Refactor | 2 | 原作者（如可用） |
-| Docs only | 1 | 任何人 |
-| Dependency update | 1 | 安全意识审查者 |
-| Database migration | 2 | DBA/资深 + 1 名开发 |
-
-### 审查评论分类
-
-为评论加前缀以明确意图：
-
-| 前缀 | 含义 | 阻塞合并？ |
-|--------|---------|--------------|
-| `blocking:` | 合并前必须修复 | 是 |
-| `suggestion:` | 考虑此改进 | 否 |
-| `nit:` | 风格/格式偏好 | 否 |
-| `question:` | 需要澄清 | 可能 |
-| `praise:` | 做得好 | 否 |
-| `thought:` | 长期考虑 | 否 |
+```bash
+cd ai-service
+pytest --cov=app --cov-report=term-missing
+```
 
 ---
 
-## 架构合规性
+## 代码风格
 
-### 六边形架构检查清单
+### Java
 
-提交 PR 前验证：
+- **格式化器**：使用 Spring Boot 默认风格（4 空格，120 字符行宽）
+- **Lombok**：允许在 `app/` 和 `infra/`；**不允许**在 `domain/`
+- **导入**：禁止通配符导入；`Assertions`、`Mockito` 使用静态导入
+- **空安全**：使用 `Optional<>`；避免从领域方法返回 `null`
 
-- [ ] ApplicationServices 仅做编排，不包含业务逻辑
-- [ ] 领域实体有行为方法（不只是 getter/setter）
-- [ ] `domain` 或 `app` 中无框架代码（`RestTemplate`, `JPA`, `RabbitTemplate`）
-- [ ] 所有外部依赖通过 Port 接口接入
-- [ ] DTO 位于 `api` 层，绝不泄漏到 `domain`
-- [ ] ValueObjects 不可变且在构造时验证
-- [ ] HTTP 调用或外部服务调用周围无 `@Transactional`
+### TypeScript / React
 
-### 常见违规避免
+- **格式化器**：Prettier（配置在 `frontend/prettier.config.js`）
+- **代码检查器**：ESLint with TypeScript、React Hooks、React Refresh 规则
+- **组件**：函数组件 + Hooks；不使用类组件
+- **样式**：TailwindCSS + `class-variance-authority` 做组件变体
 
-❌ **上帝 ApplicationService** (>150 行) → 提取 DomainService 或用例  
-❌ 外部 API 响应使用 `Map<String, Object>` → 定义严格 DTO  
-❌ `@Transactional` 围绕 `RestTemplate` 调用 → 将 HTTP 调用移出事务  
-❌ 控制器中包含业务逻辑 → 移到 ApplicationService 或 DomainService  
-❌ 领域层使用 Spring 注解 → 使用纯 Java + 在应用层使用构造器注入  
-❌ 仓储接口返回框架类型 → 仅返回领域类型  
+```bash
+# 自动修复前端问题
+cd frontend
+npm run lint            # 检查
+npm run format          # 格式化
+```
+
+### Python
+
+- **格式化器**：Black 兼容（通过 `ruff format`）
+- **代码检查器**：ruff 含 isort、flake8、pydocstyle 规则
+- **类型注解**：所有函数签名必须含类型注解
+
+```bash
+cd ai-service
+ruff check .            # 检查
+ruff format .           # 格式化
+```
 
 ---
 
 ## 文档
 
-### 什么需要文档
-
-所有面向用户或贡献者的文档必须提供 **三种语言**：
-- **英语**（主文件，根目录）
-- **简体中文** (`docs/i18n/zh-Hans-CN/`)
-- **繁體中文** (`docs/i1../zh-Hant-TW/`)
-
-| 文档 | 位置 | 需要 i18n? |
-|----------|----------|---------------|
-| README.md | `/` | 是 |
-| CONTRIBUTING.md | `/` | 是 |
-| CODE_OF_CONDUCT.md | `/` | 是 |
-| CHANGELOG.md | `/` | 是 |
-| 部署文档 | `docs/deployment/` | 是 |
-| ADR | `docs/adr/` | 是 |
-| API 文档 | 自动生成 (OpenAPI) | 否 |
-| LICENSE | `/` | 否 |
-
-### 架构决策记录 (ADRs)
-
-任何重大架构决策在 `docs/adr/` 中创建 ADR：
-
-```
-docs/adr/
-├── 001-hexagonal-architecture.md
-├── 002-postgresql-pgvector.md
-├── 003-rabbitmq-message-queue.md
-└── 004-minio-object-storage.md
-```
-
-ADR 模板：
-```markdown
-# ADR-XXX: 标题
-
-## 状态
-Proposed / Accepted / Deprecated / Superseded
-
-## 背景
-我们要解决什么问题？
-
-## 决策
-我们决定了什么？
-
-## 后果
-正面和负面的结果。
-```
+- **用户可见变更**：更新 `docs/` 英文 + 中文（简体 + 繁体）版本
+- **架构决策**：添加条目到 `docs/adr/`（Architecture Decision Records）
+- **API 变更**：OpenAPI 注解自动更新；通过 `mvn spring-boot:run` + `/swagger-ui.html` 验证
+- **部署变更**：更新 `docs/deployment/` 和 `.env.example`
 
 ---
 
 ## 发布流程
 
-我们遵循 **语义化版本控制 (SemVer)**，使用 **release-please** 进行自动发布。
-
-### 版本升级规则
-
-| 变更类型 | 版本升级 | 示例 |
-|-------------|-------------|---------|
-| 破坏性 API 变更 | MAJOR | 删除端点、变更响应结构 |
-| 新功能（向后兼容） | MINOR | 添加端点、新的可选字段 |
-| Bug 修复 | PATCH | 修复计算错误、拼写错误 |
-
-### 自动发布流水线
-
-1. 使用 conventional commits 合并 PR 到 `main`
-2. `release-please` 创建带有 changelog + 版本升级的发布 PR
-3. 人工审查并合并发布 PR
-4. 自动创建 Git 标签 `vX.Y.Z`
-5. 发布带自动生成说明的 GitHub Release
-6. 构建并推送 Docker 镜像 `ghcr.io/jobcopilot/resumeassistant:vX.Y.Z`
-
-### 手动发布（仅限紧急情况）
-
-```bash
-# 仅用于自动化故障时的热修复
-git tag -a v1.2.1 -m "Hotfix: resolve connection pool starvation"
-git push upstream v1.2.1
-```
+1. **版本号更新**：更新 `backend/pom.xml` 和 `frontend/package.json` 的 `version`
+2. **更新日志**：用 Conventional Commits 摘要更新 `CHANGELOG.md`
+3. **打标签**：`git tag -a v1.x.x -m "Release v1.x.x"`
+4. **构建**：CI 构建 Docker 镜像并推送至仓库
+5. **部署**：用新镜像更新生产环境
 
 ---
 
 ## 社区
 
-### 沟通渠道
-
-- **Issues：** Bug 报告、功能请求、问题
-- **Discussions：** 架构提案、一般问题
-- **Security：** 安全漏洞请邮件 **security@jobcopilot.dev**（请勿公开创建 Issue）
-
-### 获取帮助
-
-1. 搜索现有 Issues 和 Discussions
-2. 查阅 `docs/` 中的文档
-3. 在 Discussions 中使用 `question` 标签提问
-4. Bug 请使用 Bug Report Issue 模板
-
-### 致谢
-
-贡献者将在以下位置获得认可：
-- 每次发布的 `CHANGELOG.md`
-- `CONTRIBUTORS.md`（每季度更新）
-- GitHub 发布说明
+- **Issues**：使用 GitHub Issues 提交 Bug 报告和功能请求
+- **Discussions**：使用 GitHub Discussions 提问和交流想法
+- **安全漏洞**：私信维护者报告安全漏洞
 
 ---
 
-## 致谢
+## 有疑问？
 
-本贡献指南改编自：
-- [Conventional Commits](https://www.conventionalcommits.org/)
-- [GitHub Flow](https://docs.github.com/en/get-started/quickstart/github-flow)
-- [Semantic Versioning](https://semver.org/)
-- [Contributor Covenant](https://www.contributor-covenant.org/)
+如有任何不清楚的地方，请开启 [GitHub Discussion](https://github.com/hzhan516/ser594_Team6-ResumeAssistant/discussions) 或在 Issue 中提问。我们很乐意帮助。
 
-感谢您让 JobCopilot 变得更好！
+**感谢贡献！🚀**

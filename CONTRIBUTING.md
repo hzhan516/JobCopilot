@@ -1,491 +1,401 @@
-# Contributing to JobCopilot ResumeAssistant
+# Contributing to ResumeAssistant
 
-> **Languages:** English (current) | [简体中文](docs/i18n/zh-Hans-CN/CONTRIBUTING.md) | [繁體中文](docs/i18n/zh-Hant-TW/CONTRIBUTING.md)
+> **Language**: English | [简体中文](./docs/i18n/zh-Hans-CN/CONTRIBUTING.md) | [繁體中文](./docs/i18n/zh-Hant-TW/CONTRIBUTING.md)
 
-This project is built on Hexagonal Architecture (Ports & Adapters). We're moving from a learning project to an open-source product. Contributions welcome.
+Thank you for your interest in contributing to ResumeAssistant! This document provides guidelines and instructions to help you get started.
+
+---
 
 ## Table of Contents
 
+- [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
-- [Development Environment](#development-environment)
+- [Development Setup](#development-setup)
+- [Project Structure](#project-structure)
 - [Branching Strategy](#branching-strategy)
 - [Commit Convention](#commit-convention)
-- [Code Style](#code-style)
-- [Testing Requirements](#testing-requirements)
 - [Pull Request Process](#pull-request-process)
-- [Architecture Compliance](#architecture-compliance)
+- [Architecture Guidelines](#architecture-guidelines)
+- [Testing Requirements](#testing-requirements)
+- [Code Style](#code-style)
 - [Documentation](#documentation)
 - [Release Process](#release-process)
 - [Community](#community)
 
 ---
 
-## Getting Started
+## Code of Conduct
 
-1. **Fork** the repository on GitHub.
-2. **Clone** your fork locally:
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/ser594_Team6-ResumeAssistant.git
-   cd ser594_Team6-ResumeAssistant
-   ```
-3. **Set up upstream** remote:
-   ```bash
-   git remote add upstream https://github.com/original-owner/ser594_Team6-ResumeAssistant.git
-   ```
-4. **Create a branch** following our [branch naming convention](#branching-strategy).
+This project adheres to a standard of respectful, constructive collaboration. By participating, you agree to:
+
+- Be respectful and inclusive in all interactions
+- Accept constructive criticism gracefully
+- Focus on what is best for the community and the project
+- Show empathy towards other community members
 
 ---
 
-## Development Environment
+## Getting Started
 
 ### Prerequisites
 
-| Component | Required Version |
-|-----------|----------------|
-| Java | 21 (LTS) |
-| Maven | 3.9+ |
-| Node.js | 20+ (for frontend) |
-| Python | 3.11+ (for ai-service) |
-| Docker & Docker Compose | Latest stable |
-| PostgreSQL | 15+ (with pgvector extension) |
-| MinIO | Latest (for object storage) |
-| RabbitMQ | 3.12+ (for message queue) |
+| Component | Minimum Version | Recommended |
+|-----------|----------------|-------------|
+| Java      | 21             | 21 (LTS)    |
+| Maven     | 3.9.6          | 3.9.9       |
+| Node.js   | 20.11.0        | 20.x LTS    |
+| Python    | 3.11           | 3.11+       |
+| Docker    | 24.0.0         | 27.x        |
+| Docker Compose | 2.20.0    | 2.29+       |
 
-### Quick Start
+> Verify your environment: `java -version`, `mvn -v`, `node -v`, `python3 --version`, `docker --version`
+
+### Fork and Clone
+
+```bash
+# Fork the repository on GitHub, then clone your fork
+git clone https://github.com/YOUR_USERNAME/ser594_Team6-ResumeAssistant.git
+cd ser594_Team6-ResumeAssistant
+
+# Add upstream remote
+git remote add upstream https://github.com/hzhan516/ser594_Team6-ResumeAssistant.git
+```
+
+---
+
+## Development Setup
+
+### Option A: Docker Compose (Recommended for first-time contributors)
+
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+docker compose -f docker-compose.yml.example up -d
+```
+
+### Option B: Local Development
 
 ```bash
 # 1. Start infrastructure services
-docker compose -f docker-compose.yml.example up -d postgres minio rabbitmq
+docker compose -f docker-compose.infra.yml up -d
 
-# 2. Configure environment
-cp .env.example .env
-# Edit .env with your local settings
+# 2. Backend
+cd backend
+mvn clean install -DskipTests
+mvn spring-boot:run -pl app
 
-# 3. Build the backend
-cd backend && mvn clean install -DskipTests
+# 3. Frontend (new terminal)
+cd frontend
+npm install
+npm run dev
 
-# 4. Start backend services
-cd backend/trigger && mvn spring-boot:run
-
-# 5. Start frontend (in another terminal)
-cd frontend && npm install && npm run dev
-
-# 6. Start AI service (in another terminal)
-cd ai-service && pip install -r requirements.txt && uvicorn app.main:app --reload
+# 4. AI Service (new terminal, optional)
+cd ai-service
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
 ```
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and configure:
+- Database credentials (PostgreSQL + pgvector)
+- MinIO / S3-compatible storage
+- RabbitMQ connection
+- OpenAI / Embedding API keys
+- Google OAuth credentials
+
+See `docs/deployment/` for detailed configuration reference.
+
+---
+
+## Project Structure
+
+```
+├── backend/           # Java / Spring Boot (DDD Hexagonal Architecture)
+│   ├── app/           # Application layer (Services, Schedulers)
+│   ├── domain/        # Domain layer (Entities, Value Objects, Ports)
+│   ├── api/           # API layer (DTOs, Commands, Queries)
+│   ├── infrastructure/# Adapters (DB, MQ, HTTP, File Storage)
+│   ├── trigger/       # REST Controllers, WebSocket, Event Listeners
+│   └── types/         # Shared types and constants
+├── frontend/          # TypeScript / React / Vite / TailwindCSS
+├── ai-service/        # Python / FastAPI (Embedding, LLM inference)
+├── docs/              # Documentation (English + i18n)
+└── .github/           # CI/CD, Templates, Dependabot
+```
+
+### Architecture Principles
+
+- **Domain-Driven Design (DDD)**: Business logic lives in `domain/`; no framework dependencies
+- **Hexagonal Architecture (Ports & Adapters)**: Domain defines ports; infrastructure implements adapters
+- **Outbox Pattern**: All async messaging goes through database outbox table for reliability
+- **CQRS**: Separate command and query responsibilities where beneficial
 
 ---
 
 ## Branching Strategy
 
-We use **GitHub Flow** — simple, lightweight, and optimized for continuous delivery.
+We follow a simplified Git Flow model:
 
+| Branch | Purpose | Protection |
+|--------|---------|------------|
+| `main` | Production-ready releases | Protected; requires PR + 1 review |
+| `develop` | Integration branch for next release | Protected; requires PR |
+| `feature/*` | New features | Merge to `develop` via PR |
+| `fix/*` | Bug fixes | Merge to `develop` via PR |
+| `hotfix/*` | Urgent production fixes | Merge to `main` + `develop` via PR |
+| `sanitize-for-oss` | OSS preparation / cleanup | Long-running; periodic rebase |
+
+### Workflow
+
+```bash
+# Start new feature
+git checkout develop
+git pull upstream develop
+git checkout -b feature/your-feature-name
+
+# Work, commit, push
+git add .
+git commit -m "feat(matching): add vector caching for recall"
+git push origin feature/your-feature-name
+
+# Open Pull Request against develop (or main for hotfixes)
 ```
-main (protected)
-  ↑
-feat/PROJ-123-user-authentication
-  ↑
-fix/PROJ-456-login-timeout
-  ↑
-hotfix/PROJ-789-payment-crash
-```
-
-### Branch Naming Convention
-
-```
-{type}/{ticket-id}-{short-description}
-```
-
-| Type | Purpose |
-|------|---------|
-| `feat` | New feature |
-| `fix` | Bug fix |
-| `hotfix` | Production emergency |
-| `chore` | Maintenance, dependencies |
-| `docs` | Documentation only |
-| `refactor` | Code restructuring, no behavior change |
-| `test` | Test additions or fixes |
-| `perf` | Performance improvements |
-| `ci` | CI/CD configuration |
-| `style` | Code formatting only |
-
-**Rules:**
-- All lowercase, hyphens for spaces
-- Maximum 50 characters after the type prefix
-- Always include ticket/issue number when available
-- Branches are automatically deleted after merge
-
-### Branch Lifetime Targets
-
-| Branch Type | Target Lifetime | Maximum Lifetime |
-|-------------|----------------|------------------|
-| Feature | 1-3 days | 5 days |
-| Bug fix | <1 day | 2 days |
-| Hotfix | <4 hours | 1 day |
-
-**Rule:** If a branch exceeds its maximum lifetime, it must be split into smaller PRs.
 
 ---
 
 ## Commit Convention
 
-We enforce **Conventional Commits**. Every commit message must follow this format:
+We use [Conventional Commits](https://www.conventionalcommits.org/) with the following types:
 
-```
-<type>(<scope>): <subject>
-
-<body>
-
-<footer>
-```
-
-### Type Reference
-
-| Type | When to Use | Example |
+| Type | Description | Example |
 |------|-------------|---------|
-| `feat` | New feature | `feat(api): add resume upload endpoint` |
-| `fix` | Bug fix | `fix(db): resolve N+1 query in job listing` |
-| `perf` | Performance improvement | `perf(vector): optimize cosine similarity calculation` |
-| `refactor` | No behavior change | `refactor(job): extract ScreenshotValidator from ApplicationService` |
-| `docs` | Documentation | `docs(deploy): add Docker Desktop troubleshooting` |
-| `test` | Tests only | `test(auth): add SSO edge cases` |
-| `chore` | Build/tooling | `chore(deps): bump Spring Boot to 3.5.8` |
-| `ci` | CI/CD changes | `ci: add JaCoCo coverage threshold check` |
-| `style` | Formatting only | `style: apply Spotless formatting` |
-| `revert` | Revert previous commit | `revert: feat(api): add resume upload endpoint` |
+| `feat` | New feature | `feat(auth): add Google OAuth login` |
+| `fix` | Bug fix | `fix(tx): resolve nested transaction in matching` |
+| `docs` | Documentation only | `docs(deploy): add Kubernetes deployment guide` |
+| `style` | Code style (formatting) | `style(frontend): apply prettier to components` |
+| `refactor` | Code change neither fix nor feature | `refactor(domain): extract JobValidator from service` |
+| `perf` | Performance improvement | `perf(embedding): batch vector generation` |
+| `test` | Adding or correcting tests | `test(matching): add MatchTransactionService tests` |
+| `chore` | Maintenance / dependencies | `chore(deps): bump Spring Boot to 3.5.7` |
+| `ci` | CI/CD changes | `ci: add OWASP dependency check` |
+| `build` | Build system changes | `build: configure maven-enforcer-plugin` |
+| `revert` | Revert previous commit | `revert: rollback vector cache (regression)` |
 
-### Scope Reference
+### Scope Guidelines
 
-| Scope | Area |
-|-------|------|
-| `api` | API layer (DTOs, Facades) |
-| `app` | Application layer (ApplicationServices) |
-| `domain` | Domain layer (Entities, ValueObjects, Ports) |
-| `infra` | Infrastructure layer (Adapters, Config) |
-| `trigger` | Trigger layer (Controllers, EventListeners) |
-| `db` | Database (migrations, schema) |
-| `deploy` | Deployment configuration |
-| `docs` | Documentation |
-| `ci` | CI/CD pipeline |
-| `frontend` | Frontend application |
-| `ai` | AI service (Python) |
+Use component-level scopes: `auth`, `job`, `resume`, `matching`, `embedding`, `conversation`, `tracking`, `domain`, `infrastructure`, `frontend`, `ai`, `deploy`, `docs`.
 
-### Quality Rules
+### Breaking Changes
 
-1. **Atomic commits** — one logical change per commit
-2. **Imperative mood** — "add feature" not "added feature"
-3. **Subject ≤ 72 characters** — must fit in `git log --oneline`
-4. **Body wraps at 72 characters** — readable in terminal
-5. **Reference issues** — `Fixes #123` or `Refs PROJ-456`
-6. **No WIP commits on main** — squash or interactive rebase first
-7. **Breaking changes must be explicit:**
+Prefix the description with `!` or add a `BREAKING CHANGE:` footer:
+
+```
+feat(api)!: remove deprecated v1 endpoints
+
+BREAKING CHANGE: /api/v1/* endpoints removed. Migrate to /api/v2/*.
+```
+
+---
+
+## Pull Request Process
+
+### Before Submitting
+
+1. **Update your branch**: `git pull upstream develop` (or `main`)
+2. **Run quality checks locally**:
+   ```bash
+   # Backend
+   cd backend && mvn clean verify
+
+   # Frontend
+   cd frontend && npm run lint && npm run test:run
+
+   # AI Service
+   cd ai-service && ruff check . && pytest
    ```
-   feat(api)!: change auth header format
-   
-   BREAKING CHANGE: Authorization header now requires "Bearer " prefix.
-   Migration: Update all API clients to include "Bearer " before token.
-   ```
+3. **Write or update tests** for new logic
+4. **Update documentation** if user-facing behavior changes
+5. **Review your diff** — keep changes focused and minimal
 
-### Commit Message Template
+### PR Template
 
-We provide a `.gitmessage` template. Configure it:
+PRs must include:
+
+- **What**: Clear description of changes
+- **Why**: Motivation and context (link related issues: `Fixes #123`)
+- **How**: Key implementation decisions
+- **Testing**: How you verified the change
+- **Checklist**: Confirm all items below
+
+### Review Criteria
+
+- [ ] Code follows DDD Hexagonal Architecture
+- [ ] No framework dependencies in `domain/` module
+- [ ] Tests added/updated with ≥60% coverage for changed lines
+- [ ] No `@Transactional` on network I/O (HTTP, MQ, file)
+- [ ] ESLint / Prettier passes (frontend)
+- [ ] Maven build succeeds with tests
+- [ ] Documentation updated if applicable
+- [ ] Commit messages follow Conventional Commits
+
+### Review Flow
+
+1. Author opens PR against `develop`
+2. CI checks must pass (build, test, lint, security scan)
+3. At least one maintainer review required
+4. Address review feedback with fixup commits
+5. Maintainer squashes and merges
+
+---
+
+## Architecture Guidelines
+
+### DDD Layer Rules
+
+```
+┌─────────────────────────────────────┐
+│  trigger  (Controllers, WebSocket)   │  ◄── HTTP / WebSocket in
+├─────────────────────────────────────┤
+│  app      (Application Services)     │  ◄── Orchestration, tx boundaries
+├─────────────────────────────────────┤
+│  domain   (Entities, Ports, VO)    │  ◄── Pure business logic
+├─────────────────────────────────────┤
+│  infra    (Adapters, Repositories) │  ◄── DB, MQ, HTTP, Storage
+└─────────────────────────────────────┘
+```
+
+| Rule | Enforcement |
+|------|-------------|
+| `domain/` has zero Spring / Hibernate imports (except `javax.validation`) | ArchUnit test: `noClasses().that().resideInAPackage("..domain..")..should().dependOnClassesThat().resideInAPackage("org.springframework..")` |
+| Domain interfaces (Ports) are in `domain/**/port/` | Code review |
+| Application Services hold `@Transactional`, not Domain Services | Checklist |
+| Infrastructure adapters implement domain ports | Compile-time |
+
+### Transaction Safety
+
+- **Commands**: `@Transactional` (read-write)
+- **Queries**: `@Transactional(readOnly = true)`
+- **No network I/O in transactions**: HTTP calls, MQ sends, file uploads must happen outside `@Transactional`
+- **Outbox Pattern**: All async messaging writes to `outbox` table first; scheduler relays
+
+See `docs/transactional-strategy.md` for the complete policy.
+
+---
+
+## Testing Requirements
+
+### Backend (Java)
+
+| Test Type | Tool | Minimum Coverage |
+|-----------|------|-----------------|
+| Unit tests | JUnit 5 + Mockito | 60% instruction / line, 40% branch |
+| Architecture tests | ArchUnit | 100% (must pass) |
+| Integration tests | `@SpringBootTest` | Key flows only |
 
 ```bash
-git config commit.template .gitmessage
+# Run all backend tests with coverage
+cd backend && mvn clean verify
+
+# Run specific module tests
+cd backend/app && mvn test
+```
+
+### Frontend (TypeScript)
+
+| Test Type | Tool | Requirement |
+|-----------|------|-------------|
+| Unit tests | Vitest + React Testing Library | All components with logic |
+| E2E tests | Playwright (planned) | Critical user journeys |
+
+```bash
+cd frontend
+npm run test:run        # Run once
+npm run test:coverage   # With coverage report
+```
+
+### AI Service (Python)
+
+| Test Type | Tool | Requirement |
+|-----------|------|-------------|
+| Unit tests | pytest | All service functions |
+| Lint | ruff | Must pass |
+
+```bash
+cd ai-service
+pytest --cov=app --cov-report=term-missing
 ```
 
 ---
 
 ## Code Style
 
-### Java (Backend)
+### Java
 
-- **Formatter:** Spotless Maven plugin (Google Java Format)
-- **Run:** `cd backend && mvn spotless:apply`
-- **Check:** `cd backend && mvn spotless:check`
+- **Formatter**: Use Spring Boot default style (4 spaces, 120 char line)
+- **Lombok**: Allowed in `app/` and `infra/`; **not allowed** in `domain/`
+- **Imports**: No wildcard imports; static imports for `Assertions`, `Mockito`
+- **Null safety**: Use `Optional<>`; avoid `null` returns from domain methods
 
-### TypeScript (Frontend)
+### TypeScript / React
 
-- **Formatter:** Prettier
-- **Linter:** ESLint
-- **Run:** `cd frontend && npm run lint:fix`
+- **Formatter**: Prettier (config in `frontend/prettier.config.js`)
+- **Linter**: ESLint with TypeScript, React Hooks, and React Refresh rules
+- **Components**: Function components with hooks; no class components
+- **Styling**: TailwindCSS + `class-variance-authority` for component variants
 
-### Python (AI Service)
-
-- **Formatter:** Black
-- **Linter:** Ruff
-- **Run:** `cd ai-service && ruff check . && black .`
-
-### Architecture Rules (Mandatory)
-
-Our backend follows **Hexagonal Architecture (Ports & Adapters)**. Violations will be rejected in code review.
-
-| Layer | Can Depend On | Must NOT Depend On |
-|-------|-------------|-------------------|
-| `trigger` | `app`, `api` | `domain`, `infrastructure` |
-| `app` | `domain`, `api` | `infrastructure`, `trigger` |
-| `domain` | `types` only | `app`, `infrastructure`, `trigger`, `api` |
-| `infrastructure` | `domain`, `app`, `api` | — |
-| `api` | `types` only | `app`, `domain`, `infrastructure`, `trigger` |
-| `types` | Nothing (pure shared types) | Any layer |
-
-**Key Constraints:**
-- ApplicationService must not exceed **150 lines** — split into DomainServices or use Cases
-- No `RestTemplate` / `HttpClient` / `JdbcTemplate` in `app` or `domain`
-- No Spring annotations (`@Component`, `@Service`, `@Autowired`) in `domain`
-- No `Map<String, Object>` for external API responses — use strict DTOs
-- Domain entities must have **behavior methods**, not just getters/setters
-
-We use **ArchUnit** tests to enforce these rules automatically. Run:
 ```bash
-cd backend && mvn test -pl app -Dtest="*ArchitectureTest*"
+# Auto-fix frontend issues
+cd frontend
+npm run lint            # Check
+npx prettier --write .  # Format
 ```
 
----
+### Python
 
-## Testing Requirements
+- **Formatter**: Black-compatible (via `ruff format`)
+- **Linter**: ruff with isort, flake8, and pydocstyle rules
+- **Type hints**: Required for all function signatures
 
-### Minimum Coverage (Enforced by CI)
-
-| Layer | Minimum Coverage |
-|-------|-----------------|
-| `domain` | 80% |
-| `app` | 70% |
-| `infrastructure` | 50% |
-| `trigger` | 60% |
-
-### Test Types Required
-
-1. **Unit Tests** — JUnit 5 + Mockito + AssertJ
-   ```bash
-   cd backend && mvn test
-   ```
-
-2. **Architecture Tests** — ArchUnit
-   ```bash
-   cd backend && mvn test -Dtest="*ArchitectureTest*"
-   ```
-
-3. **Integration Tests** — Spring Boot Test + Testcontainers
-   ```bash
-   cd backend && mvn verify -Pintegration-test
-   ```
-
-### Writing Good Tests
-
-- Test **behavior**, not implementation
-- Use **Given-When-Then** structure in test names:
-  ```java
-  @Test
-  void shouldRejectScreenshotLargerThan5MB() { ... }
-  ```
-- Mock external dependencies; test domain logic with real objects
-- Integration tests must clean up database state (`@Transactional` or `@Sql`)
-
----
-
-## Pull Request Process
-
-### Before Creating a PR
-
-1. Rebase on latest `main`:
-   ```bash
-   git fetch upstream
-   git rebase upstream/main
-   ```
-2. Run the full check suite:
-   ```bash
-   cd backend && mvn clean verify
-   cd frontend && npm run lint && npm run test
-   cd ai-service && ruff check . && pytest
-   ```
-3. Ensure your branch follows naming convention
-4. Squash WIP commits: `git rebase -i upstream/main`
-
-### PR Template
-
-Our PR template is auto-populated when you open a PR. Fill in all sections:
-
-- **What** — One sentence description
-- **Why** — Link to issue or explain the problem
-- **How** — Technical approach and key decisions
-- **Testing** — Checklist of tests performed
-- **Screenshots** — For UI changes
-- **Checklist** — Self-review checklist
-
-### PR Size Guidelines
-
-| Size | Lines Changed | Expected Review Time |
-|------|--------------|---------------------|
-| XS | <10 | 5 min |
-| S | 10-50 | 15 min |
-| M | 50-200 | 30 min |
-| L | 200-500 | 60 min |
-
-**Rule:** PRs >500 lines have a 40% higher defect rate. Split aggressively.
-
-### Review Process
-
-| Change Type | Minimum Approvals | Required Reviewers |
-|-------------|------------------|-------------------|
-| Feature | 2 | 1 domain expert |
-| Bug fix | 1 | Any team member |
-| Hotfix | 1 | On-call + lead |
-| Refactor | 2 | Original author if available |
-| Docs only | 1 | Any |
-| Dependency update | 1 | Security-aware reviewer |
-| Database migration | 2 | DBA/senior + 1 dev |
-
-### Review Comment Taxonomy
-
-Prefix your review comments to clarify intent:
-
-| Prefix | Meaning | Blocks Merge? |
-|--------|---------|--------------|
-| `blocking:` | Must fix before merge | Yes |
-| `suggestion:` | Consider this improvement | No |
-| `nit:` | Style/formatting preference | No |
-| `question:` | Need clarification | Maybe |
-| `praise:` | Great work | No |
-| `thought:` | Long-term consideration | No |
-
----
-
-## Architecture Compliance
-
-### Hexagonal Architecture Checklist
-
-Before submitting a PR, verify:
-
-- [ ] ApplicationServices only orchestrate, contain no business logic
-- [ ] Domain entities have behavior methods (not just getters/setters)
-- [ ] No framework code (`RestTemplate`, `JPA`, `RabbitTemplate`) in `domain` or `app`
-- [ ] All external dependencies go through Port interfaces
-- [ ] DTOs live in `api` layer, never leak into `domain`
-- [ ] ValueObjects are immutable and validated at construction
-- [ ] No `@Transactional` around HTTP calls or external service invocations
-
-### Common Violations to Avoid
-
-❌ **God ApplicationService** (>150 lines) → Extract DomainService or UseCase  
-❌ `Map<String, Object>` for external API responses → Define strict DTOs  
-❌ `@Transactional` around `RestTemplate` calls → Move HTTP call outside transaction  
-❌ Business logic in Controller → Move to ApplicationService or DomainService  
-❌ Spring annotations in Domain layer → Use plain Java + constructor injection at app layer  
-❌ Repository interfaces returning framework types → Return domain types only  
+```bash
+cd ai-service
+ruff check .            # Lint
+ruff format .           # Format
+```
 
 ---
 
 ## Documentation
 
-### What Requires Documentation
-
-All user-facing or contributor-facing documentation must be provided in **three languages**:
-- **English** (primary, root directory)
-- **简体中文** (`docs/i18n/zh-Hans-CN/`)
-- **繁體中文** (`docs/i18n/zh-Hant-TW/`)
-
-| Document | Location | Requires i18n? |
-|----------|----------|---------------|
-| README.md | `/` | Yes |
-| CONTRIBUTING.md | `/` | Yes |
-| CODE_OF_CONDUCT.md | `/` | Yes |
-| CHANGELOG.md | `/` | Yes |
-| Deployment docs | `docs/deployment/` | Yes |
-| ADRs | `docs/adr/` | Yes |
-| API docs | Auto-generated (OpenAPI) | No |
-| LICENSE | `/` | No |
-
-### Architecture Decision Records (ADRs)
-
-For any significant architectural decision, create an ADR in `docs/adr/`:
-
-```
-docs/adr/
-├── 001-hexagonal-architecture.md
-├── 002-postgresql-pgvector.md
-├── 003-rabbitmq-message-queue.md
-└── 004-minio-object-storage.md
-```
-
-ADR template:
-```markdown
-# ADR-XXX: Title
-
-## Status
-Proposed / Accepted / Deprecated / Superseded
-
-## Context
-What problem are we solving?
-
-## Decision
-What did we decide?
-
-## Consequences
-Positive and negative outcomes.
-```
+- **User-facing changes**: Update `docs/` with English + Chinese (Simplified + Traditional) versions
+- **Architecture decisions**: Add entry to `docs/adr/` (Architecture Decision Records)
+- **API changes**: OpenAPI annotations update automatically; verify with `mvn spring-boot:run` + `/swagger-ui.html`
+- **Deployment changes**: Update `docs/deployment/` and `.env.example`
 
 ---
 
 ## Release Process
 
-We follow **Semantic Versioning (SemVer)** and use **release-please** for automated releases.
-
-### Version Bump Rules
-
-| Change Type | Version Bump | Example |
-|-------------|-------------|---------|
-| Breaking API change | MAJOR | Remove endpoint, change response shape |
-| New feature (backward compatible) | MINOR | Add endpoint, new optional field |
-| Bug fix | PATCH | Fix calculation error, typo |
-
-### Automated Release Pipeline
-
-1. Merge PRs to `main` with conventional commits
-2. `release-please` creates a release PR with changelog + version bump
-3. Human reviews and merges the release PR
-4. Git tag `vX.Y.Z` is created automatically
-5. GitHub Release is published with auto-generated notes
-6. Docker image `ghcr.io/jobcopilot/resumeassistant:vX.Y.Z` is built and pushed
-
-### Manual Release (Emergency Only)
-
-```bash
-# Only for hotfixes when automation is broken
-git tag -a v1.2.1 -m "Hotfix: resolve connection pool starvation"
-git push upstream v1.2.1
-```
+1. **Version bump**: Update `version` in `backend/pom.xml` and `frontend/package.json`
+2. **Changelog**: Update `CHANGELOG.md` with Conventional Commits summary
+3. **Tag**: `git tag -a v1.x.x -m "Release v1.x.x"`
+4. **Build**: CI builds Docker images and pushes to registry
+5. **Deploy**: Update production environment with new images
 
 ---
 
 ## Community
 
-### Communication Channels
-
-- **Issues:** Bug reports, feature requests, questions
-- **Discussions:** Architecture proposals, general questions
-- **Security:** For security vulnerabilities, email **security@jobcopilot.dev** (DO NOT open public issues)
-
-### Getting Help
-
-1. Search existing issues and discussions
-2. Check the documentation in `docs/`
-3. Ask in Discussions with the `question` label
-4. For bugs, use the Bug Report issue template
-
-### Recognition
-
-Contributors will be recognized in:
-- `CHANGELOG.md` for each release
-- `CONTRIBUTORS.md` (updated quarterly)
-- Release notes on GitHub
+- **Issues**: Use GitHub Issues for bug reports and feature requests
+- **Discussions**: Use GitHub Discussions for questions and ideas
+- **Security**: Report security vulnerabilities privately to maintainers
 
 ---
 
-## Attribution
+## Questions?
 
-This guide is adapted from:
-- [Conventional Commits](https://www.conventionalcommits.org/)
-- [GitHub Flow](https://docs.github.com/en/get-started/quickstart/github-flow)
-- [Semantic Versioning](https://semver.org/)
-- [Contributor Covenant](https://www.contributor-covenant.org/)
+If anything is unclear, open a [GitHub Discussion](https://github.com/hzhan516/ser594_Team6-ResumeAssistant/discussions) or ask in an issue. We're here to help.
+
+**Thank you for contributing! 🚀**

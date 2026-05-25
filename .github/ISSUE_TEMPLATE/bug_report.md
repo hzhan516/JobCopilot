@@ -1,10 +1,9 @@
 ---
 name: Bug report
 about: Create a report to help us improve
-title: "[BUG] "
 labels: bug
+title: "[BUG] "
 assignees: ''
-
 ---
 
 ## Describe the bug
@@ -41,3 +40,10 @@ Add any other context about the problem here.
 
 ## Possible Solution
 If you have an idea of how to fix this, please describe it here.
+
+---
+**Checklist:**
+- [ ] I have searched existing issues to ensure this is not a duplicate
+- [ ] I have provided a clear and descriptive title
+- [ ] I have included all relevant environment information
+- [ ] I have tested on the latest `main` branch
