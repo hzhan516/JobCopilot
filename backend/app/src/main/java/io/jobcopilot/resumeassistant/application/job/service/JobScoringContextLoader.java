@@ -4,6 +4,7 @@ import io.jobcopilot.resumeassistant.api.job.dto.request.JobScoreRequest;
 import io.jobcopilot.resumeassistant.domain.job.entity.Job;
 import io.jobcopilot.resumeassistant.domain.job.exception.JobContentNotReadyException;
 import io.jobcopilot.resumeassistant.domain.job.exception.JobException;
+import io.jobcopilot.resumeassistant.domain.job.repository.JobRepository;
 import io.jobcopilot.resumeassistant.domain.job.valueobject.ParsedJobContent;
 import io.jobcopilot.resumeassistant.domain.resume.entity.ResumeGroup;
 import io.jobcopilot.resumeassistant.domain.resume.entity.ResumeVersion;
