@@ -15,7 +15,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -76,8 +75,7 @@ class JobVectorSearchServiceTest {
         VectorSearchRequest request = new VectorSearchRequest(null, embedding, 5, null);
 
         JobVectorSearchResult result = new JobVectorSearchResult(
-                "job-1", "Java Dev", "desc", "[\"Java\"]",
-                BigDecimal.valueOf(0.95), "content", "file", "model");
+                "job-1", "Java Dev", "desc", "[\"Java\"]", "content", 0.95);
         when(jobVectorRepository.findNearestNeighbors(contains("[0.1,"), eq(5)))
                 .thenReturn(List.of(result));
 
@@ -204,8 +202,7 @@ class JobVectorSearchServiceTest {
         VectorSearchRequest request = new VectorSearchRequest(null, embedding, 5, null);
 
         JobVectorSearchResult result = new JobVectorSearchResult(
-                "job-1", "Dev", "desc", "[\"Java\", \"Spring\"]",
-                BigDecimal.valueOf(0.88), "content", "file", "model");
+                "job-1", "Dev", "desc", "[\"Java\", \"Spring\"]", "content", 0.88);
         when(jobVectorRepository.findNearestNeighbors(anyString(), anyInt()))
                 .thenReturn(List.of(result));
         when(objectMapper.readValue(eq("[\"Java\", \"Spring\"]"), any(com.fasterxml.jackson.core.type.TypeReference.class)))
@@ -226,8 +223,7 @@ class JobVectorSearchServiceTest {
         VectorSearchRequest request = new VectorSearchRequest(null, embedding, 5, null);
 
         JobVectorSearchResult result = new JobVectorSearchResult(
-                "job-1", "Dev", "desc", null,
-                BigDecimal.valueOf(0.88), "content", "file", "model");
+                "job-1", "Dev", "desc", null, "content", 0.88);
         when(jobVectorRepository.findNearestNeighbors(anyString(), anyInt()))
                 .thenReturn(List.of(result));
 
@@ -246,8 +242,7 @@ class JobVectorSearchServiceTest {
         VectorSearchRequest request = new VectorSearchRequest(null, embedding, 5, null);
 
         JobVectorSearchResult result = new JobVectorSearchResult(
-                "job-1", "Dev", "desc", "invalid json",
-                BigDecimal.valueOf(0.88), "content", "file", "model");
+                "job-1", "Dev", "desc", "invalid json", "content", 0.88);
         when(jobVectorRepository.findNearestNeighbors(anyString(), anyInt()))
                 .thenReturn(List.of(result));
         when(objectMapper.readValue(anyString(), any(com.fasterxml.jackson.core.type.TypeReference.class)))

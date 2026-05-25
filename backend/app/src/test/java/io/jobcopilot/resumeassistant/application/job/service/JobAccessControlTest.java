@@ -87,7 +87,7 @@ class JobAccessControlTest {
     @DisplayName("Should throw when job is hidden (soft deleted)")
     void shouldThrowWhenJobIsHidden() {
         // 给定 / Given
-        job.delete(); // soft delete
+        job.hide(); // soft delete
         when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
 
         // 当&那么 / When & Then
@@ -114,7 +114,7 @@ class JobAccessControlTest {
     @DisplayName("Should return job when owned even if hidden")
     void shouldReturnJobWhenOwnedEvenIfHidden() {
         // 给定 / Given
-        job.delete(); // soft delete — but owner should still see it for admin purposes
+        job.hide(); // soft delete — but owner should still see it for admin purposes
         when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
 
         // 当 / When

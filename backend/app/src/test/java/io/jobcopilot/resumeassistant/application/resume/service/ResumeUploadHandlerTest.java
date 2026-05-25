@@ -92,14 +92,12 @@ class ResumeUploadHandlerTest {
                 .title("My Resume")
                 .build();
 
-        when(groupRepository.save(any(ResumeGroup.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
         when(resumeConverterService.convertToMarkdown(anyString(), eq("application/pdf")))
                 .thenReturn("# Converted Markdown");
         when(fileStorageService.generatePresignedUrl(anyString(), any(Duration.class)))
                 .thenReturn("https://minio.example.com/presigned-url");
-        when(versionRepository.save(any(ResumeVersion.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
 
         // 当 / When
         ResumeGroup result = handler.upload(command, userId);
@@ -125,14 +123,12 @@ class ResumeUploadHandlerTest {
                 .title("Word Resume")
                 .build();
 
-        when(groupRepository.save(any(ResumeGroup.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
         when(resumeConverterService.convertToMarkdown(anyString(), anyString()))
                 .thenReturn("# Converted from Word");
         when(fileStorageService.generatePresignedUrl(anyString(), any(Duration.class)))
                 .thenReturn("https://minio.example.com/presigned");
-        when(versionRepository.save(any(ResumeVersion.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
 
         // 当 / When
         ResumeGroup result = handler.upload(command, userId);
@@ -157,14 +153,12 @@ class ResumeUploadHandlerTest {
                 .title("My Resume")
                 .build();
 
-        when(groupRepository.save(any(ResumeGroup.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
         when(resumeConverterService.convertToMarkdown(anyString(), anyString()))
                 .thenReturn(null);
         when(fileStorageService.generatePresignedUrl(anyString(), any(Duration.class)))
                 .thenReturn("https://minio.example.com/presigned");
-        when(versionRepository.save(any(ResumeVersion.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
 
         // 当 / When
         handler.upload(command, userId);
@@ -185,14 +179,12 @@ class ResumeUploadHandlerTest {
                 .title("My Resume")
                 .build();
 
-        when(groupRepository.save(any(ResumeGroup.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
         when(resumeConverterService.convertToMarkdown(anyString(), anyString()))
                 .thenReturn(null);
         when(fileStorageService.generatePresignedUrl(anyString(), any(Duration.class)))
                 .thenReturn("https://minio.example.com/presigned-url");
-        when(versionRepository.save(any(ResumeVersion.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
 
         // 当 / When
         handler.upload(command, userId);
@@ -203,8 +195,8 @@ class ResumeUploadHandlerTest {
 
         ResumeParseCommand published = captor.getValue();
         assertThat(published.resumeId()).isNotNull();
-        assertThat(published.url()).isEqualTo("https://minio.example.com/presigned-url");
-        assertThat(published.contentType()).isEqualTo("application/pdf");
+        assertThat(published.fileUrl()).isEqualTo("https://minio.example.com/presigned-url");
+        assertThat(published.format()).isEqualTo("application/pdf");
     }
 
     @Test
@@ -219,14 +211,12 @@ class ResumeUploadHandlerTest {
                 .title("My Resume")
                 .build();
 
-        when(groupRepository.save(any(ResumeGroup.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
         when(resumeConverterService.convertToMarkdown(anyString(), anyString()))
                 .thenReturn(null);
         when(fileStorageService.generatePresignedUrl(anyString(), any(Duration.class)))
                 .thenReturn("https://minio.example.com/presigned");
-        when(versionRepository.save(any(ResumeVersion.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
 
         // 当 / When
         ResumeGroup result = handler.upload(command, userId);
@@ -254,14 +244,12 @@ class ResumeUploadHandlerTest {
                 .title("My Resume")
                 .build();
 
-        when(groupRepository.save(any(ResumeGroup.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
         when(resumeConverterService.convertToMarkdown(anyString(), anyString()))
                 .thenReturn(null);
         when(fileStorageService.generatePresignedUrl(anyString(), any(Duration.class)))
                 .thenReturn("https://minio.example.com/presigned");
-        when(versionRepository.save(any(ResumeVersion.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
         doThrow(new RuntimeException("MQ unavailable"))
                 .when(aiMessagePublisherPort).sendResumeForParsing(any(ResumeParseCommand.class));
 
@@ -296,14 +284,12 @@ class ResumeUploadHandlerTest {
                 .title("Special Resume")
                 .build();
 
-        when(groupRepository.save(any(ResumeGroup.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
         when(resumeConverterService.convertToMarkdown(anyString(), anyString()))
                 .thenReturn(null);
         when(fileStorageService.generatePresignedUrl(anyString(), any(Duration.class)))
                 .thenReturn("https://minio.example.com/presigned");
-        when(versionRepository.save(any(ResumeVersion.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
 
         // 当 / When
         handler.upload(command, userId);
@@ -327,14 +313,12 @@ class ResumeUploadHandlerTest {
                 .title("Null Filename Resume")
                 .build();
 
-        when(groupRepository.save(any(ResumeGroup.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
         when(resumeConverterService.convertToMarkdown(anyString(), anyString()))
                 .thenReturn(null);
         when(fileStorageService.generatePresignedUrl(anyString(), any(Duration.class)))
                 .thenReturn("https://minio.example.com/presigned");
-        when(versionRepository.save(any(ResumeVersion.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
 
         // 当 / When
         handler.upload(command, userId);

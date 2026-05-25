@@ -4,9 +4,11 @@ import io.jobcopilot.resumeassistant.domain.embedding.entity.JobVector;
 import io.jobcopilot.resumeassistant.domain.embedding.entity.ResumeVector;
 import io.jobcopilot.resumeassistant.domain.embedding.repository.JobVectorRepository;
 import io.jobcopilot.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
+import io.jobcopilot.resumeassistant.domain.embedding.valueobject.VectorStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -54,7 +56,7 @@ class FailedVectorPersistenceServiceTest {
         verify(resumeVectorRepository).save(captor.capture());
         ResumeVector saved = captor.getValue();
         assertThat(saved.getResumeVersionId()).isEqualTo("resume-v1");
-        assertThat(saved.getStatus()).isEqualTo(ResumeVector.Status.FAILED);
+        assertThat(saved.getStatus()).isEqualTo(VectorStatus.FAILED);
         assertThat(saved.getErrorMessage()).isEqualTo("AI service timeout");
     }
 
@@ -82,7 +84,7 @@ class FailedVectorPersistenceServiceTest {
         verify(jobVectorRepository).save(captor.capture());
         JobVector saved = captor.getValue();
         assertThat(saved.getJobId()).isEqualTo("job-1");
-        assertThat(saved.getStatus()).isEqualTo(JobVector.Status.FAILED);
+        assertThat(saved.getStatus()).isEqualTo(VectorStatus.FAILED);
         assertThat(saved.getErrorMessage()).isEqualTo("AI service timeout");
     }
 

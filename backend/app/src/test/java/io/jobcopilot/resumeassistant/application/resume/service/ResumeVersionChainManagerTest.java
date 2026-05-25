@@ -81,7 +81,7 @@ class ResumeVersionChainManagerTest {
 
         CreateVersionCommand command = new CreateVersionCommand(groupId, userId, null);
         when(groupRepository.findByIdAndUserId(groupId, userId)).thenReturn(Optional.of(group));
-        when(groupRepository.save(any(ResumeGroup.class))).thenAnswer(inv -> inv.getArgument(0));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
 
         // 当 / When
         ResumeVersion result = manager.createVersion(command);
@@ -107,7 +107,7 @@ class ResumeVersionChainManagerTest {
         CreateVersionCommand command = new CreateVersionCommand(groupId, userId, sourceVersionId);
         when(groupRepository.findByIdAndUserId(groupId, userId)).thenReturn(Optional.of(group));
         when(versionRepository.findById(sourceVersionId)).thenReturn(Optional.of(source));
-        when(groupRepository.save(any(ResumeGroup.class))).thenAnswer(inv -> inv.getArgument(0));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
 
         // 当 / When
         ResumeVersion result = manager.createVersion(command);
@@ -132,7 +132,7 @@ class ResumeVersionChainManagerTest {
 
         CreateVersionCommand command = new CreateVersionCommand(groupId, userId, null);
         when(groupRepository.findByIdAndUserId(groupId, userId)).thenReturn(Optional.of(group));
-        when(groupRepository.save(any(ResumeGroup.class))).thenAnswer(inv -> inv.getArgument(0));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
 
         // 当 / When
         ResumeVersion result = manager.createVersion(command);
@@ -152,7 +152,7 @@ class ResumeVersionChainManagerTest {
 
         CreateVersionCommand command = new CreateVersionCommand(groupId, userId, null);
         when(groupRepository.findByIdAndUserId(groupId, userId)).thenReturn(Optional.of(group));
-        when(groupRepository.save(any(ResumeGroup.class))).thenAnswer(inv -> inv.getArgument(0));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
 
         // 当 / When
         ResumeVersion result = manager.createVersion(command);
@@ -232,7 +232,7 @@ class ResumeVersionChainManagerTest {
                 .thenReturn(group.getVersions().stream()
                         .filter(v -> v.getVersionType() == ResumeVersion.VersionType.CONVERTED)
                         .toList());
-        when(groupRepository.save(any(ResumeGroup.class))).thenAnswer(inv -> inv.getArgument(0));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
 
         // 当 / When
         manager.createVersion(command);
@@ -253,7 +253,7 @@ class ResumeVersionChainManagerTest {
         when(groupRepository.findByIdAndUserId(groupId, userId)).thenReturn(Optional.of(group));
         when(versionRepository.findAllByGroupIdAndType(groupId, ResumeVersion.VersionType.CONVERTED))
                 .thenReturn(List.of(converted));
-        when(groupRepository.save(any(ResumeGroup.class))).thenAnswer(inv -> inv.getArgument(0));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
 
         // 当 / When
         manager.createVersion(command);
@@ -268,7 +268,7 @@ class ResumeVersionChainManagerTest {
         // 给定 / Given
         CreateVersionCommand command = new CreateVersionCommand(groupId, userId, null);
         when(groupRepository.findByIdAndUserId(groupId, userId)).thenReturn(Optional.of(group));
-        when(groupRepository.save(any(ResumeGroup.class))).thenAnswer(inv -> inv.getArgument(0));
+        doNothing().when(groupRepository).save(any(ResumeGroup.class));
 
         // 当 / When
         ResumeVersion result = manager.createVersion(command);

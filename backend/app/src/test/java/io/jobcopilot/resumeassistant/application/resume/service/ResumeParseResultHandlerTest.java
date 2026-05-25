@@ -99,8 +99,7 @@ class ResumeParseResultHandlerTest {
         );
 
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(originalVersion));
-        when(versionRepository.save(any(ResumeVersion.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
         when(groupRepository.findById(group.getId())).thenReturn(Optional.of(group));
 
         Map<String, Object> data = Map.of("parsedContent", Map.of(
@@ -140,8 +139,7 @@ class ResumeParseResultHandlerTest {
         );
 
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(originalVersion));
-        when(versionRepository.save(any(ResumeVersion.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
         when(groupRepository.findById(group.getId())).thenReturn(Optional.of(group));
 
         Map<String, Object> data = Map.of("parsedContent", Map.of("name", "John"));
@@ -174,8 +172,7 @@ class ResumeParseResultHandlerTest {
         );
 
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(originalVersion));
-        when(versionRepository.save(any(ResumeVersion.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
         when(groupRepository.findById(group.getId())).thenReturn(Optional.of(group));
 
         Map<String, Object> data = Map.of("parsedContent", Map.of("name", "John"));
@@ -194,8 +191,7 @@ class ResumeParseResultHandlerTest {
     void shouldSkipPropagationWhenGroupNotFound() {
         // 给定 / Given
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(originalVersion));
-        when(versionRepository.save(any(ResumeVersion.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
         when(groupRepository.findById(group.getId())).thenReturn(Optional.empty());
 
         Map<String, Object> data = Map.of("parsedContent", Map.of("name", "John"));
@@ -218,8 +214,7 @@ class ResumeParseResultHandlerTest {
     void shouldMarkParseFailedWhenAiStatusIsFailed() {
         // 给定 / Given
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(originalVersion));
-        when(versionRepository.save(any(ResumeVersion.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
 
         AiResultEvent event = new AiResultEvent(
                 versionId.toString(), "RESUME_PARSE", "FAILED",
@@ -238,8 +233,7 @@ class ResumeParseResultHandlerTest {
     void shouldUseDefaultErrorMessageWhenAiErrorIsNull() {
         // 给定 / Given
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(originalVersion));
-        when(versionRepository.save(any(ResumeVersion.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
 
         AiResultEvent event = new AiResultEvent(
                 versionId.toString(), "RESUME_PARSE", "FAILED", null, null, null);
@@ -277,8 +271,7 @@ class ResumeParseResultHandlerTest {
     void shouldHandleExceptionDuringDataProcessingGracefully() {
         // 给定 / Given
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(originalVersion));
-        when(versionRepository.save(any(ResumeVersion.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
 
         // Invalid data that will cause serialization to fail
         // 会导致序列化失败的无效数据
@@ -304,8 +297,7 @@ class ResumeParseResultHandlerTest {
     void shouldGenerateVectorForParsedContent() {
         // 给定 / Given
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(originalVersion));
-        when(versionRepository.save(any(ResumeVersion.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(versionRepository).save(any(ResumeVersion.class));
         when(groupRepository.findById(group.getId())).thenReturn(Optional.empty());
 
         Map<String, Object> parsedContent = Map.of(

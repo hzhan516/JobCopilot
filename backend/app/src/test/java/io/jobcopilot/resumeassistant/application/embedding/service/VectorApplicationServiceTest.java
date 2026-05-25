@@ -6,6 +6,7 @@ import io.jobcopilot.resumeassistant.domain.embedding.entity.ResumeVector;
 import io.jobcopilot.resumeassistant.domain.embedding.port.VectorEmbeddingPort;
 import io.jobcopilot.resumeassistant.domain.embedding.repository.JobVectorRepository;
 import io.jobcopilot.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
+import io.jobcopilot.resumeassistant.domain.embedding.valueobject.VectorStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -84,7 +85,7 @@ class VectorApplicationServiceTest {
         verify(resumeVectorRepository).save(captor.capture());
         assertThat(captor.getValue().getResumeVersionId()).isEqualTo(referenceId);
         assertThat(captor.getValue().getEmbedding()).isEqualTo(embedding);
-        assertThat(captor.getValue().getStatus()).isEqualTo(ResumeVector.Status.COMPLETED);
+        assertThat(captor.getValue().getStatus()).isEqualTo(VectorStatus.COMPLETED);
     }
 
     @Test
@@ -103,7 +104,7 @@ class VectorApplicationServiceTest {
         ArgumentCaptor<JobVector> captor = ArgumentCaptor.forClass(JobVector.class);
         verify(jobVectorRepository).save(captor.capture());
         assertThat(captor.getValue().getJobId()).isEqualTo(referenceId);
-        assertThat(captor.getValue().getStatus()).isEqualTo(JobVector.Status.COMPLETED);
+        assertThat(captor.getValue().getStatus()).isEqualTo(VectorStatus.COMPLETED);
     }
 
     @Test
