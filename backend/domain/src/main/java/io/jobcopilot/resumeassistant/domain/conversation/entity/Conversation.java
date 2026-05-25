@@ -27,11 +27,12 @@ public class Conversation extends AggregateRoot<UUID> {
     private String title;
     private ConversationStatus status;
     private LocalDateTime updatedAt;
+    private long version;
 
     protected Conversation(UUID id, UUID userId, String title, ConversationStatus status,
                            UUID resumeVersionId, UUID jobId, UUID aiOptimizedVersionId,
                            LocalDateTime createdAt, LocalDateTime updatedAt,
-                           List<Message> messages) {
+                           List<Message> messages, long version) {
         this.id = id;
         this.userId = userId;
         this.title = title;
@@ -42,6 +43,7 @@ public class Conversation extends AggregateRoot<UUID> {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.messages = messages != null ? messages : new ArrayList<>();
+        this.version = version;
     }
 
     public static Conversation create(UUID userId, String title, UUID resumeVersionId, UUID jobId) {
@@ -57,7 +59,8 @@ public class Conversation extends AggregateRoot<UUID> {
                 null,  // aiOptimizedVersionId initially null | AI 优化版本 ID 初始为空
                 now,
                 now,
-                new ArrayList<>()
+                new ArrayList<>(),
+                0L
         );
     }
 
@@ -68,8 +71,8 @@ public class Conversation extends AggregateRoot<UUID> {
     public static Conversation reconstruct(UUID id, UUID userId, String title, ConversationStatus status,
                                            UUID resumeVersionId, UUID jobId, UUID aiOptimizedVersionId,
                                            LocalDateTime createdAt, LocalDateTime updatedAt,
-                                           List<Message> messages) {
-        return new Conversation(id, userId, title, status, resumeVersionId, jobId, aiOptimizedVersionId, createdAt, updatedAt, messages);
+                                           List<Message> messages, long version) {
+        return new Conversation(id, userId, title, status, resumeVersionId, jobId, aiOptimizedVersionId, createdAt, updatedAt, messages, version);
     }
 
     public void addMessage(MessageRole role, String content) {

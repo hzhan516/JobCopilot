@@ -59,6 +59,7 @@ public class ConversationRepositoryImpl implements ConversationRepository {
                 .aiOptimizedVersionId(conversation.getAiOptimizedVersionId() != null ? conversation.getAiOptimizedVersionId().toString() : null)
                 .createdAt(conversation.getCreatedAt())
                 .updatedAt(conversation.getUpdatedAt())
+                .version(conversation.getVersion())
                 .build();
 
         List<MessageJpaEntity> messageEntities = conversation.getMessages().stream()
@@ -105,7 +106,8 @@ public class ConversationRepositoryImpl implements ConversationRepository {
                 entity.getAiOptimizedVersionId() != null ? java.util.UUID.fromString(entity.getAiOptimizedVersionId()) : null,
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
-                new ArrayList<>(messages)
+                new ArrayList<>(messages),
+                entity.getVersion() != null ? entity.getVersion() : 0L
         );
     }
 

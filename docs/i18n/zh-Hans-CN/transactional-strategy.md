@@ -19,7 +19,7 @@
 | 4 | **跨聚合写操作各自独立事务** | 不同聚合根（Job、Resume、Conversation…）的写操作不应共享事务；用 `Propagation.REQUIRES_NEW` 或拆分到独立 Service。 |
 | 5 | **Scheduler / 异步任务必须独立事务边界** | 定时任务运行周期长，默认事务应最小化；涉及 Outbox 模式时，relay 与 cleanup 分事务。 |
 | 6 | **所有 `@Transactional` 必须显式声明 `timeout`** | 防止慢查询、锁等待或意外网络 I/O 导致无限长事务占用连接池。纯 DB 操作 30s；含 batch/sync 的 60s。 |
-| 7 | **聚合根必须有乐观锁（`@Version`）** | 防止并发写场景下的丢失更新。当前已应用到 `Job`、`ResumeGroup`。 |
+| 7 | **聚合根必须有乐观锁（`@Version`）** | 防止并发写场景下的丢失更新。当前已应用到 `Job`、`ResumeGroup`、`Conversation`。 |
 
 ---
 

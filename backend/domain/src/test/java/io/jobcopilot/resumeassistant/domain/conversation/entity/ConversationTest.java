@@ -150,7 +150,7 @@ class ConversationTest {
         Conversation conversation = Conversation.reconstruct(
                 id, userId, "Reconstructed", ConversationStatus.ACTIVE,
                 resumeVersionId, null, null, LocalDateTime.now(), LocalDateTime.now(),
-                Collections.emptyList()
+                Collections.emptyList(), 0L
         );
 
         assertThat(conversation.getId()).isEqualTo(id);

@@ -46,7 +46,7 @@ class ConversationQueryServiceTest {
         // Given
         Conversation conv = Conversation.reconstruct(
                 CONVERSATION_ID, USER_ID, "Test Chat", ConversationStatus.ACTIVE,
-                null, null, null, LocalDateTime.now(), LocalDateTime.now(), Collections.emptyList());
+                null, null, null, LocalDateTime.now(), LocalDateTime.now(), Collections.emptyList(), 0L);
         when(conversationRepository.findById(CONVERSATION_ID)).thenReturn(Optional.of(conv));
 
         // 当
@@ -82,7 +82,7 @@ class ConversationQueryServiceTest {
         UUID otherUser = UUID.randomUUID();
         Conversation conv = Conversation.reconstruct(
                 CONVERSATION_ID, otherUser, "Other Chat", ConversationStatus.ACTIVE,
-                null, null, null, LocalDateTime.now(), LocalDateTime.now(), Collections.emptyList());
+                null, null, null, LocalDateTime.now(), LocalDateTime.now(), Collections.emptyList(), 0L);
         when(conversationRepository.findById(CONVERSATION_ID)).thenReturn(Optional.of(conv));
 
         // 当&那么
