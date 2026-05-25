@@ -5,7 +5,8 @@ import io.jobcopilot.resumeassistant.api.user.dto.request.LoginByEmailRequest;
 import io.jobcopilot.resumeassistant.api.user.dto.request.LoginByGoogleRequest;
 import io.jobcopilot.resumeassistant.api.user.dto.request.RegisterByEmailRequest;
 import io.jobcopilot.resumeassistant.api.user.dto.request.SendVerificationCodeRequest;
-import io.jobcopilot.resumeassistant.api.user.dto.response.AuthResponse;
+import io.jobcopilot.resumeassistant.api.user.dto.response.AuthResult;
+import io.jobcopilot.resumeassistant.application.user.dto.AuthTokenResult;
 import io.jobcopilot.resumeassistant.api.user.facade.AuthFacade;
 import io.jobcopilot.resumeassistant.application.user.command.LoginByEmailCommand;
 import io.jobcopilot.resumeassistant.application.user.command.LoginByGoogleCommand;
@@ -31,7 +32,7 @@ public class AuthFacadeImpl implements AuthFacade {
     private final CaptchaProperties captchaProperties;
 
     @Override
-    public AuthResponse registerByEmail(RegisterByEmailRequest request) {
+    public AuthResult registerByEmail(RegisterByEmailRequest request) {
         if (captchaProperties.isEnabled()) {
             captchaService.validateToken(request.getCaptchaToken());
         }
@@ -44,17 +45,17 @@ public class AuthFacadeImpl implements AuthFacade {
         User user = authService.registerByEmail(command);
         TokenPair tokens = authService.generateTokenPair(user);
 
-        return AuthResponse.builder()
+        AuthResponse response = AuthResponse.builder()
                 .userId(user.getId())
                 .email(user.getEmail())
                 .accessToken(tokens.getAccessToken())
-                .refreshToken(tokens.getRefreshToken())
                 .expiresIn(tokens.getExpiresIn())
                 .build();
+        return new AuthResult(response, tokens.getRefreshToken());
     }
 
     @Override
-    public AuthResponse loginByEmail(LoginByEmailRequest request) {
+    public AuthResult loginByEmail(LoginByEmailRequest request) {
         if (captchaProperties.isEnabled()) {
             captchaService.validateToken(request.getCaptchaToken());
         }
@@ -66,17 +67,17 @@ public class AuthFacadeImpl implements AuthFacade {
         User user = authService.loginByEmail(command);
         TokenPair tokens = authService.generateTokenPair(user);
 
-        return AuthResponse.builder()
+        AuthResponse response = AuthResponse.builder()
                 .userId(user.getId())
                 .email(user.getEmail())
                 .accessToken(tokens.getAccessToken())
-                .refreshToken(tokens.getRefreshToken())
                 .expiresIn(tokens.getExpiresIn())
                 .build();
+        return new AuthResult(response, tokens.getRefreshToken());
     }
 
     @Override
-    public AuthResponse loginByGoogle(LoginByGoogleRequest request) {
+    public AuthResult loginByGoogle(LoginByGoogleRequest request) {
         if (captchaProperties.isEnabled()) {
             captchaService.validateToken(request.captchaToken());
         }
@@ -87,18 +88,25 @@ public class AuthFacadeImpl implements AuthFacade {
         User user = authService.loginByGoogle(command);
         TokenPair tokens = authService.generateTokenPair(user);
 
-        return AuthResponse.builder()
+        AuthResponse response = AuthResponse.builder()
                 .userId(user.getId())
                 .email(user.getEmail())
                 .accessToken(tokens.getAccessToken())
-                .refreshToken(tokens.getRefreshToken())
                 .expiresIn(tokens.getExpiresIn())
                 .build();
+        return new AuthResult(response, tokens.getRefreshToken());
     }
 
     @Override
-    public AuthResponse refreshToken(String refreshToken) {
-        return authService.refreshToken(refreshToken);
+    public AuthResult refreshToken(String refreshToken) {
+        AuthTokenResult result = authService.refreshToken(refreshToken);
+        AuthResponse response = AuthResponse.builder()
+                .userId(result.getUser().getId())
+                .email(result.getUser().getEmail())
+                .accessToken(result.getTokens().getAccessToken())
+                .expiresIn(result.getTokens().getExpiresIn())
+                .build();
+        return new AuthResult(response, result.getTokens().getRefreshToken());
     }
 
     @Override

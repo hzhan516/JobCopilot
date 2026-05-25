@@ -48,25 +48,22 @@ function clearAuthAndRedirect() {
 }
 
 async function doRefreshToken(): Promise<string | null> {
-  const refreshToken = tokenStorage.getRefreshToken();
-  if (!refreshToken) return null;
-
   try {
-    // Use a standalone axios instance to avoid interceptor recursion
-    // 使用独立 axios 实例，防止拦截器循环触发
+    // Use a standalone axios instance to avoid interceptor recursion.
+    // The refresh token is sent automatically as an HttpOnly cookie;
+    // no body needed.
     const response = await axios.post<ApiResponse<AuthResponse>>(
       `${import.meta.env.VITE_API_BASE_URL || '/api'}/v1/auth/refresh`,
-      { refreshToken }
+      {}
     );
     if (response.data.code === 200) {
-      const { accessToken, refreshToken: newRefreshToken, expiresIn } = response.data.data;
+      const { accessToken, expiresIn } = response.data.data;
       const rememberMe = tokenStorage.getRememberMe();
-      tokenStorage.setTokens(accessToken, newRefreshToken, expiresIn, rememberMe);
+      tokenStorage.setTokens(accessToken, expiresIn, rememberMe);
       return accessToken;
     }
   } catch {
     // Silently fail; let the caller decide whether to redirect
-    // 刷新失败静默处理，由调用方决定跳转策略
   }
   return null;
 }
@@ -218,8 +215,8 @@ export const authService = {
   register: async (data: RegisterRequest, rememberMe = false): Promise<AuthResponse> => {
     const response = await apiClient.post<ApiResponse<AuthResponse>>('/v1/auth/register/email', data);
     if (response.data.code === 200) {
-      const { accessToken, refreshToken, expiresIn, ...user } = response.data.data;
-      tokenStorage.setTokens(accessToken, refreshToken, expiresIn, rememberMe);
+      const { accessToken, expiresIn, ...user } = response.data.data;
+      tokenStorage.setTokens(accessToken, expiresIn, rememberMe);
       tokenStorage.setUser({ userId: user.userId, email: user.email }, rememberMe);
       return response.data.data;
     }
@@ -241,8 +238,8 @@ export const authService = {
   login: async (data: LoginRequest, rememberMe = false): Promise<AuthResponse> => {
     const response = await apiClient.post<ApiResponse<AuthResponse>>('/v1/auth/login/email', data);
     if (response.data.code === 200) {
-      const { accessToken, refreshToken, expiresIn, ...user } = response.data.data;
-      tokenStorage.setTokens(accessToken, refreshToken, expiresIn, rememberMe);
+      const { accessToken, expiresIn, ...user } = response.data.data;
+      tokenStorage.setTokens(accessToken, expiresIn, rememberMe);
       tokenStorage.setUser({ userId: user.userId, email: user.email }, rememberMe);
       return response.data.data;
     }
@@ -252,8 +249,8 @@ export const authService = {
   loginByGoogle: async (data: LoginByGoogleRequest, rememberMe = false): Promise<AuthResponse> => {
     const response = await apiClient.post<ApiResponse<AuthResponse>>('/v1/auth/login/google', data);
     if (response.data.code === 200) {
-      const { accessToken, refreshToken, expiresIn, ...user } = response.data.data;
-      tokenStorage.setTokens(accessToken, refreshToken, expiresIn, rememberMe);
+      const { accessToken, expiresIn, ...user } = response.data.data;
+      tokenStorage.setTokens(accessToken, expiresIn, rememberMe);
       tokenStorage.setUser({ userId: user.userId, email: user.email }, rememberMe);
       return response.data.data;
     }

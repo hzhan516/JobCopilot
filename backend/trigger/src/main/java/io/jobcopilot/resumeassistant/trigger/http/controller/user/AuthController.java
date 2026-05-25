@@ -7,17 +7,24 @@ import io.jobcopilot.resumeassistant.api.user.dto.request.RefreshTokenRequest;
 import io.jobcopilot.resumeassistant.api.user.dto.request.RegisterByEmailRequest;
 import io.jobcopilot.resumeassistant.api.user.dto.request.SendVerificationCodeRequest;
 import io.jobcopilot.resumeassistant.api.user.dto.response.AuthResponse;
+import io.jobcopilot.resumeassistant.api.user.dto.response.AuthResult;
 import io.jobcopilot.resumeassistant.api.user.facade.AuthFacade;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.Duration;
 
 @RestController
 @RequestMapping("/v1/auth")
@@ -32,9 +39,12 @@ public class AuthController {
      */
     @PostMapping("/register/email")
     public ResponseEntity<ApiResponse<AuthResponse>> registerByEmail(
-            @Valid @RequestBody RegisterByEmailRequest request) {
+            @Valid @RequestBody RegisterByEmailRequest request,
+            HttpServletRequest httpRequest) {
+        AuthResult result = authFacade.registerByEmail(request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(authFacade.registerByEmail(request)));
+                .header(HttpHeaders.SET_COOKIE, buildRefreshTokenCookie(result.getRefreshToken(), httpRequest.isSecure()))
+                .body(ApiResponse.success(result.getAuthResponse()));
     }
 
     /**
@@ -43,8 +53,12 @@ public class AuthController {
      */
     @PostMapping("/login/email")
     public ResponseEntity<ApiResponse<AuthResponse>> loginByEmail(
-            @Valid @RequestBody LoginByEmailRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(authFacade.loginByEmail(request)));
+            @Valid @RequestBody LoginByEmailRequest request,
+            HttpServletRequest httpRequest) {
+        AuthResult result = authFacade.loginByEmail(request);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, buildRefreshTokenCookie(result.getRefreshToken(), httpRequest.isSecure()))
+                .body(ApiResponse.success(result.getAuthResponse()));
     }
 
     /**
@@ -53,18 +67,33 @@ public class AuthController {
      */
     @PostMapping("/login/google")
     public ResponseEntity<ApiResponse<AuthResponse>> loginByGoogle(
-            @Valid @RequestBody LoginByGoogleRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(authFacade.loginByGoogle(request)));
+            @Valid @RequestBody LoginByGoogleRequest request,
+            HttpServletRequest httpRequest) {
+        AuthResult result = authFacade.loginByGoogle(request);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, buildRefreshTokenCookie(result.getRefreshToken(), httpRequest.isSecure()))
+                .body(ApiResponse.success(result.getAuthResponse()));
     }
 
     /**
      * 刷新访问令牌
-     * Refresh access token
+     * Refresh access token. Prefers HttpOnly cookie; falls back to body during transition.
      */
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<AuthResponse>> refreshToken(
-            @Valid @RequestBody RefreshTokenRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(authFacade.refreshToken(request.getRefreshToken())));
+            @CookieValue(name = "refreshToken", required = false) String refreshTokenCookie,
+            @Valid @RequestBody(required = false) RefreshTokenRequest request,
+            HttpServletRequest httpRequest) {
+        String refreshToken = refreshTokenCookie != null ? refreshTokenCookie
+                : (request != null ? request.getRefreshToken() : null);
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(400, "Refresh token required"));
+        }
+        AuthResult result = authFacade.refreshToken(refreshToken);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, buildRefreshTokenCookie(result.getRefreshToken(), httpRequest.isSecure()))
+                .body(ApiResponse.success(result.getAuthResponse()));
     }
 
     /**
@@ -73,10 +102,35 @@ public class AuthController {
      */
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
-            @RequestHeader(value = "Authorization", required = false) String authorization) {
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            HttpServletRequest httpRequest) {
         String token = extractBearerToken(authorization);
         authFacade.logout(token);
-        return ResponseEntity.ok(ApiResponse.success(null));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, clearRefreshTokenCookie(httpRequest.isSecure()))
+                .body(ApiResponse.success(null));
+    }
+
+    private String buildRefreshTokenCookie(String refreshToken, boolean secure) {
+        return ResponseCookie.from("refreshToken", refreshToken)
+                .httpOnly(true)
+                .sameSite("Strict")
+                .path("/api/v1/auth")
+                .maxAge(Duration.ofDays(7))
+                .secure(secure)
+                .build()
+                .toString();
+    }
+
+    private String clearRefreshTokenCookie(boolean secure) {
+        return ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .sameSite("Strict")
+                .path("/api/v1/auth")
+                .maxAge(Duration.ZERO)
+                .secure(secure)
+                .build()
+                .toString();
     }
 
     /**

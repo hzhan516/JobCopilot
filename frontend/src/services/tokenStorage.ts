@@ -9,7 +9,6 @@
  */
 
 const ACCESS_TOKEN_KEY = 'accessToken';
-const REFRESH_TOKEN_KEY = 'refreshToken';
 const USER_KEY = 'user';
 const EXPIRES_AT_KEY = 'expiresAt';
 const REMEMBER_ME_KEY = 'rememberMe';
@@ -39,23 +38,16 @@ export const tokenStorage = {
     return localStorage.getItem(REMEMBER_ME_KEY) !== 'false';
   },
 
-  setTokens(accessToken: string, refreshToken: string, expiresIn: number, rememberMe: boolean): void {
+  setTokens(accessToken: string, expiresIn: number, rememberMe: boolean): void {
     this.setRememberMe(rememberMe);
     const storage = getStorage(rememberMe);
     const expiresAt = Date.now() + expiresIn * 1000;
     storage.setItem(ACCESS_TOKEN_KEY, accessToken);
-    storage.setItem(REFRESH_TOKEN_KEY, refreshToken);
     storage.setItem(EXPIRES_AT_KEY, String(expiresAt));
   },
 
   getAccessToken(): string | null {
-    // sessionStorage takes precedence: if user chose not to remember, same tab should use sessionStorage
-    // sessionStorage 优先级更高：若用户选择不记住，同一标签页内应读取 sessionStorage
     return sessionStorage.getItem(ACCESS_TOKEN_KEY) || localStorage.getItem(ACCESS_TOKEN_KEY);
-  },
-
-  getRefreshToken(): string | null {
-    return sessionStorage.getItem(REFRESH_TOKEN_KEY) || localStorage.getItem(REFRESH_TOKEN_KEY);
   },
 
   getExpiresAt(): number | null {
@@ -90,12 +82,10 @@ export const tokenStorage = {
 
   clear(): void {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(EXPIRES_AT_KEY);
     localStorage.removeItem(REMEMBER_ME_KEY);
     sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-    sessionStorage.removeItem(REFRESH_TOKEN_KEY);
     sessionStorage.removeItem(USER_KEY);
     sessionStorage.removeItem(EXPIRES_AT_KEY);
   },

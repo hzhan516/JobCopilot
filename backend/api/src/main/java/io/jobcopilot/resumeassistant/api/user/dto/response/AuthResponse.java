@@ -15,6 +15,5 @@ public class AuthResponse {
     private UUID userId;
     private String email;
     private String accessToken;
-    private String refreshToken;
     private Long expiresIn;
 }

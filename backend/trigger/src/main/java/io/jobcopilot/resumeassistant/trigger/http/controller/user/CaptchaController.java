@@ -51,10 +51,27 @@ public class CaptchaController {
     }
 
     private String getClientIp(HttpServletRequest request) {
+        String remoteAddr = request.getRemoteAddr();
+        // If request came directly from the internet (no proxy), ignore X-Forwarded-For
+        // to prevent client IP forgery. Only trust forwarded headers when behind a proxy.
+        if (!isPrivateOrLocalIp(remoteAddr)) {
+            return remoteAddr;
+        }
         String xfHeader = request.getHeader("X-Forwarded-For");
         if (xfHeader != null && !xfHeader.isBlank()) {
-            return xfHeader.split(",")[0].trim();
+            for (String ip : xfHeader.split(",")) {
+                String trimmed = ip.trim();
+                if (!trimmed.isEmpty()) {
+                    return trimmed;
+                }
+            }
         }
-        return request.getRemoteAddr();
+        return remoteAddr;
+    }
+
+    private boolean isPrivateOrLocalIp(String ip) {
+        return ip.startsWith("10.") || ip.startsWith("192.168.") || ip.startsWith("172.")
+                || ip.startsWith("127.") || ip.equals("0:0:0:0:0:0:0:1") || ip.equals("::1")
+                || ip.equals("localhost");
     }
 }

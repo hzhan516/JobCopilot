@@ -187,7 +187,10 @@ public class ConversationApplicationService {
         if (fileName == null || fileName.isBlank()) {
             throw new ConversationException("attachment.filename.required");
         }
-        String objectKey = "conversations/" + conversationId + "/" + UUID.randomUUID() + "_" + fileName;
+        String safeFileName = fileName.replaceAll("[\\\\/]", "_")
+                .replaceAll("\\.\\.+", "_")
+                .replaceAll("[\\x00-\\x1f\\x7f]", "_");
+        String objectKey = "conversations/" + conversationId + "/" + UUID.randomUUID() + "_" + safeFileName;
         fileStorageService.upload(objectKey, inputStream, size, contentType);
 
         String fileUrl = fileStorageService.generatePresignedUrl(objectKey, java.time.Duration.ofDays(7));

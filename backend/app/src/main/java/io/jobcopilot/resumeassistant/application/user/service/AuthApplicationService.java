@@ -162,12 +162,11 @@ public class AuthApplicationService {
     /**
      * Refreshes the access token using a valid refresh token, enabling seamless session continuation
      * without forcing the user to re-authenticate.
-     * 使用有效的刷新令牌重新签发访问令牌，实现无感会话续期
      *
-     * @param refreshToken Refresh token / 刷新令牌
-     * @return New authentication response / 新认证响应
+     * @param refreshToken Refresh token
+     * @return User + new token pair (caller builds HTTP response)
      */
-    public AuthResponse refreshToken(String refreshToken) {
+    public AuthTokenResult refreshToken(String refreshToken) {
         var validationResult = tokenService.validateTokenDetailed(refreshToken);
 
         switch (validationResult) {
@@ -185,14 +184,7 @@ public class AuthApplicationService {
         }
 
         TokenPair tokens = tokenService.generateTokenPair(userId);
-
-        return AuthResponse.builder()
-                .userId(user.getId())
-                .email(user.getEmail())
-                .accessToken(tokens.getAccessToken())
-                .refreshToken(tokens.getRefreshToken())
-                .expiresIn(tokens.getExpiresIn())
-                .build();
+        return new AuthTokenResult(user, tokens);
     }
 
     /**

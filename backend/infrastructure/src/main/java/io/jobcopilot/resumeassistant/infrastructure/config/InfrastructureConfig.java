@@ -5,9 +5,11 @@ import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilde
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 import io.jobcopilot.resumeassistant.infrastructure.rest.InternalApiKeyInterceptor;
+import java.time.Duration;
 
 /**
  * Infrastructure 模块配置
@@ -19,7 +21,10 @@ public class InfrastructureConfig {
 
     @Bean
     public RestTemplate restTemplate(InternalApiKeyInterceptor internalApiKeyInterceptor) {
-        RestTemplate restTemplate = new RestTemplate();
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(Duration.ofSeconds(30));
+        RestTemplate restTemplate = new RestTemplate(factory);
         restTemplate.getInterceptors().add(internalApiKeyInterceptor);
         return restTemplate;
     }
