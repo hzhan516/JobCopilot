@@ -26,7 +26,7 @@ public class ResumeDeletionService {
     private final ResumeVersionRepository versionRepository;
     private final FileStorageService fileStorageService;
 
-    @Transactional
+    @Transactional(timeout = 30)
     public void deleteGroup(UUID groupId) {
         List<ResumeVersion> versions = versionRepository.findAllByGroupId(groupId);
         for (ResumeVersion v : versions) {
@@ -40,7 +40,7 @@ public class ResumeDeletionService {
         log.info("Resume group deleted: groupId={}", groupId);
     }
 
-    @Transactional
+    @Transactional(timeout = 30)
     public void deleteVersion(ResumeVersion version) {
         if (version.getStoragePath() != null) {
             try { fileStorageService.delete(version.getStoragePath()); }

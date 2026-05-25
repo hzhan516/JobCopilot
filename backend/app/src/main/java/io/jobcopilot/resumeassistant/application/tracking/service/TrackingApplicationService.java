@@ -27,7 +27,7 @@ public class TrackingApplicationService {
 
     private final ApplicationTrackingRepository trackingRepository;
 
-    @Transactional
+    @Transactional(timeout = 30)
     public ApplicationTracking createTracking(final CreateTrackingCommand command) {
         log.info("Creating tracking for user: {}, company: {}", command.userId(), command.companyName());
         final ApplicationStatus initialStatus = command.status() != null
@@ -46,7 +46,7 @@ public class TrackingApplicationService {
         return trackingRepository.save(tracking);
     }
 
-    @Transactional
+    @Transactional(timeout = 30)
     public ApplicationTracking updateTracking(final String trackingId,
                                               final UUID userId,
                                               final UpdateTrackingCommand updateCmd,
@@ -91,7 +91,7 @@ public class TrackingApplicationService {
         return trackingRepository.findAllByUserId(userId);
     }
 
-    @Transactional
+    @Transactional(timeout = 30)
     public void deleteTracking(final DeleteTrackingCommand command) {
         log.info("Deleting tracking: {} for user: {}", command.trackingId(), command.userId());
         final ApplicationTracking tracking = trackingRepository.findByIdAndUserId(command.trackingId(), command.userId())

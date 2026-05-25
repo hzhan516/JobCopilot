@@ -30,7 +30,7 @@ public class JobScoringContextLoader {
     private final ResumeVersionRepository resumeVersionRepository;
     private final ResumeGroupRepository resumeGroupRepository;
 
-    @Transactional
+    @Transactional(timeout = 30)
     public ScoringContext load(String jobId, UUID userId, JobScoreRequest request) {
         Job job = resolveAccessibleJob(jobId, userId);
         if (job.getParsedContent() == null) {

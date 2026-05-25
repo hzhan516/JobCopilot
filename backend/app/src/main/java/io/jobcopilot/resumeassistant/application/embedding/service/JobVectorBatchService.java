@@ -33,7 +33,7 @@ public class JobVectorBatchService {
      * @param items List of job vector items / 职位向量条目列表
      * @return Batch operation result / 批量操作结果
      */
-    @Transactional
+    @Transactional(timeout = 30)
     public BatchJobVectorUpsertResponse batchUpsert(List<JobVectorItem> items) {
         if (items == null || items.isEmpty()) {
             return new BatchJobVectorUpsertResponse(0, 0, 0, 0, List.of());

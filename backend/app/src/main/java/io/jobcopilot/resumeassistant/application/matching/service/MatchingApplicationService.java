@@ -46,7 +46,7 @@ class MatchTransactionService {
     private final AiMessagePublisherPort aiMessagePublisherPort;
     private final VectorSearchPort vectorSearchPort;
 
-    @Transactional
+    @Transactional(timeout = 60)
     public String execute(StartJobMatchCommand command, String matchId, String modelVersion) {
         final JobMatchResult result = JobMatchResult.createProcessing(
                 matchId, command.userId(), command.resumeVersionId(), command.query(), modelVersion);
@@ -205,7 +205,7 @@ public class MatchingApplicationService {
      *
      * @param command Save match result command / 保存匹配结果命令
      */
-    @Transactional
+    @Transactional(timeout = 30)
     public void saveMatchResult(final SaveMatchResultCommand command) {
         log.info("Saving match result for matchId: {}", command.matchId());
 
@@ -228,12 +228,12 @@ public class MatchingApplicationService {
         log.info("Match result saved successfully for matchId: {}, ranked {} jobs", command.matchId(), rankedJobs.size());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, timeout = 30)
     public Optional<JobMatchResult> getMatchResult(final GetMatchResultQuery query) {
         return jobMatchResultRepository.findById(query.matchId());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, timeout = 30)
     public List<JobMatchResult> listMatchHistory(final ListMatchHistoryQuery query) {
         return jobMatchResultRepository.findAllByUserIdOrderByCreatedAtDesc(query.userId());
     }

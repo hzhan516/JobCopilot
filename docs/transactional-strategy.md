@@ -18,6 +18,7 @@
 | 3 | **No network I/O inside transactions (HTTP, MQ, external files)** | Long transactions = long connection hold, hurting throughput; external failure causes rollback, conflicting with business semantics. |
 | 4 | **Cross-aggregate writes have independent transactions** | Writes to different aggregate roots (Job, Resume, Conversation, etc.) should not share a transaction; use `Propagation.REQUIRES_NEW` or split to independent Services. |
 | 5 | **Schedulers / async tasks must have independent transaction boundaries** | Scheduled tasks run long; default transaction should be minimal; when using Outbox, relay and cleanup are separate transactions. |
+| 6 | **All `@Transactional` must declare explicit `timeout`** | Prevent infinite connection hold from slow queries, lock waits, or accidental network I/O inside the transaction. Pure DB ops: 30s; batch/sync: 60s. |
 
 ---
 
@@ -29,9 +30,9 @@
 | **Single aggregate write** (save/update/delete) | Method-level `@Transactional` | ✅ Unified |
 | **Batch writes** (batchUpsert) | Method-level `@Transactional` | ✅ Unified |
 | **Write then send MQ / HTTP** | **Only write DB inside tx**, send MQ after tx commit (tx listener, ApplicationEvent, or Outbox) | ⚠️ See §3.1 |
-| **Failure log persistence** (non-interfering) | `@Transactional(propagation = REQUIRES_NEW)` | ✅ Correct |
-| **Scheduler (Outbox relay)** | Read `@Transactional(readOnly = true)` + update after send with `REQUIRES_NEW` | ⚠️ See §3.2 |
-| **Scheduler (cleanup)** | `@Transactional` (short tx, batch delete) | ✅ Unified |
+| **Failure log persistence** (non-interfering) | `@Transactional(propagation = REQUIRES_NEW, timeout = 30)` | ✅ Correct |
+| **Scheduler (Outbox relay)** | Read `@Transactional(readOnly = true, timeout = 30)` + update after send with `REQUIRES_NEW, timeout = 30` | ⚠️ See §3.2 |
+| **Scheduler (cleanup)** | `@Transactional(timeout = 30)` (short tx, batch delete) | ✅ Unified |
 
 ---
 
@@ -113,6 +114,35 @@ public void relayPendingMessages() { ... }
 
 ---
 
+### 3.5 [FIXED] `JobApplicationService.handleJobProcessResult()` — HTTP Vector Generation Inside Transaction
+
+**File**: `app/.../JobApplicationService.java`
+
+```java
+@Transactional
+public void handleJobProcessResult(AiResultEvent event) {
+    ...
+    vectorGenerationService.generateForJob(...);  // ← HTTP call (Embedding service)
+    jobDatasetSyncService.sync(job, event);       // ← DB write
+    jobRepository.save(job);
+}
+```
+
+**Risk**: `vectorGenerationService.generateForJob()` triggers an HTTP call to the Embedding service. If the Embedding service is slow or times out, the database connection is held for the entire duration, depleting the connection pool.
+
+**Status**: ✅ **Fixed** in commit `XXXXXXX`.
+
+**Fix applied**:
+- Extract `JobResultTransactionService` (package-private Bean), encapsulating only DB operations (`markCompleted`/`markFailed` + `sync` + `save`), declared with `@Transactional(timeout = 60)`.
+- `JobApplicationService.handleJobProcessResult()` drops `@Transactional`. After the short DB transaction completes, vector generation runs **outside** the transaction.
+- All remaining `@Transactional` methods in `JobApplicationService` and across the `application` module now carry explicit `timeout` values (30s for pure DB writes, 60s for batch/sync operations).
+
+**Modified Files**:
+- `JobApplicationService.java`: refactored `handleJobProcessResult()`; added `timeout` to all `@Transactional`
+- `JobResultTransactionService.java`: new file (package-private)
+
+---
+
 ## 4. Best-Practice Cheat Sheet
 
 ```java
@@ -125,7 +155,7 @@ public class JobApplicationService {
 
     public JobResponse getJob(...) { ... }          // inherits readOnly
 
-    @Transactional
+    @Transactional(timeout = 30)
     public JobResponse submitJob(...) { ... }      // override to read-write
 }
 
@@ -139,9 +169,9 @@ public class JobSubmissionService {
 }
 
 /**
- * Independent transaction (failure log).
+ * Independent transaction (failure log) with explicit timeout.
  */
-@Transactional(propagation = Propagation.REQUIRES_NEW)
+@Transactional(propagation = Propagation.REQUIRES_NEW, timeout = 30)
 public void saveFailedVector(...) { ... }
 ```
 
@@ -154,6 +184,7 @@ public void saveFailedVector(...) { ... }
 - [ ] Is there nested `@Transactional` redundancy (both outer and inner Services declare it)?
 - [ ] Are scheduler / async-task transactions minimized?
 - [ ] Is `REQUIRES_NEW` abused (only for logs / compensation scenarios)?
+- [ ] Does every `@Transactional` declare an explicit `timeout` (never rely on the default)?
 
 ---
 

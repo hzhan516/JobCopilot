@@ -20,7 +20,7 @@ public class JobScoringResultSaver {
 
     private final JobScoreRepository jobScoreRepository;
 
-    @Transactional
+    @Transactional(timeout = 30)
     public JobScoreResponse save(String jobId, UUID userId, String resumeVersionId,
                                   Map<String, Object> aiResponse) {
         boolean suitable = Boolean.TRUE.equals(aiResponse.get("suitable"));

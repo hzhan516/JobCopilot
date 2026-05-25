@@ -31,7 +31,7 @@ public class ResumeVectorBatchService {
      * @param items List of resume vector items / 简历向量条目列表
      * @return Batch operation result / 批量操作结果
      */
-    @Transactional
+    @Transactional(timeout = 30)
     public BatchResumeVectorUpsertResponse batchUpsert(List<ResumeVectorItem> items) {
         if (items == null || items.isEmpty()) {
             return new BatchResumeVectorUpsertResponse(0, 0, 0, 0, List.of());

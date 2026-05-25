@@ -29,7 +29,7 @@ public class ResumeParseResultHandler {
     private final ResumeGroupRepository groupRepository;
     private final VectorGenerationService vectorGenerationService;
 
-    @Transactional
+    @Transactional(timeout = 30)
     public void handle(AiResultEvent event) {
         ResumeVersion originalVersion = versionRepository.findById(UUID.fromString(event.referenceId()))
                 .orElseThrow(() -> new StorageException("version.not.found"));

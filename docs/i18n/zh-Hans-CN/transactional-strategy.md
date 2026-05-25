@@ -18,6 +18,7 @@
 | 3 | **禁止在事务内做网络 I/O（HTTP、MQ、外部文件）** | 长事务 = 长连接占用，降低吞吐量；外部失败导致事务回滚，与业务语义不符。 |
 | 4 | **跨聚合写操作各自独立事务** | 不同聚合根（Job、Resume、Conversation…）的写操作不应共享事务；用 `Propagation.REQUIRES_NEW` 或拆分到独立 Service。 |
 | 5 | **Scheduler / 异步任务必须独立事务边界** | 定时任务运行周期长，默认事务应最小化；涉及 Outbox 模式时，relay 与 cleanup 分事务。 |
+| 6 | **所有 `@Transactional` 必须显式声明 `timeout`** | 防止慢查询、锁等待或意外网络 I/O 导致无限长事务占用连接池。纯 DB 操作 30s；含 batch/sync 的 60s。 |
 
 ---
 
@@ -29,9 +30,9 @@
 | **单聚合根写**（save/update/delete） | 方法级 `@Transactional` | ✅ 已统一 |
 | **批量写**（batchUpsert） | 方法级 `@Transactional` | ✅ 已统一 |
 | **写后需发 MQ / HTTP** | **事务内只写 DB**，发 MQ 在事务提交后（事务监听器、ApplicationEvent、或 Outbox） | ⚠️ 见 §3.1 |
-| **失败日志持久化**（不干扰主事务） | `@Transactional(propagation = REQUIRES_NEW)` | ✅ 已统一 |
-| **Scheduler（Outbox relay）** | 读取 `@Transactional(readOnly = true)` + 发送后更新状态用 `REQUIRES_NEW` | ⚠️ 见 §3.2 |
-| **Scheduler（cleanup）** | `@Transactional`（短事务，批量删除） | ✅ 已统一 |
+| **失败日志持久化**（不干扰主事务） | `@Transactional(propagation = REQUIRES_NEW, timeout = 30)` | ✅ 已统一 |
+| **Scheduler（Outbox relay）** | 读取 `@Transactional(readOnly = true, timeout = 30)` + 发送后更新状态用 `REQUIRES_NEW, timeout = 30` | ⚠️ 见 §3.2 |
+| **Scheduler（cleanup）** | `@Transactional(timeout = 30)`（短事务，批量删除） | ✅ 已统一 |
 
 ---
 
@@ -113,6 +114,35 @@ public void relayPendingMessages() { ... }
 
 ---
 
+### 3.5 [已修复] `JobApplicationService.handleJobProcessResult()` — 事务内向量生成 HTTP 调用
+
+**文件**：`app/.../JobApplicationService.java`
+
+```java
+@Transactional
+public void handleJobProcessResult(AiResultEvent event) {
+    ...
+    vectorGenerationService.generateForJob(...);  // ← HTTP 调用（Embedding 服务）
+    jobDatasetSyncService.sync(job, event);       // ← DB 写
+    jobRepository.save(job);
+}
+```
+
+**风险**：`vectorGenerationService.generateForJob()` 触发对 Embedding 服务的 HTTP 调用。若 Embedding 服务响应慢或超时，数据库连接将在整个期间被占用，耗尽连接池。
+
+**状态**：✅ **已修复**。
+
+**已应用的修复**：
+- 提取 `JobResultTransactionService`（包级 Bean），仅封装纯 DB 操作（`markCompleted`/`markFailed` + `sync` + `save`），声明 `@Transactional(timeout = 60)`。
+- `JobApplicationService.handleJobProcessResult()` 去掉 `@Transactional`。短数据库事务完成后，向量生成在**事务外**执行。
+- `JobApplicationService` 及 `application` 模块中所有剩余的 `@Transactional` 方法现已携带显式 `timeout` 值（纯 DB 写操作 30s，batch/sync 操作 60s）。
+
+**修改文件**：
+- `JobApplicationService.java`：重构 `handleJobProcessResult()`；为所有 `@Transactional` 添加 `timeout`
+- `JobResultTransactionService.java`：新增文件（包级可见）
+
+---
+
 ## 4. 最佳实践速查
 
 ```java
@@ -125,7 +155,7 @@ public class JobApplicationService {
 
     public JobResponse getJob(...) { ... }          // 继承 readOnly
 
-    @Transactional
+    @Transactional(timeout = 30)
     public JobResponse submitJob(...) { ... }      // 覆写为读写
 }
 
@@ -139,9 +169,9 @@ public class JobSubmissionService {
 }
 
 /**
- * 独立事务（失败日志）。
+ * 独立事务（失败日志），显式超时。
  */
-@Transactional(propagation = Propagation.REQUIRES_NEW)
+@Transactional(propagation = Propagation.REQUIRES_NEW, timeout = 30)
 public void saveFailedVector(...) { ... }
 ```
 
@@ -154,6 +184,7 @@ public void saveFailedVector(...) { ... }
 - [ ] 是否有 `@Transactional` 嵌套冗余（两层 Service 都声明）？
 - [ ] Scheduler / 异步任务事务是否最小化？
 - [ ] 是否出现 `REQUIRES_NEW` 滥用（非日志/补偿类场景）？
+- [ ] 每个 `@Transactional` 是否都声明了显式 `timeout`（不依赖默认值）？
 
 ---
 

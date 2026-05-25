@@ -29,7 +29,7 @@ public class ResumeVersionChainManager {
     private final ResumeVersionRepository versionRepository;
     private final VectorGenerationService vectorGenerationService;
 
-    @Transactional
+    @Transactional(timeout = 30)
     public ResumeVersion createVersion(CreateVersionCommand command) {
         ResumeGroup group = groupRepository.findByIdAndUserId(command.groupId(), command.userId())
                 .orElseThrow(() -> new StorageException("group.not.found"));

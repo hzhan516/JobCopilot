@@ -58,12 +58,12 @@ public class ResumeApplicationService {
         this.accessControl = accessControl;
     }
 
-    @Transactional
+    @Transactional(timeout = 30)
     public ResumeGroup handleUpload(ResumeUploadCommand command, UUID userId) {
         return uploadHandler.upload(command, userId);
     }
 
-    @Transactional
+    @Transactional(timeout = 30)
     public ResumeVersion handleEdit(ResumeEditCommand command) {
         ResumeVersion version = accessControl.requireVersion(command.versionId(), command.userId());
         version.editContent(command.content());
@@ -78,18 +78,18 @@ public class ResumeApplicationService {
         return version;
     }
 
-    @Transactional
+    @Transactional(timeout = 30)
     public ResumeVersion handleCreateVersion(CreateVersionCommand command) {
         return versionChainManager.createVersion(command);
     }
 
-    @Transactional
+    @Transactional(timeout = 30)
     public void handleDelete(UUID groupId, UUID userId) {
         accessControl.requireGroup(groupId, userId);
         deletionService.deleteGroup(groupId);
     }
 
-    @Transactional
+    @Transactional(timeout = 30)
     public void handleDeleteVersion(UUID versionId, UUID userId) {
         ResumeVersion version = accessControl.requireVersion(versionId, userId);
 
@@ -100,7 +100,7 @@ public class ResumeApplicationService {
         deletionService.deleteVersion(version);
     }
 
-    @Transactional
+    @Transactional(timeout = 30)
     public ResumeVersion handleActivateVersion(UUID versionId, UUID userId) {
         ResumeVersion version = versionRepository.findById(versionId)
                 .orElseThrow(() -> new StorageException("version.not.found"));
@@ -114,7 +114,7 @@ public class ResumeApplicationService {
                 .orElseThrow(() -> new StorageException("version.not.found"));
     }
 
-    @Transactional
+    @Transactional(timeout = 30)
     public void handleParseResult(AiResultEvent event) {
         log.info("Handling parse result for ResumeVersion: {}", event.referenceId());
         parseResultHandler.handle(event);

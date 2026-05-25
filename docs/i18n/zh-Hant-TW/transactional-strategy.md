@@ -29,9 +29,9 @@
 | **單聚合根寫入**（save/update/delete） | 方法級 `@Transactional` | ✅ 已統一 |
 | **批次寫入**（batchUpsert） | 方法級 `@Transactional` | ✅ 已統一 |
 | **寫入後需發 MQ / HTTP** | **交易內只寫 DB**，發 MQ 在交易提交後（交易監聽器、ApplicationEvent、或 Outbox） | ⚠️ 見 §3.1 |
-| **失敗日誌持久化**（不干擾主交易） | `@Transactional(propagation = REQUIRES_NEW)` | ✅ 已統一 |
-| **Scheduler（Outbox relay）** | 讀取 `@Transactional(readOnly = true)` + 發送後更新狀態用 `REQUIRES_NEW` | ⚠️ 見 §3.2 |
-| **Scheduler（cleanup）** | `@Transactional`（短交易，批次刪除） | ✅ 已統一 |
+| **失敗日誌持久化**（不干擾主交易） | `@Transactional(propagation = REQUIRES_NEW, timeout = 30)` | ✅ 已統一 |
+| **Scheduler（Outbox relay）** | 讀取 `@Transactional(readOnly = true, timeout = 30)` + 發送後更新狀態用 `REQUIRES_NEW, timeout = 30` | ⚠️ 見 §3.2 |
+| **Scheduler（cleanup）** | `@Transactional(timeout = 30)`（短交易，批次刪除） | ✅ 已統一 |
 
 ---
 
@@ -113,6 +113,35 @@ public void relayPendingMessages() { ... }
 
 ---
 
+### 3.5 [已修復] `JobApplicationService.handleJobProcessResult()` — 交易內向量產生 HTTP 呼叫
+
+**檔案**：`app/.../JobApplicationService.java`
+
+```java
+@Transactional
+public void handleJobProcessResult(AiResultEvent event) {
+    ...
+    vectorGenerationService.generateForJob(...);  // ← HTTP 呼叫（Embedding 服務）
+    jobDatasetSyncService.sync(job, event);       // ← DB 寫入
+    jobRepository.save(job);
+}
+```
+
+**風險**：`vectorGenerationService.generateForJob()` 觸發對 Embedding 服務的 HTTP 呼叫。若 Embedding 服務回應慢或逾時，資料庫連線將在整個期間被占用，耗盡連線池。
+
+**狀態**：✅ **已修復**。
+
+**已套用的修復**：
+- 提取 `JobResultTransactionService`（套件級 Bean），僅封裝純 DB 作業（`markCompleted`/`markFailed` + `sync` + `save`），宣告 `@Transactional(timeout = 60)`。
+- `JobApplicationService.handleJobProcessResult()` 去掉 `@Transactional`。短資料庫交易完成後，向量產生在**交易外**執行。
+- `JobApplicationService` 及 `application` 模組中所有剩餘的 `@Transactional` 方法現已攜帶顯式 `timeout` 值（純 DB 寫入 30s，batch/sync 作業 60s）。
+
+**修改檔案**：
+- `JobApplicationService.java`：重構 `handleJobProcessResult()`；為所有 `@Transactional` 添加 `timeout`
+- `JobResultTransactionService.java`：新增檔案（套件級可見）
+
+---
+
 ## 4. 最佳實踐速查
 
 ```java
@@ -154,6 +183,7 @@ public void saveFailedVector(...) { ... }
 - [ ] 是否有 `@Transactional` 巢狀冗餘（兩層 Service 都宣告）？
 - [ ] Scheduler / 非同步任務交易是否最小化？
 - [ ] 是否出現 `REQUIRES_NEW` 濫用（非日誌/補償類場景）？
+- [ ] 每個 `@Transactional` 是否都宣告了顯式 `timeout`（不依賴預設值）？
 
 ---
 

@@ -32,7 +32,7 @@ public class OutboxCleanupScheduler {
      */
     @Scheduled(cron = "0 0 3 * * ?")
     @SchedulerLock(name = "OutboxCleanup", lockAtMostFor = "30m", lockAtLeastFor = "1m")
-    @Transactional
+    @Transactional(timeout = 30)
     public void cleanup() {
         LocalDateTime cutoff = LocalDateTime.now().minusDays(RETENTION_DAYS);
         log.info("Starting outbox cleanup for records sent before: {}", cutoff);

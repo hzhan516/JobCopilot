@@ -41,7 +41,7 @@ public class FailedVectorPersistenceService {
      * @param entityType   实体类型 ("JOB" or "RESUME") / Entity type
      * @param errorMessage 错误信息 / Error message
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, timeout = 30)
     public void saveFailedVector(String referenceId, String entityType, String errorMessage) {
         String id = UUID.randomUUID().toString();
         if (isResumeEntity(entityType)) {

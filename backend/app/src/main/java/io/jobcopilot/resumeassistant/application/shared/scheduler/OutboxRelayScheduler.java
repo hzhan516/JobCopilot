@@ -33,7 +33,7 @@ class OutboxRelayTransactionService {
      * The update of the outbox row (markSent / markFailed) runs in its
      * own transaction so network failures do not leak to sibling messages.
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, timeout = 30)
     public boolean relay(OutboxMessage message) {
         try {
             Object payloadObject = objectMapper.readValue(message.getPayload(), Object.class);
@@ -75,7 +75,7 @@ public class OutboxRelayScheduler {
      */
     @Scheduled(fixedDelay = 2000)
     @SchedulerLock(name = "OutboxRelay", lockAtMostFor = "5m", lockAtLeastFor = "1s")
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, timeout = 30)
     public void relayPendingMessages() {
         List<OutboxMessage> pendingMessages = outboxMessageRepository.findByStatus(OutboxStatus.PENDING);
 

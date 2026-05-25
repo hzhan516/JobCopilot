@@ -59,7 +59,7 @@ public class ConversationApplicationService {
      * @param command Create conversation command / 创建对话命令
      * @return Created conversation / 创建后的对话
      */
-    @Transactional
+    @Transactional(timeout = 30)
     public Conversation createConversation(CreateConversationCommand command) {
         log.info("Creating new conversation for user: {}", command.userId());
 
@@ -113,7 +113,7 @@ public class ConversationApplicationService {
      * @param command Send message command / 发送消息命令
      * @return Updated conversation / 更新后的对话
      */
-    @Transactional
+    @Transactional(timeout = 30)
     public Conversation sendMessage(SendMessageCommand command) {
         log.info("Sending message to conversation: {}", command.conversationId());
         Conversation conversation = getConversationWithOwnershipCheck(command.conversationId(), command.userId());
@@ -131,7 +131,7 @@ public class ConversationApplicationService {
         return saved;
     }
 
-    @Transactional
+    @Transactional(timeout = 30)
     public void saveAiReply(UUID conversationId, String content, String fileUrl) {
         saveAiReply(conversationId, content, fileUrl, null);
     }
@@ -146,7 +146,7 @@ public class ConversationApplicationService {
      * @param fileUrl               Optional file URL / 可选文件 URL
      * @param aiOptimizedMarkdown   AI-optimized resume Markdown / AI 优化后的简历 Markdown
      */
-    @Transactional
+    @Transactional(timeout = 30)
     public void saveAiReply(UUID conversationId, String content, String fileUrl, String aiOptimizedMarkdown) {
         log.info("Saving AI reply for conversation: {}", conversationId);
         Conversation conversation = conversationRepository.findById(conversationId)
@@ -179,7 +179,7 @@ public class ConversationApplicationService {
      * @param fileName       File name / 文件名
      * @return Presigned access URL / 预签名访问 URL
      */
-    @Transactional
+    @Transactional(timeout = 30)
     public String uploadAttachment(UUID conversationId, UUID userId, InputStream inputStream, long size, String contentType, String fileName) {
         log.info("Uploading attachment for conversation: {}", conversationId);
         getConversationWithOwnershipCheck(conversationId, userId);
@@ -195,7 +195,7 @@ public class ConversationApplicationService {
         return fileUrl;
     }
 
-    @Transactional
+    @Transactional(timeout = 30)
     public void closeConversation(UUID conversationId, UUID userId) {
         log.info("Closing conversation: {}", conversationId);
         Conversation conversation = getConversationWithOwnershipCheck(conversationId, userId);
@@ -203,7 +203,7 @@ public class ConversationApplicationService {
         conversationRepository.save(conversation);
     }
 
-    @Transactional
+    @Transactional(timeout = 30)
     public void deleteConversation(UUID conversationId, UUID userId) {
         log.info("Deleting conversation: {}", conversationId);
         getConversationWithOwnershipCheck(conversationId, userId);

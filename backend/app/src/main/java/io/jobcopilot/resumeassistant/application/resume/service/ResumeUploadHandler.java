@@ -35,7 +35,7 @@ public class ResumeUploadHandler {
     private final VectorGenerationService vectorGenerationService;
     private final AiMessagePublisherPort aiMessagePublisherPort;
 
-    @Transactional
+    @Transactional(timeout = 30)
     public ResumeGroup upload(ResumeUploadCommand command, UUID userId) {
         ResumeGroup group = ResumeGroup.create(userId, command.title());
 

@@ -43,7 +43,7 @@ public class ProfileApplicationService {
      * @param command 更新命令 / Update command
      * @return 更新后的用户资料 / Updated user profile
      */
-    @Transactional
+    @Transactional(timeout = 30)
     public UserProfile updateProfile(UpdateProfileCommand command) {
         log.info("Updating profile for user: {}", command.userId());
         UserProfile profile = userProfileRepository.findByUserId(command.userId())
@@ -60,7 +60,7 @@ public class ProfileApplicationService {
      * @param command 头像更新命令 / Avatar update command
      * @return 更新后的用户资料 / Updated user profile
      */
-    @Transactional
+    @Transactional(timeout = 30)
     public UserProfile updateAvatar(UpdateAvatarCommand command) {
         log.info("Updating avatar for user: {}", command.userId());
         UserProfile profile = userProfileRepository.findByUserId(command.userId())

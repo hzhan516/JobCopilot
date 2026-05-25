@@ -49,50 +49,40 @@ public class JobApplicationService {
     private final JobScoringResultSaver scoringResultSaver;
     private final JobAccessControl jobAccessControl;
     private final JobSubmissionService jobSubmissionService;
+    private final JobResultTransactionService jobResultTxService;
 
-    @Transactional
+    @Transactional(timeout = 30)
     public JobResponse submitJob(UUID userId, SubmitJobRequest request) {
         return jobSubmissionService.submit(userId, request);
     }
 
-    @Transactional
+    /**
+     * Processes AI parsing result. Vector generation (HTTP) happens outside the
+     * transaction to prevent long-lived DB connections.
+     */
     public void handleJobProcessResult(AiResultEvent event) {
-        Job job = jobRepository.findById(event.referenceId())
-                .orElseThrow(() -> new JobException("job.not.found"));
-
-        if ("COMPLETED".equals(event.status()) && event.data() != null) {
-            try {
-                job.markCompleted(jobDatasetSyncService.mapToParsedContent(event.data()));
-            } catch (Exception e) {
-                job.markFailed("Failed to deserialize AI result data");
-                jobRepository.save(job);
-                log.error("Deserialization error for job {}: ", event.referenceId(), e);
-                return;
-            }
-            ParsedJobContent pc = job.getParsedContent();
-            vectorGenerationService.generateForJob(UUID.fromString(job.getId()),
+        boolean completed = jobResultTxService.process(event);
+        if (completed && event.data() != null) {
+            ParsedJobContent pc = jobDatasetSyncService.mapToParsedContent(event.data());
+            vectorGenerationService.generateForJob(
+                    UUID.fromString(event.referenceId()),
                     jobDatasetSyncService.buildVectorText(pc));
-            jobDatasetSyncService.sync(job, event);
-        } else {
-            job.markFailed(event.errorMessage() != null ? event.errorMessage() : "Unknown AI processing error");
         }
-        jobRepository.save(job);
-        log.info("Job {} updated to status {}", job.getId(), job.getStatus());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, timeout = 30)
     public JobResponse getJob(String jobId, UUID userId) {
         return JobResponseMapper.toResponse(jobAccessControl.requireAccessible(jobId, userId));
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, timeout = 30)
     public List<JobResponse> listJobs(UUID userId) {
         return jobRepository.findAllByUserId(userId).stream()
                 .map(JobResponseMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
-    @Transactional
+    @Transactional(timeout = 30)
     public JobResponse updateJob(String jobId, UUID userId, UpdateJobRequest request) {
         Job job = jobAccessControl.requireAccessible(jobId, userId);
         job.updateParsedContent(new ParsedJobContent(
@@ -103,7 +93,7 @@ public class JobApplicationService {
         return JobResponseMapper.toResponse(job);
     }
 
-    @Transactional
+    @Transactional(timeout = 30)
     public void deleteJob(String jobId, UUID userId) {
         Job job = jobAccessControl.requireOwned(jobId, userId);
         job.hide();
@@ -123,14 +113,14 @@ public class JobApplicationService {
         return scoringResultSaver.save(jobId, userId, request.resumeVersionId(), aiResponse);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, timeout = 30)
     public List<JobScoreHistoryResponse> getScoreHistory(UUID userId) {
         return jobScoreRepository.findAllByUserIdOrderByCreatedAtDesc(userId).stream()
                 .map(JobResponseMapper::toScoreHistoryResponse)
                 .collect(Collectors.toList());
     }
 
-    @Transactional
+    @Transactional(timeout = 30)
     public void trackUserAction(String jobId, UUID userId, String actionType, String resumeVersionId) {
         Job job = jobAccessControl.requireOwned(jobId, userId);
         try {

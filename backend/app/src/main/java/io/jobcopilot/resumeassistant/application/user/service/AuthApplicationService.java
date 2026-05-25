@@ -43,7 +43,7 @@ public class AuthApplicationService {
     private final VerificationCodeService verificationCodeService;
     private final EmailProperties emailProperties;
 
-    @Transactional
+    @Transactional(timeout = 30)
     public User registerByEmail(RegisterByEmailCommand command) {
         if (userRepository.existsByEmail(command.email())) {
             throw new AuthException(AuthException.ErrorType.EMAIL_EXISTS);
@@ -90,7 +90,7 @@ public class AuthApplicationService {
         return user;
     }
 
-    @Transactional
+    @Transactional(timeout = 30)
     public User loginByGoogle(LoginByGoogleCommand command) {
         GoogleTokenVerifierPort.GoogleUserInfo googleUserInfo = googleTokenVerifierPort.verify(command.idToken());
 

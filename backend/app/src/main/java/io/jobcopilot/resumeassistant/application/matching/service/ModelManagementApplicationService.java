@@ -48,7 +48,7 @@ public class ModelManagementApplicationService {
      *
      * @param modelId 模型ID / Model ID
      */
-    @Transactional
+    @Transactional(timeout = 30)
     public void switchActiveModel(final Long modelId) {
         modelManagementService.switchActiveModel(modelId);
     }
