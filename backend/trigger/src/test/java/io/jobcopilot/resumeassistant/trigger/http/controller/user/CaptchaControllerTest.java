@@ -53,7 +53,7 @@ class CaptchaControllerTest {
     @DisplayName("Should return challenge when not rate limited")
     void shouldReturnChallengeWhenNotRateLimited() {
         // 给定 / Given
-        CaptchaChallengeResponse challenge = new CaptchaChallengeResponse("token", "bg", "slider", "gap");
+        CaptchaChallengeResponse challenge = new CaptchaChallengeResponse("token", 150);
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
         when(captchaFacade.isRateLimited("192.168.1.1")).thenReturn(false);
         when(captchaFacade.generateChallenge()).thenReturn(challenge);
@@ -85,7 +85,7 @@ class CaptchaControllerTest {
     @DisplayName("Should use X-Forwarded-For header for client IP")
     void shouldUseXForwardedForHeaderForClientIp() {
         // 给定 / Given
-        CaptchaChallengeResponse challenge = new CaptchaChallengeResponse("token", "bg", "slider", "gap");
+        CaptchaChallengeResponse challenge = new CaptchaChallengeResponse("token", 150);
         when(request.getHeader("X-Forwarded-For")).thenReturn("10.0.0.1, 10.0.0.2");
         when(captchaFacade.isRateLimited("10.0.0.1")).thenReturn(false);
         when(captchaFacade.generateChallenge()).thenReturn(challenge);
@@ -101,7 +101,7 @@ class CaptchaControllerTest {
     @DisplayName("Should fallback to remoteAddr when no X-Forwarded-For")
     void shouldFallbackToRemoteAddrWhenNoXForwardedFor() {
         // 给定 / Given
-        CaptchaChallengeResponse challenge = new CaptchaChallengeResponse("token", "bg", "slider", "gap");
+        CaptchaChallengeResponse challenge = new CaptchaChallengeResponse("token", 150);
         when(request.getHeader("X-Forwarded-For")).thenReturn(null);
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
         when(captchaFacade.isRateLimited("192.168.1.1")).thenReturn(false);
@@ -120,7 +120,7 @@ class CaptchaControllerTest {
     @DisplayName("Should return captcha token on successful verification")
     void shouldReturnCaptchaTokenOnSuccessfulVerification() {
         // 给定 / Given
-        CaptchaVerifyRequest verifyRequest = new CaptchaVerifyRequest("challenge-token", 42, 100L);
+        CaptchaVerifyRequest verifyRequest = new CaptchaVerifyRequest("challenge-token", 42);
         when(captchaFacade.verifyChallenge(verifyRequest)).thenReturn("verified-token");
 
         // 当 / When
