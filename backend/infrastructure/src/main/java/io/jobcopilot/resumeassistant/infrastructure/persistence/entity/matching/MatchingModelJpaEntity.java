@@ -50,6 +50,10 @@ public class MatchingModelJpaEntity {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Version
+    @Column(name = "optimistic_version", nullable = false)
+    private Long optimisticVersion;
+
     @jakarta.persistence.PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();

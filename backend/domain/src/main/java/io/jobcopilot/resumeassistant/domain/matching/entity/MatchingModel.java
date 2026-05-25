@@ -26,6 +26,7 @@ public class MatchingModel extends AggregateRoot<Long> {
     private Map<String, Object> evaluationMetrics;
     private boolean isActive;
     private LocalDateTime updatedAt;
+    private long optimisticVersion;
 
     @Builder
     public MatchingModel(final Long id,
@@ -36,7 +37,8 @@ public class MatchingModel extends AggregateRoot<Long> {
                          final Map<String, Object> evaluationMetrics,
                          final boolean isActive,
                          final LocalDateTime createdAt,
-                         final LocalDateTime updatedAt) {
+                         final LocalDateTime updatedAt,
+                         final long optimisticVersion) {
         this.id = id;
         this.modelName = modelName;
         this.version = version;
@@ -46,6 +48,7 @@ public class MatchingModel extends AggregateRoot<Long> {
         this.isActive = isActive;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.optimisticVersion = optimisticVersion;
     }
 
     /**
