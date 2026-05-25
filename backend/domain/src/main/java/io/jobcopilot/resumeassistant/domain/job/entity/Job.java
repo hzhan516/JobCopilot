@@ -29,8 +29,10 @@ public class Job extends AggregateRoot<String> {
     private String errorMessage;
     @Getter
     private LocalDateTime hiddenAt;
+    @Getter
+    private long version;
 
-    public Job(String id, UUID userId, String originalUrl, boolean imageCheckEnabled, JobStatus status, ParsedJobContent parsedContent, String errorMessage, LocalDateTime hiddenAt) {
+    public Job(String id, UUID userId, String originalUrl, boolean imageCheckEnabled, JobStatus status, ParsedJobContent parsedContent, String errorMessage, LocalDateTime hiddenAt, long version) {
         this.id = id;
         this.userId = userId;
         this.originalUrl = originalUrl;
@@ -39,10 +41,11 @@ public class Job extends AggregateRoot<String> {
         this.parsedContent = parsedContent;
         this.errorMessage = errorMessage;
         this.hiddenAt = hiddenAt;
+        this.version = version;
     }
 
     private Job(String id, UUID userId, String originalUrl, boolean imageCheckEnabled, JobStatus status) {
-        this(id, userId, originalUrl, imageCheckEnabled, status, null, null, null);
+        this(id, userId, originalUrl, imageCheckEnabled, status, null, null, null, 0L);
     }
 
     /**

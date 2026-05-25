@@ -19,6 +19,7 @@
 | 4 | **Cross-aggregate writes have independent transactions** | Writes to different aggregate roots (Job, Resume, Conversation, etc.) should not share a transaction; use `Propagation.REQUIRES_NEW` or split to independent Services. |
 | 5 | **Schedulers / async tasks must have independent transaction boundaries** | Scheduled tasks run long; default transaction should be minimal; when using Outbox, relay and cleanup are separate transactions. |
 | 6 | **All `@Transactional` must declare explicit `timeout`** | Prevent infinite connection hold from slow queries, lock waits, or accidental network I/O inside the transaction. Pure DB ops: 30s; batch/sync: 60s. |
+| 7 | **Aggregate roots must have optimistic locking (`@Version`)** | Prevent lost updates in concurrent write scenarios (status transitions, user edits). JPA `@Version` on the entity; domain model exposes `version` field. |
 
 ---
 
@@ -156,7 +157,21 @@ public class JobApplicationService {
     public JobResponse getJob(...) { ... }          // inherits readOnly
 
     @Transactional(timeout = 30)
-    public JobResponse submitJob(...) { ... }      // override to read-write
+    public JobResponse updateJob(...) { ... }    // write with optimistic lock
+
+    /** Optimistic locking on aggregate root. */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
+    /** Domain model exposes version for conflict detection. */
+    public void markCompleted(ParsedJobContent content) {
+        if (this.status != JobStatus.PARSING) {
+            throw new IllegalStateException("Job must be PARSING to complete.");
+        }
+        this.status = JobStatus.COMPLETED;
+        this.parsedContent = content;
+    }
 }
 
 /**
@@ -185,6 +200,7 @@ public void saveFailedVector(...) { ... }
 - [ ] Are scheduler / async-task transactions minimized?
 - [ ] Is `REQUIRES_NEW` abused (only for logs / compensation scenarios)?
 - [ ] Does every `@Transactional` declare an explicit `timeout` (never rely on the default)?
+- [ ] Does every aggregate root entity have `@Version` for optimistic locking?
 
 ---
 
@@ -274,4 +290,4 @@ public void saveFailedVector(...) { ... }
 
 | Date | Author | Content |
 |---|---|---|
-| 2026-05-25 | AI Architecture Audit | Initial version: full code scan of 44 `@Transactional` usage points, identified 4 issues to fix. |
+| 2026-05-25 | AI Architecture Audit | Added `@Version` optimistic locking to `Job` aggregate root (§1.7, §6.4). Fixed `handleJobProcessResult` HTTP-in-tx issue (§3.5). Global `timeout` enforcement across all `@Transactional` methods. |

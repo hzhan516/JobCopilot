@@ -19,6 +19,7 @@
 | 4 | **跨聚合写操作各自独立事务** | 不同聚合根（Job、Resume、Conversation…）的写操作不应共享事务；用 `Propagation.REQUIRES_NEW` 或拆分到独立 Service。 |
 | 5 | **Scheduler / 异步任务必须独立事务边界** | 定时任务运行周期长，默认事务应最小化；涉及 Outbox 模式时，relay 与 cleanup 分事务。 |
 | 6 | **所有 `@Transactional` 必须显式声明 `timeout`** | 防止慢查询、锁等待或意外网络 I/O 导致无限长事务占用连接池。纯 DB 操作 30s；含 batch/sync 的 60s。 |
+| 7 | **聚合根必须有乐观锁（`@Version`）** | 防止并发写场景（状态转换、用户编辑）下的丢失更新。JPA 实体上加 `@Version`；领域模型暴露 `version` 字段。 |
 
 ---
 
@@ -156,7 +157,21 @@ public class JobApplicationService {
     public JobResponse getJob(...) { ... }          // 继承 readOnly
 
     @Transactional(timeout = 30)
-    public JobResponse submitJob(...) { ... }      // 覆写为读写
+    public JobResponse updateJob(...) { ... }    // 带乐观锁的写入
+
+    /** 聚合根乐观锁。 */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
+    /** 领域模型暴露 version 用于冲突检测。 */
+    public void markCompleted(ParsedJobContent content) {
+        if (this.status != JobStatus.PARSING) {
+            throw new IllegalStateException("Job must be PARSING to complete.");
+        }
+        this.status = JobStatus.COMPLETED;
+        this.parsedContent = content;
+    }
 }
 
 /**
@@ -185,6 +200,7 @@ public void saveFailedVector(...) { ... }
 - [ ] Scheduler / 异步任务事务是否最小化？
 - [ ] 是否出现 `REQUIRES_NEW` 滥用（非日志/补偿类场景）？
 - [ ] 每个 `@Transactional` 是否都声明了显式 `timeout`（不依赖默认值）？
+- [ ] 每个聚合根实体是否都有 `@Version` 乐观锁？
 
 ---
 
@@ -274,4 +290,4 @@ public void saveFailedVector(...) { ... }
 
 | 日期 | 修订人 | 内容 |
 |---|---|---|
-| 2026-05-25 | AI Architecture Audit | 初版：基于全量代码扫描，梳理 44 处 `@Transactional` 使用点，标识 4 项待修复问题。 |
+| 2026-05-25 | AI Architecture Audit | 为 `Job` 聚合根添加 `@Version` 乐观锁（§1.7、§6.4）。修复 `handleJobProcessResult` 事务内 HTTP 调用问题（§3.5）。所有 `@Transactional` 方法统一显式 `timeout`。 |

@@ -18,6 +18,8 @@
 | 3 | **禁止在交易內做網路 I/O（HTTP、MQ、外部檔案）** | 長交易 = 長連線佔用，降低吞吐量；外部失敗導致交易回滾，與業務語意不符。 |
 | 4 | **跨聚合寫入作業各自獨立交易** | 不同聚合根（Job、Resume、Conversation…）的寫入作業不應共用交易；用 `Propagation.REQUIRES_NEW` 或拆分至獨立 Service。 |
 | 5 | **Scheduler / 非同步任務必須獨立交易邊界** | 定時任務執行週期長，預設交易應最小化；涉及 Outbox 模式時，relay 與 cleanup 分交易。 |
+| 6 | **所有 `@Transactional` 必須顯式宣告 `timeout`** | 防止慢查詢、鎖等待或意外網路 I/O 導致無限長交易占用連線池。純 DB 操作 30s；含 batch/sync 的 60s。 |
+| 7 | **聚合根必須有樂觀鎖（`@Version`）** | 防止併發寫場景（狀態轉換、使用者編輯）下的遺失更新。JPA 實體上加 `@Version`；領域模型暴露 `version` 欄位。 |
 
 ---
 
@@ -159,6 +161,21 @@ public class JobApplicationService {
 }
 
 /**
+ * 聚合根樂觀鎖範例。
+ */
+@Version
+@Column(name = "version", nullable = false)
+private Long version;
+
+public void markCompleted(ParsedJobContent content) {
+    if (this.status != JobStatus.PARSING) {
+        throw new IllegalStateException("Job must be PARSING to complete.");
+    }
+    this.status = JobStatus.COMPLETED;
+    this.parsedContent = content;
+}
+
+/**
  * 純指令 Service：類級不寫 readOnly。
  */
 @Service
@@ -184,6 +201,7 @@ public void saveFailedVector(...) { ... }
 - [ ] Scheduler / 非同步任務交易是否最小化？
 - [ ] 是否出現 `REQUIRES_NEW` 濫用（非日誌/補償類場景）？
 - [ ] 每個 `@Transactional` 是否都宣告了顯式 `timeout`（不依賴預設值）？
+- [ ] 每個聚合根實體是否都有 `@Version` 樂觀鎖？
 
 ---
 
@@ -273,4 +291,4 @@ public void saveFailedVector(...) { ... }
 
 | 日期 | 修訂人 | 內容 |
 |---|---|---|
-| 2026-05-25 | AI Architecture Audit | 初版：基於全量程式碼掃描，梳理 44 處 `@Transactional` 使用點，標識 4 項待修復問題。 |
+| 2026-05-25 | AI Architecture Audit | 為 `Job` 聚合根添加 `@Version` 樂觀鎖（§1.7、§6.4）。修復 `handleJobProcessResult` 交易內 HTTP 呼叫問題（§3.5）。所有 `@Transactional` 方法統一顯式 `timeout`。 |

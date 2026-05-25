@@ -46,6 +46,10 @@ public class JobJpaEntity {
     @Column(name = "hidden_at")
     private LocalDateTime hiddenAt;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
