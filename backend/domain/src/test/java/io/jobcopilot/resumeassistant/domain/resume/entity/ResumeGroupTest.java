@@ -216,7 +216,7 @@ class ResumeGroupTest {
         // 当
         // When
         ResumeGroup group = ResumeGroup.reconstruct(
-                id, TEST_USER_ID, TEST_TITLE, true, now, now, List.of(version));
+                id, TEST_USER_ID, TEST_TITLE, true, now, now, List.of(version), 0L);
 
         // 那么
         // Then

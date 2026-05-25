@@ -81,13 +81,13 @@ class ResumeGroupRepositoryImplTest {
         when(groupMapper.toDomain(any(ResumeGroupJpaEntity.class))).thenAnswer(invocation -> {
             ResumeGroupJpaEntity e = invocation.getArgument(0);
             return ResumeGroup.reconstruct(e.getId(), e.getUserId(), e.getTitle(),
-                    Boolean.TRUE.equals(e.getIsDefault()), e.getCreatedAt(), e.getUpdatedAt(), java.util.Collections.emptyList());
+                    Boolean.TRUE.equals(e.getIsDefault()), e.getCreatedAt(), e.getUpdatedAt(), java.util.Collections.emptyList(), 0L);
         });
         when(groupMapper.toDomain(any(ResumeGroupJpaEntity.class), anyList())).thenAnswer(invocation -> {
             ResumeGroupJpaEntity e = invocation.getArgument(0);
             List<ResumeVersion> versions = invocation.getArgument(1);
             return ResumeGroup.reconstruct(e.getId(), e.getUserId(), e.getTitle(),
-                    Boolean.TRUE.equals(e.getIsDefault()), e.getCreatedAt(), e.getUpdatedAt(), versions);
+                    Boolean.TRUE.equals(e.getIsDefault()), e.getCreatedAt(), e.getUpdatedAt(), versions, 0L);
         });
         when(versionMapper.toJpaEntity(any(ResumeVersion.class))).thenReturn(new ResumeVersionJpaEntity());
         when(versionMapper.toDomain(any(ResumeVersionJpaEntity.class))).thenReturn(

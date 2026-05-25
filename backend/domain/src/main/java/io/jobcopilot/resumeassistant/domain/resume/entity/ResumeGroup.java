@@ -34,10 +34,12 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
     private boolean isDefault;
     @Getter
     private LocalDateTime updatedAt;
+    @Getter
+    private long version;
 
     private ResumeGroup(UUID id, UUID userId, String title, boolean isDefault,
                         LocalDateTime createdAt, LocalDateTime updatedAt,
-                        List<ResumeVersion> versions) {
+                        List<ResumeVersion> versions, long version) {
         this.id = id;
         this.userId = userId;
         this.title = title;
@@ -45,6 +47,7 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.versions = versions != null ? new ArrayList<>(versions) : new ArrayList<>();
+        this.version = version;
     }
 
     public static ResumeGroup create(UUID userId, String title) {
@@ -55,7 +58,8 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
                 false,
                 LocalDateTime.now(),
                 LocalDateTime.now(),
-                new ArrayList<>()
+                new ArrayList<>(),
+                0L
         );
     }
 
@@ -65,8 +69,9 @@ public final class ResumeGroup extends AggregateRoot<UUID> {
      */
     public static ResumeGroup reconstruct(UUID id, UUID userId, String title,
                                           boolean isDefault, LocalDateTime createdAt,
-                                          LocalDateTime updatedAt, List<ResumeVersion> versions) {
-        return new ResumeGroup(id, userId, title, isDefault, createdAt, updatedAt, versions);
+                                          LocalDateTime updatedAt, List<ResumeVersion> versions,
+                                          long version) {
+        return new ResumeGroup(id, userId, title, isDefault, createdAt, updatedAt, versions, version);
     }
 
     // Domain behaviors | 领域行为

@@ -64,7 +64,7 @@ class ResumeAccessControlTest {
         group = ResumeGroup.reconstruct(
                 groupId, userId, "My Resume",
                 false, java.time.LocalDateTime.now(), java.time.LocalDateTime.now(),
-                java.util.Collections.emptyList()
+                java.util.Collections.emptyList(), 0L
         );
 
         version = ResumeVersion.reconstruct(

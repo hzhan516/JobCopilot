@@ -229,7 +229,7 @@ class ResumeApplicationServiceTest {
         ResumeGroup group = ResumeGroup.create(USER_ID, "Test Resume");
         return ResumeGroup.reconstruct(
                 GROUP_ID, USER_ID, "Test Resume", false,
-                group.getCreatedAt(), group.getUpdatedAt(), Collections.emptyList()
+                group.getCreatedAt(), group.getUpdatedAt(), Collections.emptyList(), 0L
         );
     }
 
@@ -380,7 +380,7 @@ class ResumeApplicationServiceTest {
         testGroup = ResumeGroup.reconstruct(
                 GROUP_ID, USER_ID, "Test Resume", false,
                 testGroup.getCreatedAt(), testGroup.getUpdatedAt(),
-                new java.util.ArrayList<>(List.of(activeVersion, archivedVersion))
+                new java.util.ArrayList<>(List.of(activeVersion, archivedVersion)), 0L
         );
 
         when(versionRepository.findById(archivedId)).thenReturn(Optional.of(archivedVersion));

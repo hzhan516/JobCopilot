@@ -95,7 +95,7 @@ class ResumeParseResultHandlerTest {
         group = ResumeGroup.reconstruct(
                 group.getId(), group.getUserId(), group.getTitle(),
                 false, java.time.LocalDateTime.now(), java.time.LocalDateTime.now(),
-                new java.util.ArrayList<>(List.of(originalVersion, converted))
+                new java.util.ArrayList<>(List.of(originalVersion, converted)), 0L
         );
 
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(originalVersion));
@@ -135,7 +135,7 @@ class ResumeParseResultHandlerTest {
         group = ResumeGroup.reconstruct(
                 group.getId(), group.getUserId(), group.getTitle(),
                 false, java.time.LocalDateTime.now(), java.time.LocalDateTime.now(),
-                new java.util.ArrayList<>(List.of(originalVersion, convertedReconstruct))
+                new java.util.ArrayList<>(List.of(originalVersion, convertedReconstruct)), 0L
         );
 
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(originalVersion));
@@ -168,7 +168,7 @@ class ResumeParseResultHandlerTest {
         group = ResumeGroup.reconstruct(
                 group.getId(), group.getUserId(), group.getTitle(),
                 false, java.time.LocalDateTime.now(), java.time.LocalDateTime.now(),
-                new java.util.ArrayList<>(List.of(originalVersion, converted))
+                new java.util.ArrayList<>(List.of(originalVersion, converted)), 0L
         );
 
         when(versionRepository.findById(versionId)).thenReturn(Optional.of(originalVersion));

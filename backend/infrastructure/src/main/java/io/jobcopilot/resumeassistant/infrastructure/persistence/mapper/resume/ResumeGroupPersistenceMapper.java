@@ -27,7 +27,8 @@ public interface ResumeGroupPersistenceMapper {
                 Boolean.TRUE.equals(entity.getIsDefault()),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
-                new ArrayList<>()
+                new ArrayList<>(),
+                entity.getVersion() != null ? entity.getVersion() : 0L
         );
     }
 
@@ -42,7 +43,8 @@ public interface ResumeGroupPersistenceMapper {
                 Boolean.TRUE.equals(entity.getIsDefault()),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
-                versions
+                versions,
+                entity.getVersion() != null ? entity.getVersion() : 0L
         );
     }
 
@@ -57,6 +59,7 @@ public interface ResumeGroupPersistenceMapper {
         entity.setIsDefault(domain.isDefault());
         entity.setCreatedAt(domain.getCreatedAt());
         entity.setUpdatedAt(domain.getUpdatedAt());
+        entity.setVersion(domain.getVersion());
         return entity;
     }
 }
