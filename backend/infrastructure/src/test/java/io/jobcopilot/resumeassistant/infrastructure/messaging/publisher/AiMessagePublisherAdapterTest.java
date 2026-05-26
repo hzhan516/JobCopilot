@@ -10,6 +10,7 @@ import io.jobcopilot.resumeassistant.domain.shared.repository.OutboxMessageRepos
 import io.jobcopilot.resumeassistant.infrastructure.messaging.config.RabbitMqConfig;
 import io.jobcopilot.resumeassistant.types.enums.OutboxStatus;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -39,6 +40,7 @@ class AiMessagePublisherAdapterTest {
     private AiMessagePublisherAdapter publisher;
 
     @Test
+    @DisplayName("Should save resume parse command to outbox / 应将简历解析命令保存到发件箱")
     void sendResumeForParsing_ShouldSaveToOutbox() throws Exception {
         // 准备 / Given
         ResumeParseCommand command = new ResumeParseCommand("resume-1", "http://url", "pdf");
@@ -59,6 +61,7 @@ class AiMessagePublisherAdapterTest {
     }
 
     @Test
+    @DisplayName("Should save job parse command to outbox / 应将职位解析命令保存到发件箱")
     void sendJobForParsing_ShouldSaveToOutbox() throws Exception {
         // 准备 / Given
         JobParseCommand command = new JobParseCommand("job-1", "http://url", true);
@@ -75,6 +78,7 @@ class AiMessagePublisherAdapterTest {
     }
 
     @Test
+    @DisplayName("Should save conversation request to outbox / 应将对话请求保存到发件箱")
     void sendConversationRequest_ShouldSaveToOutbox() throws Exception {
         // 准备 / Given
         ConversationRequestCommand command = new ConversationRequestCommand(
@@ -94,6 +98,7 @@ class AiMessagePublisherAdapterTest {
     }
 
     @Test
+    @DisplayName("Should save job rank command to outbox / 应将职位排名命令保存到发件箱")
     void sendJobForRanking_ShouldSaveToOutbox() throws Exception {
         // 准备 / Given
         JobRankCommand command = new JobRankCommand(

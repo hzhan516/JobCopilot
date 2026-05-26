@@ -3,6 +3,7 @@ package io.jobcopilot.resumeassistant.infrastructure.converter;
 import io.jobcopilot.resumeassistant.domain.shared.service.DocumentFormatConverter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -35,12 +36,14 @@ class CompositeDocumentConverterTest {
 
     // 准备 / Given
     @BeforeEach
+    @DisplayName("Should initialize converter before each test / 应在每次测试前初始化转换器")
     void setUp() {
         MockitoAnnotations.openMocks(this);
         compositeConverter = new CompositeDocumentConverter(List.of(mockConverter1, mockConverter2));
     }
 
     @Test
+    @DisplayName("Should return same stream for same format / 应在相同格式时返回相同流")
     void shouldReturnSameStreamForSameFormat() throws IOException {
         // 准备 / Given
         byte[] content = "same format".getBytes();
@@ -54,6 +57,7 @@ class CompositeDocumentConverterTest {
     }
 
     @Test
+    @DisplayName("Should route to correct converter / 应路由到正确的转换器")
     void shouldRouteToCorrectConverter() throws IOException {
         // 准备 / Given
         InputStream input = new ByteArrayInputStream("input".getBytes());
@@ -73,6 +77,7 @@ class CompositeDocumentConverterTest {
     }
 
     @Test
+    @DisplayName("Should skip self in converters list / 应在转换器列表中跳过自身")
     void shouldSkipSelfInConvertersList() throws IOException {
         // 准备 / Given
         InputStream input = new ByteArrayInputStream("input".getBytes());
@@ -94,6 +99,7 @@ class CompositeDocumentConverterTest {
     }
 
     @Test
+    @DisplayName("Should throw exception when no converter found / 应在找不到转换器时抛出异常")
     void shouldThrowExceptionWhenNoConverterFound() {
         // 准备 / Given
         InputStream input = new ByteArrayInputStream("input".getBytes());
@@ -106,6 +112,7 @@ class CompositeDocumentConverterTest {
     }
 
     @Test
+    @DisplayName("Should return true if any converter supports / 应在任意转换器支持时返回 true")
     void shouldReturnTrueIfAnyConverterSupports() {
         // 准备 / Given
         when(mockConverter1.supports("txt", "pdf")).thenReturn(false);
@@ -116,6 +123,7 @@ class CompositeDocumentConverterTest {
     }
 
     @Test
+    @DisplayName("Should return false if no converter supports / 应在无转换器支持时返回 false")
     void shouldReturnFalseIfNoConverterSupports() {
         // 准备 / Given
         when(mockConverter1.supports("txt", "docx")).thenReturn(false);
@@ -126,6 +134,7 @@ class CompositeDocumentConverterTest {
     }
 
     @Test
+    @DisplayName("Should get aggregated supported targets / 应获取聚合的支持目标格式")
     void shouldGetAggregatedSupportedTargets() {
         // 准备 / Given
         when(mockConverter1.getSupportedTargets("md")).thenReturn(Arrays.asList("html", "txt"));
@@ -140,12 +149,14 @@ class CompositeDocumentConverterTest {
     }
 
     @Test
+    @DisplayName("Should handle edge cases when normalizing format / 应在格式化时处理边界情况")
     void normalizeFormatHandlesEdgeCases() {
         // 执行与验证 / When & Then
         assertFalse(compositeConverter.supports(null, "pdf"));
     }
 
     @Test
+    @DisplayName("Should support chain conversion / 应支持链式转换")
     void shouldSupportChainConversion() {
         // 准备 / Given
         when(mockConverter1.supports("docx", "md")).thenReturn(true);
@@ -158,6 +169,7 @@ class CompositeDocumentConverterTest {
     }
 
     @Test
+    @DisplayName("Should perform chain conversion / 应执行链式转换")
     void shouldPerformChainConversion() throws IOException {
         // 准备 / Given
         InputStream input = new ByteArrayInputStream("docx content".getBytes());
@@ -177,6 +189,7 @@ class CompositeDocumentConverterTest {
     }
 
     @Test
+    @DisplayName("Should fallback to pure text converter on failure / 应在失败时回退到纯文本转换器")
     void shouldFallbackToPureTextConverterOnFailure() throws IOException {
         // 准备 / Given — 模拟一个失败的外部命令转换器和一个成功的 MarkdownConverter
         DocumentFormatConverter failingConverter = mock(DocumentFormatConverter.class);

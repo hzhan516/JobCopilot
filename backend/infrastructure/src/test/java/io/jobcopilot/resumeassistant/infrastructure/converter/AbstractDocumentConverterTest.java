@@ -2,6 +2,7 @@ package io.jobcopilot.resumeassistant.infrastructure.converter;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,11 +19,13 @@ class AbstractDocumentConverterTest {
 
     // 准备 / Given
     @BeforeEach
+    @DisplayName("Should initialize abstract converter before each test / 应在每次测试前初始化抽象转换器")
     void setUp() {
         converter = new TestDocumentConverter();
     }
 
     @Test
+    @DisplayName("Should register and support formats / 应注册并支持格式")
     void shouldRegisterAndSupportFormats() {
         // 验证支持的格式 / Verify supported formats
         assertTrue(converter.supports("md", "html"));
@@ -37,6 +40,7 @@ class AbstractDocumentConverterTest {
     }
 
     @Test
+    @DisplayName("Should get supported target formats / 应获取支持的目标格式")
     void shouldGetSupportedTargets() {
         // 执行 / When
         List<String> targets = converter.getSupportedTargets("md");
@@ -55,6 +59,7 @@ class AbstractDocumentConverterTest {
     }
 
     @Test
+    @DisplayName("Should convert string to stream and back / 应将字符串转换为流并还原")
     void shouldConvertStringToStreamAndBack() throws IOException {
         // 准备 / Given
         String originalContent = "Hello, World!";

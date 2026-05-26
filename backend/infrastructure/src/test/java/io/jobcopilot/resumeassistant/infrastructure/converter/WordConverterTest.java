@@ -3,6 +3,7 @@ package io.jobcopilot.resumeassistant.infrastructure.converter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.mockito.MockedStatic;
 
 import java.io.ByteArrayInputStream;
@@ -25,17 +26,20 @@ class WordConverterTest {
 
     // 准备 / Given
     @BeforeEach
+    @DisplayName("Should initialize Word converter before each test / 应在每次测试前初始化 Word 转换器")
     void setUp() {
         converter = new WordConverter();
         externalCommandUtilsMock = mockStatic(ExternalCommandUtils.class);
     }
 
     @AfterEach
+    @DisplayName("Should clean up resources after each test / 应在每次测试后清理资源")
     void tearDown() {
         externalCommandUtilsMock.close();
     }
 
     @Test
+    @DisplayName("Should convert DOCX to Markdown / 应将 DOCX 转换为 Markdown")
     void shouldConvertDocxToMd() throws IOException {
         // 准备 / Given
         InputStream input = new ByteArrayInputStream("test".getBytes());
@@ -53,6 +57,7 @@ class WordConverterTest {
     }
 
     @Test
+    @DisplayName("Should convert Markdown to DOCX / 应将 Markdown 转换为 DOCX")
     void shouldConvertMdToDocx() throws IOException {
         // 准备 / Given
         InputStream input = new ByteArrayInputStream("test".getBytes());
@@ -70,6 +75,7 @@ class WordConverterTest {
     }
 
     @Test
+    @DisplayName("Should convert DOCX to PDF / 应将 DOCX 转换为 PDF")
     void shouldConvertDocxToPdf() throws IOException {
         // 准备 / Given
         InputStream input = new ByteArrayInputStream("test".getBytes());
@@ -87,6 +93,7 @@ class WordConverterTest {
     }
 
     @Test
+    @DisplayName("Should throw exception for unsupported format / 应在不支持的格式时抛出异常")
     void shouldThrowExceptionForUnsupportedFormat() {
         // 准备 / Given
         InputStream input = new ByteArrayInputStream("test".getBytes());

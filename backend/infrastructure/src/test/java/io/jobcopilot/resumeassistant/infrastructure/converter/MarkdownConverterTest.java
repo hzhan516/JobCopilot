@@ -2,6 +2,7 @@ package io.jobcopilot.resumeassistant.infrastructure.converter;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -18,11 +19,13 @@ class MarkdownConverterTest {
 
     // 准备 / Given
     @BeforeEach
+    @DisplayName("Should initialize Markdown converter before each test / 应在每次测试前初始化 Markdown 转换器")
     void setUp() {
         converter = new MarkdownConverter();
     }
 
     @Test
+    @DisplayName("Should return same stream for same format / 应在相同格式时返回相同流")
     void shouldReturnSameStreamForSameFormat() throws IOException {
         // 准备 / Given
         String content = "# Title";
@@ -37,6 +40,7 @@ class MarkdownConverterTest {
     }
 
     @Test
+    @DisplayName("Should convert Markdown to HTML / 应将 Markdown 转换为 HTML")
     void shouldConvertMdToHtml() throws IOException {
         // 准备 / Given
         String content = "**Bold** and *Italic*";
@@ -52,6 +56,7 @@ class MarkdownConverterTest {
     }
 
     @Test
+    @DisplayName("Should convert Markdown to text / 应将 Markdown 转换为文本")
     void shouldConvertMdToTxt() throws IOException {
         // 准备 / Given
         String content = "# Title\n\nSome **bold** text.";
@@ -69,6 +74,7 @@ class MarkdownConverterTest {
     }
 
     @Test
+    @DisplayName("Should convert HTML to Markdown / 应将 HTML 转换为 Markdown")
     void shouldConvertHtmlToMd() throws IOException {
         // 准备 / Given
         String content = "<p><strong>Bold</strong> text</p>";
@@ -84,6 +90,7 @@ class MarkdownConverterTest {
     }
 
     @Test
+    @DisplayName("Should convert HTML to text / 应将 HTML 转换为文本")
     void shouldConvertHtmlToTxt() throws IOException {
         // 准备 / Given
         String content = "<p><strong>Bold</strong> text<br/>new line</p>";
@@ -100,6 +107,7 @@ class MarkdownConverterTest {
     }
 
     @Test
+    @DisplayName("Should convert text to Markdown / 应将文本转换为 Markdown")
     void shouldConvertTxtToMd() throws IOException {
         // 准备 / Given
         String content = "Plain text content";
@@ -114,6 +122,7 @@ class MarkdownConverterTest {
     }
 
     @Test
+    @DisplayName("Should convert text to HTML / 应将文本转换为 HTML")
     void shouldConvertTxtToHtml() throws IOException {
         // 准备 / Given
         String content = "Text with < tag";
@@ -128,6 +137,7 @@ class MarkdownConverterTest {
     }
 
     @Test
+    @DisplayName("Should throw exception for unsupported format / 应在不支持的格式时抛出异常")
     void shouldThrowExceptionForUnsupportedFormat() {
         // 准备 / Given
         InputStream input = new ByteArrayInputStream("content".getBytes());

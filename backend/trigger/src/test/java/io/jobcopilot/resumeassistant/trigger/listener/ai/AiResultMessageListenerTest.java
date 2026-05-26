@@ -7,6 +7,7 @@ import io.jobcopilot.resumeassistant.api.matching.facade.MatchingFacade;
 import io.jobcopilot.resumeassistant.api.resume.facade.ResumeFacade;
 import io.jobcopilot.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -47,6 +48,7 @@ class AiResultMessageListenerTest {
     private AiResultMessageListener listener;
 
     @Test
+    @DisplayName("Should delegate job parse result to JobFacade / 应将职位解析结果委托给 JobFacade")
     void onJobParseResult_ShouldCallJobFacade() {
         // 准备 / Given
         AiResultEvent event = new AiResultEvent("job-1", "JOB_PARSE", "COMPLETED", null, null, null);
@@ -59,6 +61,7 @@ class AiResultMessageListenerTest {
     }
 
     @Test
+    @DisplayName("Should delegate resume parse result to ResumeFacade / 应将简历解析结果委托给 ResumeFacade")
     void onResumeParseResult_ShouldCallResumeFacade() {
         // 准备 / Given
         AiResultEvent event = new AiResultEvent("resume-1", "RESUME_PARSE", "COMPLETED", null, null, null);
@@ -71,6 +74,7 @@ class AiResultMessageListenerTest {
     }
 
     @Test
+    @DisplayName("Should delegate job rank result to MatchingFacade / 应将职位排名结果委托给 MatchingFacade")
     void onJobRankResult_ShouldCallMatchingFacade() {
         // 准备 / Given
         Map<String, Object> data = Map.of(
@@ -90,6 +94,7 @@ class AiResultMessageListenerTest {
     }
 
     @Test
+    @DisplayName("Should not call MatchingFacade when job rank fails / 应在职位排名失败时不调用 MatchingFacade")
     void onJobRankResult_WhenFailed_ShouldNotCallMatchingFacade() {
         // 准备 / Given
         AiResultEvent event = new AiResultEvent("match-002", "JOB_RANK", "FAILED", null, "AI service error", null);
@@ -101,6 +106,7 @@ class AiResultMessageListenerTest {
     }
 
     @Test
+    @DisplayName("Should delegate conversation reply to ConversationFacade / 应将对话回复委托给 ConversationFacade")
     void onConversationReply_ShouldCallConversationFacade() {
         // 准备 / Given
         AiResultEvent event = new AiResultEvent(
@@ -121,6 +127,7 @@ class AiResultMessageListenerTest {
     }
 
     @Test
+    @DisplayName("Should extract markdown when conversation reply includes resume modification / 应在对话回复包含简历修改时提取 Markdown")
     void onConversationReply_WithResumeModification_ShouldExtractMarkdown() {
         // 准备 / Given
         AiResultEvent event = new AiResultEvent(
@@ -144,6 +151,7 @@ class AiResultMessageListenerTest {
     }
 
     @Test
+    @DisplayName("Should pass null when resume modification is not modified / 应在简历未修改时传入 null")
     void onConversationReply_WithResumeModificationNotModified_ShouldPassNull() {
         // 准备 / Given
         AiResultEvent event = new AiResultEvent(
@@ -167,6 +175,7 @@ class AiResultMessageListenerTest {
     }
 
     @Test
+    @DisplayName("Should not call facade when conversation reply fails / 应在对话回复失败时不调用 Facade")
     void onConversationReply_WhenFailed_ShouldNotCallFacade() {
         // 准备 / Given
         AiResultEvent event = new AiResultEvent(

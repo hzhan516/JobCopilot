@@ -6,6 +6,7 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 
@@ -28,17 +29,20 @@ class PdfConverterTest {
 
     // 准备 / Given
     @BeforeEach
+    @DisplayName("Should initialize PDF converter before each test / 应在每次测试前初始化 PDF 转换器")
     void setUp() {
         converter = new PdfConverter();
         externalCommandUtilsMock = mockStatic(ExternalCommandUtils.class);
     }
 
     @AfterEach
+    @DisplayName("Should clean up resources after each test / 应在每次测试后清理资源")
     void tearDown() {
         externalCommandUtilsMock.close();
     }
 
     @Test
+    @DisplayName("Should return same stream for same format / 应在相同格式时返回相同流")
     void shouldReturnSameStreamForSameFormat() throws IOException {
         // 准备 / Given
         byte[] content = "dummy pdf".getBytes();
@@ -52,6 +56,7 @@ class PdfConverterTest {
     }
 
     @Test
+    @DisplayName("Should convert Markdown to PDF using Pandoc / 应使用 Pandoc 将 Markdown 转换为 PDF")
     void shouldConvertMdToPdfUsingPandoc() throws IOException {
         // 准备 / Given
         InputStream input = new ByteArrayInputStream("md content".getBytes());
@@ -69,6 +74,7 @@ class PdfConverterTest {
     }
 
     @Test
+    @DisplayName("Should convert HTML to PDF using Pandoc / 应使用 Pandoc 将 HTML 转换为 PDF")
     void shouldConvertHtmlToPdfUsingPandoc() throws IOException {
         // 准备 / Given
         InputStream input = new ByteArrayInputStream("html content".getBytes());
@@ -86,6 +92,7 @@ class PdfConverterTest {
     }
 
     @Test
+    @DisplayName("Should convert PDF to text using PDFBox / 应使用 PDFBox 将 PDF 转换为文本")
     void shouldConvertPdfToTxtUsingPdfBox() throws IOException {
         // 准备 / Given
         InputStream input = new ByteArrayInputStream("dummy pdf".getBytes());
@@ -107,6 +114,7 @@ class PdfConverterTest {
     }
 
     @Test
+    @DisplayName("Should throw exception for unsupported format / 应在不支持的格式时抛出异常")
     void shouldThrowExceptionForUnsupportedFormat() {
         // 准备 / Given
         InputStream input = new ByteArrayInputStream("content".getBytes());
