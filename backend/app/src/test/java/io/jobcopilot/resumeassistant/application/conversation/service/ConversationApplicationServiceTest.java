@@ -19,11 +19,13 @@ import io.jobcopilot.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import io.jobcopilot.resumeassistant.domain.shared.service.FileStorageService;
 import io.jobcopilot.resumeassistant.domain.shared.service.MessageProvider;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayInputStream;
 import java.util.*;
@@ -35,6 +37,8 @@ import static org.mockito.Mockito.*;
 /**
  * 对话应用服务单元测试 / Conversation application service unit tests
  */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("Conversation Application Service Tests")
 class ConversationApplicationServiceTest {
 
     @Mock
@@ -67,7 +71,6 @@ class ConversationApplicationServiceTest {
     // 准备 / Given
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
         when(messageProvider.getMessage(anyString())).thenReturn("Compare the current job posting with my resume and tell me the match score.");
     }
 
