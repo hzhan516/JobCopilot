@@ -1,6 +1,6 @@
 # 安全策略
 
-> English version: [SECURITY.md](../../../../SECURITY.md)
+> English version: [SECURITY.md](../../../SECURITY.md)
 
 ## 支持的版本
 
