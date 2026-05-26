@@ -1,7 +1,7 @@
 package io.jobcopilot.resumeassistant.trigger.http.controller.job;
 
-import io.jobcopilot.resumeassistant.domain.matching.entity.JobDataset;
-import io.jobcopilot.resumeassistant.domain.matching.repository.JobDatasetRepository;
+import io.jobcopilot.resumeassistant.api.matching.dto.response.JobDatasetResponse;
+import io.jobcopilot.resumeassistant.api.matching.facade.JobDatasetFacade;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 职位数据集内部 API / Job dataset internal API
@@ -28,7 +27,7 @@ public class JobDatasetController {
     private static final String HEADER_INTERNAL_API_KEY = "X-Internal-API-Key";
     private static final String ENV_INTERNAL_API_KEY = "INTERNAL_API_KEY";
 
-    private final JobDatasetRepository jobDatasetRepository;
+    private final JobDatasetFacade jobDatasetFacade;
 
     /**
      * 查询全部职位数据集记录 / Query all job dataset records
@@ -37,7 +36,7 @@ public class JobDatasetController {
      * @return List of job dataset records / 职位数据集记录列表
      */
     @GetMapping
-    public ResponseEntity<List<Map<String, Object>>> listAll(
+    public ResponseEntity<List<JobDatasetResponse>> listAll(
             @RequestHeader(value = HEADER_INTERNAL_API_KEY, required = false) String internalApiKey
     ) {
         String expectedKey = System.getenv(ENV_INTERNAL_API_KEY);
@@ -48,22 +47,7 @@ public class JobDatasetController {
             }
         }
 
-        List<JobDataset> datasets = jobDatasetRepository.findAll();
-        List<Map<String, Object>> results = datasets.stream()
-                .map(d -> Map.<String, Object>of(
-                        "id", d.getId(),
-                        "externalId", d.getExternalId(),
-                        "title", d.getTitle(),
-                        "company", d.getCompany(),
-                        "description", d.getDescription(),
-                        "requirements", d.getRequirements(),
-                        "location", d.getLocation(),
-                        "experienceLevel", d.getExperienceLevel(),
-                        "source", d.getSource(),
-                        "createdAt", d.getCreatedAt()
-                ))
-                .toList();
-
+        List<JobDatasetResponse> results = jobDatasetFacade.listAll();
         return ResponseEntity.ok(results);
     }
 }
