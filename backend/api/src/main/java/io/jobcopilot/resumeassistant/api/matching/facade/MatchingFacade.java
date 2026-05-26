@@ -24,6 +24,7 @@ public interface MatchingFacade {
      * @param userId  用户 ID / User ID
      * @param request 匹配请求参数 / Match request parameters
      * @return 异步匹配初始响应（状态为 PROCESSING） / Async match initial response with PROCESSING status
+     * @since 1.0.0
      */
     JobMatchResponse matchJobs(UUID userId, JobMatchRequest request);
 
@@ -33,6 +34,7 @@ public interface MatchingFacade {
      *
      * @param matchId 匹配任务ID / Match task ID
      * @return 匹配结果响应 / Match result response
+     * @since 1.0.0
      */
     JobMatchResponse getMatchResult(String matchId);
 
@@ -42,6 +44,7 @@ public interface MatchingFacade {
      *
      * @param userId 用户 ID / User ID
      * @return 匹配历史列表 / List of match history
+     * @since 1.0.0
      */
     List<JobMatchHistoryResponse> getMatchHistory(UUID userId);
 
@@ -52,6 +55,7 @@ public interface MatchingFacade {
      * @param matchId       匹配任务ID / Match task ID
      * @param rankedResults 精排结果列表 / Ranked result list
      * @param rankTimeMs    精排耗时(毫秒) / Ranking time in ms
+     * @since 1.0.0
      */
     void saveJobRankResult(String matchId, List<MatchItem> rankedResults, Long rankTimeMs);
 }

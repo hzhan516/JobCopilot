@@ -24,6 +24,7 @@ public interface JobFacade {
      * @param userId  提交用户的 ID / The ID of the user submitting the job.
      * @param request 职位提交请求 / The job submission details containing URL and options.
      * @return 初步响应结果 / The initial state of the job as a response.
+     * @since 1.0.0
      */
     JobResponse submitJob(UUID userId, SubmitJobRequest request);
 
@@ -34,6 +35,7 @@ public interface JobFacade {
      * @param jobId  职位的唯一标识 / The unique ID of the job.
      * @param userId 请求用户的 ID / The ID of the requesting user.
      * @return 职位状态及详情 / The current state and details of the job.
+     * @since 1.0.0
      */
     JobResponse getJob(String jobId, UUID userId);
 
@@ -43,6 +45,7 @@ public interface JobFacade {
      *
      * @param userId 用户 ID / User ID
      * @return 职位列表响应 / List of job responses
+     * @since 1.0.0
      */
     List<JobResponse> listJobs(UUID userId);
 
@@ -54,6 +57,7 @@ public interface JobFacade {
      * @param userId  用户 ID / The user ID.
      * @param request 更新请求 / The update request.
      * @return 更新后的职位 / The updated job.
+     * @since 1.0.0
      */
     JobResponse updateJob(String jobId, UUID userId, UpdateJobRequest request);
 
@@ -63,6 +67,7 @@ public interface JobFacade {
      *
      * @param jobId  职位 ID / The job ID.
      * @param userId 用户 ID / The user ID.
+     * @since 1.0.0
      */
     void deleteJob(String jobId, UUID userId);
 
@@ -74,6 +79,7 @@ public interface JobFacade {
      * @param userId  用户 ID / The user ID.
      * @param request 评分请求 / The score request.
      * @return 评分结果 / The score result.
+     * @since 1.0.0
      */
     JobScoreResponse scoreJob(String jobId, UUID userId, JobScoreRequest request);
 
@@ -85,6 +91,7 @@ public interface JobFacade {
      * @param userId     用户 ID / The user ID.
      * @param actionType      操作类型 / Action type (CLICK, APPLY, REJECT)
      * @param resumeVersionId 关联的简历 ID（可选） / Associated resume version ID (optional)
+     * @since 1.0.0
      */
     void trackJobAction(String jobId, UUID userId, String actionType, String resumeVersionId);
 
@@ -94,6 +101,7 @@ public interface JobFacade {
      *
      * @param userId 用户 ID / The user ID.
      * @return 评分历史列表 / List of score history records.
+     * @since 1.0.0
      */
     List<JobScoreHistoryResponse> getScoreHistory(UUID userId);
 
@@ -102,6 +110,7 @@ public interface JobFacade {
      * Handles the asynchronous result of an AI job processing request.
      *
      * @param event AI 结果事件 / The result event containing parsed content or error details.
+     * @since 1.0.0
      */
     void handleJobProcessResult(AiResultEvent event);
 }
