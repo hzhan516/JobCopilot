@@ -98,7 +98,11 @@ public abstract class AbstractIntegrationTest {
                         return Integer.parseInt(line.split("\\s+")[1]);
                     }
                 }
-            } catch (Exception ignored) {
+            } catch (Exception fallbackException) {
+                // 回退解析失败时记录异常上下文，避免静默吞掉问题 / Log fallback failure to avoid silently masking issues
+                throw new RuntimeException(
+                        "Failed to determine current UID via 'id -u' and /proc/self/status / " +
+                        "无法通过 'id -u' 和 /proc/self/status 确定当前 UID", fallbackException);
             }
             return 1000;
         }

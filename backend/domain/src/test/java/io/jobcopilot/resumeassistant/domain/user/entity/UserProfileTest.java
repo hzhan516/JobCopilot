@@ -60,7 +60,9 @@ class UserProfileTest {
         // When
         try {
             Thread.sleep(10);
-        } catch (InterruptedException ignored) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            Assertions.fail("Sleep interrupted during test setup / 测试设置期间线程被中断", e);
         }
         UserProfile updated = profile.updateAvatar(avatarUrl);
 
@@ -264,14 +266,18 @@ class UserProfileTest {
         // When
         try {
             Thread.sleep(10);
-        } catch (InterruptedException ignored) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            Assertions.fail("Sleep interrupted during test setup / 测试设置期间线程被中断", e);
         }
         UserProfile afterAvatar = profile.updateAvatar("url1");
         LocalDateTime afterAvatarUpdate = afterAvatar.getUpdatedAt();
 
         try {
             Thread.sleep(10);
-        } catch (InterruptedException ignored) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            Assertions.fail("Sleep interrupted during test setup / 测试设置期间线程被中断", e);
         }
         UserProfile afterProfile = afterAvatar.updateProfile("Name", null, null, null);
         LocalDateTime afterProfileUpdate = afterProfile.getUpdatedAt();
