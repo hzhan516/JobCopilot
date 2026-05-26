@@ -2,7 +2,7 @@ import json
 import logging
 
 import requests
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 
 from app.config import (
     BACKEND_QUERY_TIMEOUT,
@@ -23,11 +23,12 @@ from app.schemas import (
 JOB_VECTOR_BATCH_URL = f"{BACKEND_SERVICE_URL.rstrip('/')}/api/v1/job-vectors/batch"
 RESUME_VECTOR_BATCH_URL = f"{BACKEND_SERVICE_URL.rstrip('/')}/api/v1/resume-vectors/batch"
 
-# Exponential backoff for transient backend failures (network blips, short outages).
-# 指数退避重试策略：应对后端瞬时网络抖动或短暂不可用，避免请求风暴。
+# Exponential backoff with jitter for transient backend failures (network blips, short outages).
+# Prevents thundering herd when multiple AI workers retry simultaneously.
+# 指数退避 + 随机抖动：应对后端瞬时网络抖动，避免多个 AI worker 同时重试形成请求风暴。
 RETRY_STRATEGY = retry(
     stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
+    wait=wait_exponential(multiplier=1, min=2, max=10) + wait_random(0, 2),
 )
 
 
