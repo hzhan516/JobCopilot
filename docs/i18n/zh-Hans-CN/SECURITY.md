@@ -1,5 +1,7 @@
 # 安全策略
 
+> English version: [SECURITY.md](../../../../SECURITY.md)
+
 ## 支持的版本
 
 | 版本    | 是否支持 |

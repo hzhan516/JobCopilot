@@ -1,5 +1,7 @@
 # Security Policy
 
+> Translations: [简体中文](docs/i18n/zh-Hans-CN/SECURITY.md) | [繁體中文](docs/i18n/zh-Hant-TW/SECURITY.md)
+
 ## Supported Versions
 
 | Version | Supported |
