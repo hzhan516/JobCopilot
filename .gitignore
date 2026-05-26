@@ -1,208 +1,101 @@
+# ============================================
+# ResumeAssistant — Unified .gitignore
+# ============================================
+
+# ── IDE / Editor ───────────────────────────
 /.idea/
-/backend/api/target/
-/backend/app/target/
-/backend/domain/target/
-/backend/infrastructure/target/
-/backend/trigger/target/
-/backend/types/target/
-/backend/PROJECT_STRUCTURE.md
-/docs/requirement/
 /.vscode/
-/backend/notes/
-/notes/code_review_merged.csv
-/notes/code_review_merged.xlsx
-/PROJECT_STRUCTURE.md
-/backend/api/.classpath
-/backend/api/.factorypath
-/backend/api/.project
-/backend/app/.classpath
-/backend/app/.factorypath
-/backend/app/.project
-/backend/domain/.classpath
-/backend/domain/.factorypath
-/backend/domain/.project
-/backend/api/.settings/
-/backend/app/.settings/
-/backend/.sisyphus/
-/backend/infrastructure/.classpath
-/backend/infrastructure/.factorypath
-/backend/infrastructure/.project
-/backend/infrastructure/.settings/
-/backend/trigger/.classpath
-/backend/trigger/.factorypath
-/backend/trigger/.project
-/backend/trigger/.settings/
-/backend/domain/.settings/
-/ProjectFiles/
-/ai-service/.coverage
+*.swp
+*.swo
+*~
+
+# ── OS ─────────────────────────────────────
+.DS_Store
+**/.DS_Store
+Thumbs.db
+
+# ── Environment / Secrets ──────────────────
+# Never commit actual environment files or credentials
+**/.env
+**/.env.*
+**/.env.local
+**/.env.*.local
+**/local.env
+
+# Secrets manifests
+**/secrets.yaml
+**/secrets.yml
+**/secrets.json
+/security-override.yaml
+
+# Cloud provider credentials
+**/*-credentials.json
+**/google-credentials.json
+**/service-account*.json
+/vertex.json
+
+# Crypto material
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_rsa.pub
+.ssh/
+
+# ── Backend (Java / Maven) ─────────────────
+**/target/
+**/.classpath
+**/.factorypath
+**/.project
+**/.settings/
+**/.sisyphus/
 *.sisyphus
 
-# Python
-**/.venv/
-**/__pycache__/
-*.pyc
-*.env
-.gitattributes
+# Backend runtime
+/backend/logs/*
+!/backend/logs/README.md
+/backend/app/uploads/
 
-# macOS
-.DS_Store
-**/.DS_Store
-
-# Frontend generated files
-/frontend/node_modules/
-/frontend/dist/
-/frontend/.vite/
-/frontend/.tmp/
-/docs/requirement/
-/.vscode/
-/backend/notes/
-/notes/code_review_merged.csv
-/notes/code_review_merged.xlsx
-/PROJECT_STRUCTURE.md
-/backend/api/.classpath
-/backend/api/.factorypath
-/backend/api/.project
-/backend/app/.classpath
-/backend/app/.factorypath
-/backend/app/.project
-/backend/domain/.classpath
-/backend/domain/.factorypath
-/backend/domain/.project
-/backend/api/.settings/
-/backend/app/.settings/
-/backend/.sisyphus/
-/backend/infrastructure/.classpath
-/backend/infrastructure/.factorypath
-/backend/infrastructure/.project
-/backend/infrastructure/.settings/
-/backend/trigger/.classpath
-/backend/trigger/.factorypath
-/backend/trigger/.project
-/backend/trigger/.settings/
-/backend/domain/.classpath
-/backend/domain/.factorypath
-/backend/domain/.project
-/backend/domain/.settings/
-# Python
-**/.venv/
-**/__pycache__/
-*.pyc
-*.env
-.env
-
-# macOS
-.DS_Store
-**/.DS_Store
-
-# Frontend generated files
-/frontend/node_modules/
-/frontend/dist/
-/frontend/.vite/
-/frontend/.tmp/
-/docs/requirement/
-/.vscode/
-/backend/notes/
-/notes/code_review_merged.csv
-/notes/code_review_merged.xlsx
-/PROJECT_STRUCTURE.md
-/backend/api/.classpath
-/backend/api/.factorypath
-/backend/api/.project
-/backend/app/.classpath
-/backend/app/.factorypath
-/backend/app/.project
-/backend/domain/.classpath
-/backend/domain/.factorypath
-/backend/domain/.project
-/backend/api/.settings/
-/backend/app/.settings/
-/backend/.sisyphus/
-/backend/infrastructure/.classpath
-/backend/infrastructure/.factorypath
-/backend/infrastructure/.project
-/backend/infrastructure/.settings/
-/backend/trigger/.classpath
-/backend/trigger/.factorypath
-/backend/trigger/.project
-/backend/trigger/.settings/
-/backend/domain/.classpath
-/backend/domain/.factorypath
-/backend/domain/.project
-/backend/domain/.settings/
-# Python
-**/.venv/
-**/__pycache__/
-*.pyc
-*.env
-.env
-
-# macOS
-.DS_Store
-**/.DS_Store
-
-# Frontend generated files
-/frontend/node_modules/
-/frontend/dist/
-/frontend/.vite/
-/frontend/.tmp/
-/docs/requirement/
-/.vscode/
-/backend/notes/
-/notes/code_review_merged.csv
-/notes/code_review_merged.xlsx
-/PROJECT_STRUCTURE.md
-/backend/api/.classpath
-/backend/api/.factorypath
-/backend/api/.project
-/backend/app/.classpath
-/backend/app/.factorypath
-/backend/app/.project
-/backend/domain/.classpath
-/backend/domain/.factorypath
-/backend/domain/.project
-/backend/api/.settings/
-/backend/app/.settings/
-/backend/.sisyphus/
-/backend/infrastructure/.classpath
-/backend/infrastructure/.factorypath
-/backend/infrastructure/.project
-/backend/infrastructure/.settings/
-/backend/trigger/.classpath
-/backend/trigger/.factorypath
-/backend/trigger/.project
-/backend/trigger/.settings/
-/backend/domain/.classpath
-/backend/domain/.factorypath
-/backend/domain/.project
-/backend/domain/.settings/
-
-# Python
-**/.venv/
-**/__pycache__/
-*.pyc
-*.env
-.env
-
-# macOS
-.DS_Store
-**/.DS_Store
-
-# Frontend generated files
+# ── Frontend (Node / Vite) ─────────────────
 /frontend/node_modules/
 /frontend/dist/
 /frontend/.vite/
 /frontend/.tmp/
 /frontend/coverage/
-/AGENTS.md
 /frontend/.env
-/backend/logs/*
-!/backend/logs/README.md
-/.env
-/vertex.json
-/backend/app/uploads/
+
+# ── AI Service (Python) ──────────────────────
+**/.venv/
+**/__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+/ai-service/.coverage
 /ai-service/coverage.xml
-/ai-service/coverage.xml
-/backend/app/uploads/
 /ai-service/htmlcov/
-/security-override.yaml
+dist/
+build/
+
+# ── Test / Coverage ──────────────────────────
+**/.coverage
+**/coverage.xml
+**/htmlcov/
+
+# ── Project Metadata ─────────────────────────
+/PROJECT_STRUCTURE.md
+/backend/PROJECT_STRUCTURE.md
+/AGENTS.md
+
+# ── Notes / Docs drafts ──────────────────────
+/backend/notes/
+/notes/
+/docs/requirement/
+
+# ── Helm / K8s local overrides ───────────────
 /docs/deployment/k8s/helm/resume-assistant/minimal.yaml
+
+# ── Uploads / Generated files ────────────────
+**/uploads/
