@@ -19,4 +19,5 @@ public class CaptchaProperties {
     private int tokenExpirySeconds = 300;
     private int trackWidth = 300;
     private int maxAttempts = 5;
+    private String redisKeyPrefix = "ra:captcha:";
 }

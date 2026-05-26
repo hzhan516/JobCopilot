@@ -17,21 +17,22 @@ import java.util.concurrent.TimeUnit;
 public class RedisCaptchaStoreAdapter implements CaptchaStorePort {
 
     private final StringRedisTemplate redisTemplate;
+    private final io.jobcopilot.resumeassistant.app.config.CaptchaProperties captchaProperties;
 
-    private static final String CHALLENGE_PREFIX = "ra:captcha:challenge:";
-    private static final String TOKEN_PREFIX = "ra:captcha:token:";
-    private static final String RATE_LIMIT_PREFIX = "ra:captcha:ratelimit:";
+    private String getChallengePrefix() { return captchaProperties.getRedisKeyPrefix() + "challenge:"; }
+    private String getTokenPrefix() { return captchaProperties.getRedisKeyPrefix() + "token:"; }
+    private String getRateLimitPrefix() { return captchaProperties.getRedisKeyPrefix() + "ratelimit:"; }
 
     @Override
     public void storeChallenge(String captchaId, int targetX, int attempts, Duration ttl) {
-        String key = CHALLENGE_PREFIX + captchaId;
+        String key = getChallengePrefix() + captchaId;
         String value = targetX + ":" + attempts;
         redisTemplate.opsForValue().set(key, value, ttl);
     }
 
     @Override
     public ChallengeEntry loadChallenge(String captchaId) {
-        String key = CHALLENGE_PREFIX + captchaId;
+        String key = getChallengePrefix() + captchaId;
         String value = redisTemplate.opsForValue().get(key);
         if (value == null) {
             return null;
@@ -44,23 +45,23 @@ public class RedisCaptchaStoreAdapter implements CaptchaStorePort {
 
     @Override
     public void deleteChallenge(String captchaId) {
-        redisTemplate.delete(CHALLENGE_PREFIX + captchaId);
+        redisTemplate.delete(getChallengePrefix() + captchaId);
     }
 
     @Override
     public void storeToken(String token, Duration ttl) {
-        redisTemplate.opsForValue().set(TOKEN_PREFIX + token, "1", ttl);
+        redisTemplate.opsForValue().set(getTokenPrefix() + token, "1", ttl);
     }
 
     @Override
     public boolean checkToken(String token) {
-        String key = TOKEN_PREFIX + token;
+        String key = getTokenPrefix() + token;
         return Boolean.TRUE.equals(redisTemplate.hasKey(key));
     }
 
     @Override
     public boolean consumeToken(String token) {
-        String key = TOKEN_PREFIX + token;
+        String key = getTokenPrefix() + token;
         Boolean exists = redisTemplate.hasKey(key);
         if (Boolean.TRUE.equals(exists)) {
             redisTemplate.delete(key);
@@ -71,7 +72,7 @@ public class RedisCaptchaStoreAdapter implements CaptchaStorePort {
 
     @Override
     public boolean isRateLimited(String clientIp, int maxRequests, Duration window) {
-        String key = RATE_LIMIT_PREFIX + clientIp;
+        String key = getRateLimitPrefix() + clientIp;
         long now = System.currentTimeMillis();
         long windowStart = now - window.toMillis();
 

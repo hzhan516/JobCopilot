@@ -17,8 +17,8 @@ def get_redis_client() -> redis.Redis:
 class RedisBuffer:
     def __init__(self):
         self.redis = get_redis_client()
-        self.buffer_key = "ai:feedback:buffer"
-        self.lock_key = "ai:model:retrain:lock"
+        self.buffer_key = app.config.REDIS_KEY_PREFIX + "feedback:buffer"
+        self.lock_key = app.config.REDIS_KEY_PREFIX + "model:retrain:lock"
 
     async def append(self, item: dict[str, Any]):
         await self.redis.lpush(self.buffer_key, json.dumps(item, ensure_ascii=False))

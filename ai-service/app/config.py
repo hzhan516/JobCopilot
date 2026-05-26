@@ -92,6 +92,7 @@ BACKEND_BATCH_SIZE = int(os.getenv("BACKEND_BATCH_SIZE", "100"))
 REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
+REDIS_KEY_PREFIX = os.getenv("AI_REDIS_KEY_PREFIX", "ai:")
 
 # MinIO for Model Registry
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")

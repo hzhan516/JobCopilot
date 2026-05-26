@@ -414,6 +414,16 @@ The following parameters control the AI worker's incremental job training loop.
 | `RETRAIN_INTERVAL_HOURS` | `24` | Interval in hours for the AI worker to check for buffered feedback and retrain. |
 | `MIN_SAMPLES_FOR_RETRAIN` | `10` | Minimum number of buffered feedback samples required before retraining runs. |
 
+### `AI_REDIS_KEY_PREFIX`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Redis key prefix for AI service shared state (feedback buffer, model retrain locks). Allows multiple AI service instances to share the same Redis server without key collisions. |
+| **Default** | `ai:` |
+| **Valid values** | Any string ending with `:` |
+| **Security notes** | Distinct prefixes per environment prevent cross-environment data contamination when multiple stacks share a Redis cluster. |
+| **Common mistakes** | Forgetting to update the prefix when running multiple AI service instances against the same Redis server, causing one instance to read or overwrite another's feedback buffer or lock state. |
+
 ---
 
 ## H. AI Service Logging
@@ -1118,6 +1128,18 @@ Redis serves as the shared state layer for distributed caching, distributed lock
 | **Valid values** | Positive integer, recommended range `3–10` |
 | **Security notes** | Limits brute-force guessing of the slider position. After exceeding this threshold, the user must request a new challenge. |
 | **Common mistakes** | Setting to a high value (e.g., 50) defeats the purpose of the challenge by allowing unlimited guesses within the token expiry window. |
+
+---
+
+### `CAPTCHA_REDIS_KEY_PREFIX`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Redis key prefix for CAPTCHA challenge, token, and rate-limit data. Allows multiple backend instances to share the same Redis server without key collisions. |
+| **Default** | `ra:captcha:` |
+| **Valid values** | Any string ending with `:` |
+| **Security notes** | Changing this does not affect security, but using distinct prefixes per environment (e.g. `staging:captcha:`, `prod:captcha:`) prevents cross-environment data contamination when multiple stacks share a Redis cluster. |
+| **Common mistakes** | Forgetting to update the prefix when running multiple backend instances against the same Redis server, causing one instance to read or delete another's CAPTCHA data. |
 
 ---
 

@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.infrastructure.redis.client import RedisBuffer
+from app.config import REDIS_KEY_PREFIX
 
 
 # ── Connection failure during append ───────────────────────
@@ -42,8 +43,8 @@ async def test_redis_buffer_drain_empty():
         results = await buffer.drain()
 
         assert results == []
-        mock_pipe.lrange.assert_called_once_with("ai:feedback:buffer", 0, -1)
-        mock_pipe.delete.assert_called_once_with("ai:feedback:buffer")
+        mock_pipe.lrange.assert_called_once_with(REDIS_KEY_PREFIX + "feedback:buffer", 0, -1)
+        mock_pipe.delete.assert_called_once_with(REDIS_KEY_PREFIX + "feedback:buffer")
 
 
 # ── Drain with pipeline failure ────────────────────────────
@@ -80,7 +81,7 @@ async def test_redis_buffer_acquire_lock_with_custom_ttl():
 
         assert result is True
         mock_client.set.assert_called_once_with(
-            "ai:model:retrain:lock", "instance-123", nx=True, ex=3600
+            REDIS_KEY_PREFIX + "model:retrain:lock", "instance-123", nx=True, ex=3600
         )
 
 

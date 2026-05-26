@@ -2,6 +2,7 @@ import json
 import pytest
 from unittest.mock import AsyncMock, patch
 from app.infrastructure.redis.client import RedisBuffer, get_redis_client
+from app.config import REDIS_KEY_PREFIX
 
 @pytest.fixture
 def mock_redis():
@@ -18,7 +19,7 @@ async def test_redis_buffer_append(mock_redis):
     await buffer.append(item)
     
     mock_redis.lpush.assert_called_once_with(
-        "ai:feedback:buffer", 
+        REDIS_KEY_PREFIX + "feedback:buffer", 
         json.dumps(item, ensure_ascii=False)
     )
 
@@ -40,8 +41,8 @@ async def test_redis_buffer_drain(mock_redis):
     results = await buffer.drain()
     
     mock_redis.pipeline.assert_called_once()
-    mock_pipe.lrange.assert_called_once_with("ai:feedback:buffer", 0, -1)
-    mock_pipe.delete.assert_called_once_with("ai:feedback:buffer")
+    mock_pipe.lrange.assert_called_once_with(REDIS_KEY_PREFIX + "feedback:buffer", 0, -1)
+    mock_pipe.delete.assert_called_once_with(REDIS_KEY_PREFIX + "feedback:buffer")
     mock_pipe.execute.assert_called_once()
     
     assert len(results) == 2
@@ -56,7 +57,7 @@ async def test_redis_buffer_acquire_lock(mock_redis):
     result = await buffer.acquire_lock("instance-123", ttl=1800)
     
     mock_redis.set.assert_called_once_with(
-        "ai:model:retrain:lock", "instance-123", nx=True, ex=1800
+        REDIS_KEY_PREFIX + "model:retrain:lock", "instance-123", nx=True, ex=1800
     )
     assert result is True
 
@@ -70,7 +71,7 @@ async def test_redis_buffer_release_lock(mock_redis):
     args = mock_redis.eval.call_args[0]
     assert "if redis.call" in args[0]
     assert args[1] == 1
-    assert args[2] == "ai:model:retrain:lock"
+    assert args[2] == REDIS_KEY_PREFIX + "model:retrain:lock"
     assert args[3] == "instance-123"
 
 @pytest.mark.asyncio
