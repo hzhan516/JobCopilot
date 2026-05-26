@@ -387,14 +387,19 @@ public class ConversationApplicationService {
      * @param markdown           Optimized resume Markdown / 优化后的简历 Markdown
      */
     private void saveOrUpdateAiOptimizedResume(Conversation conversation, String markdown) {
-        UUID originalVersionId = conversation.getResumeVersionId();
+        // Reload to prevent read-modify-write races on concurrent AI replies
+        // 重新加载以防止并发 AI 回复时的读-改-写竞态
+        Conversation fresh = conversationRepository.findById(conversation.getId())
+                .orElseThrow(() -> new ConversationException("conversation.not.found"));
+
+        UUID originalVersionId = fresh.getResumeVersionId();
         ResumeVersion originalVersion = resumeVersionRepository.findById(originalVersionId)
                 .orElseThrow(() -> new ConversationException("version.not.found"));
 
         ResumeGroup group = resumeGroupRepository.findById(originalVersion.getGroupId())
                 .orElseThrow(() -> new ConversationException("group.not.found"));
 
-        UUID workingVersionId = conversation.getAiOptimizedVersionId();
+        UUID workingVersionId = fresh.getAiOptimizedVersionId();
 
         if (workingVersionId == null) {
             // First edit: create a dedicated AI_OPTIMIZED version linked to this conversation
@@ -404,11 +409,11 @@ public class ConversationApplicationService {
             group.addVersion(aiVersion); // archives the previous active AI_OPTIMIZED version automatically
             resumeGroupRepository.save(group);
 
-            conversation.setAiOptimizedVersionId(aiVersion.getId());
-            conversationRepository.save(conversation);
+            fresh.setAiOptimizedVersionId(aiVersion.getId());
+            conversationRepository.save(fresh);
 
             vectorGenerationPort.generateAndSaveVector(aiVersion.getId().toString(), "RESUME", markdown);
-            log.info("Created AI optimized working copy: {} for conversation: {}", aiVersion.getId(), conversation.getId());
+            log.info("Created AI optimized working copy: {} for conversation: {}", aiVersion.getId(), fresh.getId());
         } else {
             ResumeVersion workingVersion = resumeVersionRepository.findById(workingVersionId)
                     .orElseThrow(() -> new ConversationException("version.not.found"));
@@ -417,7 +422,7 @@ public class ConversationApplicationService {
                 workingVersion.editContent(markdown);
                 resumeVersionRepository.save(workingVersion);
                 vectorGenerationPort.generateAndSaveVector(workingVersion.getId().toString(), "RESUME", markdown);
-                log.info("Updated AI optimized working copy: {} for conversation: {}", workingVersion.getId(), conversation.getId());
+                log.info("Updated AI optimized working copy: {} for conversation: {}", workingVersion.getId(), fresh.getId());
             } else {
                 // The working copy was archived by another conversation creating a new AI_OPTIMIZED version
                 // 工作副本已被其他对话创建新 AI_OPTIMIZED 版本时归档，需重新创建
@@ -426,11 +431,11 @@ public class ConversationApplicationService {
                 group.addVersion(aiVersion);
                 resumeGroupRepository.save(group);
 
-                conversation.setAiOptimizedVersionId(aiVersion.getId());
-                conversationRepository.save(conversation);
+                fresh.setAiOptimizedVersionId(aiVersion.getId());
+                conversationRepository.save(fresh);
 
                 vectorGenerationPort.generateAndSaveVector(aiVersion.getId().toString(), "RESUME", markdown);
-                log.info("Re-created AI optimized working copy: {} for conversation: {}", aiVersion.getId(), conversation.getId());
+                log.info("Re-created AI optimized working copy: {} for conversation: {}", aiVersion.getId(), fresh.getId());
             }
         }
     }

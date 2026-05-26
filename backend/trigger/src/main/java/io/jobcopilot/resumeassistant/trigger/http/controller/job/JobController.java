@@ -30,6 +30,12 @@ public class JobController {
     private final JobVectorSearchFacade jobVectorSearchFacade;
 
     /**
+     * Maximum allowed screenshot file size: 10 MB
+     * 截图文件大小上限：10 MB
+     */
+    private static final long MAX_SCREENSHOT_SIZE_BYTES = 10 * 1024 * 1024;
+
+    /**
      * 提交新职位（Multipart 上传链接+截图）
      * Submit a new job with URL and screenshot.
      */
@@ -42,6 +48,9 @@ public class JobController {
 
         String screenshotBase64 = null;
         if (screenshot != null && !screenshot.isEmpty()) {
+            if (screenshot.getSize() > MAX_SCREENSHOT_SIZE_BYTES) {
+                throw new IllegalArgumentException("Screenshot exceeds maximum size of 10 MB");
+            }
             try {
                 screenshotBase64 = Base64.getEncoder().encodeToString(screenshot.getBytes());
             } catch (Exception e) {

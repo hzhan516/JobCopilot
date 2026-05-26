@@ -46,7 +46,7 @@ def _extract_json_text(raw_text: str) -> str:
         cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
         cleaned = re.sub(r"\s*```$", "", cleaned)
 
-    match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
+    match = re.search(r"\{.*?\}", cleaned, flags=re.DOTALL)
     if not match:
         raise ValueError(f"LLM response did not contain a JSON object: {raw_text}")
 

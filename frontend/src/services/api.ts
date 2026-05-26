@@ -257,7 +257,14 @@ export const authService = {
     throw new Error(response.data.message);
   },
 
-  logout: () => {
+  logout: async () => {
+    try {
+      // Notify backend to invalidate the refresh token / 通知后端使 refresh token 失效
+      await apiClient.post('/v1/auth/logout');
+    } catch {
+      // Ignore backend errors during logout — local cleanup is the critical path
+      // 忽略后端错误 — 本地清理是关键路径
+    }
     tokenStorage.clear();
   },
 

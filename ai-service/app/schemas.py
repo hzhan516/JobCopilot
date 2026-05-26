@@ -284,6 +284,8 @@ class EmbeddingResponse(AppBaseModel):
     embeddings: list[list[float]] = Field(default_factory=list)
     model_used: str = Field(alias="modelUsed")
     count: int
+    failed_indices: list[int] = Field(default_factory=list, alias="failedIndices")
+    error_count: int = Field(default=0, alias="errorCount")
 
 
 class SuitabilityRequest(AppBaseModel):

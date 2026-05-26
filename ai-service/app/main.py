@@ -247,17 +247,20 @@ def batch_embeddings(request: EmbeddingRequest) -> EmbeddingResponse:
         )
 
     embeddings: list[list[float]] = []
+    failed_indices: list[int] = []
     for index, text in enumerate(request.texts):
         try:
             embeddings.append(generate_embedding(text))
         except Exception:
             logger.exception("Embedding failed for input index=%d, length=%d", index, len(text))
-            embeddings.append([0.0] * LLM_EMBEDDING_MODEL_DIMENSION)
+            failed_indices.append(index)
 
     return EmbeddingResponse(
         embeddings=embeddings,
         modelUsed=request.model or LLM_EMBEDDING_MODEL,
         count=len(embeddings),
+        failedIndices=failed_indices,
+        errorCount=len(failed_indices),
     )
 
 
