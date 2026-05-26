@@ -12,8 +12,8 @@
 set -e
 
 ENV_FILE="${1:-.env}"
-NAMESPACE="${2:-resume-assistant}"
-SECRET_NAME="${3:-resume-assistant-secrets}"
+NAMESPACE="${2:-jobcopilot}"
+SECRET_NAME="${3:-jobcopilot-secrets}"
 
 if [ ! -f "$ENV_FILE" ]; then
     echo "ERROR: Environment file not found: $ENV_FILE"
