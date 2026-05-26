@@ -18,6 +18,7 @@ import io.jobcopilot.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import io.jobcopilot.resumeassistant.domain.shared.event.ai.JobParseCommand;
 import io.jobcopilot.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -82,7 +83,44 @@ class JobApplicationServiceTest {
     }
 
     @Test
-    void submitJob_Success() {
+    @DisplayName("Should persist job to repository on submit")
+    void submitJob_SavesJob() {
+        // 准备 / Given
+        UUID userId = UUID.randomUUID();
+        String url = "http://example.com/job";
+        SubmitJobRequest request = new SubmitJobRequest(url, false, null);
+
+        Job job = Job.create(userId, url, false);
+        doNothing().when(jobRepository).save(any(Job.class));
+
+        // 执行 / When
+        jobApplicationService.submitJob(userId, request);
+
+        // 验证 / Then
+        verify(jobRepository, times(2)).save(any(Job.class));
+    }
+
+    @Test
+    @DisplayName("Should publish parse event to MQ on submit")
+    void submitJob_PublishesParseEvent() {
+        // 准备 / Given
+        UUID userId = UUID.randomUUID();
+        String url = "http://example.com/job";
+        SubmitJobRequest request = new SubmitJobRequest(url, false, null);
+
+        Job job = Job.create(userId, url, false);
+        doNothing().when(jobRepository).save(any(Job.class));
+
+        // 执行 / When
+        jobApplicationService.submitJob(userId, request);
+
+        // 验证 / Then
+        verify(aiMessagePublisherPort, times(1)).sendJobForParsing(any(JobParseCommand.class));
+    }
+
+    @Test
+    @DisplayName("Should return correct DTO with PARSING status on submit")
+    void submitJob_ReturnsCorrectDto() {
         // 准备 / Given
         UUID userId = UUID.randomUUID();
         String url = "http://example.com/job";
@@ -98,9 +136,6 @@ class JobApplicationServiceTest {
         assertNotNull(response);
         assertEquals(userId.toString(), response.userId());
         assertEquals("PARSING", response.status());
-
-        verify(jobRepository, times(2)).save(any(Job.class));
-        verify(aiMessagePublisherPort, times(1)).sendJobForParsing(any(JobParseCommand.class));
     }
 
     @Test
