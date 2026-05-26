@@ -18,6 +18,9 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.util.Optional;
 
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
+
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -310,11 +313,39 @@ class MinioFileStorageServiceTest {
     }
 
     @Test
-    @DisplayName("Should throw StorageException on presign failure")
-    void shouldThrowStorageExceptionOnPresignFailure() throws Exception {
+    @DisplayName("Should throw StorageException on socket timeout during upload / 上传时Socket超时异常应抛出StorageException")
+    void shouldThrowStorageExceptionOnSocketTimeoutDuringUpload() throws Exception {
+        // 给定 / Given
+        InputStream inputStream = new ByteArrayInputStream(TEST_CONTENT.getBytes());
+        when(minioClient.putObject(any(PutObjectArgs.class)))
+                .thenThrow(new SocketTimeoutException("Connection timed out"));
+
+        // 当&那么 / When & Then
+        assertThatThrownBy(() ->
+                storageService.upload(OBJECT_KEY, inputStream, TEST_CONTENT.length(), "text/plain")
+        ).isInstanceOf(StorageException.class)
+                .hasMessageContaining("storage.upload.failed");
+    }
+
+    @Test
+    @DisplayName("Should throw StorageException on connect exception during download / 下载时连接异常应抛出StorageException")
+    void shouldThrowStorageExceptionOnConnectExceptionDuringDownload() throws Exception {
+        // 给定 / Given
+        when(minioClient.getObject(any(GetObjectArgs.class)))
+                .thenThrow(new ConnectException("Connection refused"));
+
+        // 当&那么 / When & Then
+        assertThatThrownBy(() -> storageService.download(OBJECT_KEY))
+                .isInstanceOf(StorageException.class)
+                .hasMessageContaining("storage.download.failed");
+    }
+
+    @Test
+    @DisplayName("Should throw StorageException on socket timeout during presign / 预签名URL时Socket超时异常应抛出StorageException")
+    void shouldThrowStorageExceptionOnSocketTimeoutDuringPresign() throws Exception {
         // 给定 / Given
         when(minioClient.getPresignedObjectUrl(any(GetPresignedObjectUrlArgs.class)))
-                .thenThrow(new RuntimeException("Policy error"));
+                .thenThrow(new SocketTimeoutException("Read timed out"));
 
         // 当&那么 / When & Then
         assertThatThrownBy(() -> storageService.generatePresignedUrl(OBJECT_KEY, Duration.ofMinutes(30)))

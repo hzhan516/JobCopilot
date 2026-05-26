@@ -82,17 +82,65 @@ class OutboxRelaySchedulerTest {
     }
 
     @Test
-    @DisplayName("Should do nothing when no pending messages")
-    void shouldDoNothingWhenNoPendingMessages() {
+    @DisplayName("Should continue relaying remaining messages when one fails / 当单条消息失败时应继续转发剩余消息")
+    void shouldContinueRelayingWhenOneFails() throws Exception {
         // 准备 / Given
+        OutboxMessage msg1 = OutboxMessage.createPending("ex", "rk", "payload1");
+        OutboxMessage msg2 = OutboxMessage.createPending("ex", "rk", "payload2");
+        OutboxMessage msg3 = OutboxMessage.createPending("ex", "rk", "payload3");
         when(outboxMessageRepository.findByStatus(OutboxStatus.PENDING))
-                .thenReturn(Collections.emptyList());
+                .thenReturn(List.of(msg1, msg2, msg3));
+        when(objectMapper.readValue(any(String.class), eq(Object.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+        when(outboxMessageRepository.save(any(OutboxMessage.class))).thenAnswer(inv -> inv.getArgument(0));
+        doThrow(new RuntimeException("MQ down"))
+                .when(rabbitTemplate).convertAndSend(eq("ex"), eq("rk"), eq("payload2"));
 
         // 执行 / When
         scheduler.relayPendingMessages();
 
-        // 验证 / Then
-        verifyNoInteractions(rabbitTemplate);
-        verify(outboxMessageRepository, never()).save(any());
+        // 验证 / Then — 3 条均尝试投递，失败 1 条，成功 2 条
+        verify(rabbitTemplate, times(3)).convertAndSend(anyString(), anyString(), ArgumentMatchers.<Object>any());
+        verify(outboxMessageRepository, times(3)).save(any(OutboxMessage.class));
+    }
+
+    @Test
+    @DisplayName("Should transition message status from PENDING to SENT on success / 成功时应将消息状态从PENDING转为SENT")
+    void shouldTransitionStatusToSentOnSuccess() throws Exception {
+        // 准备 / Given
+        OutboxMessage msg = OutboxMessage.createPending("ex", "rk", "payload");
+        when(outboxMessageRepository.findByStatus(OutboxStatus.PENDING))
+                .thenReturn(List.of(msg));
+        when(objectMapper.readValue(any(String.class), eq(Object.class)))
+                .thenReturn("parsedPayload");
+        when(outboxMessageRepository.save(any(OutboxMessage.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // 执行 / When
+        scheduler.relayPendingMessages();
+
+        // 验证 / Then — 状态已流转，sentAt 已填充
+        assertThat(msg.getStatus()).isEqualTo(OutboxStatus.SENT);
+        assertThat(msg.getSentAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should transition message status from PENDING to FAILED on exception / 异常时应将消息状态从PENDING转为FAILED")
+    void shouldTransitionStatusToFailedOnException() throws Exception {
+        // 准备 / Given
+        OutboxMessage msg = OutboxMessage.createPending("ex", "rk", "payload");
+        when(outboxMessageRepository.findByStatus(OutboxStatus.PENDING))
+                .thenReturn(List.of(msg));
+        when(objectMapper.readValue(any(String.class), eq(Object.class)))
+                .thenReturn("parsedPayload");
+        doThrow(new RuntimeException("MQ down"))
+                .when(rabbitTemplate).convertAndSend(anyString(), anyString(), ArgumentMatchers.<Object>any());
+        when(outboxMessageRepository.save(any(OutboxMessage.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // 执行 / When
+        scheduler.relayPendingMessages();
+
+        // 验证 / Then — 状态为 FAILED，sentAt 仍为 null
+        assertThat(msg.getStatus()).isEqualTo(OutboxStatus.FAILED);
+        assertThat(msg.getSentAt()).isNull();
     }
 }
