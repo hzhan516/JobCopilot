@@ -2,6 +2,7 @@ package io.jobcopilot.resumeassistant.api.resume.facade;
 
 import io.jobcopilot.resumeassistant.api.common.dto.ApiResponse;
 import io.jobcopilot.resumeassistant.api.resume.dto.request.CreateVersionRequest;
+import io.jobcopilot.resumeassistant.api.resume.dto.request.CreateVersionRequest;
 import io.jobcopilot.resumeassistant.api.resume.dto.request.ResumeEditRequest;
 import io.jobcopilot.resumeassistant.api.resume.dto.request.ResumeUploadRequest;
 import io.jobcopilot.resumeassistant.api.resume.dto.response.ResumeGroupResponse;
