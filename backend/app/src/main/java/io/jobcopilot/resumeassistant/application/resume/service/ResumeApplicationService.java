@@ -15,6 +15,8 @@ import io.jobcopilot.resumeassistant.domain.shared.exception.StorageException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.UUID;
@@ -71,11 +73,35 @@ public class ResumeApplicationService {
 
         if (version.getVersionType() == ResumeVersion.VersionType.CONVERTED
                 || version.getVersionType() == ResumeVersion.VersionType.AI_OPTIMIZED) {
-            vectorGenerationService.generateForResume(version.getId(), version.getContent());
+            // Defer vector generation until after DB commit to avoid holding a long transaction
+            // 将向量生成推迟到数据库事务提交之后，避免持有长事务
+            deferVectorGeneration(version.getId(), version.getContent());
         }
 
         log.info("Resume edited: versionId={}", version.getId());
         return version;
+    }
+
+    /**
+     * Defer vector generation until the current DB transaction commits.
+     * 将向量生成推迟到当前数据库事务提交之后执行。
+     */
+    private void deferVectorGeneration(UUID versionId, String content) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        vectorGenerationService.generateForResume(versionId, content);
+                        log.info("Vector generation triggered after commit for version: {}", versionId);
+                    } catch (Exception e) {
+                        log.error("Vector generation failed after commit for version: {}", versionId, e);
+                    }
+                }
+            });
+        } else {
+            vectorGenerationService.generateForResume(versionId, content);
+        }
     }
 
     @Transactional(timeout = 30)
