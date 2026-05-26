@@ -11,7 +11,7 @@ import io.jobcopilot.resumeassistant.api.user.dto.response.AuthResult;
 import io.jobcopilot.resumeassistant.api.user.facade.AuthFacade;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -28,10 +28,16 @@ import java.time.Duration;
 
 @RestController
 @RequestMapping("/v1/auth")
-@RequiredArgsConstructor
 public class AuthController {
 
     private final AuthFacade authFacade;
+    private final long refreshTokenExpirationMs;
+
+    public AuthController(AuthFacade authFacade,
+                          @Value("${jwt.refresh-token-expiration:604800000}") long refreshTokenExpirationMs) {
+        this.authFacade = authFacade;
+        this.refreshTokenExpirationMs = refreshTokenExpirationMs;
+    }
 
     /**
      * 邮箱注册
@@ -116,7 +122,7 @@ public class AuthController {
                 .httpOnly(true)
                 .sameSite("Strict")
                 .path("/api/v1/auth")
-                .maxAge(Duration.ofDays(7))
+                .maxAge(Duration.ofMillis(refreshTokenExpirationMs))
                 .secure(secure)
                 .build()
                 .toString();

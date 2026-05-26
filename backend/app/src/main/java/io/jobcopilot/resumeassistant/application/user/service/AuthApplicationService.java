@@ -217,6 +217,9 @@ public class AuthApplicationService {
      * @param accessToken Current access token / 当前访问令牌
      */
     public void logout(String accessToken) {
-        log.info("User logout / 用户注销: token={}", accessToken);
+        String masked = accessToken != null && accessToken.length() > 8
+                ? accessToken.substring(0, 4) + "..." + accessToken.substring(accessToken.length() - 4)
+                : "***";
+        log.info("User logout / 用户注销: tokenPrefix={}", masked);
     }
 }

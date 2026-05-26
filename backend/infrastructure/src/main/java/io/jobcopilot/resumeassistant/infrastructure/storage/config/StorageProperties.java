@@ -41,6 +41,12 @@ public class StorageProperties {
      */
     private Oss oss = new Oss();
 
+    /**
+     * Presigned URL 过期时间（小时）
+     * Presigned URL expiration time (hours)
+     */
+    private int presignedUrlExpirationHours = 7;
+
     @Data
     public static class Minio {
         private String endpoint = "http://localhost:9000";

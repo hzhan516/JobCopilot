@@ -5,6 +5,7 @@ Resume Assistant - Python AI service entry point.
 
 import logging
 import os
+import sys
 import threading
 
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
@@ -163,15 +164,16 @@ async def status():
 def initialize_mq() -> None:
     global _mq_is_connected, _mq_connection, _mq_channel
     import time
-    
+
     retry_delay = 5
-    
+    MAX_MQ_RETRIES = 20
+
     logger = logging.getLogger(__name__)
     attempt = 0
-    while True:
+    while attempt < MAX_MQ_RETRIES:
         attempt += 1
         try:
-            logger.info("Starting RabbitMQ consumers (Attempt %d)...", attempt)
+            logger.info("Starting RabbitMQ consumers (Attempt %d/%d)...", attempt, MAX_MQ_RETRIES)
             connection = create_connection()
             channel = connection.channel()
             setup_all_queues(channel)
@@ -183,8 +185,11 @@ def initialize_mq() -> None:
             break
         except Exception as e:
             _mq_is_connected = False
-            logger.warning("RabbitMQ consumer startup failed (Attempt %d): %s. Retrying in %d seconds...", attempt, e, retry_delay)
+            logger.warning("RabbitMQ consumer startup failed (Attempt %d/%d): %s. Retrying in %d seconds...", attempt, MAX_MQ_RETRIES, e, retry_delay)
             time.sleep(retry_delay)
+    else:
+        logger.error("Max MQ retries (%d) exceeded. RabbitMQ unavailable. Shutting down.", MAX_MQ_RETRIES)
+        os._exit(1)
 
 
 def _start_mq_consumer_once() -> None:

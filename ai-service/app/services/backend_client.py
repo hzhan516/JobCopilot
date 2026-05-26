@@ -52,8 +52,8 @@ def batch_upsert_job_vectors(items: list[JobVectorItem]) -> BatchVectorUpsertRes
         if isinstance(body, dict) and "data" in body:
             body = body["data"]
         return BatchVectorUpsertResponse.model_validate(body)
-    except Exception:
-        logger.exception("Failed to batch upsert job vectors to backend, url=%s", JOB_VECTOR_BATCH_URL)
+    except requests.exceptions.RequestException:
+        logger.exception("Backend network error during job vector upsert, url=%s", JOB_VECTOR_BATCH_URL)
         return BatchVectorUpsertResponse(
             total=len(items),
             failed=len(items),
@@ -82,8 +82,8 @@ def batch_upsert_resume_vectors(items: list[ResumeVectorItem]) -> BatchVectorUps
         if isinstance(body, dict) and "data" in body:
             body = body["data"]
         return BatchVectorUpsertResponse.model_validate(body)
-    except Exception:
-        logger.exception("Failed to batch upsert resume vectors to backend, url=%s", RESUME_VECTOR_BATCH_URL)
+    except requests.exceptions.RequestException:
+        logger.exception("Backend network error during resume vector upsert, url=%s", RESUME_VECTOR_BATCH_URL)
         return BatchVectorUpsertResponse(
             total=len(items),
             failed=len(items),

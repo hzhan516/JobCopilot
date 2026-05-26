@@ -51,9 +51,24 @@ public class JobApplicationService {
     private final JobSubmissionService jobSubmissionService;
     private final JobResultTransactionService jobResultTxService;
 
-    @Transactional(timeout = 30)
+    /**
+     * Submits a job. MQ publication happens outside the transaction
+     * so the message is sent only after the DB commit succeeds.
+     */
     public JobResponse submitJob(UUID userId, SubmitJobRequest request) {
-        return jobSubmissionService.submit(userId, request);
+        Job job = jobSubmissionService.submit(userId, request);
+        try {
+            job.markParsing();
+            jobRepository.save(job);
+            aiMessagePublisherPort.sendJobForParsing(new io.jobcopilot.resumeassistant.domain.shared.event.ai.JobParseCommand(
+                    job.getId(), job.getOriginalUrl(), job.isImageCheckEnabled(), request.screenshotBase64()));
+        } catch (Exception e) {
+            log.error("Failed to publish job processing request: {}", job.getId(), e);
+            job.markFailed("Failed to publish job processing request: " + e.getMessage());
+            jobRepository.save(job);
+            throw new RuntimeException("Failed to submit job: " + e.getMessage(), e);
+        }
+        return io.jobcopilot.resumeassistant.application.job.mapper.JobResponseMapper.toResponse(job);
     }
 
     /**

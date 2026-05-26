@@ -8,6 +8,7 @@ import io.jobcopilot.resumeassistant.api.job.facade.JobFacade;
 import io.jobcopilot.resumeassistant.api.matching.facade.MatchingFacade;
 import io.jobcopilot.resumeassistant.api.resume.facade.ResumeFacade;
 import io.jobcopilot.resumeassistant.domain.shared.event.ai.AiResultEvent;
+import io.jobcopilot.resumeassistant.infrastructure.messaging.RedisIdempotencyService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -20,7 +21,9 @@ import java.util.Map;
 /**
  * Async inbound gateway for AI service results. Decouples the AI worker from business workflows by
  * delegating outcomes to API-layer facades while swallowing exceptions to avoid poisonous messages.
- * AI 服务结果的异步入口网关。通过将处理结果委托给 API 层门面来解耦 AI 工作线程与业务流，同时捕获异常以避免毒消息
+ * Deduplicates messages via Redis to guard against redeliveries.
+ * AI 服务结果的异步入口网关。通过将处理结果委托给 API 层门面来解耦 AI 工作线程与业务流，
+ * 同时捕获异常以避免毒消息，并通过 Redis 幂等性检查防止重复投递导致重复处理。
  */
 @Slf4j
 @Component
@@ -32,12 +35,23 @@ public class AiResultMessageListener {
     private final ConversationFacade conversationFacade;
     private final VectorFacade vectorFacade;
     private final MatchingFacade matchingFacade;
+    private final RedisIdempotencyService idempotencyService;
+
+    private static String dedupKey(AiResultEvent event, String queueName) {
+        return queueName + ":" + event.referenceId() + ":" + event.status();
+    }
 
     @RabbitListener(queues = "${app.rabbitmq.queue.res.job-parse}")
     public void onJobParseResult(AiResultEvent event) {
+        String key = dedupKey(event, "job-parse");
+        if (idempotencyService.isProcessed(key)) {
+            log.info("Duplicate JOB_PARSE result skipped for referenceId: {}", event.referenceId());
+            return;
+        }
         log.info("Received AiResultEvent for JOB_PARSE, referenceId: {}, status: {}", event.referenceId(), event.status());
         try {
             jobFacade.handleJobProcessResult(event);
+            idempotencyService.markProcessed(key);
         } catch (Exception e) {
             log.error("Error processing AiResultEvent for JOB_PARSE referenceId: {}", event.referenceId(), e);
         }
@@ -45,9 +59,15 @@ public class AiResultMessageListener {
 
     @RabbitListener(queues = "${app.rabbitmq.queue.res.resume-parse}")
     public void onResumeParseResult(AiResultEvent event) {
+        String key = dedupKey(event, "resume-parse");
+        if (idempotencyService.isProcessed(key)) {
+            log.info("Duplicate RESUME_PARSE result skipped for referenceId: {}", event.referenceId());
+            return;
+        }
         log.info("Received AiResultEvent for RESUME_PARSE, referenceId: {}, status: {}", event.referenceId(), event.status());
         try {
             resumeFacade.handleParseResult(event);
+            idempotencyService.markProcessed(key);
         } catch (Exception e) {
             log.error("Error processing AiResultEvent for RESUME_PARSE referenceId: {}", event.referenceId(), e);
         }
@@ -55,6 +75,11 @@ public class AiResultMessageListener {
 
     @RabbitListener(queues = "${app.rabbitmq.queue.res.conversation}")
     public void onConversationReply(AiResultEvent event) {
+        String key = dedupKey(event, "conversation");
+        if (idempotencyService.isProcessed(key)) {
+            log.info("Duplicate CONVERSATION_REPLY result skipped for referenceId: {}", event.referenceId());
+            return;
+        }
         log.info("Received AiResultEvent for CONVERSATION_REPLY, referenceId: {}, status: {}", event.referenceId(), event.status());
         try {
             if (!"COMPLETED".equals(event.status())) {
@@ -67,6 +92,7 @@ public class AiResultMessageListener {
                         null
                 );
                 conversationFacade.failAiReply(event.referenceId(), errorContent);
+                idempotencyService.markProcessed(key);
                 return;
             }
 
@@ -78,6 +104,7 @@ public class AiResultMessageListener {
             log.info("Saved AI reply for conversation: {}", event.referenceId());
 
             conversationFacade.completeAiReply(event.referenceId(), content);
+            idempotencyService.markProcessed(key);
         } catch (Exception e) {
             log.error("Error processing AiResultEvent for CONVERSATION_REPLY referenceId: {}", event.referenceId(), e);
             conversationFacade.failAiReply(event.referenceId(), e.getMessage());
@@ -86,17 +113,24 @@ public class AiResultMessageListener {
 
     @RabbitListener(queues = "${app.rabbitmq.queue.res.job-rank}")
     public void onJobRankResult(AiResultEvent event) {
+        String key = dedupKey(event, "job-rank");
+        if (idempotencyService.isProcessed(key)) {
+            log.info("Duplicate JOB_RANK result skipped for referenceId: {}", event.referenceId());
+            return;
+        }
         log.info("Received AiResultEvent for JOB_RANK, referenceId: {}, status: {}",
                 event.referenceId(), event.status());
         try {
             if (!"COMPLETED".equals(event.status())) {
                 log.warn("Job rank failed for matchId: {}, error: {}",
                         event.referenceId(), event.errorMessage());
+                idempotencyService.markProcessed(key);
                 return;
             }
             Map<String, Object> data = event.data();
             if (data == null) {
                 log.warn("Job rank result has no data for matchId: {}", event.referenceId());
+                idempotencyService.markProcessed(key);
                 return;
             }
 
@@ -124,6 +158,7 @@ public class AiResultMessageListener {
 
             matchingFacade.saveJobRankResult(event.referenceId(), matchItems, rankTimeMs);
             log.info("Job rank result saved for matchId: {}", event.referenceId());
+            idempotencyService.markProcessed(key);
         } catch (Exception e) {
             log.error("Error processing AiResultEvent for JOB_RANK referenceId: {}",
                     event.referenceId(), e);

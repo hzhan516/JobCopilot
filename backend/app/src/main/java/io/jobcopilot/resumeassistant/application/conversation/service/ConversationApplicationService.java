@@ -26,6 +26,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.InputStream;
 import java.util.*;
@@ -50,6 +52,7 @@ public class ConversationApplicationService {
     private final FileStorageService fileStorageService;
     private final MessageProvider messageProvider;
     private final ConversationStreamPort streamPort;
+    private final io.jobcopilot.resumeassistant.infrastructure.storage.config.StorageProperties storageProperties;
 
     /**
      * Creates a conversation anchored to both a resume version and a job posting.
@@ -98,9 +101,9 @@ public class ConversationApplicationService {
         conversation.autoGenerateTitle(preset);
         conversation = conversationRepository.save(conversation);
 
-        // Load static context (resume + primary job + related jobs) and trigger the first AI request
-        // 加载静态上下文（简历 + 主职位 + 相关职位）并触发首次 AI 请求
-        sendConversationRequestWithContext(conversation, preset, true);
+        // Load static context and trigger the first AI request after DB commit
+        // 加载静态上下文并在数据库事务提交后触发首次 AI 请求
+        deferConversationRequest(conversation, preset, true);
 
         return conversation;
     }
@@ -126,9 +129,27 @@ public class ConversationApplicationService {
         // 仅在尚无 AI 回复时（首轮）包含完整静态上下文
         boolean isInit = saved.getMessages().stream()
                 .noneMatch(m -> m.getRole() == MessageRole.ASSISTANT);
-        sendConversationRequestWithContext(saved, command.content(), isInit);
+        deferConversationRequest(saved, command.content(), isInit);
 
         return saved;
+    }
+
+    /**
+     * Defers the conversation MQ request until after the current DB transaction commits.
+     * 将对话 MQ 请求推迟到当前数据库事务提交之后执行，避免事务回滚但消息已发的不一致。
+     */
+    private void deferConversationRequest(Conversation conversation, String currentMessage, boolean init) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    sendConversationRequestWithContext(conversation, currentMessage, init);
+                }
+            });
+        } else {
+            sendConversationRequestWithContext(conversation, currentMessage, init);
+        }
+    }
     }
 
     @Transactional(timeout = 30)
@@ -193,7 +214,8 @@ public class ConversationApplicationService {
         String objectKey = "conversations/" + conversationId + "/" + UUID.randomUUID() + "_" + safeFileName;
         fileStorageService.upload(objectKey, inputStream, size, contentType);
 
-        String fileUrl = fileStorageService.generatePresignedUrl(objectKey, java.time.Duration.ofDays(7));
+        int expiryHours = storageProperties.getPresignedUrlExpirationHours();
+        String fileUrl = fileStorageService.generatePresignedUrl(objectKey, java.time.Duration.ofHours(expiryHours));
         log.info("Attachment uploaded for conversation: {}, url: {}", conversationId, fileUrl);
         return fileUrl;
     }

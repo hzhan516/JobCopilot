@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 
 
+ENV = os.getenv("ENV", "dev")
+
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
 RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", "5672"))
 RABBITMQ_USERNAME = os.getenv("RABBITMQ_USERNAME", "guest")
@@ -92,12 +94,13 @@ REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
 
 # MinIO for Model Registry
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
 MINIO_MODEL_BUCKET = os.getenv("MINIO_MODEL_BUCKET", "ai-models")
 
-ENV = os.getenv("ENV", "dev")
+if ENV != "dev" and (not MINIO_ENDPOINT or not MINIO_ACCESS_KEY or not MINIO_SECRET_KEY):
+    raise RuntimeError("MINIO_ENDPOINT, MINIO_ACCESS_KEY and MINIO_SECRET_KEY are required in non-dev environments")
 
 # Internal API Auth — mandatory in non-dev environments
 # 内部 API Key：开发环境可省略，生产环境强制要求，防止 AI 服务端点被外部直接访问。

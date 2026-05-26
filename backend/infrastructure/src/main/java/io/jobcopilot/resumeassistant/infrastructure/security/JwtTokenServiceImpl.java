@@ -90,7 +90,7 @@ public class JwtTokenServiceImpl implements TokenService {
             Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token);
             return true;
         } catch (Exception e) {
-            log.warn("Invalid JWT token format: {}", e.getMessage());
+            log.warn("Invalid JWT token: validation failed");
             return false;
         }
     }
@@ -101,10 +101,10 @@ public class JwtTokenServiceImpl implements TokenService {
             Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token);
             return TokenValidationResult.VALID;
         } catch (ExpiredJwtException e) {
-            log.warn("JWT token expired: {}", e.getMessage());
+            log.warn("JWT token expired");
             return TokenValidationResult.EXPIRED;
         } catch (Exception e) {
-            log.warn("Invalid JWT token signature or claims: {}", e.getMessage());
+            log.warn("JWT token signature or claims invalid");
             return TokenValidationResult.INVALID;
         }
     }
