@@ -3,11 +3,15 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import TrackingPage from './Tracking'
 
-vi.mock('react-i18next', () =>> ({
+vi.mock('react-i18next', () => {
+  const t = (key: string) => key
+
+  return {
   useTranslation: () => ({
-    t: (key: string) => key,
+    t,
   }),
-}))
+  }
+})
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
@@ -222,11 +226,14 @@ describe('Tracking page', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('tracking.addRecord')).toBeInTheDocument()
+      expect(screen.getByText('tracking.emptyTitle')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByText('tracking.addRecord'))
-    expect(screen.getByTestId('dialog')).toHaveAttribute('data-open', 'true')
+    fireEvent.click(screen.getAllByText('tracking.addRecord')[0])
+    const addDialog = screen.getAllByTestId('dialog').find((dialog) =>
+      dialog.textContent?.includes('tracking.addRecordTitle')
+    )
+    expect(addDialog).toHaveAttribute('data-open', 'true')
   })
 
   it('shows stats cards', async () => {
@@ -260,7 +267,7 @@ describe('Tracking page', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('1')).toBeInTheDocument()
+      expect(screen.getAllByText('1').length).toBeGreaterThan(0)
     })
   })
 

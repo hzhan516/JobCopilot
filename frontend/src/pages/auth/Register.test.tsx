@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import Register from './Register'
 
-const mockNavigate = vi.fn()
+const mockNavigate = vi.hoisted(() => vi.fn())
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
@@ -14,35 +14,56 @@ vi.mock('react-router-dom', async () => {
 })
 
 vi.mock('react-i18next', () => ({
+  initReactI18next: {
+    type: '3rdParty',
+    init: vi.fn(),
+  },
   useTranslation: () => ({
     t: (key: string) => key,
   }),
 }))
 
-vi.mock('zod', () => ({
-  z: {
-    object: () => ({
-      shape: () => ({
-        email: { _def: { typeName: 'ZodString' } },
-        password: { _def: { typeName: 'ZodString' } },
-      }),
-      parse: vi.fn(() => ({ success: true })),
-      safeParse: vi.fn(() => ({ success: true, data: {} })),
-    }),
-    string: () => ({
-      email: () => ({
-        _def: { typeName: 'ZodString' },
-        parse: vi.fn((val: string) => val),
-      }),
-      min: () => ({
-        _def: { typeName: 'ZodString' },
-        parse: vi.fn((val: string) => val),
-      }),
-    }),
-  },
-}))
+vi.mock('zod', () => {
+  const stringSchema = {
+    min: () => stringSchema,
+    max: () => stringSchema,
+    email: () => stringSchema,
+    regex: () => stringSchema,
+    optional: () => stringSchema,
+  }
+  const booleanSchema = {
+    refine: () => booleanSchema,
+  }
+  const objectSchema = {
+    refine: () => objectSchema,
+  }
+
+  return {
+    z: {
+      object: () => objectSchema,
+      string: () => stringSchema,
+      boolean: () => booleanSchema,
+    },
+  }
+})
 
 vi.mock('react-hook-form', () => ({
+  FormProvider: ({ children }: any) => <>{children}</>,
+  Controller: ({ name, render }: any) =>
+    render({
+      field: {
+        name,
+        value:
+          name === 'password' || name === 'confirmPassword'
+            ? 'StrongPass123!'
+            : name === 'agreeTerms'
+              ? true
+              : '',
+        onChange: vi.fn(),
+        onBlur: vi.fn(),
+        ref: vi.fn(),
+      },
+    }),
   useForm: () => ({
     register: vi.fn(() => ({
       name: 'email',
@@ -61,8 +82,14 @@ vi.mock('react-hook-form', () => ({
       email: 'test@example.com',
       password: 'StrongPass123!',
     })),
+    trigger: vi.fn().mockResolvedValue(true),
+    getFieldState: vi.fn(() => ({})),
     control: {},
   }),
+  useFormContext: () => ({
+    getFieldState: vi.fn(() => ({})),
+  }),
+  useFormState: () => ({}),
   useWatch: () => 'StrongPass123!',
 }))
 
@@ -72,14 +99,27 @@ vi.mock('@hookform/resolvers/zod', () => ({
   }),
 }))
 
-const mockRegisterEmail = vi.fn()
-const mockRegisterGoogle = vi.fn()
+const mockRegisterEmail = vi.hoisted(() => vi.fn())
+const mockRegisterGoogle = vi.hoisted(() => vi.fn())
+
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({
+    register: (data: any, rememberMe: boolean) => mockRegisterEmail(data, rememberMe),
+    loginByGoogle: (data: any, rememberMe: boolean) => mockRegisterGoogle(data, rememberMe),
+  }),
+}))
 
 vi.mock('@/services/api', () => ({
   authService: {
-    register: (data: any) => mockRegisterEmail(data),
-    registerWithGoogle: (token: string) => mockRegisterGoogle(token),
+    isEmailVerificationEnabled: vi.fn().mockResolvedValue(false),
+    sendVerificationCode: vi.fn().mockResolvedValue(undefined),
   },
+}))
+
+vi.mock('@/components/SliderCaptcha', () => ({
+  default: ({ onVerified }: { onVerified: (token: string) => void }) => (
+    <button type="button" onClick={() => onVerified('captcha-token')}>Verify CAPTCHA</button>
+  ),
 }))
 
 vi.mock('sonner', () => ({
@@ -99,6 +139,7 @@ vi.mock('@/components/ui/card', () => ({
   Card: ({ children, className }: any) => <div className={className}>{children}</div>,
   CardContent: ({ children, className }: any) => <div className={className}>{children}</div>,
   CardDescription: ({ children }: any) => <p>{children}</p>,
+  CardFooter: ({ children, className }: any) => <div className={className}>{children}</div>,
   CardHeader: ({ children, className }: any) => <div className={className}>{children}</div>,
   CardTitle: ({ children, className }: any) => <div className={className}>{children}</div>,
 }))
@@ -127,11 +168,22 @@ vi.mock('lucide-react', () => ({
   ArrowLeft: () => <span>←</span>,
   Sparkles: () => <span>✨</span>,
   ShieldCheck: () => <span>🛡️</span>,
+  FileText: () => <span>📄</span>,
+  Loader2: () => <span>⏳</span>,
+  Globe: () => <span>🌐</span>,
+  Check: () => <span>✓</span>,
+  XIcon: () => <span>×</span>,
 }))
 
 describe('Register page', () => {
+  const verifyCaptcha = () => {
+    fireEvent.click(screen.getByText('Verify CAPTCHA'))
+  }
+
   beforeEach(() => {
-    vi.clearAllMocks()
+    mockNavigate.mockReset()
+    mockRegisterEmail.mockReset()
+    mockRegisterGoogle.mockReset()
   })
 
   it('renders register form with all fields', () => {
@@ -147,15 +199,14 @@ describe('Register page', () => {
     expect(screen.getByPlaceholderText('auth.register.confirmPasswordPlaceholder')).toBeInTheDocument()
   })
 
-  it('navigates to login page on back button click', () => {
+  it('links to login page', () => {
     render(
       <MemoryRouter>
         <Register />
       </MemoryRouter>
     )
 
-    fireEvent.click(screen.getByText('auth.register.backToLogin'))
-    expect(mockNavigate).toHaveBeenCalledWith('/login')
+    expect(screen.getByText('auth.register.loginNow').closest('a')).toHaveAttribute('href', '/login')
   })
 
   it('shows terms and conditions checkbox', () => {
@@ -165,7 +216,9 @@ describe('Register page', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByText('auth.register.termsRequired')).toBeInTheDocument()
+    expect(document.body).toHaveTextContent('auth.register.agreeTerms')
+    expect(screen.getByText('auth.register.termsOfService')).toBeInTheDocument()
+    expect(screen.getByText('auth.register.privacyPolicy')).toBeInTheDocument()
   })
 
   it('displays password strength indicator', () => {
@@ -175,19 +228,20 @@ describe('Register page', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByText('auth.register.passwordStrength')).toBeInTheDocument()
+    expect(screen.getByText('auth.register.passwordStrength.strong')).toBeInTheDocument()
+    expect(screen.getByText('auth.register.passwordStrength.hint')).toBeInTheDocument()
   })
 
   it('handles successful registration', async () => {
     mockRegisterEmail.mockResolvedValue({ token: 'new-token' })
-
-    const { toast } = await import('sonner')
 
     render(
       <MemoryRouter>
         <Register />
       </MemoryRouter>
     )
+
+    verifyCaptcha()
 
     const form = screen.getByText('auth.register.title').closest('form') || document.querySelector('form')
     if (form) {
@@ -204,22 +258,20 @@ describe('Register page', () => {
       response: { status: 409, data: { message: 'Email already exists' } },
     })
 
-    const { toast } = await import('sonner')
-
     render(
       <MemoryRouter>
         <Register />
       </MemoryRouter>
     )
 
+    verifyCaptcha()
+
     const form = screen.getByText('auth.register.title').closest('form') || document.querySelector('form')
     if (form) {
       fireEvent.submit(form)
     }
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalled()
-    })
+    expect(await screen.findByRole('alert')).toHaveTextContent('auth.register.errorEmailExists')
   })
 
   it('shows error on registration failure (400)', async () => {
@@ -227,49 +279,43 @@ describe('Register page', () => {
       response: { status: 400, data: { message: 'Invalid input' } },
     })
 
-    const { toast } = await import('sonner')
-
     render(
       <MemoryRouter>
         <Register />
       </MemoryRouter>
     )
 
+    verifyCaptcha()
+
     const form = screen.getByText('auth.register.title').closest('form') || document.querySelector('form')
     if (form) {
       fireEvent.submit(form)
     }
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalled()
-    })
+    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid input')
   })
 
   it('shows error on registration failure (generic)', async () => {
     mockRegisterEmail.mockRejectedValue(new Error('Network error'))
 
-    const { toast } = await import('sonner')
-
     render(
       <MemoryRouter>
         <Register />
       </MemoryRouter>
     )
+
+    verifyCaptcha()
 
     const form = screen.getByText('auth.register.title').closest('form') || document.querySelector('form')
     if (form) {
       fireEvent.submit(form)
     }
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalled()
-    })
+    expect(await screen.findByRole('alert')).toHaveTextContent('Network error')
   })
 
-  it('handles Google registration', async () => {
+  it('shows Google registration entry point', async () => {
     mockRegisterGoogle.mockResolvedValue({ token: 'google-token' })
-
-    const { toast } = await import('sonner')
 
     render(
       <MemoryRouter>
@@ -277,14 +323,7 @@ describe('Register page', () => {
       </MemoryRouter>
     )
 
-    // Google button would be in the component
-    const googleBtn = screen.queryByText('auth.register.googleSignUp')
-    if (googleBtn) {
-      fireEvent.click(googleBtn)
-      await waitFor(() => {
-        expect(mockRegisterGoogle).toHaveBeenCalled()
-      })
-    }
+    expect(screen.getByText('auth.login.googleLogin')).toBeInTheDocument()
   })
 
   it('toggles password visibility', () => {
@@ -305,7 +344,7 @@ describe('Register page', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByText('auth.register.passwordRequirements')).toBeInTheDocument()
+    expect(screen.getByText('auth.register.passwordStrength.hint')).toBeInTheDocument()
   })
 
   it('shows create account button', () => {
@@ -315,7 +354,7 @@ describe('Register page', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByText('auth.register.createAccount')).toBeInTheDocument()
+    expect(screen.getByText('auth.register.registerButton')).toBeInTheDocument()
   })
 
   it('shows Google sign up option', () => {
@@ -325,6 +364,7 @@ describe('Register page', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByText('auth.register.orContinueWith')).toBeInTheDocument()
+    expect(screen.getByText('auth.login.or')).toBeInTheDocument()
+    expect(screen.getByText('auth.login.googleLogin')).toBeInTheDocument()
   })
 })

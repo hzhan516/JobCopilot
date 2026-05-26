@@ -5,6 +5,7 @@ import io.jobcopilot.resumeassistant.api.user.dto.request.LoginByEmailRequest;
 import io.jobcopilot.resumeassistant.api.user.dto.request.LoginByGoogleRequest;
 import io.jobcopilot.resumeassistant.api.user.dto.request.RegisterByEmailRequest;
 import io.jobcopilot.resumeassistant.api.user.dto.request.SendVerificationCodeRequest;
+import io.jobcopilot.resumeassistant.api.user.dto.response.AuthResponse;
 import io.jobcopilot.resumeassistant.api.user.dto.response.AuthResult;
 import io.jobcopilot.resumeassistant.application.user.dto.AuthTokenResult;
 import io.jobcopilot.resumeassistant.api.user.facade.AuthFacade;

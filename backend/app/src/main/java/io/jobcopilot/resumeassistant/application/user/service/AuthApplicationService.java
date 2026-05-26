@@ -6,6 +6,7 @@ import io.jobcopilot.resumeassistant.api.user.service.TokenService;
 import io.jobcopilot.resumeassistant.application.user.command.LoginByEmailCommand;
 import io.jobcopilot.resumeassistant.application.user.command.LoginByGoogleCommand;
 import io.jobcopilot.resumeassistant.application.user.command.RegisterByEmailCommand;
+import io.jobcopilot.resumeassistant.application.user.dto.AuthTokenResult;
 import io.jobcopilot.resumeassistant.domain.user.entity.User;
 import io.jobcopilot.resumeassistant.domain.user.entity.UserCredential;
 import io.jobcopilot.resumeassistant.domain.user.entity.UserOAuthBinding;

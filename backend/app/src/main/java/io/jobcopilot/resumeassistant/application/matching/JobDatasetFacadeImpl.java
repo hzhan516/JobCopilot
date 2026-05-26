@@ -7,6 +7,9 @@ import io.jobcopilot.resumeassistant.domain.matching.repository.JobDatasetReposi
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 /**
@@ -34,11 +37,19 @@ public class JobDatasetFacadeImpl implements JobDatasetFacade {
                 d.getTitle(),
                 d.getCompany(),
                 d.getDescription(),
-                d.getRequirements(),
+                formatRequirements(d.getRequirements()),
                 d.getLocation(),
                 d.getExperienceLevel(),
                 d.getSource(),
-                d.getCreatedAt()
+                toInstant(d.getCreatedAt())
         );
+    }
+
+    private String formatRequirements(String[] requirements) {
+        return requirements == null ? "" : String.join("\n", requirements);
+    }
+
+    private Instant toInstant(LocalDateTime value) {
+        return value == null ? null : value.toInstant(ZoneOffset.UTC);
     }
 }

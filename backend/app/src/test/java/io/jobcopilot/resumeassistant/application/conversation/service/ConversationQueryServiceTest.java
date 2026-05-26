@@ -99,7 +99,7 @@ class ConversationQueryServiceTest {
         // Given
         List<Conversation> conversations = List.of(
                 Conversation.reconstruct(UUID.randomUUID(), USER_ID, "Chat 1", ConversationStatus.ACTIVE,
-                        null, null, null, LocalDateTime.now(), LocalDateTime.now(), Collections.emptyList())
+                        null, null, null, LocalDateTime.now(), LocalDateTime.now(), Collections.emptyList(), 0L)
         );
         when(conversationRepository.findAllByUserId(USER_ID)).thenReturn(conversations);
 

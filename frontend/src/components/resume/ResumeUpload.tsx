@@ -74,6 +74,7 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUpload }) => {
     <Card className="w-full max-w-2xl mx-auto">
       <CardContent className="p-6">
         <div
+          data-testid="resume-upload-dropzone"
           className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
             isDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'
           } ${loading ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}`}
@@ -84,6 +85,7 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUpload }) => {
         >
           <input
             id="resume-upload-input"
+            data-testid="resume-upload-input"
             type="file"
             className="hidden"
             accept=".pdf,.docx,.md,.txt"

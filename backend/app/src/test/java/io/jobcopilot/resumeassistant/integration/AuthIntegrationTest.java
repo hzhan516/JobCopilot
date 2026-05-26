@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
@@ -71,7 +72,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
         assertThat(response.getBody().getData().getEmail()).isEqualTo(TEST_EMAIL);
         assertThat(response.getBody().getData().getUserId()).isNotNull();
         assertThat(response.getBody().getData().getAccessToken()).isNotNull();
-        assertThat(response.getBody().getData().getRefreshToken()).isNotNull();
+        assertThat(response.getHeaders().getFirst(HttpHeaders.SET_COOKIE)).contains("refreshToken=");
     }
 
     @Test

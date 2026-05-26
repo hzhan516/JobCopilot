@@ -89,10 +89,10 @@ describe('MainLayout', () => {
     )
 
     expect(screen.getByText('common.appName')).toBeInTheDocument()
-    expect(screen.getByText('layout.nav.resumes')).toBeInTheDocument()
-    expect(screen.getByText('layout.nav.jobs')).toBeInTheDocument()
-    expect(screen.getByText('layout.nav.chat')).toBeInTheDocument()
-    expect(screen.getByText('layout.nav.tracking')).toBeInTheDocument()
+    expect(screen.getAllByText('layout.nav.resumes').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('layout.nav.jobs').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('layout.nav.chat').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('layout.nav.tracking').length).toBeGreaterThan(0)
   })
 
   it('renders user email in dropdown', () => {
@@ -204,7 +204,7 @@ describe('MainLayout', () => {
     )
 
     // The active item should have a different class
-    expect(screen.getByText('layout.nav.jobs')).toBeInTheDocument()
+    expect(screen.getAllByText('layout.nav.jobs').length).toBeGreaterThan(0)
   })
 
   it('navigates to profile on profile menu click', () => {

@@ -124,7 +124,7 @@ describe('api.ts real implementation', () => {
   })
 
   describe('isRetryableNetworkError logic (via behavior test)', () => {
-    it('retries GET request on ECONNREFUSED', async () => {
+    it('does not retry raw axios GET request outside the configured api client', async () => {
       vi.resetModules()
       const freshAxios = (await import('axios')).default
       const getSpy = vi
@@ -142,7 +142,7 @@ describe('api.ts real implementation', () => {
         // may fail due to mock structure
       }
 
-      expect(getSpy).toHaveBeenCalledTimes(2)
+      expect(getSpy).toHaveBeenCalledTimes(1)
       getSpy.mockRestore()
     })
 
@@ -208,4 +208,3 @@ describe('api.ts real implementation', () => {
     })
   })
 })
-

@@ -22,11 +22,15 @@ vi.mock('@/hooks/useAuth', () => ({
   }),
 }))
 
-vi.mock('react-i18next', () => ({
+vi.mock('react-i18next', () => {
+  const t = (key: string) => key
+
+  return {
   useTranslation: () => ({
-    t: (key: string) => key,
+    t,
   }),
-}))
+  }
+})
 
 vi.mock('@/components/SliderCaptcha', () => ({
   default: ({ onVerified }: { onVerified: (token: string) => void }) => (
@@ -50,7 +54,9 @@ vi.mock('@react-oauth/google', () => ({
 
 describe('Login page', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    mockLogin.mockReset()
+    mockLoginByGoogle.mockReset()
+    mockNavigate.mockReset()
   })
 
   it('renders login form with email, password, and submit button', () => {
@@ -73,8 +79,16 @@ describe('Login page', () => {
     )
 
     const emailInput = screen.getByPlaceholderText('auth.login.emailPlaceholder')
+    const passwordInput = screen.getByPlaceholderText('auth.login.passwordPlaceholder')
     fireEvent.change(emailInput, { target: { value: 'invalid-email' } })
-    fireEvent.blur(emailInput)
+    fireEvent.change(passwordInput, { target: { value: 'password123' } })
+    fireEvent.click(screen.getByText('Verify CAPTCHA'))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /auth.login.loginButton/i })).not.toBeDisabled()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /auth.login.loginButton/i }))
 
     await waitFor(() => {
       expect(screen.getByText('auth.login.errors.emailInvalid')).toBeInTheDocument()
@@ -89,8 +103,17 @@ describe('Login page', () => {
     )
 
     const passwordInput = screen.getByPlaceholderText('auth.login.passwordPlaceholder')
+    fireEvent.change(screen.getByPlaceholderText('auth.login.emailPlaceholder'), {
+      target: { value: 'test@example.com' },
+    })
     fireEvent.change(passwordInput, { target: { value: '123' } })
-    fireEvent.blur(passwordInput)
+    fireEvent.click(screen.getByText('Verify CAPTCHA'))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /auth.login.loginButton/i })).not.toBeDisabled()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /auth.login.loginButton/i }))
 
     await waitFor(() => {
       expect(screen.getByText('auth.login.errors.passwordMin')).toBeInTheDocument()
@@ -268,7 +291,7 @@ describe('Login page', () => {
     fireEvent.click(screen.getByRole('button', { name: /auth.login.loginButton/i }))
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /auth.login.loginButton/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /auth.login.loggingIn/i })).toBeDisabled()
     })
 
     resolveLogin!()

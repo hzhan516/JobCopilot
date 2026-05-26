@@ -169,4 +169,8 @@ public class Conversation extends AggregateRoot<UUID> {
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
+
+    public long getVersion() {
+        return version;
+    }
 }

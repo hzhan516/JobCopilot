@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import ResumeDetail from './ResumeDetail'
 
@@ -38,7 +38,7 @@ let mockStore = {
 }
 
 vi.mock('@/store/resume.store.ts', () => ({
-  useResumeStore: (selector: any) => selector(mockStore),
+  useResumeStore: (selector?: any) => typeof selector === 'function' ? selector(mockStore) : mockStore,
 }))
 
 vi.mock('sonner', () => ({
@@ -300,7 +300,7 @@ describe('ResumeDetail page', () => {
 
     renderResumeDetail()
 
-    fireEvent.click(screen.getByText('Activate'))
+    fireEvent.click(within(screen.getByTestId('version-v2')).getByText('Activate'))
 
     await waitFor(() => {
       expect(mockActivateVersion).toHaveBeenCalledWith('v2')

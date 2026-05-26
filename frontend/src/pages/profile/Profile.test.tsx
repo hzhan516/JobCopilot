@@ -42,7 +42,7 @@ let mockProfileStore = {
 }
 
 vi.mock('@/store/profile.store', () => ({
-  useProfileStore: (selector: any) => selector(mockProfileStore),
+  useProfileStore: (selector?: any) => typeof selector === 'function' ? selector(mockProfileStore) : mockProfileStore,
 }))
 
 let mockTimeZone = 'America/Phoenix'
@@ -394,6 +394,6 @@ describe('Profile page', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByText('👤')).toBeInTheDocument()
+    expect(screen.getAllByText('👤').length).toBeGreaterThan(0)
   })
 })

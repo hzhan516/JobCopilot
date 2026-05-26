@@ -22,6 +22,7 @@ import java.util.List;
  */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 class OutboxRelayTransactionService {
 
     private final OutboxMessageRepository outboxMessageRepository;

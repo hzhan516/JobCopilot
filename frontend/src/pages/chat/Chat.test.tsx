@@ -1,20 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { Children, cloneElement, isValidElement } from 'react'
 import Chat from './Chat'
 
-const mockToast = {
+const mockToast = vi.hoisted(() => ({
   error: vi.fn(),
   success: vi.fn(),
   info: vi.fn(),
-}
+}))
+const mockT = vi.hoisted(() => vi.fn((key: string) => key))
 
-vi.mock('sonner', () =>> ({
+vi.mock('sonner', () => ({
   toast: mockToast,
 }))
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: mockT,
   }),
 }))
 
@@ -121,32 +123,80 @@ vi.mock('@/components/ui/skeleton', () => ({
 }))
 
 vi.mock('@/components/ui/select', () => ({
-  Select: ({ children, value, onValueChange }: any) => (
-    <div data-testid="select" data-value={value}>
-      {children}
-      <button onClick={() => onValueChange?.('v1')}>Select v1</button>
-      <button onClick={() => onValueChange?.('job-1')}>Select job-1</button>
-    </div>
-  ),
+  Select: ({ children, value, onValueChange }: any) => {
+    const injectSelectHandler = (node: any): any =>
+      Children.map(node, (child) => {
+        if (!isValidElement(child)) return child
+        const props = child.props as any
+
+        if (props.value) {
+          return cloneElement(child, {
+            onSelectValue: onValueChange,
+          } as any)
+        }
+
+        if (props.children) {
+          return cloneElement(child, {
+            children: injectSelectHandler(props.children),
+          } as any)
+        }
+
+        return child
+      })
+
+    return (
+      <div data-testid="select" data-value={value}>
+        {injectSelectHandler(children)}
+      </div>
+    )
+  },
   SelectTrigger: ({ children }: any) => <div>{children}</div>,
   SelectValue: ({ placeholder }: any) => <span>{placeholder}</span>,
   SelectContent: ({ children }: any) => <div>{children}</div>,
-  SelectItem: ({ children, value }: any) => <div data-value={value}>{children}</div>,
+  SelectItem: ({ children, value, onSelectValue }: any) => (
+    <button type="button" data-value={value} onClick={() => onSelectValue?.(value)}>
+      {children}
+    </button>
+  ),
 }))
 
 vi.mock('@/components/ui/dialog', () => ({
-  Dialog: ({ children, open, onOpenChange }: any) => (
-    <div data-testid="dialog" data-open={open}>
-      {children}
-      {open && <button onClick={() => onOpenChange?.(false)}>Close Dialog</button>}
-    </div>
-  ),
+  Dialog: ({ children, open, onOpenChange }: any) => {
+    const injectDialogHandler = (node: any): any =>
+      Children.map(node, (child) => {
+        if (!isValidElement(child)) return child
+        const props = child.props as any
+
+        if (props.asChild) {
+          return cloneElement(child, {
+            onOpen: () => onOpenChange?.(true),
+          } as any)
+        }
+
+        if (props.children) {
+          return cloneElement(child, {
+            children: injectDialogHandler(props.children),
+          } as any)
+        }
+
+        return child
+      })
+
+    return (
+      <div data-testid="dialog" data-open={open}>
+        {injectDialogHandler(children)}
+        {open && <button onClick={() => onOpenChange?.(false)}>Close Dialog</button>}
+      </div>
+    )
+  },
   DialogContent: ({ children }: any) => <div>{children}</div>,
   DialogDescription: ({ children }: any) => <div>{children}</div>,
   DialogFooter: ({ children }: any) => <div>{children}</div>,
   DialogHeader: ({ children }: any) => <div>{children}</div>,
   DialogTitle: ({ children }: any) => <div>{children}</div>,
-  DialogTrigger: ({ children }: any) => <div>{children}</div>,
+  DialogTrigger: ({ children, onOpen }: any) => (
+    <div onClick={() => onOpen?.()}>{children}</div>
+  ),
 }))
 
 vi.mock('@/components/ui/dropdown-menu', () => ({
@@ -173,7 +223,7 @@ describe('Chat page', () => {
     render(<Chat />)
 
     await waitFor(() => {
-      expect(screen.getByText('Test Chat')).toBeInTheDocument()
+      expect(screen.getAllByText('Test Chat').length).toBeGreaterThan(0)
     })
   })
 
@@ -211,7 +261,6 @@ describe('Chat page', () => {
     render(<Chat />)
 
     await waitFor(() => {
-      const sendBtn = screen.getByRole('button', { name: '' }).closest('button')
       // The send button should be disabled when input is empty
       const input = screen.getByPlaceholderText('chat.inputPlaceholder') as HTMLInputElement
       expect(input.value).toBe('')
@@ -222,10 +271,10 @@ describe('Chat page', () => {
     render(<Chat />)
 
     await waitFor(() => {
-      expect(screen.getByText('chat.newChat')).toBeInTheDocument()
+      expect(screen.getAllByText('chat.newChat').length).toBeGreaterThan(0)
     })
 
-    fireEvent.click(screen.getByText('chat.newChat'))
+    fireEvent.click(screen.getAllByText('chat.newChat')[0])
 
     await waitFor(() => {
       expect(screen.getByTestId('dialog')).toHaveAttribute('data-open', 'true')
@@ -239,10 +288,10 @@ describe('Chat page', () => {
     render(<Chat />)
 
     await waitFor(() => {
-      expect(screen.getByText('chat.newChat')).toBeInTheDocument()
+      expect(screen.getAllByText('chat.newChat').length).toBeGreaterThan(0)
     })
 
-    fireEvent.click(screen.getByText('chat.newChat'))
+    fireEvent.click(screen.getAllByText('chat.newChat')[0])
 
     await waitFor(() => {
       expect(screen.getByText('chat.newChatTitle')).toBeInTheDocument()
@@ -257,16 +306,16 @@ describe('Chat page', () => {
     render(<Chat />)
 
     await waitFor(() => {
-      expect(screen.getByText('chat.newChat')).toBeInTheDocument()
+      expect(screen.getAllByText('chat.newChat').length).toBeGreaterThan(0)
     })
 
-    fireEvent.click(screen.getByText('chat.newChat'))
+    fireEvent.click(screen.getAllByText('chat.newChat')[0])
 
     await waitFor(() => {
       // Select resume
-      fireEvent.click(screen.getByText('Select v1'))
+      fireEvent.click(screen.getByText('My Resume - v1 (COMPLETED)'))
       // Select job
-      fireEvent.click(screen.getByText('Select job-1'))
+      fireEvent.click(screen.getByText('TechCorp - Frontend Dev'))
     })
 
     // After selection, create button should be enabled
@@ -294,7 +343,7 @@ describe('Chat page', () => {
     render(<Chat />)
 
     await waitFor(() => {
-      expect(screen.getByText('Test Chat')).toBeInTheDocument()
+      expect(screen.getAllByText('Test Chat').length).toBeGreaterThan(0)
     })
 
     // Find and click delete option in dropdown
@@ -314,7 +363,7 @@ describe('Chat page', () => {
 
     await waitFor(() => {
       // Should show resume name and job info
-      expect(screen.getByText('Test Chat')).toBeInTheDocument()
+      expect(screen.getAllByText('Test Chat').length).toBeGreaterThan(0)
     })
   })
 })

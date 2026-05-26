@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import JobList from './JobList'
 
@@ -382,11 +382,8 @@ describe('JobList page', () => {
       </MemoryRouter>
     )
 
-    const selects = screen.getAllByRole('combobox').filter((el) => el.className.includes('Select') || el.closest('[data-testid^="job-card-"]'))
-    const jobSelects = screen.getAllByDisplayValue('')
-    if (jobSelects.length > 0) {
-      fireEvent.change(jobSelects[0], { target: { value: 'v1' } })
-      expect(mockSetSelectedResume).toHaveBeenCalledWith('job-1', 'v1')
-    }
+    const jobSelect = within(screen.getByTestId('job-card-job-1')).getByRole('combobox')
+    fireEvent.change(jobSelect, { target: { value: 'v1' } })
+    expect(mockSetSelectedResume).toHaveBeenCalledWith('job-1', 'v1')
   })
 })

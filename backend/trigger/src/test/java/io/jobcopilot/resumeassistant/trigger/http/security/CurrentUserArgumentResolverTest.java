@@ -107,7 +107,7 @@ class CurrentUserArgumentResolverTest {
         // We use a simplified approach: create a MethodParameter that returns our desired values
         return new MethodParameter(MockMethod.class.getMethods()[0], 0) {
             @Override
-            public boolean hasParameterAnnotation(Class<? extends Annotation> annotationType2) {
+            public <A extends Annotation> boolean hasParameterAnnotation(Class<A> annotationType2) {
                 return annotationType != null && annotationType.equals(annotationType2);
             }
 

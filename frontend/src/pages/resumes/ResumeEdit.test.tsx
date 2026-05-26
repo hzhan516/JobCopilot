@@ -31,7 +31,7 @@ let mockStore = {
 }
 
 vi.mock('@/store/resume.store.ts', () => ({
-  useResumeStore: (selector: any) => selector(mockStore),
+  useResumeStore: (selector?: any) => typeof selector === 'function' ? selector(mockStore) : mockStore,
 }))
 
 vi.mock('sonner', () => ({
@@ -122,13 +122,7 @@ describe('ResumeEdit page', () => {
   it('fetches group detail on mount', () => {
     mockStore = {
       ...mockStore,
-      currentGroup: {
-        groupId: 'group-1',
-        title: 'My Resume',
-        versions: [
-          { versionId: 'v1', versionType: 'ORIGINAL', status: 'ACTIVE', content: 'Resume content' },
-        ],
-      },
+      currentGroup: null,
     }
 
     renderResumeEdit()

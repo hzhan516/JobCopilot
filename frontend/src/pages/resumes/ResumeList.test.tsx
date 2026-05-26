@@ -34,7 +34,7 @@ let mockStore = {
 }
 
 vi.mock('@/store/resume.store', () => ({
-  useResumeStore: (selector: any) => selector(mockStore),
+  useResumeStore: (selector?: any) => typeof selector === 'function' ? selector(mockStore) : mockStore,
 }))
 
 vi.mock('sonner', () => ({
@@ -109,7 +109,7 @@ describe('ResumeList page', () => {
     )
 
     expect(screen.getByText('resume.list.noResumes')).toBeInTheDocument()
-    expect(screen.getByText('resume.list.upload')).toBeInTheDocument()
+    expect(screen.getAllByText('resume.list.upload').length).toBeGreaterThan(0)
   })
 
   it('fetches resume groups on mount', () => {

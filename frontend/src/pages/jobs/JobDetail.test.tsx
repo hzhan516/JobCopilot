@@ -14,11 +14,15 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
-vi.mock('react-i18next', () => ({
+vi.mock('react-i18next', () => {
+  const t = (key: string) => key
+
+  return {
   useTranslation: () => ({
-    t: (key: string) => key,
+    t,
   }),
-}))
+  }
+})
 
 const mockGetJob = vi.fn()
 const mockGetResumeGroups = vi.fn()
@@ -129,6 +133,7 @@ describe('JobDetail page', () => {
     mockUpdateJob.mockReset()
     mockScoreJob.mockReset()
     mockTrackAction.mockReset()
+    mockTrackAction.mockResolvedValue(undefined)
   })
 
   it('renders skeleton while loading', async () => {
@@ -312,7 +317,7 @@ describe('JobDetail page', () => {
     })
   })
 
-  it('shows error when scoring without resume selected', async () => {
+  it('disables score button when no resume is selected', async () => {
     mockGetJob.mockResolvedValue({
       id: 'job-1',
       status: 'COMPLETED',
@@ -321,19 +326,13 @@ describe('JobDetail page', () => {
     mockGetResumeGroups.mockResolvedValue([])
     mockGetScoreHistory.mockResolvedValue([])
 
-    const { toast } = await import('sonner')
-
     renderJobDetail()
 
     await waitFor(() => {
       expect(screen.getByText('jobDetail.startScore')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByText('jobDetail.startScore'))
-
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('jobDetail.selectResumeError')
-    })
+    expect(screen.getByText('jobDetail.startScore')).toBeDisabled()
   })
 
   it('handles track action APPLY', async () => {
@@ -373,7 +372,7 @@ describe('JobDetail page', () => {
     renderJobDetail()
 
     await waitFor(() => {
-      expect(mockTrackAction).toHaveBeenCalledWith('job-1', 'CLICK')
+      expect(mockTrackAction).toHaveBeenCalledWith('job-1', 'CLICK', undefined)
     })
   })
 

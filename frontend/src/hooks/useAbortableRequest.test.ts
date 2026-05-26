@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { renderHook, act, waitFor } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 
 import { useAbortableRequest } from './useAbortableRequest'
 
@@ -34,21 +34,17 @@ describe('useAbortableRequest', () => {
     let firstSignal: AbortSignal | null = null
     const slowFn = vi.fn(async (signal: AbortSignal) => {
       firstSignal = signal
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      if (signal.aborted) throw new Error('Aborted')
-      return 'slow'
+      await new Promise((_, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('Aborted')))
+      })
     })
 
     const fastFn = vi.fn(async () => 'fast')
 
-    const slowPromise = act(async () => {
-      return result.current.execute(slowFn)
-    })
+    const slowPromise = result.current.execute(slowFn)
 
     // Immediately supersede with fast request
-    const fastPromise = act(async () => {
-      return result.current.execute(fastFn)
-    })
+    const fastPromise = result.current.execute(fastFn)
 
     await expect(slowPromise).rejects.toThrow('Aborted')
     await expect(fastPromise).resolves.toBe('fast')
@@ -66,15 +62,11 @@ describe('useAbortableRequest', () => {
       })
     })
 
-    act(() => {
-      result.current.execute(fn)
-    })
+    result.current.execute(fn).catch(() => undefined)
 
     expect(capturedSignal?.aborted).toBe(false)
 
-    act(() => {
-      result.current.abort('Manual abort')
-    })
+    result.current.abort('Manual abort')
 
     expect(capturedSignal?.aborted).toBe(true)
   })
@@ -99,9 +91,7 @@ describe('useAbortableRequest', () => {
 
     const { result, unmount } = renderHook(() => useAbortableRequest())
 
-    act(() => {
-      result.current.execute(fn)
-    })
+    result.current.execute(fn)
 
     expect(capturedSignal?.aborted).toBe(false)
 
@@ -115,11 +105,7 @@ describe('useAbortableRequest', () => {
 
     expect(result.current.getSignal()).toBeUndefined()
 
-    act(() => {
-      result.current.execute(async (signal) => {
-        return 'test'
-      })
-    })
+    result.current.execute(async () => new Promise(() => {}))
 
     expect(result.current.getSignal()).toBeInstanceOf(AbortSignal)
   })

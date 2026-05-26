@@ -2,6 +2,7 @@ package io.jobcopilot.resumeassistant.infrastructure.persistence.redis.adapter;
 
 import io.jobcopilot.resumeassistant.domain.user.port.CaptchaStorePort;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -17,11 +18,12 @@ import java.util.concurrent.TimeUnit;
 public class RedisCaptchaStoreAdapter implements CaptchaStorePort {
 
     private final StringRedisTemplate redisTemplate;
-    private final io.jobcopilot.resumeassistant.app.config.CaptchaProperties captchaProperties;
+    @Value("${app.captcha.redis-key-prefix:ra:captcha:}")
+    private String redisKeyPrefix;
 
-    private String getChallengePrefix() { return captchaProperties.getRedisKeyPrefix() + "challenge:"; }
-    private String getTokenPrefix() { return captchaProperties.getRedisKeyPrefix() + "token:"; }
-    private String getRateLimitPrefix() { return captchaProperties.getRedisKeyPrefix() + "ratelimit:"; }
+    private String getChallengePrefix() { return redisKeyPrefix + "challenge:"; }
+    private String getTokenPrefix() { return redisKeyPrefix + "token:"; }
+    private String getRateLimitPrefix() { return redisKeyPrefix + "ratelimit:"; }
 
     @Override
     public void storeChallenge(String captchaId, int targetX, int attempts, Duration ttl) {

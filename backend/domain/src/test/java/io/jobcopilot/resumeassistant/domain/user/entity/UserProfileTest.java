@@ -1,5 +1,6 @@
 package io.jobcopilot.resumeassistant.domain.user.entity;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

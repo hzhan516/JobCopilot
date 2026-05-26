@@ -64,15 +64,15 @@ describe('ParseStatusBadge', () => {
 
   it('applies correct variant for each status', () => {
     const { rerender } = render(<ParseStatusBadge status="PENDING" />)
-    expect(screen.getByText('resume.parseStatus.pending').parentElement).toHaveAttribute('data-variant', 'secondary')
+    expect(screen.getByText('resume.parseStatus.pending')).toHaveAttribute('data-variant', 'secondary')
 
     rerender(<ParseStatusBadge status="PARSING" />)
-    expect(screen.getByText('resume.parseStatus.parsing').parentElement).toHaveAttribute('data-variant', 'secondary')
+    expect(screen.getByText('resume.parseStatus.parsing')).toHaveAttribute('data-variant', 'secondary')
 
     rerender(<ParseStatusBadge status="COMPLETED" />)
-    expect(screen.getByText('resume.parseStatus.completed').parentElement).toHaveAttribute('data-variant', 'secondary')
+    expect(screen.getByText('resume.parseStatus.completed')).toHaveAttribute('data-variant', 'secondary')
 
     rerender(<ParseStatusBadge status="FAILED" />)
-    expect(screen.getByText('resume.parseStatus.failed').parentElement).toHaveAttribute('data-variant', 'destructive')
+    expect(screen.getByText('resume.parseStatus.failed')).toHaveAttribute('data-variant', 'destructive')
   })
 })

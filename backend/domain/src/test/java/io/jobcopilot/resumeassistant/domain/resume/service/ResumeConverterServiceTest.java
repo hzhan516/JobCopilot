@@ -92,7 +92,7 @@ class ResumeConverterServiceTest {
 
     @Test
     @DisplayName("Should return raw content for Markdown files without conversion")
-    void shouldReturnRawContentForMarkdownFiles() {
+    void shouldReturnRawContentForMarkdownFiles() throws Exception {
         // 给定 / Given
         String mdContent = "# My Resume\n\nExperience: 5 years";
         InputStream mdStream = new ByteArrayInputStream(mdContent.getBytes());

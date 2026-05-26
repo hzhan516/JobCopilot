@@ -53,6 +53,9 @@ vi.mock('@/services/trackingService', () => ({
 }))
 
 vi.mock('@/services/chatService', () => ({
+  chatService: {
+    getConversations: vi.fn().mockResolvedValue([{ conversationId: 'c1' }]),
+  },
   default: {
     getConversations: vi.fn().mockResolvedValue([{ conversationId: 'c1' }]),
   },
@@ -165,8 +168,8 @@ describe('Dashboard', () => {
 
     await waitFor(() => {
       expect(screen.getByText('dashboard.recommendedJobs.title')).toBeInTheDocument()
-      expect(screen.getByText(/Dev/)).toBeInTheDocument()
-      expect(screen.getByText(/Corp/)).toBeInTheDocument()
+      expect(screen.getAllByText(/Dev/).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/Corp/).length).toBeGreaterThan(0)
     })
   })
 

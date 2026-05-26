@@ -282,14 +282,6 @@
                                     <requireJavaVersion>
                                         <version>${jdk.min.version}</version>
                                     </requireJavaVersion>
-                                    <!-- Ban specific dependencies -->
-                                    <bannedDependencies>
-                                        <excludes>
-                                            <!-- Prevent accidental Spring framework in domain module -->
-                                            <exclude>org.springframework:*:*</exclude>
-                                        </excludes>
-                                        <searchTransitive>false</searchTransitive>
-                                    </bannedDependencies>
                                     <!-- Require explicit dependency versions (no snapshots in releases) -->
                                     <requireReleaseDeps>
                                         <onlyWhenRelease>true</onlyWhenRelease>
@@ -391,7 +383,7 @@
                 <artifactId>maven-enforcer-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>enforce</id>
+                        <id>enforce-environment</id>
                         <goals>
                             <goal>enforce</goal>
                         </goals>

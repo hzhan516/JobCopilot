@@ -4,6 +4,7 @@ import io.jobcopilot.resumeassistant.api.user.dto.TokenPair;
 import io.jobcopilot.resumeassistant.api.user.dto.request.LoginByEmailRequest;
 import io.jobcopilot.resumeassistant.api.user.dto.request.RegisterByEmailRequest;
 import io.jobcopilot.resumeassistant.api.user.dto.response.AuthResponse;
+import io.jobcopilot.resumeassistant.api.user.dto.response.AuthResult;
 import io.jobcopilot.resumeassistant.app.config.CaptchaProperties;
 import io.jobcopilot.resumeassistant.application.user.service.AuthApplicationService;
 import io.jobcopilot.resumeassistant.domain.user.entity.User;
@@ -90,16 +91,17 @@ class AuthFacadeImplTest {
 
         // 什么时候
         // When
-        AuthResponse result = authFacade.registerByEmail(request);
+        AuthResult result = authFacade.registerByEmail(request);
+        AuthResponse response = result.getAuthResponse();
 
         // 然后
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.getUserId()).isEqualTo(testUser.getId());
-        assertThat(result.getEmail()).isEqualTo(TEST_EMAIL);
-        assertThat(result.getAccessToken()).isEqualTo("test-access-token");
+        assertThat(response.getUserId()).isEqualTo(testUser.getId());
+        assertThat(response.getEmail()).isEqualTo(TEST_EMAIL);
+        assertThat(response.getAccessToken()).isEqualTo("test-access-token");
         assertThat(result.getRefreshToken()).isEqualTo("test-refresh-token");
-        assertThat(result.getExpiresIn()).isEqualTo(3600L);
+        assertThat(response.getExpiresIn()).isEqualTo(3600L);
     }
 
     @Test
@@ -141,14 +143,15 @@ class AuthFacadeImplTest {
 
         // 什么时候
         // When
-        AuthResponse result = authFacade.loginByEmail(request);
+        AuthResult result = authFacade.loginByEmail(request);
+        AuthResponse response = result.getAuthResponse();
 
         // 然后
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.getUserId()).isEqualTo(testUser.getId());
-        assertThat(result.getEmail()).isEqualTo(TEST_EMAIL);
-        assertThat(result.getAccessToken()).isEqualTo("test-access-token");
+        assertThat(response.getUserId()).isEqualTo(testUser.getId());
+        assertThat(response.getEmail()).isEqualTo(TEST_EMAIL);
+        assertThat(response.getAccessToken()).isEqualTo("test-access-token");
         assertThat(result.getRefreshToken()).isEqualTo("test-refresh-token");
     }
 

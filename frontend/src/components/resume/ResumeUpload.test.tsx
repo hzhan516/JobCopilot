@@ -3,6 +3,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { ResumeUpload } from './ResumeUpload'
 
 const mockOnUpload = vi.fn()
+const mockResumeUploadStore = vi.hoisted(() => ({
+  uploadProgress: 0,
+  loading: false,
+}))
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -11,15 +15,14 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('../../store/resume.store', () => ({
-  useResumeStore: () => ({
-    uploadProgress: 0,
-    loading: false,
-  }),
+  useResumeStore: () => mockResumeUploadStore,
 }))
 
 describe('ResumeUpload', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockResumeUploadStore.uploadProgress = 0
+    mockResumeUploadStore.loading = false
   })
 
   it('renders upload area with drag instructions', () => {
@@ -154,13 +157,8 @@ describe('ResumeUpload', () => {
   })
 
   it('disables interaction during loading', () => {
-    // Remock with loading=true
-    vi.doMock('../../store/resume.store', () => ({
-      useResumeStore: () => ({
-        uploadProgress: 50,
-        loading: true,
-      }),
-    }))
+    mockResumeUploadStore.uploadProgress = 50
+    mockResumeUploadStore.loading = true
 
     render(<ResumeUpload onUpload={mockOnUpload} />)
 
@@ -216,13 +214,6 @@ describe('ResumeUpload', () => {
   it('triggers file input when drop zone is clicked', () => {
     render(<ResumeUpload onUpload={mockOnUpload} />)
 
-    const dropZone = screen.getByText('resume.upload.dragText').closest('div')
-    const clickSpy = vi.fn()
-
-    if (dropZone) {
-      // The onClick handler calls document.getElementById('resume-upload-input').click()
-      // We can't easily spy on this, but we verify the zone is clickable
-      expect(dropZone).toHaveClass('cursor-pointer')
-    }
+    expect(screen.getByTestId('resume-upload-dropzone')).toHaveClass('cursor-pointer')
   })
 })

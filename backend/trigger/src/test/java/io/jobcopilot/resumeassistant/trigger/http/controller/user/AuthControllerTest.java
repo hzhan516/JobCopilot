@@ -4,7 +4,9 @@ import io.jobcopilot.resumeassistant.api.common.dto.ApiResponse;
 import io.jobcopilot.resumeassistant.api.user.dto.request.LoginByEmailRequest;
 import io.jobcopilot.resumeassistant.api.user.dto.request.RegisterByEmailRequest;
 import io.jobcopilot.resumeassistant.api.user.dto.response.AuthResponse;
+import io.jobcopilot.resumeassistant.api.user.dto.response.AuthResult;
 import io.jobcopilot.resumeassistant.api.user.facade.AuthFacade;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -45,10 +48,14 @@ class AuthControllerTest {
     @Mock
     private AuthFacade authFacade;
 
+    @Mock
+    private HttpServletRequest httpRequest;
+
     @InjectMocks
     private AuthController authController;
 
     private AuthResponse testAuthResponse;
+    private AuthResult testAuthResult;
 
     @BeforeEach
     void setUp() {
@@ -56,9 +63,10 @@ class AuthControllerTest {
                 .userId(USER_ID)
                 .email(TEST_EMAIL)
                 .accessToken("access-token")
-                .refreshToken("refresh-token")
                 .expiresIn(3600L)
                 .build();
+        testAuthResult = new AuthResult(testAuthResponse, "refresh-token");
+        when(httpRequest.isSecure()).thenReturn(false);
     }
 
     // ==================== 注册测试 ====================
@@ -75,11 +83,11 @@ class AuthControllerTest {
                 .build();
 
         when(authFacade.registerByEmail(any(RegisterByEmailRequest.class)))
-                .thenReturn(testAuthResponse);
+                .thenReturn(testAuthResult);
 
         // 当
         // When
-        ResponseEntity<ApiResponse<AuthResponse>> response = authController.registerByEmail(request);
+        ResponseEntity<ApiResponse<AuthResponse>> response = authController.registerByEmail(request, httpRequest);
 
         // 那么
         // Then
@@ -99,11 +107,11 @@ class AuthControllerTest {
                 .password(TEST_PASSWORD)
                 .build();
 
-        when(authFacade.registerByEmail(any())).thenReturn(testAuthResponse);
+        when(authFacade.registerByEmail(any())).thenReturn(testAuthResult);
 
         // 当
         // When
-        authController.registerByEmail(request);
+        authController.registerByEmail(request, httpRequest);
 
         // 那么
         // Then
@@ -122,11 +130,11 @@ class AuthControllerTest {
                 .password(TEST_PASSWORD)
                 .build();
 
-        when(authFacade.registerByEmail(any())).thenReturn(testAuthResponse);
+        when(authFacade.registerByEmail(any())).thenReturn(testAuthResult);
 
         // 当
         // When
-        ResponseEntity<ApiResponse<AuthResponse>> response = authController.registerByEmail(request);
+        ResponseEntity<ApiResponse<AuthResponse>> response = authController.registerByEmail(request, httpRequest);
 
         // 那么
         // Then
@@ -151,11 +159,11 @@ class AuthControllerTest {
                 .build();
 
         when(authFacade.loginByEmail(any(LoginByEmailRequest.class)))
-                .thenReturn(testAuthResponse);
+                .thenReturn(testAuthResult);
 
         // 当
         // When
-        ResponseEntity<ApiResponse<AuthResponse>> response = authController.loginByEmail(request);
+        ResponseEntity<ApiResponse<AuthResponse>> response = authController.loginByEmail(request, httpRequest);
 
         // 那么
         // Then
@@ -175,11 +183,11 @@ class AuthControllerTest {
                 .password(TEST_PASSWORD)
                 .build();
 
-        when(authFacade.loginByEmail(any())).thenReturn(testAuthResponse);
+        when(authFacade.loginByEmail(any())).thenReturn(testAuthResult);
 
         // 当
         // When
-        authController.loginByEmail(request);
+        authController.loginByEmail(request, httpRequest);
 
         // 那么
         // Then
@@ -198,18 +206,18 @@ class AuthControllerTest {
                 .password(TEST_PASSWORD)
                 .build();
 
-        when(authFacade.loginByEmail(any())).thenReturn(testAuthResponse);
+        when(authFacade.loginByEmail(any())).thenReturn(testAuthResult);
 
         // 当
         // When
-        ResponseEntity<ApiResponse<AuthResponse>> response = authController.loginByEmail(request);
+        ResponseEntity<ApiResponse<AuthResponse>> response = authController.loginByEmail(request, httpRequest);
 
         // 那么
         // Then
         AuthResponse data = response.getBody().getData();
         assertThat(data.getAccessToken()).isEqualTo("access-token");
-        assertThat(data.getRefreshToken()).isEqualTo("refresh-token");
         assertThat(data.getExpiresIn()).isEqualTo(3600L);
+        assertThat(response.getHeaders().getFirst(HttpHeaders.SET_COOKIE)).contains("refreshToken=refresh-token");
     }
 
     @Test
@@ -226,13 +234,13 @@ class AuthControllerTest {
                 .password(TEST_PASSWORD)
                 .build();
 
-        when(authFacade.registerByEmail(any())).thenReturn(testAuthResponse);
-        when(authFacade.loginByEmail(any())).thenReturn(testAuthResponse);
+        when(authFacade.registerByEmail(any())).thenReturn(testAuthResult);
+        when(authFacade.loginByEmail(any())).thenReturn(testAuthResult);
 
         // 当
         // When
-        ResponseEntity<ApiResponse<AuthResponse>> registerResponse = authController.registerByEmail(registerRequest);
-        ResponseEntity<ApiResponse<AuthResponse>> loginResponse = authController.loginByEmail(loginRequest);
+        ResponseEntity<ApiResponse<AuthResponse>> registerResponse = authController.registerByEmail(registerRequest, httpRequest);
+        ResponseEntity<ApiResponse<AuthResponse>> loginResponse = authController.loginByEmail(loginRequest, httpRequest);
 
         // 那么
         // Then

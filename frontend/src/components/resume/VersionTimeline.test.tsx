@@ -92,7 +92,7 @@ describe('VersionTimeline', () => {
     )
 
     expect(screen.getByText('resume.timeline.active')).toBeInTheDocument()
-    expect(screen.getByText('resume.timeline.active').parentElement).toHaveAttribute('data-variant', 'outline')
+    expect(screen.getByText('resume.timeline.active')).toHaveAttribute('data-variant', 'outline')
   })
 
   it('shows archived badge for ARCHIVED status', () => {
@@ -109,7 +109,7 @@ describe('VersionTimeline', () => {
     )
 
     expect(screen.getByText('resume.timeline.archived')).toBeInTheDocument()
-    expect(screen.getByText('resume.timeline.archived').parentElement).toHaveAttribute('data-variant', 'secondary')
+    expect(screen.getByText('resume.timeline.archived')).toHaveAttribute('data-variant', 'secondary')
   })
 
   it('shows activate button for archived non-original versions', () => {

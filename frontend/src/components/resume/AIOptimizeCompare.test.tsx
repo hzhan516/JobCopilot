@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { AIOptimizeCompare } from './AIOptimizeCompare'
 
-vi.mock('react-i18next', () =>> ({
+vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
@@ -26,7 +26,9 @@ vi.mock('../ui/button', () => ({
 }))
 
 vi.mock('@uiw/react-md-editor', () => ({
-  default: ({ source }: any) => <div data-testid="md-preview">{source}</div>,
+  default: Object.assign(({ source }: any) => <div data-testid="md-preview">{source}</div>, {
+    Markdown: ({ source }: any) => <div data-testid="md-preview">{source}</div>,
+  }),
   Markdown: ({ source }: any) => <div data-testid="md-preview">{source}</div>,
 }))
 

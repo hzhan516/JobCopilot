@@ -164,7 +164,8 @@ class MinioFileStorageServiceTest {
     void shouldDownloadExistingFile() throws Exception {
         // 给定 / Given
         InputStream mockStream = new ByteArrayInputStream(TEST_CONTENT.getBytes());
-        when(minioClient.getObject(any(GetObjectArgs.class))).thenReturn(mockStream);
+        when(minioClient.getObject(any(GetObjectArgs.class)))
+                .thenReturn(new GetObjectResponse(okhttp3.Headers.of(), BUCKET_NAME, null, OBJECT_KEY, mockStream));
 
         // 当 / When
         Optional<InputStream> result = storageService.download(OBJECT_KEY);

@@ -125,6 +125,7 @@ export default function SliderCaptcha({
   if (!challenge) {
     return (
       <div
+        role="presentation"
         className={`h-10 bg-gray-100 rounded-lg animate-pulse ${className}`}
         style={{ width: trackWidth }}
       />
