@@ -160,7 +160,10 @@ public class ConversationApplicationService {
     /**
      * Saves the AI reply and, when an AI-optimized resume is provided, persists it as a new
      * AI_OPTIMIZED version linked to the conversation so the user can iterate on resume improvements.
-     * 保存 AI 回复；当提供 AI 优化后的简历时，将其持久化为关联到对话的新 AI_OPTIMIZED 版本，使用户可迭代改进简历
+     * Vector generation is deferred until after the DB transaction commits to avoid holding
+     * a long transaction while calling the external AI service.
+     * 保存 AI 回复；当提供 AI 优化后的简历时，将其持久化为关联到对话的新 AI_OPTIMIZED 版本。
+     * 向量生成推迟到数据库事务提交之后，避免在调用外部 AI 服务时持有长事务。
      *
      * @param conversationId        Conversation ID / 对话 ID
      * @param content               Reply content / 回复内容
@@ -173,19 +176,43 @@ public class ConversationApplicationService {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new ConversationException("conversation.not.found"));
 
-        // Append the optimized resume to the reply so users see the changes inline without switching views
-        // 将优化后的简历追加到回复中，使用户无需切换视图即可看到修改内容
         String finalContent = content;
         if (aiOptimizedMarkdown != null && !aiOptimizedMarkdown.isBlank()
                 && conversation.getResumeVersionId() != null) {
-            saveOrUpdateAiOptimizedResume(conversation, aiOptimizedMarkdown);
+            // 1. Persist resume version inside the transaction / 事务内：仅持久化简历版本
+            UUID aiVersionId = saveOrUpdateAiOptimizedResume(conversation, aiOptimizedMarkdown);
             finalContent = content + "\n\n---\n\n" + aiOptimizedMarkdown;
+            // 2. Defer vector generation until after commit / 事务提交后：异步触发向量生成
+            deferVectorGeneration(aiVersionId, aiOptimizedMarkdown);
         }
 
         conversation.addMessage(MessageRole.ASSISTANT, finalContent, fileUrl);
         conversationRepository.save(conversation);
 
         log.info("AI reply saved for conversation: {}", conversationId);
+    }
+
+    /**
+     * Defer vector generation until the current DB transaction commits.
+     * 将向量生成推迟到当前数据库事务提交之后执行。
+     */
+    private void deferVectorGeneration(UUID versionId, String markdown) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        vectorGenerationPort.generateAndSaveVector(versionId.toString(), "RESUME", markdown);
+                        log.info("Vector generation triggered after commit for version: {}", versionId);
+                    } catch (Exception e) {
+                        log.error("Vector generation failed after commit for version: {}", versionId, e);
+                    }
+                }
+            });
+        } else {
+            // No active transaction — trigger immediately / 无活跃事务，直接触发
+            vectorGenerationPort.generateAndSaveVector(versionId.toString(), "RESUME", markdown);
+        }
     }
 
     /**
@@ -380,13 +407,17 @@ public class ConversationApplicationService {
      * Maintains a per-conversation AI_OPTIMIZED resume working copy.
      * On first modification a new version is created; subsequent edits update the active copy
      * unless it was archived by another conversation, in which case a fresh copy is spun up.
+     * Returns the ID of the created or updated version so the caller can trigger side effects
+     * (e.g. vector generation) after the current transaction commits.
      * 维护每个对话的 AI_OPTIMIZED 简历工作副本。首次修改时创建新版本；后续编辑更新活跃副本，
-     * 除非该副本已被其他对话归档，此时重新创建一个新的副本
+     * 除非该副本已被其他对话归档，此时重新创建一个新的副本。
+     * 返回创建或更新后的版本 ID，以便调用方在当前事务提交后触发副作用（如向量生成）。
      *
      * @param conversation       Conversation entity / 对话实体
      * @param markdown           Optimized resume Markdown / 优化后的简历 Markdown
+     * @return UUID of the created or updated AI_OPTIMIZED version / 创建或更新后的 AI_OPTIMIZED 版本 ID
      */
-    private void saveOrUpdateAiOptimizedResume(Conversation conversation, String markdown) {
+    private UUID saveOrUpdateAiOptimizedResume(Conversation conversation, String markdown) {
         // Reload to prevent read-modify-write races on concurrent AI replies
         // 重新加载以防止并发 AI 回复时的读-改-写竞态
         Conversation fresh = conversationRepository.findById(conversation.getId())
@@ -412,8 +443,8 @@ public class ConversationApplicationService {
             fresh.setAiOptimizedVersionId(aiVersion.getId());
             conversationRepository.save(fresh);
 
-            vectorGenerationPort.generateAndSaveVector(aiVersion.getId().toString(), "RESUME", markdown);
             log.info("Created AI optimized working copy: {} for conversation: {}", aiVersion.getId(), fresh.getId());
+            return aiVersion.getId();
         } else {
             ResumeVersion workingVersion = resumeVersionRepository.findById(workingVersionId)
                     .orElseThrow(() -> new ConversationException("version.not.found"));
@@ -421,8 +452,8 @@ public class ConversationApplicationService {
             if (workingVersion.getStatus() == ResumeVersion.Status.ACTIVE) {
                 workingVersion.editContent(markdown);
                 resumeVersionRepository.save(workingVersion);
-                vectorGenerationPort.generateAndSaveVector(workingVersion.getId().toString(), "RESUME", markdown);
                 log.info("Updated AI optimized working copy: {} for conversation: {}", workingVersion.getId(), fresh.getId());
+                return workingVersion.getId();
             } else {
                 // The working copy was archived by another conversation creating a new AI_OPTIMIZED version
                 // 工作副本已被其他对话创建新 AI_OPTIMIZED 版本时归档，需重新创建
@@ -434,8 +465,8 @@ public class ConversationApplicationService {
                 fresh.setAiOptimizedVersionId(aiVersion.getId());
                 conversationRepository.save(fresh);
 
-                vectorGenerationPort.generateAndSaveVector(aiVersion.getId().toString(), "RESUME", markdown);
                 log.info("Re-created AI optimized working copy: {} for conversation: {}", aiVersion.getId(), fresh.getId());
+                return aiVersion.getId();
             }
         }
     }
