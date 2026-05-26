@@ -14,7 +14,12 @@ vi.mock('@/hooks/useAuth', () => ({
 
 function LocationDisplay() {
   const location = useLocation()
-  return <div data-testid="location">{location.pathname}</div>
+  return (
+    <div>
+      <div data-testid="location">{location.pathname}</div>
+      <div data-testid="location-state">{location.state?.from?.pathname || 'no-state'}</div>
+    </div>
+  )
 }
 
 describe('ProtectedRoute', () => {
@@ -83,5 +88,12 @@ describe('ProtectedRoute', () => {
 
     // The route redirects to /login and stores the original path in state
     expect(screen.getByTestId('location')).toHaveTextContent('/login')
+
+    // Verify location.state.from.pathname contains original path
+    // We access the actual location via a custom test helper
+    const locationData = screen.getByTestId('location-state')
+    if (locationData) {
+      expect(locationData).toHaveTextContent('/dashboard')
+    }
   })
 })
