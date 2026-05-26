@@ -139,6 +139,7 @@ class JobApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should handlejobprocessresult success triggersvectorgen / 应handlejobprocessresult success triggersvectorgen")
     void handleJobProcessResult_Success_TriggersVectorGen() {
         // 准备 / Given
         String jobId = "job123";
@@ -173,6 +174,7 @@ class JobApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should succeed at getjob / 应成功getjob")
     void getJob_Success() {
         // 准备 / Given
         String jobId = "job123";
@@ -190,6 +192,7 @@ class JobApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should getjob notfound throwsexception / 应getjob notfound throwsexception")
     void getJob_NotFound_ThrowsException() {
         // 准备 / Given
         when(jobRepository.findById(anyString())).thenReturn(Optional.empty());
@@ -202,6 +205,7 @@ class JobApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should getjob wronguser throwsexception / 应getjob wronguser throwsexception")
     void getJob_WrongUser_ThrowsException() {
         // 准备 / Given
         Job job = Job.create(UUID.randomUUID(), "http://example.com", false);
@@ -215,6 +219,7 @@ class JobApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should deletejob success hidesjob / 应deletejob success hidesjob")
     void deleteJob_Success_HidesJob() {
         // 准备 / Given
         String jobId = "job123";
@@ -234,6 +239,7 @@ class JobApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should deletejob wronguser throwsexception / 应deletejob wronguser throwsexception")
     void deleteJob_WrongUser_ThrowsException() {
         // 准备 / Given
         String jobId = "job123";

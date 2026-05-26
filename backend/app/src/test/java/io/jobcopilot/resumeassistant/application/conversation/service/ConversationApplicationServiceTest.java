@@ -75,6 +75,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should succeed at createconversation / 应成功createconversation")
     void createConversation_Success() {
         // 准备 / Given
         UUID userId = UUID.randomUUID();
@@ -100,6 +101,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should shouldpersistpresetmessage when createconversation / 应在createconversation时shouldpersistpresetmessage")
     void createConversation_ShouldPersistPresetMessage() {
         // 准备 / Given
         UUID userId = UUID.randomUUID();
@@ -124,6 +126,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should succeed at createconversation withresumeversionandjob / 应成功createconversation withresumeversionandjob")
     void createConversation_WithResumeVersionAndJob_Success() {
         // 准备 / Given
         UUID userId = UUID.randomUUID();
@@ -164,6 +167,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should createconversation withinvalidresumeversion throwsexception / 应createconversation withinvalidresumeversion throwsexception")
     void createConversation_WithInvalidResumeVersion_ThrowsException() {
         // 准备 / Given
         UUID userId = UUID.randomUUID();
@@ -182,6 +186,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should createconversation withinvalidjob throwsexception / 应createconversation withinvalidjob throwsexception")
     void createConversation_WithInvalidJob_ThrowsException() {
         // 准备 / Given
         UUID userId = UUID.randomUUID();
@@ -200,6 +205,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should createconversation withresumeversiononly throwsexception / 应createconversation withresumeversiononly throwsexception")
     void createConversation_WithResumeVersionOnly_ThrowsException() {
         // 准备 / Given
         UUID userId = UUID.randomUUID();
@@ -220,6 +226,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should createconversation withjobonly throwsexception / 应createconversation withjobonly throwsexception")
     void createConversation_WithJobOnly_ThrowsException() {
         // 准备 / Given
         UUID userId = UUID.randomUUID();
@@ -240,6 +247,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should sendmessage success publishesmqevent / 应sendmessage success publishesmqevent")
     void sendMessage_Success_PublishesMqEvent() {
         // 准备 / Given
         UUID userId = UUID.randomUUID();
@@ -276,6 +284,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should sendmessage withpresetandnoaireply shouldsendinittrue / 应sendmessage withpresetandnoaireply shouldsendinittrue")
     void sendMessage_WithPresetAndNoAiReply_ShouldSendInitTrue() {
         // 准备 / Given
         UUID userId = UUID.randomUUID();
@@ -305,6 +314,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should sendmessage withaireply shouldsendinitfalse / 应sendmessage withaireply shouldsendinitfalse")
     void sendMessage_WithAiReply_ShouldSendInitFalse() {
         // 准备 / Given
         UUID userId = UUID.randomUUID();
@@ -335,6 +345,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should sendmessage notowned throwsexception / 应sendmessage notowned throwsexception")
     void sendMessage_NotOwned_ThrowsException() {
         // 准备 / Given
         UUID ownerId = UUID.randomUUID();
@@ -356,6 +367,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should succeed at saveaireply / 应成功saveaireply")
     void saveAiReply_Success() {
         // 准备 / Given
         UUID conversationId = UUID.randomUUID();
@@ -377,6 +389,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should saveaireply firstmodification createsaioptimizedversion / 应saveaireply firstmodification createsaioptimizedversion")
     void saveAiReply_FirstModification_CreatesAiOptimizedVersion() {
         // 准备 / Given
         UUID conversationId = UUID.randomUUID();
@@ -415,6 +428,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should saveaireply subsequentmodification updatesexistingversion / 应saveaireply subsequentmodification updatesexistingversion")
     void saveAiReply_SubsequentModification_UpdatesExistingVersion() {
         // 准备 / Given
         UUID conversationId = UUID.randomUUID();
@@ -459,6 +473,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should saveaireply whenversionarchived recreatesaioptimized / 应saveaireply whenversionarchived recreatesaioptimized")
     void saveAiReply_WhenVersionArchived_RecreatesAiOptimized() {
         // 准备 / Given
         UUID conversationId = UUID.randomUUID();
@@ -501,6 +516,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should sendconversationrequestwithcontext prefersaioptimizedversion / 应sendconversationrequestwithcontext prefersaioptimizedversion")
     void sendConversationRequestWithContext_PrefersAiOptimizedVersion() {
         // 准备 / Given
         UUID userId = UUID.randomUUID();
@@ -549,6 +565,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should succeed at uploadattachment / 应成功uploadattachment")
     void uploadAttachment_Success() {
         // 准备 / Given
         UUID userId = UUID.randomUUID();
@@ -572,6 +589,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should succeed at closeconversation / 应成功closeconversation")
     void closeConversation_Success() {
         // 准备 / Given
         UUID userId = UUID.randomUUID();
@@ -590,6 +608,7 @@ class ConversationApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Should succeed at deleteconversation / 应成功deleteconversation")
     void deleteConversation_Success() {
         // 准备 / Given
         UUID userId = UUID.randomUUID();
