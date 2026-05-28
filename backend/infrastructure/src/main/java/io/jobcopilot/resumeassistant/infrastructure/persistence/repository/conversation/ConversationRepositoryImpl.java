@@ -23,6 +23,9 @@ public class ConversationRepositoryImpl implements ConversationRepository {
     @Override
     public Conversation save(Conversation conversation) {
         ConversationJpaEntity entity = mapToJpaEntity(conversation);
+        if (!jpaRepository.existsById(conversation.getId().toString())) {
+            entity.setVersion(null);
+        }
         ConversationJpaEntity saved = jpaRepository.saveAndFlush(entity);
         return mapToDomainEntity(saved);
     }

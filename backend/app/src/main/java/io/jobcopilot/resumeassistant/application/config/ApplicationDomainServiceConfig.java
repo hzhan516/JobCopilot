@@ -1,6 +1,9 @@
 package io.jobcopilot.resumeassistant.application.config;
 
 import io.jobcopilot.resumeassistant.domain.embedding.port.VectorGenerationPort;
+import io.jobcopilot.resumeassistant.domain.embedding.repository.JobVectorRepository;
+import io.jobcopilot.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
+import io.jobcopilot.resumeassistant.domain.job.service.VectorSimilarityService;
 import io.jobcopilot.resumeassistant.domain.resume.service.ResumeConverterService;
 import io.jobcopilot.resumeassistant.domain.resume.service.VectorGenerationService;
 import io.jobcopilot.resumeassistant.domain.shared.service.DocumentFormatConverter;
@@ -27,5 +30,11 @@ public class ApplicationDomainServiceConfig {
     @Bean
     public VectorGenerationService vectorGenerationService(VectorGenerationPort vectorGenerationPort) {
         return new VectorGenerationService(vectorGenerationPort);
+    }
+
+    @Bean
+    public VectorSimilarityService vectorSimilarityService(ResumeVectorRepository resumeVectorRepository,
+                                                           JobVectorRepository jobVectorRepository) {
+        return new VectorSimilarityService(resumeVectorRepository, jobVectorRepository);
     }
 }

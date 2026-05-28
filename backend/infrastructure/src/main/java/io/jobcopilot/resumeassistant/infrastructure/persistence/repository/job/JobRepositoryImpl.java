@@ -28,6 +28,9 @@ public class JobRepositoryImpl implements JobRepository {
     @Override
     public void save(Job job) {
         JobJpaEntity entity = jobMapper.toEntity(job);
+        if (!jpaJobRepository.existsById(job.getId())) {
+            entity.setVersion(null);
+        }
         jpaJobRepository.save(entity);
     }
 

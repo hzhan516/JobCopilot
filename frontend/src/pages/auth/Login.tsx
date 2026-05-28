@@ -66,6 +66,8 @@ export default function Login() {
   const resetCaptcha = () => {
     setCaptchaToken('');
     setCaptchaKey((prev) => prev + 1);
+    setGoogleCaptchaVerified(false);
+    setShowGoogleCaptchaModal(false);
   };
 
   const onSubmit = async (values: LoginFormValues) => {
@@ -90,6 +92,12 @@ export default function Login() {
   const handleGoogleSuccess = async (credentialResponse: { credential?: string }) => {
     if (!credentialResponse.credential) {
       setError(t('auth.login.googleLoginFailed'));
+      return;
+    }
+    if (!captchaToken || !googleCaptchaVerified) {
+      setError(t('auth.captcha.required'));
+      setGoogleCaptchaVerified(false);
+      setShowGoogleCaptchaModal(true);
       return;
     }
     setError('');

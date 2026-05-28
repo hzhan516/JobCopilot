@@ -33,7 +33,11 @@ public class ResumeGroupRepositoryImpl implements ResumeGroupRepository {
 
     @Override
     public void save(ResumeGroup group) {
-        jpaGroupRepo.save(groupMapper.toJpaEntity(group));
+        ResumeGroupJpaEntity groupEntity = groupMapper.toJpaEntity(group);
+        if (!jpaGroupRepo.existsById(group.getId())) {
+            groupEntity.setVersion(null);
+        }
+        jpaGroupRepo.save(groupEntity);
 
         // Separate existing and new versions to ensure UPDATEs run before INSERTs,
         // preventing violation of the partial unique index (group_id, version_type) WHERE status = 'ACTIVE'.

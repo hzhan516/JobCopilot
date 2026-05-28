@@ -99,6 +99,14 @@ vi.mock('@hookform/resolvers/zod', () => ({
   }),
 }))
 
+vi.mock('@react-oauth/google', () => ({
+  GoogleLogin: ({ onSuccess }: { onSuccess: (cred: { credential: string }) => void }) => (
+    <button data-testid="google-login" onClick={() => onSuccess({ credential: 'google-id-token' })}>
+      Google Login
+    </button>
+  ),
+}))
+
 const mockRegisterEmail = vi.hoisted(() => vi.fn())
 const mockRegisterGoogle = vi.hoisted(() => vi.fn())
 
@@ -324,6 +332,42 @@ describe('Register page', () => {
     )
 
     expect(screen.getByText('auth.login.googleLogin')).toBeInTheDocument()
+  })
+
+  it('resets Google CAPTCHA state after Google registration failure', async () => {
+    mockRegisterGoogle.mockRejectedValue(new Error('Google failed'))
+
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'auth.login.googleLogin' }))
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Verify CAPTCHA').length).toBeGreaterThan(0)
+    })
+
+    const captchaButtons = screen.getAllByText('Verify CAPTCHA')
+    fireEvent.click(captchaButtons[captchaButtons.length - 1])
+
+    await waitFor(() => {
+      expect(screen.getByTestId('google-login')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('google-login'))
+
+    await waitFor(() => {
+      expect(mockRegisterGoogle).toHaveBeenCalledWith(
+        { idToken: 'google-id-token', captchaToken: 'captcha-token' },
+        false
+      )
+      expect(screen.getByRole('alert')).toHaveTextContent('auth.login.googleLoginFailed')
+    })
+
+    expect(screen.queryByTestId('google-login')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'auth.login.googleLogin' })).toBeInTheDocument()
   })
 
   it('toggles password visibility', () => {

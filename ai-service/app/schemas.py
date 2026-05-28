@@ -38,6 +38,28 @@ class JobDetail(AppBaseModel):
     location: str | None = None
 
 
+class ParsedJobContent(AppBaseModel):
+    """Structured output of a parsed job posting.
+    结构化职位信息：提取标题、公司、描述及技能要求列表。"""
+
+    title: str
+    company: str
+    description: str
+    requirements: list[str] = Field(default_factory=list)
+    salary: str | None = None
+    location: str | None = None
+
+
+class ParsedResumeContent(AppBaseModel):
+    """Structured output of a parsed resume.
+    结构化简历信息：提取姓名、邮箱、技能列表及工作经历。"""
+
+    name: str | None = None
+    email: str | None = None
+    skills: list[str] = Field(default_factory=list)
+    experience: list[ExperienceItem] = Field(default_factory=list)
+
+
 # ── AiResultEvent.data union members ────────────────────────────────────
 class JobParseData(AppBaseModel):
     """Payload for JOB_PARSE completion events.
@@ -209,28 +231,6 @@ class ScrapeResult(AppBaseModel):
 
     markdown_text: str
     screenshot_url: str | None = None
-
-
-class ParsedJobContent(AppBaseModel):
-    """Structured output of a parsed job posting.
-    结构化职位信息：提取标题、公司、描述及技能要求列表。"""
-
-    title: str
-    company: str
-    description: str
-    requirements: list[str] = Field(default_factory=list)
-    salary: str | None = None
-    location: str | None = None
-
-
-class ParsedResumeContent(AppBaseModel):
-    """Structured output of a parsed resume.
-    结构化简历信息：提取姓名、邮箱、技能列表及工作经历。"""
-
-    name: str | None = None
-    email: str | None = None
-    skills: list[str] = Field(default_factory=list)
-    experience: list[ExperienceItem] = Field(default_factory=list)
 
 
 class AiResultEvent(AppBaseModel):

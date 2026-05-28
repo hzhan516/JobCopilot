@@ -2,6 +2,7 @@ package io.jobcopilot.resumeassistant.infrastructure.persistence.repository.matc
 
 import io.jobcopilot.resumeassistant.domain.matching.entity.JobMatchResult;
 import io.jobcopilot.resumeassistant.domain.matching.repository.JobMatchResultRepository;
+import io.jobcopilot.resumeassistant.infrastructure.persistence.entity.matching.JobMatchResultJpaEntity;
 import io.jobcopilot.resumeassistant.infrastructure.persistence.mapper.matching.JobMatchResultPersistenceMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -24,7 +25,10 @@ public class JobMatchResultRepositoryImpl implements JobMatchResultRepository {
 
     @Override
     public JobMatchResult save(final JobMatchResult result) {
-        var entity = mapper.toEntity(result);
+        JobMatchResultJpaEntity entity = mapper.toEntity(result);
+        if (!jpaRepository.existsById(result.getId())) {
+            entity.setVersion(null);
+        }
         return mapper.toDomain(jpaRepository.save(entity));
     }
 

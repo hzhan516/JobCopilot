@@ -148,6 +148,8 @@ export default function Register() {
   const resetCaptcha = useCallback(() => {
     setCaptchaToken('');
     setCaptchaKey((prev) => prev + 1);
+    setGoogleCaptchaVerified(false);
+    setShowGoogleCaptchaModal(false);
   }, []);
 
   const strengthConfig: Record<
@@ -246,6 +248,12 @@ export default function Register() {
       setError(t('auth.login.googleLoginFailed'));
       return;
     }
+    if (!captchaToken || !googleCaptchaVerified) {
+      setError(t('auth.captcha.required'));
+      setGoogleCaptchaVerified(false);
+      setShowGoogleCaptchaModal(true);
+      return;
+    }
     setError('');
     setGoogleLoading(true);
     try {
@@ -253,6 +261,7 @@ export default function Register() {
       navigate('/resumes', { replace: true });
     } catch {
       setError(t('auth.login.googleLoginFailed'));
+      resetCaptcha();
     } finally {
       setGoogleLoading(false);
     }

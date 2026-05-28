@@ -71,6 +71,7 @@ class UserRepositoryImplTest {
         testJpaEntity.setEmailVerified(false);
         testJpaEntity.setRole(UserRole.JOB_SEEKER);
         testJpaEntity.setStatus(UserStatus.ACTIVE);
+        testJpaEntity.setVersion(0L);
     }
 
     // ==================== 保存测试 ====================
@@ -95,6 +96,47 @@ class UserRepositoryImplTest {
         verify(mapper).toJpaEntity(testUser);
         verify(jpaRepository).save(testJpaEntity);
         verify(mapper).toDomain(testJpaEntity);
+    }
+
+    @Test
+    @DisplayName("Should clear version when saving new assigned-ID user")
+    void shouldClearVersionWhenSavingNewAssignedIdUser() {
+        // 给定
+        // Given
+        when(mapper.toJpaEntity(testUser)).thenReturn(testJpaEntity);
+        when(jpaRepository.existsById(USER_ID)).thenReturn(false);
+        when(jpaRepository.save(testJpaEntity)).thenReturn(testJpaEntity);
+        when(mapper.toDomain(testJpaEntity)).thenReturn(testUser);
+
+        // 当
+        // When
+        userRepository.save(testUser);
+
+        // 然后
+        // Then
+        assertThat(testJpaEntity.getVersion()).isNull();
+        verify(jpaRepository).existsById(USER_ID);
+    }
+
+    @Test
+    @DisplayName("Should keep version when saving existing user")
+    void shouldKeepVersionWhenSavingExistingUser() {
+        // 给定
+        // Given
+        testJpaEntity.setVersion(7L);
+        when(mapper.toJpaEntity(testUser)).thenReturn(testJpaEntity);
+        when(jpaRepository.existsById(USER_ID)).thenReturn(true);
+        when(jpaRepository.save(testJpaEntity)).thenReturn(testJpaEntity);
+        when(mapper.toDomain(testJpaEntity)).thenReturn(testUser);
+
+        // 当
+        // When
+        userRepository.save(testUser);
+
+        // 然后
+        // Then
+        assertThat(testJpaEntity.getVersion()).isEqualTo(7L);
+        verify(jpaRepository).existsById(USER_ID);
     }
 
     @Test

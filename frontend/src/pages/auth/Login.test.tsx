@@ -229,7 +229,7 @@ describe('Login page', () => {
     )
 
     // Click Google button to show CAPTCHA modal
-    fireEvent.click(screen.getByText(/auth.login.googleLogin/i))
+    fireEvent.click(screen.getByRole('button', { name: 'auth.login.googleLogin' }))
 
     // Verify CAPTCHA in modal
     await waitFor(() => {
@@ -250,6 +250,42 @@ describe('Login page', () => {
 
     // Google login flow may be gated by captchaToken — verify state changes
     expect(screen.queryByText('auth.captcha.required')).not.toBeInTheDocument()
+  })
+
+  it('resets Google CAPTCHA state after Google login failure', async () => {
+    mockLoginByGoogle.mockRejectedValue(new Error('Google failed'))
+
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>
+    )
+
+    fireEvent.click(screen.getByText(/auth.login.googleLogin/i))
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Verify CAPTCHA').length).toBeGreaterThan(0)
+    })
+
+    const captchaButtons = screen.getAllByText('Verify CAPTCHA')
+    fireEvent.click(captchaButtons[captchaButtons.length - 1])
+
+    await waitFor(() => {
+      expect(screen.getByTestId('google-login')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('google-login'))
+
+    await waitFor(() => {
+      expect(mockLoginByGoogle).toHaveBeenCalledWith(
+        { idToken: 'google-id-token', captchaToken: 'captcha-token-123' },
+        false
+      )
+      expect(screen.getByText('auth.login.googleLoginFailed')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByTestId('google-login')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'auth.login.googleLogin' })).toBeInTheDocument()
   })
 
   it('has rememberMe checkbox unchecked by default', () => {

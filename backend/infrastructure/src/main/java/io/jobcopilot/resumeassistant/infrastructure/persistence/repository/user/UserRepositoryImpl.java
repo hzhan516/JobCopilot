@@ -2,6 +2,7 @@ package io.jobcopilot.resumeassistant.infrastructure.persistence.repository.user
 
 import io.jobcopilot.resumeassistant.domain.user.entity.User;
 import io.jobcopilot.resumeassistant.domain.user.repository.UserRepository;
+import io.jobcopilot.resumeassistant.infrastructure.persistence.entity.user.UserJpaEntity;
 import io.jobcopilot.resumeassistant.infrastructure.persistence.mapper.UserPersistenceMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -24,7 +25,11 @@ public class UserRepositoryImpl implements UserRepository {
      */
     @Override
     public User save(User user) {
-        return mapper.toDomain(jpaRepository.save(mapper.toJpaEntity(user)));
+        UserJpaEntity entity = mapper.toJpaEntity(user);
+        if (!jpaRepository.existsById(user.getId())) {
+            entity.setVersion(null);
+        }
+        return mapper.toDomain(jpaRepository.save(entity));
     }
 
     /**

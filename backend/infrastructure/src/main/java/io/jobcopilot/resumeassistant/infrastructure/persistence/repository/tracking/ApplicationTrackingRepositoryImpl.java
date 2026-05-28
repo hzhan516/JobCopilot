@@ -3,6 +3,7 @@ package io.jobcopilot.resumeassistant.infrastructure.persistence.repository.trac
 import io.jobcopilot.resumeassistant.domain.tracking.entity.ApplicationTracking;
 import io.jobcopilot.resumeassistant.domain.tracking.repository.ApplicationTrackingRepository;
 import io.jobcopilot.resumeassistant.domain.tracking.valueobject.ApplicationStatus;
+import io.jobcopilot.resumeassistant.infrastructure.persistence.entity.tracking.ApplicationTrackingJpaEntity;
 import io.jobcopilot.resumeassistant.infrastructure.persistence.mapper.tracking.TrackingPersistenceMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -25,7 +26,10 @@ public class ApplicationTrackingRepositoryImpl implements ApplicationTrackingRep
 
     @Override
     public ApplicationTracking save(final ApplicationTracking tracking) {
-        final var entity = mapper.toEntity(tracking);
+        final ApplicationTrackingJpaEntity entity = mapper.toEntity(tracking);
+        if (!jpaRepository.existsById(tracking.getId())) {
+            entity.setVersion(null);
+        }
         return mapper.toDomain(jpaRepository.save(entity));
     }
 
