@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Any
 import redis.asyncio as redis
-from app.config import REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
+from app.config import REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_KEY_PREFIX
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +17,8 @@ def get_redis_client() -> redis.Redis:
 class RedisBuffer:
     def __init__(self):
         self.redis = get_redis_client()
-        self.buffer_key = app.config.REDIS_KEY_PREFIX + "feedback:buffer"
-        self.lock_key = app.config.REDIS_KEY_PREFIX + "model:retrain:lock"
+        self.buffer_key = REDIS_KEY_PREFIX + "feedback:buffer"
+        self.lock_key = REDIS_KEY_PREFIX + "model:retrain:lock"
 
     async def append(self, item: dict[str, Any]):
         await self.redis.lpush(self.buffer_key, json.dumps(item, ensure_ascii=False))

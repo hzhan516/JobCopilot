@@ -1,7 +1,16 @@
 from unittest.mock import MagicMock, patch
 
-from app.worker.consumers.rabbitmq_setup import create_worker_connection, setup_feedback_queue
-from app.config import AI_DIRECT_EXCHANGE, FEEDBACK_REQUEST_QUEUE, FEEDBACK_REQUEST_ROUTING_KEY
+from app.worker.consumers.rabbitmq_setup import QUEUE_ARGUMENTS, create_worker_connection, setup_feedback_queue
+from app.config import (
+    AI_DIRECT_EXCHANGE,
+    AI_DLX_EXCHANGE,
+    AI_DLQ_QUEUE,
+    AI_DLQ_ROUTING_KEY,
+    FEEDBACK_REQUEST_QUEUE,
+    FEEDBACK_REQUEST_ROUTING_KEY,
+    RABBITMQ_HOST,
+    RABBITMQ_PORT,
+)
 
 
 @patch("app.worker.consumers.rabbitmq_setup.pika.BlockingConnection")
@@ -22,8 +31,8 @@ def test_create_worker_connection(mock_creds, mock_params, mock_conn):
 
     mock_params.assert_called_once()
     params_kwargs = mock_params.call_args.kwargs
-    assert params_kwargs["host"] == "localhost"
-    assert params_kwargs["port"] == 5672
+    assert params_kwargs["host"] == RABBITMQ_HOST
+    assert params_kwargs["port"] == RABBITMQ_PORT
     assert params_kwargs["credentials"] == "creds_obj"
     assert params_kwargs["heartbeat"] == 60
     assert params_kwargs["blocked_connection_timeout"] == 300
@@ -38,16 +47,33 @@ def test_setup_feedback_queue():
 
     setup_feedback_queue(mock_channel)
 
-    mock_channel.exchange_declare.assert_called_once_with(
+    assert mock_channel.exchange_declare.call_count == 2
+    mock_channel.exchange_declare.assert_any_call(
         exchange=AI_DIRECT_EXCHANGE,
         exchange_type="direct",
         durable=True,
     )
-    mock_channel.queue_declare.assert_called_once_with(
-        queue=FEEDBACK_REQUEST_QUEUE,
+    mock_channel.exchange_declare.assert_any_call(
+        exchange=AI_DLX_EXCHANGE,
+        exchange_type="direct",
         durable=True,
     )
-    mock_channel.queue_bind.assert_called_once_with(
+
+    assert mock_channel.queue_declare.call_count == 2
+    mock_channel.queue_declare.assert_any_call(queue=AI_DLQ_QUEUE, durable=True)
+    mock_channel.queue_declare.assert_any_call(
+        queue=FEEDBACK_REQUEST_QUEUE,
+        durable=True,
+        arguments=QUEUE_ARGUMENTS,
+    )
+
+    assert mock_channel.queue_bind.call_count == 2
+    mock_channel.queue_bind.assert_any_call(
+        exchange=AI_DLX_EXCHANGE,
+        queue=AI_DLQ_QUEUE,
+        routing_key=AI_DLQ_ROUTING_KEY,
+    )
+    mock_channel.queue_bind.assert_any_call(
         exchange=AI_DIRECT_EXCHANGE,
         queue=FEEDBACK_REQUEST_QUEUE,
         routing_key=FEEDBACK_REQUEST_ROUTING_KEY,

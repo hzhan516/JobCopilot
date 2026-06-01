@@ -233,25 +233,24 @@ class ScrapeResult(AppBaseModel):
     screenshot_url: str | None = None
 
 
+class JobRankResultData(AppBaseModel):
+    """Data payload embedded in AiResultEvent for JOB_RANK results.
+    JOB_RANK 结果事件中的 data 负载，对齐后端 AiResultMessageListener 对 event.data() 的读取方式。"""
+
+    rank_time_ms: int = Field(alias="rankTimeMs")
+    ranked_results: list[dict[str, Any]] = Field(default_factory=list, alias="rankedResults")
+
+
 class AiResultEvent(AppBaseModel):
-    """Standard event envelope for all AI processing workflows, consumed by the backend via MQ.
-    AI 处理结果统一事件信封：后端通过 MQ 消费此结构以更新业务实体状态。"""
+    """Standard event envelope for AI processing results consumed by the backend.
+    AI 处理结果统一事件信封；必须保留 data 字段以匹配后端 AiResultEvent record。"""
 
     reference_id: str = Field(alias="referenceId")
     type: str
     status: str
-    data: JobParseData | ResumeParseData | ConversationData | None = None
+    data: dict[str, Any] | ParsedJobContent | ResumeParseData | ConversationData | JobRankResultData | None = None
     error_message: str | None = Field(default=None, alias="errorMessage")
     event_type: str | None = Field(default=None, alias="eventType")
-
-    def model_dump(self, **kwargs):
-        """Override to produce a flat dict so legacy MQ consumers keep working.
-        覆盖序列化：向后端 MQ 消费者输出扁平 dict，兼容现有解析逻辑。"""
-        base = super().model_dump(**kwargs)
-        data = base.pop("data", None)
-        if data is not None:
-            base.update(data)
-        return base
 
 
 class EmbeddingRequest(AppBaseModel):

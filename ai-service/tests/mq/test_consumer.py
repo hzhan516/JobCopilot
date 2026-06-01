@@ -52,8 +52,8 @@ def test_setup_all_queues():
     setup_all_queues(mock_channel)
     
     assert mock_channel.exchange_declare.call_count == 2
-    assert mock_channel.queue_declare.call_count == 10
-    assert mock_channel.queue_bind.call_count == 10
+    assert mock_channel.queue_declare.call_count == 9
+    assert mock_channel.queue_bind.call_count == 9
 
     dlq_call = mock_channel.queue_declare.call_args_list[0]
     assert dlq_call.kwargs["queue"] == AI_DLQ_QUEUE
@@ -265,7 +265,7 @@ def test_start_all_consumers():
     start_all_consumers(mock_channel)
     
     mock_channel.basic_qos.assert_called_once_with(prefetch_count=1)
-    assert mock_channel.basic_consume.call_count == 5
+    assert mock_channel.basic_consume.call_count == 4
     for call in mock_channel.basic_consume.call_args_list:
         assert call.kwargs["auto_ack"] is False
         assert callable(call.kwargs["on_message_callback"])

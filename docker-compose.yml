@@ -380,13 +380,16 @@ services:
   redis:
     image: docker.io/library/redis:7-alpine
     container_name: jobcopilot-redis
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?Redis password is required}"]
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?Redis password is required}
     volumes:
       - redis-data:/data
     networks:
       - internal-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -537,7 +540,7 @@ services:
         condition: service_healthy
     restart: on-failure
     healthcheck:
-      test: ["CMD-SHELL", "ps aux | grep -v grep | grep -q 'worker_main' || exit 1"]
+      test: ["CMD-SHELL", "python -c \"from pathlib import Path; import sys; sys.exit(0 if 'app.worker_main' in Path('/proc/1/cmdline').read_text() else 1)\""]
       interval: 30s
       timeout: 5s
       retries: 3
