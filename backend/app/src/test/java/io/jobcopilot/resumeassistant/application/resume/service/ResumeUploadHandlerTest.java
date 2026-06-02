@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -40,8 +41,8 @@ import static org.mockito.Mockito.*;
  * - Auto-conversion and vector generation
  * - 异步解析命令发布
  * - Async parse command publication
- * - 发布失败降级
- * - Publish failure fallback
+ * - Outbox save failure propagation
+ * - Outbox 保存失败传播
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Resume Upload Handler Tests")
@@ -233,8 +234,8 @@ class ResumeUploadHandlerTest {
     // ==================== Exception Path ====================
 
     @Test
-    @DisplayName("Should handle publish failure gracefully and mark parse failed")
-    void shouldHandlePublishFailureGracefullyAndMarkParseFailed() {
+    @DisplayName("Should propagate outbox save failure so upload transaction can roll back")
+    void shouldPropagateOutboxSaveFailure() {
         // 给定 / Given
         ResumeUploadCommand command = ResumeUploadCommand.builder()
                 .fileName("resume.pdf")
@@ -253,20 +254,10 @@ class ResumeUploadHandlerTest {
         doThrow(new RuntimeException("MQ unavailable"))
                 .when(aiMessagePublisherPort).sendResumeForParsing(any(ResumeParseCommand.class));
 
-        // 当 / When — should not throw
-        ResumeGroup result = handler.upload(command, userId);
-
-        // 那么 / Then
-        assertThat(result).isNotNull();
-
-        // Verify that the original version was marked as FAILED
-        // 验证原始版本被标记为 FAILED
-        ResumeVersion original = result.getVersions().stream()
-                .filter(v -> v.getVersionType() == ResumeVersion.VersionType.ORIGINAL)
-                .findFirst()
-                .orElseThrow();
-        assertThat(original.getParseStatus().name()).isEqualTo("FAILED");
-        assertThat(original.getParseErrorMessage()).contains("Failed to publish parsing request");
+        // 当 / When & 那么 / Then
+        assertThatThrownBy(() -> handler.upload(command, userId))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("MQ unavailable");
     }
 
     // ==================== 边界条件 ====================

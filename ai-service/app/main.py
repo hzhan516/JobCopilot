@@ -255,6 +255,17 @@ def batch_embeddings(request: EmbeddingRequest) -> EmbeddingResponse:
             logger.exception("Embedding failed for input index=%d, length=%d", index, len(text))
             failed_indices.append(index)
 
+    if not embeddings:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "message": "Failed to generate embeddings for all inputs",
+                "failedIndices": failed_indices,
+                "errorCount": len(failed_indices),
+                "modelUsed": request.model or LLM_EMBEDDING_MODEL,
+            },
+        )
+
     return EmbeddingResponse(
         embeddings=embeddings,
         modelUsed=request.model or LLM_EMBEDDING_MODEL,

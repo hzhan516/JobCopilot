@@ -151,6 +151,8 @@ def test_batch_embeddings(mock_generate_embedding):
         "embeddings": [[0.1, 0.2], [0.3, 0.4]],
         "modelUsed": "custom-model",
         "count": 2,
+        "failedIndices": [],
+        "errorCount": 0,
     }
 
 
@@ -163,16 +165,29 @@ def test_batch_embeddings_empty():
 
 
 @patch("app.main.generate_embedding")
-def test_batch_embeddings_uses_zero_vector_on_failure(mock_generate_embedding):
+def test_batch_embeddings_returns_502_when_all_inputs_fail(mock_generate_embedding):
     mock_generate_embedding.side_effect = RuntimeError("embedding failed")
 
     response = client.post("/api/v1/ai/embeddings", json={"texts": ["bad input"]})
 
+    assert response.status_code == 502
+    body = response.json()
+    assert body["detail"]["failedIndices"] == [0]
+    assert body["detail"]["errorCount"] == 1
+
+
+@patch("app.main.generate_embedding")
+def test_batch_embeddings_keeps_partial_successes(mock_generate_embedding):
+    mock_generate_embedding.side_effect = [[0.1, 0.2], RuntimeError("embedding failed")]
+
+    response = client.post("/api/v1/ai/embeddings", json={"texts": ["ok", "bad input"]})
+
     assert response.status_code == 200
     body = response.json()
+    assert body["embeddings"] == [[0.1, 0.2]]
     assert body["count"] == 1
-    assert len(body["embeddings"][0]) == main_module.LLM_EMBEDDING_MODEL_DIMENSION
-    assert set(body["embeddings"][0]) == {0.0}
+    assert body["failedIndices"] == [1]
+    assert body["errorCount"] == 1
 
 @patch("app.main._start_mq_consumer_once")
 def test_startup_event(mock_start):

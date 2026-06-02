@@ -65,3 +65,26 @@ def test_process_job_falls_back_to_screenshot_when_url_scrape_fails(
     assert kwargs["screenshot_url"] == "/api/storage/download?key=job.png"
     assert result.status == "COMPLETED"
     assert result.data["company"] == "Acme"
+
+
+@patch("app.services.job_orchestrator.parse_job_from_image")
+@patch("app.services.job_orchestrator.scrape_job_page")
+def test_process_job_normalizes_screenshot_base64_to_data_uri(
+    mock_scrape,
+    mock_parse_image,
+):
+    mock_scrape.side_effect = RuntimeError("blocked")
+    mock_parse_image.return_value = _job()
+
+    result = process_job(
+        JobParseCommand(
+            jobId="job-1",
+            url="https://blocked.example/job",
+            screenshotBase64="abc123",
+        )
+    )
+
+    mock_parse_image.assert_called_once()
+    _, kwargs = mock_parse_image.call_args
+    assert kwargs["screenshot_url"] == "data:image/png;base64,abc123"
+    assert result.status == "COMPLETED"
