@@ -31,12 +31,25 @@ def generate_embedding(text: str) -> list[float]:
     if not cleaned_text:
         raise ValueError("Input text for vector generation is empty.")
 
-    response = litellm.embedding(
-        model=LLM_EMBEDDING_MODEL,
-        input=[cleaned_text],
-        dimensions=LLM_EMBEDDING_MODEL_DIMENSION,
-        timeout=LLM_REQUEST_TIMEOUT_SECONDS,
-    )
+    # dimensions=LLM_EMBEDDING_MODEL_DIMENSION,  # Remove this for gemini-embedding-001/textembedding-gecko compatibility
+    # https://docs.litellm.ai/docs/providers/vertex_embedding
+    # LiteLLM supports 'dimensions' for Vertex models that support the `output_dimensionality` parameter.
+    # Google's `text-embedding-004` and `text-multilingual-embedding-002` support this, as does the latest 
+    # `gemini-embedding-001` (from the gemini SDK, replacing the older text-embedding-gecko models).
+    # OpenAI's `text-embedding-3-*` models also support the `dimensions` parameter.
+    kwargs = {
+        "model": LLM_EMBEDDING_MODEL,
+        "input": [cleaned_text],
+        "timeout": LLM_REQUEST_TIMEOUT_SECONDS,
+    }
+    
+    # We will pass the dimensions parameter down for modern models that support variable dimension outputs.
+    # Models like textembedding-gecko do not support it and will reject the payload if provided.
+    supported_models = ["004", "text-embedding-3", "gemini-embedding"]
+    if any(m in LLM_EMBEDDING_MODEL for m in supported_models):
+        kwargs["dimensions"] = LLM_EMBEDDING_MODEL_DIMENSION
+
+    response = litellm.embedding(**kwargs)
 
     if not response.data:
         raise ValueError("LiteLLM returned no embeddings.")

@@ -120,7 +120,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
   },
 
   pollParseStatus: async (groupId: string, signal?: AbortSignal) => {
-    const maxRetries = 30;
+    const maxRetries = 90;
     const interval = 2000;
     let attempts = 0;
 

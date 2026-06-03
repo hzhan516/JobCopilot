@@ -365,7 +365,7 @@
       "uploadSuccess": "简历上传成功，解析已开始...",
       "parseSuccess": "简历解析成功！",
       "parseFailed": "简历解析失败。",
-      "parseTimeout": "解析时间较长，请耐心等待。",
+      "parseTimeout": "解析时间较长，正在后台处理中，请稍后刷新查看。",
       "uploadFailed": "简历上传失败。",
       "deleteConfirm": "确定要删除这份简历吗？",
       "deleteSuccess": "简历删除成功。",

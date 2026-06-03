@@ -22,6 +22,9 @@ Thumbs.db
 **/.env.*.local
 **/local.env
 
+# window-specific docker files (necessary to avoid accidentally committing overrides, please don't remove)
+.gitattributes
+
 # Secrets manifests
 **/secrets.yaml
 **/secrets.yml
