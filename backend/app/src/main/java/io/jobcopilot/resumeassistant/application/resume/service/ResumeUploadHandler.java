@@ -14,8 +14,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
 import java.util.UUID;
@@ -75,26 +73,10 @@ public class ResumeUploadHandler {
         ResumeParseCommand parseCommand = new ResumeParseCommand(
                 original.getId().toString(), presignedUrl, command.contentType());
 
-        // Defer MQ publish until after the DB transaction commits to avoid
-        // sending a message for a record that may still roll back.
-        // 将 MQ 发布推迟到数据库事务提交之后，防止消息已发但记录回滚的不一致情况
-        if (TransactionSynchronizationManager.isActualTransactionActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    try {
-                        aiMessagePublisherPort.sendResumeForParsing(parseCommand);
-                        log.info("Triggered async resume parsing for versionId={}", original.getId());
-                    } catch (Exception e) {
-                        log.error("Failed to publish resume parsing request after commit: {}", original.getId(), e);
-                    }
-                }
-            });
-        } else {
-            // Fallback when not running inside a transaction (should not happen in production)
-            aiMessagePublisherPort.sendResumeForParsing(parseCommand);
-            log.info("Triggered async resume parsing for versionId={}", original.getId());
-        }
+        // Transactional outbox: persist the integration command in the same
+        // transaction as the PARSING state so the two changes commit atomically.
+        aiMessagePublisherPort.sendResumeForParsing(parseCommand);
+        log.info("Enqueued async resume parsing command for versionId={}", original.getId());
 
         log.info("Resume uploaded: groupId={}, userId={}", group.getId(), userId);
         return group;

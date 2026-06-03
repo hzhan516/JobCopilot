@@ -364,7 +364,7 @@
       "uploadSuccess": "履歷上傳成功，解析已開始...",
       "parseSuccess": "履歷解析成功！",
       "parseFailed": "履歷解析失敗。",
-      "parseTimeout": "解析時間較長，請耐心等待。",
+      "parseTimeout": "解析時間較長，正在後台處理中，請稍後刷新查看。",
       "uploadFailed": "履歷上傳失敗。",
       "deleteConfirm": "確定要刪除這份履歷嗎？",
       "deleteSuccess": "履歷刪除成功。",

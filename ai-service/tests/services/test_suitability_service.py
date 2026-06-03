@@ -7,9 +7,10 @@ import pytest
 
 from app.schemas import (
     SuitabilityRequest,
-    ResumeSnapshot,
-    JobSnapshot,
+    ParsedResumeContent,
+    ParsedJobContent,
     SuitabilityBreakdown,
+    ExperienceItem,
 )
 from app.services.suitability_service import (
     _normalize_items,
@@ -54,8 +55,8 @@ def test_evaluate_suitability_baseline_strong_match():
     """Strong skill overlap should yield high score and suitable=True.
     强技能重叠应产生高分且 suitable=True。"""
     request = SuitabilityRequest(
-        resume=ResumeSnapshot(skills=["Python", "Django"], experience=[{"title": "Dev"}]),
-        job=JobSnapshot(title="Python Dev", requirements=["Python", "Django"]),
+        resume=ParsedResumeContent(skills=["Python", "Django"], experience=[ExperienceItem(title="Dev")]),
+        job=ParsedJobContent(title="Python Dev", company="Test", description="Test", requirements=["Python", "Django"]),
     )
     result = evaluate_suitability_baseline(request)
     assert result.suitable is True
@@ -66,8 +67,8 @@ def test_evaluate_suitability_baseline_no_match():
     """No skill overlap should yield low score and suitable=False.
     无技能重叠应产生低分且 suitable=False。"""
     request = SuitabilityRequest(
-        resume=ResumeSnapshot(skills=["Java"], experience=[]),
-        job=JobSnapshot(title="Python Dev", requirements=["Python", "Django"]),
+        resume=ParsedResumeContent(skills=["Java"], experience=[]),
+        job=ParsedJobContent(title="Python Dev", company="Test", description="Test", requirements=["Python", "Django"]),
     )
     result = evaluate_suitability_baseline(request)
     assert result.suitable is False
@@ -78,11 +79,11 @@ def test_evaluate_suitability_baseline_empty_requirements():
     """Empty job requirements should use default skill_score=0.5.
     空职位要求应使用默认 skill_score=0.5。"""
     request = SuitabilityRequest(
-        resume=ResumeSnapshot(skills=["Python"], experience=[{}]),
-        job=JobSnapshot(title="Dev", requirements=[]),
+        resume=ParsedResumeContent(skills=["Python"], experience=[ExperienceItem()]),
+        job=ParsedJobContent(title="Dev", company="Test", description="Test", requirements=[]),
     )
     result = evaluate_suitability_baseline(request)
-    assert result.breakdown.skillScore == 0.5
+    assert result.breakdown.skill_score == 0.5
 
 
 # ── Vertex evaluation (mocked LLM) ───────────────────────────
@@ -100,15 +101,15 @@ def test_evaluate_suitability_vertex_success(mock_generate):
     }
 
     request = SuitabilityRequest(
-        resume=ResumeSnapshot(skills=["Python"], experience=[{"title": "Dev"}]),
-        job=JobSnapshot(title="Python Dev", requirements=["Python"]),
+        resume=ParsedResumeContent(skills=["Python"], experience=[ExperienceItem(title="Dev")]),
+        job=ParsedJobContent(title="Python Dev", company="Test", description="Test", requirements=["Python"]),
     )
     result = evaluate_suitability_with_vertex(request)
 
     assert result.suitable is True
     assert result.final_score == 0.87
-    assert result.vertexScore == 0.87
-    assert result.llmModel is not None
+    assert result.vertex_score == 0.87
+    assert result.llm_model is not None
     mock_generate.assert_called_once()
 
 
@@ -125,8 +126,8 @@ def test_evaluate_suitability_vertex_low_score(mock_generate):
     }
 
     request = SuitabilityRequest(
-        resume=ResumeSnapshot(skills=["Java"], experience=[]),
-        job=JobSnapshot(title="Python Dev", requirements=["Python", "Django"]),
+        resume=ParsedResumeContent(skills=["Java"], experience=[]),
+        job=ParsedJobContent(title="Python Dev", company="Test", description="Test", requirements=["Python", "Django"]),
     )
     result = evaluate_suitability_with_vertex(request)
 
@@ -141,13 +142,13 @@ def test_evaluate_suitability_vertex_llm_failure(mock_generate):
     mock_generate.side_effect = Exception("LLM timeout")
 
     request = SuitabilityRequest(
-        resume=ResumeSnapshot(skills=["Python"], experience=[]),
-        job=JobSnapshot(title="Dev", requirements=["Python"]),
+        resume=ParsedResumeContent(skills=["Python"], experience=[]),
+        job=ParsedJobContent(title="Dev", company="Test", description="Test", requirements=["Python"]),
     )
     result = evaluate_suitability_with_vertex(request)
 
     assert result.suitable is not None  # Baseline returns something
-    assert result.llmModel is None  # Fallback has no LLM model
+    assert result.llm_model is None  # Fallback has no LLM model
 
 
 @patch("app.services.suitability_service.generate_json_from_text_prompt")
@@ -163,14 +164,14 @@ def test_evaluate_suitability_vertex_clamps_scores(mock_generate):
     }
 
     request = SuitabilityRequest(
-        resume=ResumeSnapshot(skills=["Python"], experience=[{"title": "Dev"}]),
-        job=JobSnapshot(title="Dev", requirements=["Python"]),
+        resume=ParsedResumeContent(skills=["Python"], experience=[ExperienceItem(title="Dev")]),
+        job=ParsedJobContent(title="Dev", company="Test", description="Test", requirements=["Python"]),
     )
     result = evaluate_suitability_with_vertex(request)
 
-    assert result.breakdown.skillScore == 1.0
-    assert result.breakdown.experienceScore == 0.0
-    assert result.breakdown.overallScore == 1.0
+    assert result.breakdown.skill_score == 1.0
+    assert result.breakdown.experience_score == 0.0
+    assert result.breakdown.overall_score == 1.0
 
 
 @patch("app.services.suitability_service.generate_json_from_text_prompt")
@@ -185,8 +186,8 @@ def test_evaluate_suitability_vertex_missing_summary(mock_generate):
     }
 
     request = SuitabilityRequest(
-        resume=ResumeSnapshot(skills=["Python"], experience=[{"title": "Dev"}]),
-        job=JobSnapshot(title="Dev", requirements=["Python"]),
+        resume=ParsedResumeContent(skills=["Python"], experience=[ExperienceItem(title="Dev")]),
+        job=ParsedJobContent(title="Dev", company="Test", description="Test", requirements=["Python"]),
     )
     result = evaluate_suitability_with_vertex(request)
 

@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -233,9 +234,9 @@ class ResumeUploadHandlerTest {
     // ==================== Exception Path ====================
 
     @Test
-    @DisplayName("Should handle publish failure gracefully and mark parse failed")
-    void shouldHandlePublishFailureGracefullyAndMarkParseFailed() {
-        // 给定 / Given
+    @DisplayName("Should fail upload when resume parse command cannot be enqueued")
+    void shouldFailUploadWhenResumeParseCommandCannotBeEnqueued() {
+        // Given
         ResumeUploadCommand command = ResumeUploadCommand.builder()
                 .fileName("resume.pdf")
                 .contentType("application/pdf")
@@ -250,23 +251,15 @@ class ResumeUploadHandlerTest {
         when(fileStorageService.generatePresignedUrl(anyString(), any(Duration.class)))
                 .thenReturn("https://minio.example.com/presigned");
         doNothing().when(versionRepository).save(any(ResumeVersion.class));
-        doThrow(new RuntimeException("MQ unavailable"))
+        doThrow(new RuntimeException("outbox unavailable"))
                 .when(aiMessagePublisherPort).sendResumeForParsing(any(ResumeParseCommand.class));
 
-        // 当 / When — should not throw
-        ResumeGroup result = handler.upload(command, userId);
-
-        // 那么 / Then
-        assertThat(result).isNotNull();
-
-        // Verify that the original version was marked as FAILED
-        // 验证原始版本被标记为 FAILED
-        ResumeVersion original = result.getVersions().stream()
-                .filter(v -> v.getVersionType() == ResumeVersion.VersionType.ORIGINAL)
-                .findFirst()
-                .orElseThrow();
-        assertThat(original.getParseStatus().name()).isEqualTo("FAILED");
-        assertThat(original.getParseErrorMessage()).contains("Failed to publish parsing request");
+        // The outbox row and PARSING state belong to one application transaction.
+        // If the command cannot be enqueued, upload must fail instead of
+        // committing a resume version that can never be processed by AI.
+        assertThatThrownBy(() -> handler.upload(command, userId))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("outbox unavailable");
     }
 
     // ==================== 边界条件 ====================
