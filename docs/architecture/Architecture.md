@@ -1,7 +1,7 @@
 <!-- Language Switcher / 语言切换 / 語言切換 -->
 > [English](Architecture.md) | [简体中文](../i18n/zh-Hans-CN/architecture/Architecture.md) | [繁體中文](../i18n/zh-Hant-TW/architecture/Architecture.md)
 
-# Intelligent Job Assistant - Architecture Document
+# JobCopilot - Architecture Document
 
 
 ---
@@ -10,7 +10,7 @@
 
 | Field               | Value                                    |
 | ------------------- | ---------------------------------------- |
-| **Project Name**    | Intelligent Job Assistant (智能求职助手)       |
+| **Project Name**    | JobCopilot                               |
 | **Document Title**  | System Architecture Document             |
 | **Version**         | 1.0.0                                    |
 | **Date**            | 2025-01                                  |
@@ -30,7 +30,7 @@
 
 ### 2.1 System Purpose
 
-The Intelligent Job Assistant is a job search platform that uses AI to help job
+JobCopilot is a job search platform that uses AI to help job
 seekers improve their resumes, find relevant opportunities, and track application progress. The system
 combines web technologies with AI capabilities to provide a conversational interface for
 job seekers.

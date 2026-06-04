@@ -1,5 +1,5 @@
 # =============================================================================
-# Resume Assistant — PostgreSQL with pgvector extension
+# JobCopilot - PostgreSQL with pgvector extension
 # 基于 Bitnami PostgreSQL 镜像，额外安装 pgvector 扩展
 # =============================================================================
 FROM public.ecr.aws/bitnami/postgresql:15

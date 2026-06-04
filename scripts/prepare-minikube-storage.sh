@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Resume Assistant — Prepare minikube host directories for rootless middleware
+# JobCopilot - Prepare minikube host directories for rootless middleware
 # 为 rootless minikube 中间件准备宿主机存储目录
 # =============================================================================
 set -e

@@ -28,7 +28,7 @@ RUN npm run build
 FROM docker.io/library/nginx:1.27-alpine
 
 LABEL maintainer="JobCopilot Labs"
-LABEL description="Resume Assistant Frontend"
+LABEL description="JobCopilot Frontend"
 
 # Install curl for Docker healthcheck (nginx:alpine does not include wget or curl by default)
 RUN apk add --no-cache curl

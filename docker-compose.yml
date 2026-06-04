@@ -1,5 +1,5 @@
 # =============================================================================
-# Resume Assistant — Docker Compose Configuration (Example Template)
+# JobCopilot - Docker Compose Configuration (Example Template)
 # =============================================================================
 # This file defines a production-oriented three-tier Docker network deployment.
 # Only the frontend Nginx reverse proxy is exposed to the host. All other

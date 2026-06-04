@@ -9,8 +9,8 @@
     <version>1.0.0</version>
     <packaging>pom</packaging>
 
-    <name>Resume Assistant Backend</name>
-    <description>智能求职助手 - Java后端服务</description>
+    <name>JobCopilot Backend</name>
+    <description>JobCopilot Java backend service</description>
 
     <modules>
         <module>types</module>

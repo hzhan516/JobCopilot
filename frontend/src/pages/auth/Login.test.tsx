@@ -54,9 +54,11 @@ vi.mock('@react-oauth/google', () => ({
 
 function LocationStateDisplay() {
   const location = useLocation()
-  const state = location.state as { from?: { pathname?: string } } | null
+  const state = location.state as { from?: { pathname?: string; search?: string; hash?: string } } | null
+  const from = state?.from
+  const fullPath = from ? `${from.pathname ?? ''}${from.search ?? ''}${from.hash ?? ''}` : 'no-state'
 
-  return <div data-testid="from-path">{state?.from?.pathname ?? 'no-state'}</div>
+  return <div data-testid="from-path">{fullPath}</div>
 }
 
 describe('Login page', () => {
@@ -248,7 +250,7 @@ describe('Login page', () => {
 
     fireEvent.click(screen.getByText('auth.login.registerNow'))
 
-    expect(screen.getByTestId('from-path')).toHaveTextContent('/applications')
+    expect(screen.getByTestId('from-path')).toHaveTextContent('/applications?edit=tracking-1#timeline')
   })
 
   it('shows error on login failure and resets CAPTCHA', async () => {

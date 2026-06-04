@@ -102,7 +102,7 @@ describe('LanguageSwitcher', () => {
 
   it('renders with screen reader only text', () => {
     render(<LanguageSwitcher />)
-    expect(screen.getByText('Switch language')).toBeInTheDocument()
+    expect(screen.getByText('Switch Language')).toBeInTheDocument()
   })
 
   it('has cursor-pointer class on menu items', () => {

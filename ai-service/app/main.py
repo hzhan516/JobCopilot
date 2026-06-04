@@ -1,6 +1,6 @@
 """
-Resume Assistant - Python AI service entry point.
-智能求职助手 —— AI 服务入口，负责任务调度、HTTP API 及 MQ 消费者生命周期管理。
+JobCopilot - Python AI service entry point.
+JobCopilot AI service entry point, responsible for task scheduling, HTTP APIs, and MQ consumer lifecycle management.
 """
 
 import logging
@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Resume Assistant AI Service",
+    title="JobCopilot AI Service",
     description="AI service for scraping, parsing, and job processing.",
     version="1.0.0",
     lifespan=lifespan,
@@ -122,7 +122,7 @@ _mq_lock = threading.Lock()
 @app.get("/")
 async def root():
     return {
-        "service": "Resume Assistant AI",
+        "service": "JobCopilot AI",
         "version": "1.0.0",
         "status": "running",
     }

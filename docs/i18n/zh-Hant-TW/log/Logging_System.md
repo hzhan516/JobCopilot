@@ -6,7 +6,7 @@
 
 ## 概述 / Overview
 
-智能求職助手後端使用 **Logback**（Spring Boot 預設附帶的日誌框架）來處理所有應用與框架日誌。一個統一的 `logback-spring.xml` 檔案控制後端所有日誌訊息的輸出格式、滾動策略與保留規則。
+JobCopilot 後端使用 **Logback**（Spring Boot 預設附帶的日誌框架）來處理所有應用與框架日誌。一個統一的 `logback-spring.xml` 檔案控制後端所有日誌訊息的輸出格式、滾動策略與保留規則。
 
 The JobCopilot backend uses **Logback** (the default logging framework shipped with Spring Boot) to handle all application and framework logs. A single `logback-spring.xml` file controls the output format, rolling policy, and retention rules for every log message produced by the backend.
 

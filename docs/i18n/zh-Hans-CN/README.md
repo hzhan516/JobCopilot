@@ -1,9 +1,9 @@
 <!-- 语言切换器 -->
 > [English](../../../README.md) | [简体中文](README.md) | [繁體中文](../zh-Hant-TW/README.md)
 
-# 智能求职助手 (JobCopilot)
+# JobCopilot
 
-**智能求职助手**是一个面向应届毕业生和职业转型者的 AI 驱动平台。它能够解析上传的简历，利用语义向量匹配将其与就业市场数据进行比对评估，并提供交互式 AI 助手，帮助用户迭代优化简历内容。安全的文档管理、异步 AI 处理以及个性化推荐，帮助用户节省时间并提高面试成功率。
+**JobCopilot** 是一个面向应届毕业生和职业转型者的 AI 驱动平台。它能够解析上传的简历，利用语义向量匹配将其与就业市场数据进行比对评估，并提供交互式 AI 助手，帮助用户迭代优化简历内容。安全的文档管理、异步 AI 处理以及个性化推荐，帮助用户节省时间并提高面试成功率。
 
 **部署：** 系统已通过 Docker Compose 验证。将 `.env.example` 复制为 `.env`，配置所需值后运行 `docker compose --env-file .env up -d --build`。前端默认可通过 `http://localhost` 访问；如果配置了自定义端口，则通过 `http://localhost:${FRONTEND_HOST_PORT}` 访问。
 
