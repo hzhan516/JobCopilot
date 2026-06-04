@@ -18,7 +18,25 @@ vi.mock('@/hooks/useAuth', () => ({
 }))
 
 vi.mock('@/components/ui/sonner', () => ({
-  Toaster: () => <div data-testid="toaster" />,
+  Toaster: ({
+    position,
+    duration,
+    offset,
+    mobileOffset,
+  }: {
+    position?: string
+    duration?: number
+    offset?: string
+    mobileOffset?: string
+  }) => (
+    <div
+      data-testid="toaster"
+      data-position={position}
+      data-duration={duration}
+      data-offset={offset}
+      data-mobile-offset={mobileOffset}
+    />
+  ),
 }))
 
 vi.mock('@/components/layout/MainLayout', () => ({
@@ -212,5 +230,19 @@ describe('App routing', () => {
       </MemoryRouter>
     )
     expect(screen.getByTestId('toaster')).toBeInTheDocument()
+  })
+
+  it('configures global toast placement and duration', () => {
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>
+    )
+
+    const toaster = screen.getByTestId('toaster')
+    expect(toaster).toHaveAttribute('data-position', 'top-center')
+    expect(toaster).toHaveAttribute('data-duration', '6000')
+    expect(toaster).toHaveAttribute('data-offset', '88px')
+    expect(toaster).toHaveAttribute('data-mobile-offset', '72px')
   })
 })
