@@ -19,7 +19,7 @@ describe('PublicRoute', () => {
     render(
       <MemoryRouter initialEntries={['/login']}>
         <Routes>
-          <Route path="/resumes" element={<div>Resumes</div>} />
+          <Route path="/" element={<div>Home</div>} />
           <Route
             path="/login"
             element={
@@ -35,13 +35,13 @@ describe('PublicRoute', () => {
     expect(screen.getByText('Login Page')).toBeInTheDocument()
   })
 
-  it('redirects to /resumes when authenticated without from state', () => {
+  it('redirects to home when authenticated without from state', () => {
     mockUseAuth.isAuthenticated = true
 
     render(
       <MemoryRouter initialEntries={['/login']}>
         <Routes>
-          <Route path="/resumes" element={<div>Resumes</div>} />
+          <Route path="/" element={<div>Home</div>} />
           <Route
             path="/login"
             element={
@@ -54,17 +54,25 @@ describe('PublicRoute', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByText('Resumes')).toBeInTheDocument()
+    expect(screen.getByText('Home')).toBeInTheDocument()
   })
 
   it('redirects to saved from path when authenticated', () => {
     mockUseAuth.isAuthenticated = true
 
     render(
-      <MemoryRouter initialEntries={['/login']} future={{ v7_startTransition: true }}>
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/login',
+            state: { from: { pathname: '/jobs' } },
+          },
+        ]}
+        future={{ v7_startTransition: true }}
+      >
         <Routes>
-          <Route path="/dashboard" element={<div>Dashboard</div>} />
-          <Route path="/resumes" element={<div>Resumes</div>} />
+          <Route path="/jobs" element={<div>Jobs</div>} />
+          <Route path="/" element={<div>Home</div>} />
           <Route
             path="/login"
             element={
@@ -77,17 +85,16 @@ describe('PublicRoute', () => {
       </MemoryRouter>
     )
 
-    // When there's no from state, it defaults to /resumes
-    expect(screen.getByText('Resumes')).toBeInTheDocument()
+    expect(screen.getByText('Jobs')).toBeInTheDocument()
   })
 
-  it('avoids redirect loop by defaulting to /resumes for /login from path', () => {
+  it('avoids redirect loop by defaulting to home for /login from path', () => {
     mockUseAuth.isAuthenticated = true
 
     render(
       <MemoryRouter initialEntries={[{ pathname: '/login', state: { from: { pathname: '/login' } } }]}>
         <Routes>
-          <Route path="/resumes" element={<div>Resumes</div>} />
+          <Route path="/" element={<div>Home</div>} />
           <Route
             path="/login"
             element={
@@ -101,6 +108,28 @@ describe('PublicRoute', () => {
     )
 
     // Even with /login in from state, should not loop
-    expect(screen.getByText('Resumes')).toBeInTheDocument()
+    expect(screen.getByText('Home')).toBeInTheDocument()
+  })
+
+  it('falls back to home for unsafe external-like from path', () => {
+    mockUseAuth.isAuthenticated = true
+
+    render(
+      <MemoryRouter initialEntries={[{ pathname: '/login', state: { from: { pathname: '//evil.com' } } }]}>
+        <Routes>
+          <Route path="/" element={<div>Home</div>} />
+          <Route
+            path="/login"
+            element={
+              <PublicRoute>
+                <div>Login Page</div>
+              </PublicRoute>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    )
+
+    expect(screen.getByText('Home')).toBeInTheDocument()
   })
 })

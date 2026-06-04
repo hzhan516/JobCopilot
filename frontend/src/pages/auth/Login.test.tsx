@@ -171,7 +171,48 @@ describe('Login page', () => {
         { email: 'test@example.com', password: 'password123', captchaToken: 'captcha-token-123' },
         false
       )
-      expect(mockNavigate).toHaveBeenCalledWith('/resumes', { replace: true })
+      expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true })
+    })
+  })
+
+  it('redirects back to saved protected route after successful login', async () => {
+    mockLogin.mockResolvedValue(undefined)
+
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/login',
+            state: {
+              from: {
+                pathname: '/applications',
+                search: '?edit=tracking-1',
+                hash: '#timeline',
+              },
+            },
+          },
+        ]}
+      >
+        <Login />
+      </MemoryRouter>
+    )
+
+    fireEvent.change(screen.getByPlaceholderText('auth.login.emailPlaceholder'), {
+      target: { value: 'test@example.com' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('auth.login.passwordPlaceholder'), {
+      target: { value: 'password123' },
+    })
+    fireEvent.click(screen.getByText('Verify CAPTCHA'))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /auth.login.loginButton/i })).not.toBeDisabled()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /auth.login.loginButton/i }))
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/applications?edit=tracking-1#timeline', { replace: true })
     })
   })
 
@@ -250,6 +291,9 @@ describe('Login page', () => {
 
     // Google login flow may be gated by captchaToken — verify state changes
     expect(screen.queryByText('auth.captcha.required')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true })
+    })
   })
 
   it('resets Google CAPTCHA state after Google login failure', async () => {

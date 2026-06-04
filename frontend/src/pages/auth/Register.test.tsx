@@ -258,6 +258,7 @@ describe('Register page', () => {
 
     await waitFor(() => {
       expect(mockRegisterEmail).toHaveBeenCalled()
+      expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true })
     })
   })
 

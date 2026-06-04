@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '@/hooks/useAuth';
@@ -18,6 +18,7 @@ import { FileText, Loader2, Eye, EyeOff } from 'lucide-react';
 import type { AxiosError } from 'axios';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { authService } from '@/services/api';
+import { getPostAuthRedirectPath } from '@/utils/authRedirect';
 
 type Strength = 'weak' | 'medium' | 'strong';
 
@@ -72,6 +73,7 @@ const STORAGE_KEY = 'verificationCodeSentAt';
 export default function Register() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { register, loginByGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -102,6 +104,7 @@ export default function Register() {
   });
 
   const { isSubmitting } = form.formState;
+  const postAuthRedirectPath = getPostAuthRedirectPath(location.state);
   const passwordValue = useWatch({ control: form.control, name: 'password' });
   const strength = useMemo(() => getPasswordStrength(passwordValue || ''), [passwordValue]);
 
@@ -182,7 +185,7 @@ export default function Register() {
         payload.verificationCode = values.verificationCode;
       }
       await register(payload, false);
-      navigate('/resumes', { replace: true });
+      navigate(postAuthRedirectPath, { replace: true });
     } catch (err) {
       const axiosErr = err as AxiosError<{ message?: string }>;
       const status = axiosErr.response?.status;
@@ -258,7 +261,7 @@ export default function Register() {
     setGoogleLoading(true);
     try {
       await loginByGoogle({ idToken: credentialResponse.credential, captchaToken }, false);
-      navigate('/resumes', { replace: true });
+      navigate(postAuthRedirectPath, { replace: true });
     } catch {
       setError(t('auth.login.googleLoginFailed'));
       resetCaptcha();

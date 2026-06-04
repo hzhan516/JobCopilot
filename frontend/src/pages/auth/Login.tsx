@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import SliderCaptcha from '@/components/SliderCaptcha';
 import { FileText, Loader2, Eye, EyeOff } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { getPostAuthRedirectPath } from '@/utils/authRedirect';
 
 function useLoginSchema() {
   const { t } = useTranslation();
@@ -39,6 +40,7 @@ type LoginFormValues = z.infer<ReturnType<typeof useLoginSchema>>;
 export default function Login() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, loginByGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -62,6 +64,7 @@ export default function Login() {
   });
 
   const { isSubmitting } = form.formState;
+  const postAuthRedirectPath = getPostAuthRedirectPath(location.state);
 
   const resetCaptcha = () => {
     setCaptchaToken('');
@@ -80,7 +83,7 @@ export default function Login() {
 
     try {
       await login({ email: values.email, password: values.password, captchaToken }, values.rememberMe);
-      navigate('/resumes', { replace: true });
+      navigate(postAuthRedirectPath, { replace: true });
     } catch {
       setError(t('auth.login.errorInvalidCredentials'));
       // 任何业务错误都重置人机验证
@@ -104,7 +107,7 @@ export default function Login() {
     setGoogleLoading(true);
     try {
       await loginByGoogle({ idToken: credentialResponse.credential, captchaToken }, false);
-      navigate('/resumes', { replace: true });
+      navigate(postAuthRedirectPath, { replace: true });
     } catch {
       setError(t('auth.login.googleLoginFailed'));
       resetCaptcha();
