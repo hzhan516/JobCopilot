@@ -1,6 +1,6 @@
 # =============================================================================
-# Resume Assistant — Minimal Resource Overrides
-# 智能求职助手 — 最小资源覆盖值
+# JobCopilot — Minimal Resource Overrides
+# JobCopilot — 最小资源覆盖值
 # =============================================================================
 # Optimized for single-node K8s clusters (kind, minikube, Docker Desktop).
 # 针对单节点 K8s 集群优化（kind、minikube、Docker Desktop）。
@@ -115,4 +115,3 @@ frontend:
     limits:
       memory: "128Mi"
       cpu: "200m"
-

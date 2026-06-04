@@ -555,7 +555,7 @@ export default function Register() {
           <CardFooter className="flex justify-center">
             <p className="text-sm text-gray-600">
               {t('auth.register.hasAccount')}{' '}
-              <Link to="/login" className="text-blue-600 hover:underline font-medium">
+              <Link to="/login" state={location.state} className="text-blue-600 hover:underline font-medium">
                 {t('auth.register.loginNow')}
               </Link>
             </p>
@@ -563,7 +563,7 @@ export default function Register() {
         </Card>
 
         <p className="text-center text-sm text-gray-500 mt-8">
-          {t("common.copyright", { appName: "JobCopilot" })}
+          {t('common.copyright', { appName: t('common.appName') })}
         </p>
       </div>
 

@@ -1,7 +1,7 @@
 apiVersion: v2
 name: jobcopilot
 description: |
-  Production-grade Helm chart for Resume Assistant (智能求职助手).
+  Production-grade Helm chart for JobCopilot.
   Supports both embedded middleware (PostgreSQL + RabbitMQ + Redis inside K8s)
   and managed middleware (cloud-managed database / MQ / cache).
 type: application

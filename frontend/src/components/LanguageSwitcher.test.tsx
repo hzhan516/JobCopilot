@@ -12,6 +12,21 @@ vi.mock('@/store/language.store', () => ({
   }),
 }))
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      const translations: Record<string, string> = {
+        'language.en': 'English',
+        'language.zhCN': '简体中文',
+        'language.zhTW': '繁體中文',
+        'language.switch': 'Switch Language',
+      }
+
+      return translations[key] ?? key
+    },
+  }),
+}))
+
 vi.mock('lucide-react', () => ({
   Globe: () => <span data-testid="globe-icon">🌐</span>,
   Check: () => <span data-testid="check-icon">✓</span>,

@@ -1,6 +1,6 @@
 # =============================================================================
-# Resume Assistant — Production Overrides
-# 智能求职助手 — 生产环境覆盖值
+# JobCopilot — Production Overrides
+# JobCopilot — 生产环境覆盖值
 # =============================================================================
 # Usage:
 #   helm install jobcopilot ./helm/jobcopilot \

@@ -1,6 +1,6 @@
 {{/*
-Resume Assistant — Common Helm helper templates
-智能求职助手 — 通用 Helm 辅助模板
+JobCopilot — Common Helm helper templates
+JobCopilot — 通用 Helm 辅助模板
 */}}
 
 {{/*

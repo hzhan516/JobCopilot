@@ -290,7 +290,7 @@ export default function Login() {
           <CardFooter className="flex justify-center">
             <p className="text-sm text-gray-600">
               {t('auth.login.noAccount')}{' '}
-              <Link to="/register" className="text-blue-600 hover:underline font-medium">
+              <Link to="/register" state={location.state} className="text-blue-600 hover:underline font-medium">
                 {t('auth.login.registerNow')}
               </Link>
             </p>
@@ -298,7 +298,7 @@ export default function Login() {
         </Card>
 
         <p className="text-center text-sm text-gray-500 mt-8">
-          {t("common.copyright", { appName: "JobCopilot" })}
+          {t('common.copyright', { appName: t('common.appName') })}
         </p>
       </div>
 

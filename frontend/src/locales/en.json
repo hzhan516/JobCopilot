@@ -23,7 +23,7 @@
     "notSpecified": "Not specified",
     "notAvailable": "Not available",
     "optional": "Optional",
-    "appName": "Resume Assistant",
+    "appName": "JobCopilot",
     "copyright": "© 2024 {{appName}}. All rights reserved."
   },
   "layout": {
@@ -119,7 +119,7 @@
   },
   "dashboard": {
     "welcome": "Welcome Back!",
-    "subtitle": "Resume Assistant is ready with today's job search suggestions",
+    "subtitle": "JobCopilot is ready with today's job search suggestions",
     "noScoreRecords": "No job score records yet. Go to Job Matching to score a job.",
     "uploadResume": "Upload Resume",
     "viewJobs": "View Jobs",

@@ -22,6 +22,14 @@ We use [Vitest](https://vitest.dev/) (aligned with Vite) together with [React Te
 - Mock utilities: `vi.mock()` / `vi.fn()` from Vitest
 - DOM environment: `happy-dom`
 
+## i18n Guidelines
+
+- Keep `common.appName` as `JobCopilot` in every locale.
+- Add every user-facing string to `src/locales/en.json`, `src/locales/zh-CN.json`, and `src/locales/zh-TW.json` at the same key path.
+- Keep interpolation variables identical across locales, for example `{{appName}}`.
+- Use `简历` in Simplified Chinese and `履歷` in Traditional Chinese.
+- Run `npm run test:run -- i18nParity` after changing locale files.
+
 ### Writing Tests
 
 ```ts

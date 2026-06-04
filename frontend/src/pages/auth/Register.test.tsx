@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import Register from './Register'
 
 const mockNavigate = vi.hoisted(() => vi.fn())
@@ -183,6 +183,13 @@ vi.mock('lucide-react', () => ({
   XIcon: () => <span>×</span>,
 }))
 
+function LocationStateDisplay() {
+  const location = useLocation()
+  const state = location.state as { from?: { pathname?: string } } | null
+
+  return <div data-testid="from-path">{state?.from?.pathname ?? 'no-state'}</div>
+}
+
 describe('Register page', () => {
   const verifyCaptcha = () => {
     fireEvent.click(screen.getByText('Verify CAPTCHA'))
@@ -215,6 +222,34 @@ describe('Register page', () => {
     )
 
     expect(screen.getByText('auth.register.loginNow').closest('a')).toHaveAttribute('href', '/login')
+  })
+
+  it('preserves saved protected route state when switching to login', () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/register',
+            state: {
+              from: {
+                pathname: '/applications',
+                search: '?edit=tracking-1',
+                hash: '#timeline',
+              },
+            },
+          },
+        ]}
+      >
+        <Routes>
+          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<LocationStateDisplay />} />
+        </Routes>
+      </MemoryRouter>
+    )
+
+    fireEvent.click(screen.getByText('auth.register.loginNow'))
+
+    expect(screen.getByTestId('from-path')).toHaveTextContent('/applications')
   })
 
   it('shows terms and conditions checkbox', () => {
@@ -259,6 +294,41 @@ describe('Register page', () => {
     await waitFor(() => {
       expect(mockRegisterEmail).toHaveBeenCalled()
       expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true })
+    })
+  })
+
+  it('redirects back to saved protected route after successful registration', async () => {
+    mockRegisterEmail.mockResolvedValue({ token: 'new-token' })
+
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/register',
+            state: {
+              from: {
+                pathname: '/applications',
+                search: '?edit=tracking-1',
+                hash: '#timeline',
+              },
+            },
+          },
+        ]}
+      >
+        <Register />
+      </MemoryRouter>
+    )
+
+    verifyCaptcha()
+
+    const form = screen.getByText('auth.register.title').closest('form') || document.querySelector('form')
+    if (form) {
+      fireEvent.submit(form)
+    }
+
+    await waitFor(() => {
+      expect(mockRegisterEmail).toHaveBeenCalled()
+      expect(mockNavigate).toHaveBeenCalledWith('/applications?edit=tracking-1#timeline', { replace: true })
     })
   })
 

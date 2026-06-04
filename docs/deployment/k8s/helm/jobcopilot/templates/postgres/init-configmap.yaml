@@ -21,8 +21,8 @@ data:
   init-db.sh: |
     #!/bin/bash
     set -e
-    # Resume Assistant - PostgreSQL initialization wrapper
-    # 智能求职助手 - PostgreSQL 初始化包装脚本
+    # JobCopilot - PostgreSQL initialization wrapper
+    # JobCopilot - PostgreSQL 初始化包装脚本
     DIM=${LLM_EMBEDDING_MODEL_DIMENSION:-1536}
     TEMPLATE="/docker-entrypoint-initdb.d/templates/init.sql"
     if [ ! -f "$TEMPLATE" ]; then
@@ -30,7 +30,7 @@ data:
         exit 1
     fi
     echo "============================================================"
-    echo "Resume Assistant Database Initialization"
+    echo "JobCopilot Database Initialization"
     echo "Embedding dimension from env: ${DIM}"
     echo "============================================================"
     PROCESSED=$(mktemp)

@@ -10,7 +10,7 @@
 
 | 方式 | 適用場景 | 檔案位置 |
 |------|----------|----------|
-| **Helm Chart** | 生產環境、多環境、版本化發佈 | [`helm/JobCopilot/`](../../../../deployment/k8s/helm/JobCopilot/) |
+| **Helm Chart** | 生產環境、多環境、版本化發佈 | [`helm/jobcopilot/`](../../../../deployment/k8s/helm/jobcopilot/) |
 | **ArgoCD GitOps** | 使用 GitOps 工作流的團隊、審計追蹤 | [`argocd/`](../../../../deployment/k8s/argocd/) |
 | **原生 YAML + Kustomize** | 快速測試、學習、無 Helm 的 CI | [`plain-yaml/`](../../../../deployment/k8s/plain-yaml/) |
 
@@ -57,18 +57,18 @@ kubectl create secret generic JobCopilot-secrets \
 
 ```bash
 # 自建模式（開發）
-helm install JobCopilot ./helm/JobCopilot \
+helm install JobCopilot ./helm/jobcopilot \
   --namespace JobCopilot \
   --create-namespace \
-  -f ./helm/JobCopilot/values.yaml \
-  -f ./helm/JobCopilot/values-minimal.yaml
+  -f ./helm/jobcopilot/values.yaml \
+  -f ./helm/jobcopilot/values-minimal.yaml
 
 # 託管模式（生產）
-helm install JobCopilot ./helm/JobCopilot \
+helm install JobCopilot ./helm/jobcopilot \
   --namespace JobCopilot \
   --create-namespace \
-  -f ./helm/JobCopilot/values.yaml \
-  -f ./helm/JobCopilot/values-production.yaml
+  -f ./helm/jobcopilot/values.yaml \
+  -f ./helm/jobcopilot/values-production.yaml
 ```
 
 ### 3. 驗證

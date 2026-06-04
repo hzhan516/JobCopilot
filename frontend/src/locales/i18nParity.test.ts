@@ -57,4 +57,17 @@ describe('i18n parity', () => {
       expect(enVars).toEqual(zhTWVars)
     })
   })
+
+  it('keeps cross-locale brand and terminology aligned', () => {
+    expect(en.common.appName).toBe('JobCopilot')
+    expect(zhCN.common.appName).toBe('JobCopilot')
+    expect(zhTW.common.appName).toBe('JobCopilot')
+
+    expect(extractVariables(en.common.copyright)).toEqual(['appName'])
+    expect(extractVariables(zhCN.common.copyright)).toEqual(['appName'])
+    expect(extractVariables(zhTW.common.copyright)).toEqual(['appName'])
+
+    expect(JSON.stringify(zhTW)).not.toContain('簡歷')
+    expect(JSON.stringify(zhCN)).not.toContain('履歷')
+  })
 })

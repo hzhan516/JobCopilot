@@ -10,7 +10,7 @@ This directory provides **production-grade** Kubernetes deployment configuration
 
 | Method | Best For | File Location |
 |--------|----------|---------------|
-| **Helm Chart** | Production, multi-environment, versioned releases | [`helm/JobCopilot/`](./helm/JobCopilot/) |
+| **Helm Chart** | Production, multi-environment, versioned releases | [`helm/jobcopilot/`](./helm/jobcopilot/) |
 | **ArgoCD GitOps** | Teams with GitOps workflows, audit trails | [`argocd/`](./argocd/) |
 | **Plain YAML + Kustomize** | Quick tests, learning, CI without Helm | [`plain-yaml/`](./plain-yaml/) |
 
@@ -57,18 +57,18 @@ kubectl create secret generic JobCopilot-secrets \
 
 ```bash
 # Embedded mode (dev)
-helm install JobCopilot ./helm/JobCopilot \
+helm install JobCopilot ./helm/jobcopilot \
   --namespace JobCopilot \
   --create-namespace \
-  -f ./helm/JobCopilot/values.yaml \
-  -f ./helm/JobCopilot/values-minimal.yaml
+  -f ./helm/jobcopilot/values.yaml \
+  -f ./helm/jobcopilot/values-minimal.yaml
 
 # Managed mode (production)
-helm install JobCopilot ./helm/JobCopilot \
+helm install JobCopilot ./helm/jobcopilot \
   --namespace JobCopilot \
   --create-namespace \
-  -f ./helm/JobCopilot/values.yaml \
-  -f ./helm/JobCopilot/values-production.yaml
+  -f ./helm/jobcopilot/values.yaml \
+  -f ./helm/jobcopilot/values-production.yaml
 ```
 
 ### 3. Verify

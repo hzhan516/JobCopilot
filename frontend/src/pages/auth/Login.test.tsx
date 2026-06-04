@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import Login from './Login'
 
 const mockNavigate = vi.fn()
@@ -51,6 +51,13 @@ vi.mock('@react-oauth/google', () => ({
     </button>
   ),
 }))
+
+function LocationStateDisplay() {
+  const location = useLocation()
+  const state = location.state as { from?: { pathname?: string } } | null
+
+  return <div data-testid="from-path">{state?.from?.pathname ?? 'no-state'}</div>
+}
 
 describe('Login page', () => {
   beforeEach(() => {
@@ -214,6 +221,34 @@ describe('Login page', () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/applications?edit=tracking-1#timeline', { replace: true })
     })
+  })
+
+  it('preserves saved protected route state when switching to register', () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/login',
+            state: {
+              from: {
+                pathname: '/applications',
+                search: '?edit=tracking-1',
+                hash: '#timeline',
+              },
+            },
+          },
+        ]}
+      >
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<LocationStateDisplay />} />
+        </Routes>
+      </MemoryRouter>
+    )
+
+    fireEvent.click(screen.getByText('auth.login.registerNow'))
+
+    expect(screen.getByTestId('from-path')).toHaveTextContent('/applications')
   })
 
   it('shows error on login failure and resets CAPTCHA', async () => {

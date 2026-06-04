@@ -1,6 +1,6 @@
 # JobCopilot Helm Chart
 
-> [English](../../../../../deployment/k8s/helm/JobCopilot/README.md) | [简体中文](README.md) | [繁體中文](../../../../zh-Hant-TW/deployment/k8s/helm/README.md)
+> [English](../../../../../deployment/k8s/helm/jobcopilot/README.md) | [简体中文](README.md) | [繁體中文](../../../../zh-Hant-TW/deployment/k8s/helm/README.md)
 
 ## 概述
 
@@ -79,7 +79,7 @@ kubectl delete pvc -n JobCopilot -l app.kubernetes.io/name=JobCopilot
 
 ### 完整值参考
 
-参见 [`values.yaml`](../../../../../deployment/k8s/helm/JobCopilot/values.yaml)。
+参见 [`values.yaml`](../../../../../deployment/k8s/helm/jobcopilot/values.yaml)。
 
 ---
 

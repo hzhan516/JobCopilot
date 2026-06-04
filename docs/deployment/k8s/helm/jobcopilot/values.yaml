@@ -1,6 +1,6 @@
 # =============================================================================
-# Resume Assistant — Helm Chart Default Values
-# 智能求职助手 — Helm Chart 默认值
+# JobCopilot — Helm Chart Default Values
+# JobCopilot — Helm Chart 默认值
 # =============================================================================
 # This file configures the chart for development / local K8s testing.
 # For production, override with values-production.yaml.
