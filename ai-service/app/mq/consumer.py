@@ -1,6 +1,8 @@
 import asyncio
 import json
 import logging
+import concurrent.futures
+import os
 
 import pika
 
@@ -31,13 +33,14 @@ from app.config import (
     RABBITMQ_USERNAME,
 )
 
-from app.mq.publisher import publish_ai_result, publish_job_rank_result
+from app.mq.publisher import publish_ai_result
 from app.schemas import (
     AiResultEvent,
     ConversationRequestCommand,
     JobRankCommand,
     JobParseCommand,
     ResumeParseCommand,
+    JobRankResultData,
 )
 
 from app.services.conversation_service import process_conversation
@@ -46,6 +49,9 @@ from app.services.job_orchestrator import process_job
 from app.services.resume_orchestrator import process_resume
 
 logger = logging.getLogger(__name__)
+
+MQ_WORKER_THREADS = int(os.getenv("MQ_WORKER_THREADS", "4"))
+_executor = concurrent.futures.ThreadPoolExecutor(max_workers=MQ_WORKER_THREADS, thread_name_prefix="MqWorker")
 
 JOB_PARSE_FAILED_MESSAGE = "AI service failed while parsing the job posting. Please try again."
 RESUME_PARSE_FAILED_MESSAGE = "AI service failed while parsing the resume. Please try again."
@@ -191,9 +197,8 @@ def build_failed_event(
 
 
 def handle_job_message(
-    channel: pika.adapters.blocking_connection.BlockingChannel,
     body: bytes,
-) -> None:
+) -> AiResultEvent:
     command = parse_job_command(body)
 
     try:
@@ -207,13 +212,12 @@ def handle_job_message(
             event_entity_type="JOB",
         )
 
-    publish_ai_result(channel, result)
+    return result
 
 
 def handle_resume_message(
-    channel: pika.adapters.blocking_connection.BlockingChannel,
     body: bytes,
-) -> None:
+) -> AiResultEvent:
     command = parse_resume_command(body)
     try:
         result = process_resume(command)
@@ -226,13 +230,12 @@ def handle_resume_message(
             event_entity_type=None,
         )
 
-    publish_ai_result(channel, result)
+    return result
 
 
 def handle_conversation_message(
-    channel: pika.adapters.blocking_connection.BlockingChannel,
     body: bytes,
-) -> None:
+) -> AiResultEvent:
     command = parse_conversation_command(body)
     try:
         result = process_conversation(command)
@@ -245,32 +248,38 @@ def handle_conversation_message(
             event_entity_type=None,
         )
 
-    publish_ai_result(channel, result)
+    return result
 
 def handle_job_rank_message(
-    channel: pika.adapters.blocking_connection.BlockingChannel,
     body: bytes,
-) -> None:
+) -> AiResultEvent:
     command = parse_job_rank_command(body)
 
     try:
         result = asyncio.run(rank_jobs(command))
-        publish_job_rank_result(
-            channel,
-            match_id=command.match_id,
+        return AiResultEvent(
+            referenceId=command.match_id,
+            type="JOB_RANK",
             status="COMPLETED",
-            rank_time_ms=result.rank_time_ms,
-            ranked_results=[item.model_dump(by_alias=True) for item in result.ranked_results],
+            data=JobRankResultData(
+                rankTimeMs=result.rank_time_ms,
+                rankedResults=[item.model_dump(by_alias=True) for item in result.ranked_results],
+            ),
+            errorMessage=None,
+            eventType=None,
         )
     except Exception as exc:
         logger.exception("Job rank processing failed: match_id=%s", command.match_id)
-        publish_job_rank_result(
-            channel,
-            match_id=command.match_id,
+        return AiResultEvent(
+            referenceId=command.match_id,
+            type="JOB_RANK",
             status="FAILED",
-            rank_time_ms=0,
-            ranked_results=[],
-            error_message=JOB_RANK_FAILED_MESSAGE,
+            data=JobRankResultData(
+                rankTimeMs=0,
+                rankedResults=[],
+            ),
+            errorMessage=JOB_RANK_FAILED_MESSAGE,
+            eventType=None,
         )
 
 
@@ -279,7 +288,7 @@ def handle_job_rank_message(
 
 def _async_handler(wrapped_handler, log_message_metadata: bool = False):
     """Wrap MQ message handlers with ACK/NACK logic via thread-safe RabbitMQ callbacks.
-    包装 MQ 消息处理器：业务逻辑在当前线程同步执行，ACK/NACK 通过 thread-safe 回调提交，
+    包装 MQ 消息处理器：业务逻辑在当前线程池执行，ACK/NACK 和 publish 通过 thread-safe 回调提交，
     避免在消费者线程中直接操作 channel 引发并发冲突。"""
     def wrapper(ch, method, properties, body) -> None:
         delivery_tag = method.delivery_tag
@@ -291,16 +300,22 @@ def _async_handler(wrapped_handler, log_message_metadata: bool = False):
                 len(body),
             )
 
-        try:
-            wrapped_handler(ch, body)
-            ch.connection.add_callback_threadsafe(
-                lambda: ch.basic_ack(delivery_tag=delivery_tag)
-            )
-        except Exception:
-            logger.exception("Handler failed, tag=%s", delivery_tag)
-            ch.connection.add_callback_threadsafe(
-                lambda: ch.basic_nack(delivery_tag=delivery_tag, requeue=False)
-            )
+        def worker_task():
+            try:
+                result = wrapped_handler(body)
+                
+                def safe_publish_and_ack():
+                    publish_ai_result(ch, result)
+                    ch.basic_ack(delivery_tag=delivery_tag)
+                    
+                ch.connection.add_callback_threadsafe(safe_publish_and_ack)
+            except Exception:
+                logger.exception("Handler failed, tag=%s", delivery_tag)
+                ch.connection.add_callback_threadsafe(
+                    lambda: ch.basic_nack(delivery_tag=delivery_tag, requeue=False)
+                )
+
+        _executor.submit(worker_task)
 
     return wrapper
 
@@ -308,7 +323,7 @@ def _async_handler(wrapped_handler, log_message_metadata: bool = False):
 def start_all_consumers(channel: pika.adapters.blocking_connection.BlockingChannel) -> None:
     """Start consuming from all AI workflow queues with prefetch=1 for fair distribution.
     启动所有消费者：prefetch_count=1 保证消息在多个 worker 间公平分发，防止单个任务阻塞后续消息。"""
-    channel.basic_qos(prefetch_count=1)
+    channel.basic_qos(prefetch_count=MQ_WORKER_THREADS)
 
     channel.basic_consume(
         queue=JOB_PARSE_REQUEST_QUEUE,

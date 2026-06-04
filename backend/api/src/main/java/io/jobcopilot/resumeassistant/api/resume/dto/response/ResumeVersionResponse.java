@@ -23,6 +23,7 @@ public class ResumeVersionResponse {
     private final long fileSize;
     private final String content;
     private final String parseStatus;
+    private final String parseErrorMessage;
     private final boolean editable;
     private final OffsetDateTime createdAt;
     private final OffsetDateTime updatedAt;

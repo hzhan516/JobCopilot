@@ -157,7 +157,7 @@ describe('ResumeCard', () => {
     expect(screen.getByText('A very long resume title that should be truncated')).toBeInTheDocument()
   })
 
-  it('identifies latest version by createdAt', () => {
+  it('shows original version status as AI analysis status', () => {
     const group = createGroup({
       versions: [
         { versionId: 'v1', versionType: 'ORIGINAL', createdAt: '2024-01-15T00:00:00Z', status: 'ACTIVE', parseStatus: 'COMPLETED' },
@@ -167,7 +167,6 @@ describe('ResumeCard', () => {
 
     render(<ResumeCard group={group} onView={mockOnView} onDelete={mockOnDelete} />)
 
-    // Should show PARSING status of v2 (latest by date)
-    expect(screen.getByTestId('parse-status-PARSING')).toBeInTheDocument()
+    expect(screen.getByTestId('parse-status-COMPLETED')).toBeInTheDocument()
   })
 })

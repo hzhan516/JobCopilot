@@ -96,154 +96,131 @@ def test_build_failed_event():
     assert event.event_type == "JOB"
 
 @patch("app.mq.consumer.process_job")
-@patch("app.mq.consumer.publish_ai_result")
-def test_handle_job_message_success(mock_publish, mock_process):
-    mock_channel = MagicMock()
+def test_handle_job_message_success(mock_process):
     body = json.dumps({"jobId": "job-1", "url": "http://test.com/job.pdf", "imageCheckEnabled": False}).encode("utf-8")
     
     mock_result = AiResultEvent(referenceId="job-1", type="JOB_PARSE", status="COMPLETED", data={})
     mock_process.return_value = mock_result
     
-    handle_job_message(mock_channel, body)
+    result = handle_job_message(body)
     
     mock_process.assert_called_once()
-    mock_publish.assert_called_once_with(mock_channel, mock_result)
+    assert result == mock_result
 
 @patch("app.mq.consumer.process_job")
-@patch("app.mq.consumer.publish_ai_result")
-def test_handle_job_message_failure(mock_publish, mock_process):
-    mock_channel = MagicMock()
+def test_handle_job_message_failure(mock_process):
     body = json.dumps({"jobId": "job-1", "url": "http://test.com/job.pdf", "imageCheckEnabled": False}).encode("utf-8")
     
     mock_process.side_effect = Exception("Processing failed")
     
-    handle_job_message(mock_channel, body)
+    result = handle_job_message(body)
     
     mock_process.assert_called_once()
-    mock_publish.assert_called_once()
-    published_event = mock_publish.call_args[0][1]
-    assert published_event.status == "FAILED"
-    assert published_event.error_message == JOB_PARSE_FAILED_MESSAGE
+    assert result.status == "FAILED"
+    assert result.error_message == JOB_PARSE_FAILED_MESSAGE
 
 @patch("app.mq.consumer.process_resume")
-@patch("app.mq.consumer.publish_ai_result")
-def test_handle_resume_message_success(mock_publish, mock_process):
-    mock_channel = MagicMock()
+def test_handle_resume_message_success(mock_process):
     body = json.dumps({"resumeId": "res-1", "fileUrl": "http://test.com/res.pdf", "format": "pdf"}).encode("utf-8")
     
     mock_result = AiResultEvent(referenceId="res-1", type="RESUME_PARSE", status="COMPLETED", data={})
     mock_process.return_value = mock_result
     
-    handle_resume_message(mock_channel, body)
+    result = handle_resume_message(body)
     
     mock_process.assert_called_once()
-    mock_publish.assert_called_once_with(mock_channel, mock_result)
+    assert result == mock_result
 
 @patch("app.mq.consumer.process_resume")
-@patch("app.mq.consumer.publish_ai_result")
-def test_handle_resume_message_failure(mock_publish, mock_process):
-    mock_channel = MagicMock()
+def test_handle_resume_message_failure(mock_process):
     body = json.dumps({"resumeId": "res-1", "fileUrl": "http://test.com/res.pdf", "format": "pdf"}).encode("utf-8")
     
     mock_process.side_effect = Exception("Processing failed")
     
-    handle_resume_message(mock_channel, body)
+    result = handle_resume_message(body)
     
     mock_process.assert_called_once()
-    mock_publish.assert_called_once()
-    published_event = mock_publish.call_args[0][1]
-    assert published_event.status == "FAILED"
-    assert published_event.error_message == RESUME_PARSE_FAILED_MESSAGE
+    assert result.status == "FAILED"
+    assert result.error_message == RESUME_PARSE_FAILED_MESSAGE
 
 @patch("app.mq.consumer.process_conversation")
-@patch("app.mq.consumer.publish_ai_result")
-def test_handle_conversation_message_success(mock_publish, mock_process):
-    mock_channel = MagicMock()
+def test_handle_conversation_message_success(mock_process):
     body = json.dumps({"conversationId": "conv-1", "userId": "user-1", "currentMessage": "hello", "messageHistory": []}).encode("utf-8")
     
     mock_result = AiResultEvent(referenceId="conv-1", type="CONVERSATION_REPLY", status="COMPLETED", data={})
     mock_process.return_value = mock_result
     
-    handle_conversation_message(mock_channel, body)
+    result = handle_conversation_message(body)
     
     mock_process.assert_called_once()
-    mock_publish.assert_called_once_with(mock_channel, mock_result)
+    assert result == mock_result
 
 @patch("app.mq.consumer.process_conversation")
-@patch("app.mq.consumer.publish_ai_result")
-def test_handle_conversation_message_failure(mock_publish, mock_process):
-    mock_channel = MagicMock()
+def test_handle_conversation_message_failure(mock_process):
     body = json.dumps({"conversationId": "conv-1", "userId": "user-1", "currentMessage": "hello", "messageHistory": []}).encode("utf-8")
     
     mock_process.side_effect = Exception("Processing failed")
     
-    handle_conversation_message(mock_channel, body)
+    result = handle_conversation_message(body)
     
     mock_process.assert_called_once()
-    mock_publish.assert_called_once()
-    published_event = mock_publish.call_args[0][1]
-    assert published_event.status == "FAILED"
-    assert published_event.error_message == CONVERSATION_FAILED_MESSAGE
+    assert result.status == "FAILED"
+    assert result.error_message == CONVERSATION_FAILED_MESSAGE
 
 @patch("app.mq.consumer.rank_jobs")
-@patch("app.mq.consumer.publish_job_rank_result")
-def test_handle_job_rank_message_success(mock_publish, mock_rank):
-    mock_channel = MagicMock()
+def test_handle_job_rank_message_success(mock_rank):
     body = json.dumps({"matchId": "match-1", "userId": "user-1", "resumeVersionId": "res-1", "query": "test"}).encode("utf-8")
     
     mock_result = JobRankResultPayload(matchId="match-1", status="COMPLETED", rankTimeMs=100, rankedResults=[])
     mock_rank.return_value = mock_result
 
-    handle_job_rank_message(mock_channel, body)
+    result = handle_job_rank_message(body)
 
     mock_rank.assert_called_once()
-    mock_publish.assert_called_once_with(
-        mock_channel,
-        match_id="match-1",
-        status="COMPLETED",
-        rank_time_ms=100,
-        ranked_results=[],
-    )
+    assert result.status == "COMPLETED"
+    assert result.reference_id == "match-1"
+    assert result.data.rank_time_ms == 100
 
 @patch("app.mq.consumer.rank_jobs")
-@patch("app.mq.consumer.publish_job_rank_result")
-def test_handle_job_rank_message_failure(mock_publish, mock_rank):
-    mock_channel = MagicMock()
+def test_handle_job_rank_message_failure(mock_rank):
     body = json.dumps({"matchId": "match-1", "userId": "user-1", "resumeVersionId": "res-1", "query": "test"}).encode("utf-8")
     
     mock_rank.side_effect = Exception("Processing failed")
 
-    handle_job_rank_message(mock_channel, body)
+    result = handle_job_rank_message(body)
 
     mock_rank.assert_called_once()
-    mock_publish.assert_called_once_with(
-        mock_channel,
-        match_id="match-1",
-        status="FAILED",
-        rank_time_ms=0,
-        ranked_results=[],
-        error_message=JOB_RANK_FAILED_MESSAGE,
-    )
+    assert result.status == "FAILED"
+    assert result.reference_id == "match-1"
+    assert result.error_message == JOB_RANK_FAILED_MESSAGE
 
-def test_async_handler_acknowledges_success():
+@patch("app.mq.consumer.publish_ai_result")
+@patch("app.mq.consumer._executor.submit")
+def test_async_handler_acknowledges_success(mock_submit, mock_publish):
+    mock_submit.side_effect = lambda fn, *args, **kwargs: fn(*args, **kwargs)
     mock_channel = MagicMock()
     mock_connection = MagicMock()
     mock_channel.connection = mock_connection
     mock_method = MagicMock()
     mock_method.delivery_tag = 1
     mock_handle = MagicMock()
+    mock_result = MagicMock()
+    mock_handle.return_value = mock_result
 
     callback = _async_handler(mock_handle)
     callback(mock_channel, mock_method, None, b"body")
 
-    mock_handle.assert_called_once_with(mock_channel, b"body")
+    mock_handle.assert_called_once_with(b"body")
     mock_connection.add_callback_threadsafe.assert_called_once()
     ack_callback = mock_connection.add_callback_threadsafe.call_args[0][0]
     ack_callback()
+    mock_publish.assert_called_once_with(mock_channel, mock_result)
     mock_channel.basic_ack.assert_called_once_with(delivery_tag=1)
 
 
-def test_async_handler_nacks_failure():
+@patch("app.mq.consumer._executor.submit")
+def test_async_handler_nacks_failure(mock_submit):
+    mock_submit.side_effect = lambda fn, *args, **kwargs: fn(*args, **kwargs)
     mock_channel = MagicMock()
     mock_connection = MagicMock()
     mock_channel.connection = mock_connection
@@ -254,7 +231,7 @@ def test_async_handler_nacks_failure():
     callback = _async_handler(mock_handle)
     callback(mock_channel, mock_method, None, b"body")
 
-    mock_handle.assert_called_once_with(mock_channel, b"body")
+    mock_handle.assert_called_once_with(b"body")
     mock_connection.add_callback_threadsafe.assert_called_once()
     nack_callback = mock_connection.add_callback_threadsafe.call_args[0][0]
     nack_callback()
@@ -264,7 +241,8 @@ def test_start_all_consumers():
     mock_channel = MagicMock()
     start_all_consumers(mock_channel)
     
-    mock_channel.basic_qos.assert_called_once_with(prefetch_count=1)
+    from app.mq.consumer import MQ_WORKER_THREADS
+    mock_channel.basic_qos.assert_called_once_with(prefetch_count=MQ_WORKER_THREADS)
     assert mock_channel.basic_consume.call_count == 4
     for call in mock_channel.basic_consume.call_args_list:
         assert call.kwargs["auto_ack"] is False

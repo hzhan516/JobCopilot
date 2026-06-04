@@ -223,6 +223,7 @@ public class ResumeFacadeImpl implements ResumeFacade {
                 .versionId(v.getId())
                 .status(v.getStatus().name())
                 .parseStatus(v.getParseStatus().name())
+                .parseErrorMessage(v.getParseErrorMessage())
                 .createdAt(v.getCreatedAt().atOffset(ZoneOffset.UTC))
                 .exists(true)
                 .build();
@@ -239,6 +240,7 @@ public class ResumeFacadeImpl implements ResumeFacade {
                 .fileSize(v.getFileSize())
                 .content(v.getContent())
                 .parseStatus(v.getParseStatus().name())
+                .parseErrorMessage(v.getParseErrorMessage())
                 .editable(v.isEditable())
                 .createdAt(v.getCreatedAt().atOffset(ZoneOffset.UTC))
                 .updatedAt(v.getUpdatedAt().atOffset(ZoneOffset.UTC))

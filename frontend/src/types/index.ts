@@ -73,6 +73,7 @@ export interface VersionSummary {
   versionId: string;
   status: 'ACTIVE' | 'ARCHIVED';
   parseStatus: 'PENDING' | 'PARSING' | 'COMPLETED' | 'FAILED' | 'NOT_APPLICABLE';
+  parseErrorMessage?: string | null;
   createdAt: string;
   exists: boolean;
 }
@@ -94,6 +95,7 @@ export interface ResumeVersion {
   versionType: 'ORIGINAL' | 'CONVERTED' | 'AI_OPTIMIZED';
   status: 'ACTIVE' | 'ARCHIVED';
   parseStatus: 'PENDING' | 'PARSING' | 'COMPLETED' | 'FAILED' | 'NOT_APPLICABLE';
+  parseErrorMessage?: string | null;
   originalFileName: string;
   fileType: string;
   fileSize: number;

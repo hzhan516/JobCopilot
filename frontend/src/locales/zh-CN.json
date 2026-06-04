@@ -362,10 +362,10 @@
       "upload": "上传简历",
       "noResumes": "暂无简历",
       "noResumesDesc": "上传您的第一份简历以开始使用。我们将自动解析并提取信息。",
-      "uploadSuccess": "简历上传成功，解析已开始...",
-      "parseSuccess": "简历解析成功！",
-      "parseFailed": "简历解析失败。",
-      "parseTimeout": "解析时间较长，正在后台处理中，请稍后刷新查看。",
+      "uploadSuccess": "简历上传成功，AI 结构化解析已开始...",
+      "parseSuccess": "AI 简历结构化解析完成。",
+      "parseFailed": "AI 结构化解析失败，但可编辑简历版本已生成。",
+      "parseTimeout": "AI 结构化解析仍在处理中，你可以先查看已生成的简历版本。",
       "uploadFailed": "简历上传失败。",
       "deleteConfirm": "确定要删除这份简历吗？",
       "deleteSuccess": "简历删除成功。",
@@ -385,7 +385,7 @@
     "card": {
       "default": "默认",
       "versions": "版本",
-      "latestStatus": "最新状态",
+      "latestStatus": "AI 解析",
       "viewDetails": "查看详情",
       "deleteTitle": "删除简历",
       "created": "创建于"
@@ -443,7 +443,8 @@
       "noRequirements": "未提取到要求。",
       "noDescription": "暂无描述。",
       "contentNotAvailable": "此版本暂无内容。",
-      "setActive": "设为活跃"
+      "setActive": "设为活跃",
+      "aiAnalysisFailed": "AI 结构化解析失败"
     },
     "markdownEditor": {
       "title": "编辑简历",

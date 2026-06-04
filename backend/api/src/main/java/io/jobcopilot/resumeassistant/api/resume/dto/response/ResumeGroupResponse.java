@@ -33,6 +33,7 @@ public class ResumeGroupResponse {
         private final UUID versionId;
         private final String status;
         private final String parseStatus;
+        private final String parseErrorMessage;
         private final OffsetDateTime createdAt;
         private final boolean exists;
     }

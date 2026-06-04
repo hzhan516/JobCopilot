@@ -361,10 +361,10 @@
       "upload": "上傳履歷",
       "noResumes": "暫無履歷",
       "noResumesDesc": "上傳您的第一份履歷以開始使用。我們將自動解析並提取資訊。",
-      "uploadSuccess": "履歷上傳成功，解析已開始...",
-      "parseSuccess": "履歷解析成功！",
-      "parseFailed": "履歷解析失敗。",
-      "parseTimeout": "解析時間較長，正在後台處理中，請稍後刷新查看。",
+      "uploadSuccess": "履歷上傳成功，AI 結構化解析已開始...",
+      "parseSuccess": "AI 履歷結構化解析完成。",
+      "parseFailed": "AI 結構化解析失敗，但可編輯履歷版本已生成。",
+      "parseTimeout": "AI 結構化解析仍在處理中，你可以先查看已生成的履歷版本。",
       "uploadFailed": "履歷上傳失敗。",
       "deleteConfirm": "確定要刪除這份履歷嗎？",
       "deleteSuccess": "履歷刪除成功。",
@@ -384,7 +384,7 @@
     "card": {
       "default": "預設",
       "versions": "版本",
-      "latestStatus": "最新狀態",
+      "latestStatus": "AI 解析",
       "viewDetails": "查看詳情",
       "deleteTitle": "刪除履歷",
       "created": "建立於"
@@ -442,7 +442,8 @@
       "noRequirements": "未提取到要求。",
       "noDescription": "暫無描述。",
       "contentNotAvailable": "此版本暫無內容。",
-      "setActive": "設為活躍"
+      "setActive": "設為活躍",
+      "aiAnalysisFailed": "AI 結構化解析失敗"
     },
     "markdownEditor": {
       "title": "編輯履歷",
