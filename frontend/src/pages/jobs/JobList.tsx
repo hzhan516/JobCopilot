@@ -73,11 +73,12 @@ export default function JobList() {
       resumeService
         .getResumeGroups()
         .then((data) => {
-          setResumes(data);
-        })
-        .catch(() => {
-          // Silent catch
-        });
+        setResumes(data);
+      })
+      .catch(() => {
+        // Silent catch
+        // 静默忽略本次轮询失败，下一轮会继续刷新状态
+      });
     }, 3000);
 
     return () => clearInterval(interval);

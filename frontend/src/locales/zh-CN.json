@@ -23,7 +23,8 @@
     "notSpecified": "未指定",
     "notAvailable": "不可用",
     "optional": "可选",
-    "appName": "智能求职助手"
+    "appName": "智能求职助手",
+    "copyright": "© 2024 {{appName}}. 保留所有权利。"
   },
   "layout": {
     "nav": {
@@ -95,7 +96,10 @@
         "passwordMax": "密码最多 32 个字符",
         "confirmPasswordRequired": "请确认密码",
         "passwordMismatch": "两次输入的密码不一致",
-        "agreeTermsRequired": "请阅读并同意服务条款"
+        "agreeTermsRequired": "请阅读并同意服务条款",
+        "sendCodeFailed": "验证码发送失败",
+        "verificationCodeRequired": "请输入验证码",
+        "verificationCodeInvalid": "请输入有效的 6 位验证码"
       },
       "passwordStrength": {
         "weak": "弱",
@@ -250,7 +254,12 @@
     "descriptionPlaceholder": "职位描述...",
     "requirementPlaceholder": "职位要求",
     "addRequirement": "添加要求",
-    "scoredWithResume": "评分简历"
+    "scoredWithResume": "评分简历",
+    "markAsApplied": "标记为已投递",
+    "notInterested": "不感兴趣",
+    "trackAppliedSuccess": "已记录为已投递",
+    "trackRejectedSuccess": "已记录为已拒绝",
+    "trackActionError": "操作记录失败"
   },
   "jobMatch": {
     "startMatch": "开始匹配",
@@ -493,6 +502,7 @@
     "preferredLocation": "期望地点",
     "preferredLocationPlaceholder": "例如：北京市",
     "avatar": "头像链接",
+    "avatarAlt": "个人头像",
     "avatarPlaceholder": "https://example.com/avatar.png",
     "saveSuccess": "资料更新成功",
     "saveError": "资料更新失败",
@@ -518,5 +528,45 @@
     "zhCN": "简体中文",
     "zhTW": "繁體中文",
     "switch": "切换语言"
+  },
+  "ui": {
+    "breadcrumb": {
+      "label": "面包屑导航",
+      "more": "更多"
+    },
+    "carousel": {
+      "region": "轮播图",
+      "slide": "幻灯片",
+      "previousSlide": "上一张幻灯片",
+      "nextSlide": "下一张幻灯片"
+    },
+    "dialog": {
+      "close": "关闭"
+    },
+    "sheet": {
+      "close": "关闭"
+    },
+    "pagination": {
+      "label": "分页",
+      "previous": "上一页",
+      "previousPage": "前往上一页",
+      "next": "下一页",
+      "nextPage": "前往下一页",
+      "morePages": "更多页面"
+    },
+    "sidebar": {
+      "title": "侧边栏",
+      "description": "显示移动端侧边栏。",
+      "toggle": "切换侧边栏"
+    },
+    "spinner": {
+      "loading": "加载中"
+    }
+  },
+  "errorBoundary": {
+    "title": "出了点问题",
+    "message": "我们对给您带来的不便表示歉意。应用程序遇到意外错误。",
+    "tryAgain": "重试",
+    "backHome": "返回首页"
   }
 }

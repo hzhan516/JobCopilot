@@ -7,22 +7,24 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useLanguageStore } from '@/store/language.store';
-
-const languages = [
-  { code: 'en', label: 'English' },
-  { code: 'zh-CN', label: '简体中文' },
-  { code: 'zh-TW', label: '繁體中文' },
-];
+import { useTranslation } from 'react-i18next';
 
 export function LanguageSwitcher() {
   const { lng, setLng } = useLanguageStore();
+  const { t } = useTranslation();
+
+  const languages = [
+    { code: 'en', label: t('language.en') },
+    { code: 'zh-CN', label: t('language.zhCN') },
+    { code: 'zh-TW', label: t('language.zhTW') },
+  ];
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Globe className="w-4 h-4" />
-          <span className="sr-only">Switch language</span>
+          <span className="sr-only">{t('language.switch')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

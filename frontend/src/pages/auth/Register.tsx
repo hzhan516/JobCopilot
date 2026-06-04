@@ -563,7 +563,7 @@ export default function Register() {
         </Card>
 
         <p className="text-center text-sm text-gray-500 mt-8">
-          © 2024 {t('common.appName')}. All rights reserved.
+          {t("common.copyright", { appName: "JobCopilot" })}
         </p>
       </div>
 

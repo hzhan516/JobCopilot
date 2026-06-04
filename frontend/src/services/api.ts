@@ -52,6 +52,7 @@ async function doRefreshToken(): Promise<string | null> {
     // Use a standalone axios instance to avoid interceptor recursion.
     // The refresh token is sent automatically as an HttpOnly cookie;
     // no body needed.
+    // 使用独立 axios 实例避免拦截器递归；刷新令牌会通过 HttpOnly cookie 自动发送，无需请求体。
     const response = await axios.post<ApiResponse<AuthResponse>>(
       `${import.meta.env.VITE_API_BASE_URL || '/api'}/v1/auth/refresh`,
       {}
@@ -64,6 +65,7 @@ async function doRefreshToken(): Promise<string | null> {
     }
   } catch {
     // Silently fail; let the caller decide whether to redirect
+    // 静默失败，由调用方决定是否跳转登录页
   }
   return null;
 }
