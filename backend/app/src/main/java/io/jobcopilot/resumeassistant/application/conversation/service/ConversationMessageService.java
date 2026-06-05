@@ -42,7 +42,7 @@ public class ConversationMessageService {
 
         boolean isInit = saved.getMessages().stream()
                 .noneMatch(m -> m.getRole() == MessageRole.ASSISTANT);
-        contextService.deferConversationRequest(saved, command.content(), isInit);
+        contextService.queueConversationRequest(saved, command.content(), isInit);
 
         return saved;
     }

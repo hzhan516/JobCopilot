@@ -42,17 +42,8 @@ public class ConversationContextService {
     private final AiMessagePublisherPort aiMessagePublisherPort;
     private final VectorGenerationPort vectorGenerationPort;
 
-    void deferConversationRequest(Conversation conversation, String currentMessage, boolean init) {
-        if (TransactionSynchronizationManager.isActualTransactionActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    sendConversationRequestWithContext(conversation, currentMessage, init);
-                }
-            });
-        } else {
-            sendConversationRequestWithContext(conversation, currentMessage, init);
-        }
+    void queueConversationRequest(Conversation conversation, String currentMessage, boolean init) {
+        sendConversationRequestWithContext(conversation, currentMessage, init);
     }
 
     void deferVectorGeneration(UUID versionId, String markdown) {
@@ -121,7 +112,7 @@ public class ConversationContextService {
                 locale
         );
         aiMessagePublisherPort.sendConversationRequest(mqCommand);
-        log.info("Published conversation request to MQ for conversation: {}, init={}, locale={}",
+        log.info("Queued conversation request to outbox for conversation: {}, init={}, locale={}",
                 conversation.getId(), init, locale);
     }
 

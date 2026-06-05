@@ -70,7 +70,7 @@ public class ConversationLifecycleService {
         conversation.autoGenerateTitle(preset);
         conversation = conversationRepository.save(conversation);
 
-        contextService.deferConversationRequest(conversation, preset, true);
+        contextService.queueConversationRequest(conversation, preset, true);
         return conversation;
     }
 
