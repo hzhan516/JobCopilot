@@ -11,16 +11,17 @@ from app.mq.publisher import (
 from app.schemas import AiResultEvent
 from app.config import (
     AI_DIRECT_EXCHANGE,
+    JOB_RANK_RESULT_ROUTING_KEY,
     JOB_PARSE_RESULT_ROUTING_KEY,
     RESUME_PARSE_RESULT_ROUTING_KEY,
     CONVERSATION_RESULT_ROUTING_KEY,
-    JOB_RANK_RESULT_ROUTING_KEY,
 )
 
 def test_get_result_routing_key():
     assert get_result_routing_key("JOB_PARSE") == JOB_PARSE_RESULT_ROUTING_KEY
     assert get_result_routing_key("RESUME_PARSE") == RESUME_PARSE_RESULT_ROUTING_KEY
     assert get_result_routing_key("CONVERSATION_REPLY") == CONVERSATION_RESULT_ROUTING_KEY
+    assert get_result_routing_key("JOB_RANK") == JOB_RANK_RESULT_ROUTING_KEY
     
     with pytest.raises(ValueError, match="Unsupported event type: UNKNOWN"):
         get_result_routing_key("UNKNOWN")
@@ -76,7 +77,20 @@ def test_publish_job_rank_result():
         match_id="match-123",
         status="COMPLETED",
         rank_time_ms=150,
-        ranked_results=[{"jobId": "job-1", "title": "Dev"}],
+        ranked_results=[
+            {
+                "jobId": "job-1",
+                "title": "Dev",
+                "company": "Acme",
+                "matchScore": 0.9,
+                "matchFactors": {
+                    "skillMatch": 0.8,
+                    "experienceMatch": 0.7,
+                    "locationMatch": 0.6,
+                },
+                "description": "Build things.",
+            }
+        ],
     )
 
     mock_channel.basic_publish.assert_called_once()
@@ -89,5 +103,6 @@ def test_publish_job_rank_result():
     assert body["type"] == "JOB_RANK"
     assert body["status"] == "COMPLETED"
     assert body["data"]["rankTimeMs"] == 150
-    assert body["data"]["rankedResults"] == [{"jobId": "job-1", "title": "Dev"}]
+    assert body["data"]["rankedResults"][0]["jobId"] == "job-1"
+    assert body["data"]["rankedResults"][0]["matchFactors"]["skillMatch"] == 0.8
     assert body["errorMessage"] is None

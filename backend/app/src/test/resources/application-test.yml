@@ -46,5 +46,5 @@ storage:
 # Logging
 logging:
   level:
-    edu.asu.ser594.resumeassistant: DEBUG
+    io.jobcopilot.resumeassistant: DEBUG
     org.springframework.security: DEBUG

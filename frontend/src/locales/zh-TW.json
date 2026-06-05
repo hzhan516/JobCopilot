@@ -23,7 +23,8 @@
     "notSpecified": "未指定",
     "notAvailable": "不可用",
     "optional": "可選",
-    "appName": "智慧求職助手"
+    "appName": "JobCopilot",
+    "copyright": "© 2024 {{appName}}. 保留所有權利。"
   },
   "layout": {
     "nav": {
@@ -95,7 +96,10 @@
         "passwordMax": "密碼最多 32 個字元",
         "confirmPasswordRequired": "請確認密碼",
         "passwordMismatch": "兩次輸入的密碼不一致",
-        "agreeTermsRequired": "請閱讀並同意服務條款"
+        "agreeTermsRequired": "請閱讀並同意服務條款",
+        "sendCodeFailed": "驗證碼發送失敗",
+        "verificationCodeRequired": "請輸入驗證碼",
+        "verificationCodeInvalid": "請輸入有效的 6 位驗證碼"
       },
       "passwordStrength": {
         "weak": "弱",
@@ -115,7 +119,8 @@
   },
   "dashboard": {
     "welcome": "歡迎回來！",
-    "subtitle": "智慧求職助手已為您準備好今日的求職建議",
+    "subtitle": "JobCopilot 已為您準備好今日的求職建議",
+    "noScoreRecords": "暫無職位評分記錄，前往職位匹配頁面進行評分",
     "uploadResume": "上傳履歷",
     "viewJobs": "查看職位",
     "stats": {
@@ -203,7 +208,7 @@
     "skillScore": "技能配對",
     "experienceScore": "經驗配對",
     "overallScore": "綜合得分",
-    "scoredWithResume": "評分簡歷"
+    "scoredWithResume": "評分履歷"
   },
   "jobDetail": {
     "loadError": "載入職位詳情失敗",
@@ -249,7 +254,12 @@
     "descriptionPlaceholder": "職位描述...",
     "requirementPlaceholder": "職位要求",
     "addRequirement": "新增要求",
-    "scoredWithResume": "評分簡歷"
+    "scoredWithResume": "評分履歷",
+    "markAsApplied": "標記為已投遞",
+    "notInterested": "不感興趣",
+    "trackAppliedSuccess": "已記錄為已投遞",
+    "trackRejectedSuccess": "已記錄為已拒絕",
+    "trackActionError": "操作記錄失敗"
   },
   "jobMatch": {
     "startMatch": "開始配對",
@@ -263,7 +273,7 @@
     "failed": "配對失敗，請重試",
     "timeout": "配對超時，請重試",
     "startError": "開始配對失敗",
-    "vectorNotReady": "簡歷向量正在生成中，請稍後再試",
+    "vectorNotReady": "履歷向量正在生成中，請稍後再試",
     "notReady": "未就緒",
     "skillMatch": "技能配對",
     "experienceMatch": "經驗配對",
@@ -273,9 +283,9 @@
   "chat": {
     "newChat": "新對話",
     "newChatTitle": "新對話",
-    "newChatDesc": "選擇簡歷和已導入的職位開始新對話",
+    "newChatDesc": "選擇履歷和已導入的職位開始新對話",
     "chatTitlePlaceholder": "對話標題",
-    "titleAutoHint": "留空將按 簡歷名稱-公司名稱-職位 自動生成",
+    "titleAutoHint": "留空將按 履歷名稱-公司名稱-職位 自動生成",
     "create": "建立",
     "delete": "刪除",
     "aiAssistant": "AI 求職助手",
@@ -286,13 +296,13 @@
     "aiPending": "訊息已發送，AI 回覆處理中。",
     "footerHint": "AI 可以幫助您優化履歷、推薦職位、解答求職問題",
     "loadError": "載入對話失敗",
-    "selectResume": "選擇簡歷",
-    "selectResumePlaceholder": "選擇一個就緒的簡歷...",
+    "selectResume": "選擇履歷",
+    "selectResumePlaceholder": "選擇一個就緒的履歷...",
     "selectJob": "選擇職位",
     "selectJobPlaceholder": "選擇一個已導入的職位...",
-    "selectedResumeLabel": "簡歷：{{name}}",
+    "selectedResumeLabel": "履歷：{{name}}",
     "selectedJobLabel": "職位：{{name}}",
-    "resumeRequired": "請選擇簡歷",
+    "resumeRequired": "請選擇履歷",
     "jobRequired": "請選擇職位",
     "noAvailableJobs": "暫無可用職位，請先到職位匹配頁面導入職位",
     "createError": "請輸入對話標題",
@@ -361,10 +371,10 @@
       "upload": "上傳履歷",
       "noResumes": "暫無履歷",
       "noResumesDesc": "上傳您的第一份履歷以開始使用。我們將自動解析並提取資訊。",
-      "uploadSuccess": "履歷上傳成功，解析已開始...",
-      "parseSuccess": "履歷解析成功！",
-      "parseFailed": "履歷解析失敗。",
-      "parseTimeout": "解析時間較長，請耐心等待。",
+      "uploadSuccess": "履歷上傳成功，AI 結構化解析已開始...",
+      "parseSuccess": "AI 履歷結構化解析完成。",
+      "parseFailed": "AI 結構化解析失敗，但可編輯履歷版本已生成。",
+      "parseTimeout": "AI 結構化解析仍在處理中，你可以先查看已生成的履歷版本。",
       "uploadFailed": "履歷上傳失敗。",
       "deleteConfirm": "確定要刪除這份履歷嗎？",
       "deleteSuccess": "履歷刪除成功。",
@@ -384,7 +394,7 @@
     "card": {
       "default": "預設",
       "versions": "版本",
-      "latestStatus": "最新狀態",
+      "latestStatus": "AI 解析",
       "viewDetails": "查看詳情",
       "deleteTitle": "刪除履歷",
       "created": "建立於"
@@ -442,7 +452,8 @@
       "noRequirements": "未提取到要求。",
       "noDescription": "暫無描述。",
       "contentNotAvailable": "此版本暫無內容。",
-      "setActive": "設為活躍"
+      "setActive": "設為活躍",
+      "aiAnalysisFailed": "AI 結構化解析失敗"
     },
     "markdownEditor": {
       "title": "編輯履歷",
@@ -482,6 +493,22 @@
     "email": "電子郵件",
     "accountType": "帳戶類型",
     "typeEmail": "電子郵件帳戶",
+    "fullName": "姓名",
+    "fullNamePlaceholder": "請輸入您的姓名",
+    "phone": "電話",
+    "phonePlaceholder": "請輸入您的電話號碼",
+    "targetPosition": "目標職位",
+    "targetPositionPlaceholder": "例如：軟體工程師",
+    "preferredLocation": "期望地點",
+    "preferredLocationPlaceholder": "例如：台北市",
+    "avatar": "頭像連結",
+    "avatarAlt": "個人頭像",
+    "avatarPlaceholder": "https://example.com/avatar.png",
+    "saveSuccess": "資料更新成功",
+    "saveError": "資料更新失敗",
+    "validation": {
+      "maxLength": "內容過長"
+    },
     "security": "安全設定",
     "changePassword": "修改密碼",
     "changePasswordDesc": "更新您的帳戶密碼",
@@ -501,5 +528,45 @@
     "zhCN": "简体中文",
     "zhTW": "繁體中文",
     "switch": "切換語言"
+  },
+  "ui": {
+    "breadcrumb": {
+      "label": "麵包屑導航",
+      "more": "更多"
+    },
+    "carousel": {
+      "region": "輪播圖",
+      "slide": "投影片",
+      "previousSlide": "上一張投影片",
+      "nextSlide": "下一張投影片"
+    },
+    "dialog": {
+      "close": "關閉"
+    },
+    "sheet": {
+      "close": "關閉"
+    },
+    "pagination": {
+      "label": "分頁",
+      "previous": "上一頁",
+      "previousPage": "前往上一頁",
+      "next": "下一頁",
+      "nextPage": "前往下一頁",
+      "morePages": "更多頁面"
+    },
+    "sidebar": {
+      "title": "側邊欄",
+      "description": "顯示行動版側邊欄。",
+      "toggle": "切換側邊欄"
+    },
+    "spinner": {
+      "loading": "載入中"
+    }
+  },
+  "errorBoundary": {
+    "title": "出了點問題",
+    "message": "我們對給您帶來的不便表示歉意。應用程式遇到意外錯誤。",
+    "tryAgain": "重試",
+    "backHome": "返回首頁"
   }
 }

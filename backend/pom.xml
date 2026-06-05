@@ -4,13 +4,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>edu.asu.ser594</groupId>
-    <artifactId>resume-assistant-backend</artifactId>
+    <groupId>io.jobcopilot</groupId>
+    <artifactId>jobcopilot-backend</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
 
-    <name>Resume Assistant Backend</name>
-    <description>智能求职助手 - Java后端服务</description>
+    <name>JobCopilot Backend</name>
+    <description>JobCopilot Java backend service</description>
 
     <modules>
         <module>types</module>
@@ -25,6 +25,10 @@
         <java.version>21</java.version>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Build toolchain requirements -->
+        <maven.min.version>3.9.6</maven.min.version>
+        <jdk.min.version>21</jdk.min.version>
 
         <!-- 框架版本 -->
         <spring-boot.version>3.5.7</spring-boot.version>
@@ -75,27 +79,27 @@
 
             <!-- 内部模块依赖管理 -->
             <dependency>
-                <groupId>edu.asu.ser594</groupId>
+                <groupId>io.jobcopilot</groupId>
                 <artifactId>types</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>edu.asu.ser594</groupId>
+                <groupId>io.jobcopilot</groupId>
                 <artifactId>domain</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>edu.asu.ser594</groupId>
+                <groupId>io.jobcopilot</groupId>
                 <artifactId>api</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>edu.asu.ser594</groupId>
+                <groupId>io.jobcopilot</groupId>
                 <artifactId>infrastructure</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>edu.asu.ser594</groupId>
+                <groupId>io.jobcopilot</groupId>
                 <artifactId>trigger</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -241,6 +245,54 @@
                     <version>0.8.12</version>
                 </plugin>
                 <plugin>
+                    <groupId>org.owasp</groupId>
+                    <artifactId>dependency-check-maven</artifactId>
+                    <version>12.1.0</version>
+                    <configuration>
+                        <failBuildOnCVSS>7</failBuildOnCVSS>
+                        <suppressionFiles>
+                            <suppressionFile>owasp-suppressions.xml</suppressionFile>
+                        </suppressionFiles>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>3.5.0</version>
+                    <executions>
+                        <execution>
+                            <id>enforce-environment</id>
+                            <goals>
+                                <goal>enforce</goal>
+                            </goals>
+                            <configuration>
+                                <rules>
+                                    <!-- Require Maven version -->
+                                    <requireMavenVersion>
+                                        <version>${maven.min.version}</version>
+                                    </requireMavenVersion>
+                                    <!-- Require JDK version -->
+                                    <requireJavaVersion>
+                                        <version>${jdk.min.version}</version>
+                                    </requireJavaVersion>
+                                    <!-- Require explicit dependency versions (no snapshots in releases) -->
+                                    <requireReleaseDeps>
+                                        <onlyWhenRelease>true</onlyWhenRelease>
+                                        <message>No snapshot dependencies allowed in releases</message>
+                                    </requireReleaseDeps>
+                                </rules>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.13.0</version>
@@ -281,6 +333,59 @@
                         <phase>test</phase>
                         <goals>
                             <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.60</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.60</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.40</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                            <excludes>
+                                <exclude>**/config/**</exclude>
+                                <exclude>**/dto/**</exclude>
+                                <exclude>**/request/**</exclude>
+                                <exclude>**/response/**</exclude>
+                                <exclude>**/exception/**</exclude>
+                                <exclude>**/entity/**</exclude>
+                                <exclude>**/*Application.class</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Enforce build environment constraints (Maven version, JDK version, no snapshots in release) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-environment</id>
+                        <goals>
+                            <goal>enforce</goal>
                         </goals>
                     </execution>
                 </executions>

@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Resume Assistant — Prepare minikube host directories for rootless middleware
+# JobCopilot - Prepare minikube host directories for rootless middleware
 # 为 rootless minikube 中间件准备宿主机存储目录
 # =============================================================================
 set -e
@@ -17,14 +17,14 @@ fi
 # 创建并设置父目录权限为 777
 # 父目录 777 使 initContainer 能够创建子目录并设置正确的 owner/权限
 minikube ssh -- "
-    sudo mkdir -p /mnt/data/resume-assistant
-    sudo chmod 777 /mnt/data/resume-assistant
-    echo 'Host directory ready: /mnt/data/resume-assistant (777)'
-    ls -ld /mnt/data/resume-assistant
+    sudo mkdir -p /mnt/data/jobcopilot
+    sudo chmod 777 /mnt/data/jobcopilot
+    echo 'Host directory ready: /mnt/data/jobcopilot (777)'
+    ls -ld /mnt/data/jobcopilot
 "
 
 echo ""
 echo "Done. You can now deploy with:"
-echo "  helm upgrade resume-assistant ./helm/resume-assistant \\"
-echo "    --namespace resume-assistant \\"
+echo "  helm upgrade jobcopilot ./helm/jobcopilot \\"
+echo "    --namespace jobcopilot \\"
 echo "    -f values.yaml -f values-minimal.yaml"

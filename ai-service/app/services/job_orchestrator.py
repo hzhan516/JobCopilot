@@ -13,15 +13,21 @@ from app.services.web_scraper import scrape_job_page
 MIN_SCRAPED_TEXT_LENGTH = 200
 
 
+def _normalize_screenshot_source(command: JobParseCommand) -> str | None:
+    if command.screenshot_base64:
+        if command.screenshot_base64.startswith("data:"):
+            return command.screenshot_base64
+        return f"data:image/png;base64,{command.screenshot_base64}"
+    return command.screenshot_url
+
+
 def process_job(command: JobParseCommand) -> AiResultEvent:
     """Orchestrate job parsing with a scrape-first, vision-fallback strategy.
     职位解析编排器：优先从页面文本提取结构化信息；当文本不足或字段缺失时，
     降级到截图 OCR/vision 解析，最大化解析成功率并减少 LLM vision 调用成本。"""
     scrape_result = None
     scrape_error: Exception | None = None
-    screenshot_url = command.screenshot_url
-    if command.screenshot_base64:
-        screenshot_url = command.screenshot_base64
+    screenshot_url = _normalize_screenshot_source(command)
 
     try:
         scrape_result = scrape_job_page(
@@ -63,7 +69,7 @@ def process_job(command: JobParseCommand) -> AiResultEvent:
         referenceId=command.job_id,
         type="JOB_PARSE",
         status="COMPLETED",
-        data=parsed_content.model_dump(),
+        data=parsed_content.model_dump(by_alias=True),
         errorMessage=None,
         eventType="JOB",
     )

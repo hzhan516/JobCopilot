@@ -1,5 +1,5 @@
 # =============================================================================
-# Resume Assistant — Docker Compose Configuration (Example Template)
+# JobCopilot - Docker Compose Configuration (Example Template)
 # =============================================================================
 # This file defines a production-oriented three-tier Docker network deployment.
 # Only the frontend Nginx reverse proxy is exposed to the host. All other
@@ -66,8 +66,8 @@ services:
         # Google OAuth 2.0 Client ID. Required for Google Sign-In.
         # Obtain from https://console.cloud.google.com/apis/credentials
         - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
-    image: resume-assistant-frontend
-    container_name: resume-assistant-frontend
+    image: jobcopilot-frontend
+    container_name: jobcopilot-frontend
     ports:
      # Host port mapping for the Nginx reverse proxy.
      # FRONTEND_HOST_PORT defaults to 80. Change it in .env if port 80 is
@@ -126,8 +126,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: resume-assistant-backend
-    container_name: resume-assistant-backend
+    image: jobcopilot-backend
+    container_name: jobcopilot-backend
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the line below if you need direct host access to the Spring
     # Boot actuator or API docs during local debugging. In production the
@@ -142,17 +142,17 @@ services:
       # The JDBC URL uses the Docker DNS hostname `postgres` which resolves
       # to the postgres container's IP on the isolated db-network. Port 5432
       # is NOT exposed to the host; only the backend can reach it.
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-resume_assistant}
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-resume_user}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:?Database name is required}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:?Database user is required}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:?Database password is required}
 
       # --- RabbitMQ Configuration (Tier 2 connectivity via internal-network) ---
       # The RabbitMQ hostname `rabbitmq` resolves on the internal-network.
       # Port 5672 is NOT exposed to the host; AMQP traffic stays inside Docker.
       - SPRING_RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - SPRING_RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
-      - SPRING_RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
-      - SPRING_RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
+      - SPRING_RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:?RabbitMQ username is required}
+      - SPRING_RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:?RabbitMQ password is required}
 
       # --- File Storage ---
       # Local filesystem storage is used for the Docker Compose deployment.
@@ -167,7 +167,7 @@ services:
       # characters. Generate a strong secret with:
       #   openssl rand -base64 48
       # If this key is compromised, all active user sessions become invalid.
-      - JWT_SECRET=${JWT_SECRET:-your-256-bit-secret-key-change-in-production}
+      - JWT_SECRET=${JWT_SECRET:?JWT Secret must be provided in .env}
 
       # --- Embedding Dimension ---
       # Must match the output dimension of the embedding model configured in
@@ -205,7 +205,7 @@ services:
       # --- Redis Configuration (shared state layer) ---
       - REDIS_HOST=${REDIS_HOST:-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?Redis password is required}
 
       # --- Actuator Health Checks ---
       # Local compose commonly runs without SMTP credentials while email
@@ -217,7 +217,7 @@ services:
       # here; ai-service reads them (read-only mount on its side).
       - shared-storage:/app/uploads
       # [REMOVED] Host-mounted directory for persistent backend logs caused Permission Denied on WSL.
-      # Logs can still be accessed via `docker logs resume-assistant-backend`.
+      # Logs can still be accessed via `docker logs jobcopilot-backend`.
     networks:
       # Gateway role: backend bridges all three tiers.
       - public-network
@@ -269,8 +269,8 @@ services:
     build:
       context: ./ai-service
       dockerfile: Dockerfile
-    image: resume-assistant-ai-service
-    container_name: resume-assistant-ai
+    image: jobcopilot-ai-service
+    container_name: jobcopilot-ai
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the line below if you want to browse the FastAPI auto-generated
     # Swagger UI (http://localhost:8000/docs) during local development.
@@ -282,8 +282,8 @@ services:
       # --- RabbitMQ Configuration (internal-network) ---
       - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:?RabbitMQ username is required}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:?RabbitMQ password is required}
 
       # --- File Storage (shared with backend, read-only) ---
       - FILE_STORAGE_PATH=/app/uploads
@@ -292,7 +292,7 @@ services:
       # VERTEX_CREDENTIALS inside the container always points to the mounted
       # file path. The HOST path is configured in .env (must be absolute).
       # See the volumes section below for the bind-mount definition.
-      - VERTEX_PROJECT_ID=${VERTEX_PROJECT_ID:-ser594-ai-service}
+      - VERTEX_PROJECT_ID=${VERTEX_PROJECT_ID:-jobcopilot-ai-service}
       - VERTEX_LOCATION=${VERTEX_LOCATION:-global}
       - VERTEX_CREDENTIALS=/app/credentials/gcp-service-account.json
 
@@ -324,15 +324,15 @@ services:
       # --- Redis Configuration (shared state layer) ---
       - REDIS_HOST=${REDIS_HOST:-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?Redis password is required}
 
       # --- AI Model Artifact Storage ---
       # Model artifacts are stored in MinIO so ai-service and ai-worker can
       # share trained ranking models without baking them into the Docker image.
       - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
-      - MINIO_MODEL_BUCKET=${MINIO_MODEL_BUCKET:-ai-models}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:?MinIO access key is required}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:?MinIO secret key is required}
+      - MINIO_MODEL_BUCKET=${MINIO_MODEL_BUCKET:?MinIO model bucket is required}
 
       # --- Defense-in-Depth: Internal API Key ---
       # Must match the INTERNAL_API_KEY set in the backend environment.
@@ -379,14 +379,17 @@ services:
   # ============================================================================
   redis:
     image: docker.io/library/redis:7-alpine
-    container_name: resume-assistant-redis
+    container_name: jobcopilot-redis
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?Redis password is required}"]
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?Redis password is required}
     volumes:
       - redis-data:/data
     networks:
       - internal-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -400,11 +403,11 @@ services:
   # ============================================================================
   minio:
     image: quay.io/minio/minio:latest
-    container_name: resume-assistant-minio
+    container_name: jobcopilot-minio
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
-      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:?MinIO root user is required}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:?MinIO root password is required}
     volumes:
       - minio-data:/data
     networks:
@@ -446,7 +449,7 @@ services:
   # ============================================================================
   rabbitmq:
     image: public.ecr.aws/docker/library/rabbitmq:3.13-management-alpine
-    container_name: resume-assistant-rabbitmq
+    container_name: jobcopilot-rabbitmq
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the lines below if you need direct host access to the AMQP
     # port (for local debugging tools) or the Management UI.
@@ -505,23 +508,23 @@ services:
     build:
       context: ./ai-service
       dockerfile: Dockerfile
-    image: resume-assistant-ai-service
-    container_name: resume-assistant-ai-worker
+    image: jobcopilot-ai-service
+    container_name: jobcopilot-ai-worker
     command: ["python", "-m", "app.worker_main"]
     env_file:
       - .env
     environment:
       - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:?RabbitMQ username is required}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:?RabbitMQ password is required}
       - REDIS_HOST=${REDIS_HOST:-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?Redis password is required}
       - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
-      - MINIO_MODEL_BUCKET=${MINIO_MODEL_BUCKET:-ai-models}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:?MinIO access key is required}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:?MinIO secret key is required}
+      - MINIO_MODEL_BUCKET=${MINIO_MODEL_BUCKET:?MinIO model bucket is required}
       - BACKEND_SERVICE_URL=${BACKEND_SERVICE_URL:-http://backend:8080}
       - INTERNAL_API_KEY=${INTERNAL_API_KEY:-}
       - RETRAIN_INTERVAL_HOURS=${RETRAIN_INTERVAL_HOURS:-24}
@@ -537,11 +540,15 @@ services:
         condition: service_healthy
     restart: on-failure
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "python -c \"from pathlib import Path; import sys; sys.exit(0 if 'app.worker_main' in Path('/proc/1/cmdline').read_text() else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   postgres:
     image: docker.io/ankane/pgvector:latest
-    container_name: resume-assistant-postgres
+    container_name: jobcopilot-postgres
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
     # Uncomment the line below if you need to connect with a local database
     # GUI (e.g. pgAdmin, DBeaver) during development.
@@ -550,9 +557,9 @@ services:
     env_file:
       - .env
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-resume_assistant}
-      - POSTGRES_USER=${POSTGRES_USER:-resume_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
+      - POSTGRES_DB=${POSTGRES_DB:?Database name is required}
+      - POSTGRES_USER=${POSTGRES_USER:?Database user is required}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Database password is required}
     volumes:
       # Named volume for persistent database files.
       - postgres-data:/var/lib/postgresql/data
@@ -565,7 +572,7 @@ services:
       - db-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-resume_user} -d ${POSTGRES_DB:-resume_assistant}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?Database user is required} -d ${POSTGRES_DB:?Database name is required}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -625,7 +632,7 @@ networks:
 # directory on the host (typically /var/lib/docker/volumes/).
 #
 # For production, consider backing up these volumes regularly:
-#   docker run --rm -v resume-assistant_postgres-data:/data -v $(pwd):/backup \
+#   docker run --rm -v jobcopilot_postgres-data:/data -v $(pwd):/backup \
 #     alpine tar czf /backup/postgres-backup.tar.gz -C /data .
 # =============================================================================
 volumes:

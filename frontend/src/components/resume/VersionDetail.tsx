@@ -16,7 +16,7 @@ interface VersionDetailProps {
 
 export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit, onCreateCopy, onActivate }) => {
   const { t } = useTranslation();
-  const { parsedContent, content, versionType, status, parseStatus } = version;
+  const { parsedContent, content, versionType, status, parseStatus, parseErrorMessage } = version;
 
   const getStatusBadge = () => {
     switch (parseStatus) {
@@ -81,6 +81,13 @@ export const VersionDetail: React.FC<VersionDetailProps> = ({ version, onEdit, o
           )}
         </div>
       </div>
+
+      {parseStatus === 'FAILED' && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <p className="font-medium">{t('resume.versionDetail.aiAnalysisFailed')}</p>
+          {parseErrorMessage && <p className="mt-1 text-destructive/80">{parseErrorMessage}</p>}
+        </div>
+      )}
 
       {parsedContent && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

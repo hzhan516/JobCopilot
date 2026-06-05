@@ -4,22 +4,22 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: resume-assistant-rabbitmq
-  namespace: resume-assistant
+  name: jobcopilot-rabbitmq
+  namespace: jobcopilot
   labels:
-    app.kubernetes.io/name: resume-assistant
+    app.kubernetes.io/name: jobcopilot
     app.kubernetes.io/component: rabbitmq
 spec:
   replicas: 1
-  serviceName: resume-assistant-rabbitmq
+  serviceName: jobcopilot-rabbitmq
   selector:
     matchLabels:
-      app.kubernetes.io/name: resume-assistant
+      app.kubernetes.io/name: jobcopilot
       app.kubernetes.io/component: rabbitmq
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: resume-assistant
+        app.kubernetes.io/name: jobcopilot
         app.kubernetes.io/component: rabbitmq
     spec:
       securityContext:

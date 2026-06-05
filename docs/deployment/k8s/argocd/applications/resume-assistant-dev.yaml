@@ -5,28 +5,28 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: resume-assistant-dev
+  name: jobcopilot-dev
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
-    repoURL: https://github.com/your-org/resume-assistant.git
+    repoURL: https://github.com/your-org/jobcopilot.git
     targetRevision: develop
-    path: docs/deployment/k8s/helm/resume-assistant
+    path: docs/deployment/k8s/helm/jobcopilot
     helm:
       valueFiles:
         - values.yaml
         - values-minimal.yaml
       parameters:
         - name: namespace.name
-          value: resume-assistant-dev
+          value: jobcopilot-dev
         - name: ingress.host
-          value: dev.resume-assistant.local
+          value: dev.jobcopilot.local
   destination:
     server: https://kubernetes.default.svc
-    namespace: resume-assistant-dev
+    namespace: jobcopilot-dev
   syncPolicy:
     automated:
       prune: true

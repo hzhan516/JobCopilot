@@ -1,17 +1,18 @@
 """
-Resume Assistant - Python AI service entry point.
-智能求职助手 —— AI 服务入口，负责任务调度、HTTP API 及 MQ 消费者生命周期管理。
+JobCopilot - Python AI service entry point.
+JobCopilot AI service entry point, responsible for task scheduling, HTTP APIs, and MQ consumer lifecycle management.
 """
 
 import logging
 import os
+import sys
 import threading
 
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
-from app.config import LOG_LEVEL, LLM_EMBEDDING_MODEL, LLM_EMBEDDING_MODEL_DIMENSION
+from app.config import LOG_LEVEL, LLM_EMBEDDING_MODEL, LLM_EMBEDDING_MODEL_DIMENSION, INTERNAL_API_KEY, ENV
 from app.mq.consumer import create_connection, setup_all_queues, start_all_consumers
 
 from app.schemas import (
@@ -65,7 +66,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Resume Assistant AI Service",
+    title="JobCopilot AI Service",
     description="AI service for scraping, parsing, and job processing.",
     version="1.0.0",
     lifespan=lifespan,
@@ -75,12 +76,8 @@ admin_router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @admin_router.post("/recompute-model")
-def recompute_model(
-    x_internal_api_key: str | None = Header(None, alias="X-Internal-API-Key"),
-):
-    if INTERNAL_API_KEY and x_internal_api_key != INTERNAL_API_KEY:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    return {"status": "ok", "message": "Deprecated. Use ai-worker scheduling."}
+def recompute_model():
+    raise HTTPException(status_code=410, detail="Deprecated. Use ai-worker scheduling.")
 
 
 app.include_router(admin_router, prefix="/api/v1")
@@ -89,7 +86,6 @@ app.include_router(admin_router, prefix="/api/v1")
 # Internal API Key Middleware (Defense in Depth)
 # 内部 API Key 中间件 —— 纵深防御，防止 AI 服务被外部直接访问。
 # ---------------------------------------------------------------------------
-INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "")
 
 # Whitelist paths that must remain accessible without authentication (health, docs).
 # 以下路径免鉴权，确保探针和文档端点始终可访问。
@@ -99,10 +95,10 @@ _SKIP_AUTH_PATHS = {"/health", "/", "/docs", "/openapi.json", "/redoc"}
 @app.middleware("http")
 async def internal_api_key_middleware(request: Request, call_next):
     """Validate X-Internal-API-Key header for all inbound HTTP requests.
-    Skipped when INTERNAL_API_KEY is unset (local development) or path is whitelisted.
+    Skipped when ENV=dev (local development) or path is whitelisted.
     对所有入站 HTTP 请求校验 X-Internal-API-Key header。
-    当 INTERNAL_API_KEY 未设置（本地开发）或路径在白名单内时跳过检查。"""
-    if INTERNAL_API_KEY and request.url.path not in _SKIP_AUTH_PATHS:
+    开发环境或白名单路径跳过检查。"""
+    if ENV != "dev" and request.url.path not in _SKIP_AUTH_PATHS:
         provided = request.headers.get("X-Internal-API-Key", "")
         if provided != INTERNAL_API_KEY:
             logger.warning(
@@ -126,7 +122,7 @@ _mq_lock = threading.Lock()
 @app.get("/")
 async def root():
     return {
-        "service": "Resume Assistant AI",
+        "service": "JobCopilot AI",
         "version": "1.0.0",
         "status": "running",
     }
@@ -146,7 +142,7 @@ async def health_check():
     return {
         "status": "healthy",
         "mq_connected": True,
-        "vertex_project_configured": os.getenv("VERTEX_PROJECT_ID") is not None and os.getenv("VERTEX_PROJECT_ID") != "ser594-ai-service",
+        "vertex_project_configured": os.getenv("VERTEX_PROJECT_ID") is not None and os.getenv("VERTEX_PROJECT_ID") != "jobcopilot-ai-service",
         "vertex_location": os.getenv("VERTEX_LOCATION", "global"),
     }
 
@@ -168,15 +164,16 @@ async def status():
 def initialize_mq() -> None:
     global _mq_is_connected, _mq_connection, _mq_channel
     import time
-    
+
     retry_delay = 5
-    
+    MAX_MQ_RETRIES = 20
+
     logger = logging.getLogger(__name__)
     attempt = 0
-    while True:
+    while attempt < MAX_MQ_RETRIES:
         attempt += 1
         try:
-            logger.info("Starting RabbitMQ consumers (Attempt %d)...", attempt)
+            logger.info("Starting RabbitMQ consumers (Attempt %d/%d)...", attempt, MAX_MQ_RETRIES)
             connection = create_connection()
             channel = connection.channel()
             setup_all_queues(channel)
@@ -188,8 +185,11 @@ def initialize_mq() -> None:
             break
         except Exception as e:
             _mq_is_connected = False
-            logger.warning("RabbitMQ consumer startup failed (Attempt %d): %s. Retrying in %d seconds...", attempt, e, retry_delay)
+            logger.warning("RabbitMQ consumer startup failed (Attempt %d/%d): %s. Retrying in %d seconds...", attempt, MAX_MQ_RETRIES, e, retry_delay)
             time.sleep(retry_delay)
+    else:
+        logger.error("Max MQ retries (%d) exceeded. RabbitMQ unavailable. Shutting down.", MAX_MQ_RETRIES)
+        os._exit(1)
 
 
 def _start_mq_consumer_once() -> None:
@@ -224,6 +224,21 @@ def match_jobs(request: JobMatchRequest) -> JobMatchResponse:
 
 @app.post("/api/v1/ai/embeddings", response_model=EmbeddingResponse)
 def batch_embeddings(request: EmbeddingRequest) -> EmbeddingResponse:
+    # Runtime guard — schema validation already enforces limits, but defense in depth.
+    # 运行时守卫：schema 校验已生效，此处为纵深防御。
+    from app.config import EMBEDDING_MAX_BATCH_SIZE, EMBEDDING_MAX_TEXT_LENGTH
+    if len(request.texts) > EMBEDDING_MAX_BATCH_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Batch size exceeds maximum of {EMBEDDING_MAX_BATCH_SIZE}",
+        )
+    for i, text in enumerate(request.texts):
+        if len(text) > EMBEDDING_MAX_TEXT_LENGTH:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Text at index {i} exceeds maximum length of {EMBEDDING_MAX_TEXT_LENGTH} characters",
+            )
+
     if not request.texts:
         return EmbeddingResponse(
             embeddings=[],
@@ -232,17 +247,31 @@ def batch_embeddings(request: EmbeddingRequest) -> EmbeddingResponse:
         )
 
     embeddings: list[list[float]] = []
+    failed_indices: list[int] = []
     for index, text in enumerate(request.texts):
         try:
             embeddings.append(generate_embedding(text))
         except Exception:
             logger.exception("Embedding failed for input index=%d, length=%d", index, len(text))
-            embeddings.append([0.0] * LLM_EMBEDDING_MODEL_DIMENSION)
+            failed_indices.append(index)
+
+    if not embeddings:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "message": "Failed to generate embeddings for all inputs",
+                "failedIndices": failed_indices,
+                "errorCount": len(failed_indices),
+                "modelUsed": request.model or LLM_EMBEDDING_MODEL,
+            },
+        )
 
     return EmbeddingResponse(
         embeddings=embeddings,
         modelUsed=request.model or LLM_EMBEDDING_MODEL,
         count=len(embeddings),
+        failedIndices=failed_indices,
+        errorCount=len(failed_indices),
     )
 
 

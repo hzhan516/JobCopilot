@@ -12,8 +12,8 @@
 set -e
 
 ENV_FILE="${1:-.env}"
-NAMESPACE="${2:-resume-assistant}"
-SECRET_NAME="${3:-resume-assistant-secrets}"
+NAMESPACE="${2:-jobcopilot}"
+SECRET_NAME="${3:-jobcopilot-secrets}"
 
 if [ ! -f "$ENV_FILE" ]; then
     echo "ERROR: Environment file not found: $ENV_FILE"
@@ -76,7 +76,7 @@ stringData:
   MINIO_SECRET_KEY: "${MINIO_SECRET_KEY}"
   ALIYUN_OSS_ACCESS_KEY_ID: "${ALIYUN_OSS_ACCESS_KEY_ID}"
   ALIYUN_OSS_ACCESS_KEY_SECRET: "${ALIYUN_OSS_ACCESS_KEY_SECRET}"
-  VERTEX_PROJECT_ID: "ser594-ai-service"
+  VERTEX_PROJECT_ID: "jobcopilot-ai-service"
   VERTEX_LOCATION: "us-central1"
 EOF
 

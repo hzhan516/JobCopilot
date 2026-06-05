@@ -130,6 +130,7 @@ export default function JobDetail() {
       loadResumes();
       loadScoreHistory();
       // Track view action securely (Strict Mode safe)
+      // 安全记录职位浏览行为，并兼容 React Strict Mode 的重复执行
       if (!hasTrackedClick.current) {
         hasTrackedClick.current = true;
         jobService.trackAction(jobId, 'CLICK').catch(err => {
@@ -218,9 +219,9 @@ export default function JobDetail() {
   const handleTrackAction = async (action: 'APPLY' | 'REJECT') => {
     try {
       await jobService.trackAction(jobId!, action, selectedResumeVersionId || undefined);
-      toast.success(action === 'APPLY' ? 'Marked as Applied' : 'Marked as Rejected');
+      toast.success(action === 'APPLY' ? t('jobDetail.trackAppliedSuccess') : t('jobDetail.trackRejectedSuccess'));
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : 'Failed to track action');
+      toast.error(error instanceof Error ? error.message : t('jobDetail.trackActionError'));
     }
   };
 
@@ -395,11 +396,11 @@ export default function JobDetail() {
               <div className="flex items-center gap-2 ml-4 pl-4 border-l border-gray-200">
                 <Button variant="default" onClick={() => handleTrackAction('APPLY')} className="bg-green-600 hover:bg-green-700">
                   <ExternalLink className="w-4 h-4 mr-2" />
-                  Mark as Applied
+                  {t('jobDetail.markAsApplied')}
                 </Button>
                 <Button variant="destructive" onClick={() => handleTrackAction('REJECT')}>
                   <X className="w-4 h-4 mr-2" />
-                  Not Interested
+                  {t('jobDetail.notInterested')}
                 </Button>
               </div>
             </>

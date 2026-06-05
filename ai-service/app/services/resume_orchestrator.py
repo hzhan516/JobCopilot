@@ -1,4 +1,4 @@
-from app.schemas import AiResultEvent, ResumeParseCommand
+from app.schemas import AiResultEvent, ResumeParseCommand, ResumeParseData
 from app.services.file_parser import download_file_bytes, extract_resume_text
 from app.services.resume_parser import parse_resume_text
 
@@ -15,10 +15,7 @@ def process_resume(command: ResumeParseCommand) -> AiResultEvent:
         referenceId=command.resume_id,
         type="RESUME_PARSE",
         status="COMPLETED",
-        data={
-            "parsedContent": parsed_content.model_dump(),
-            "summary": "",
-        },
+        data=ResumeParseData(parsed_content=parsed_content, summary=""),
         errorMessage=None,
         eventType="RESUME",
     )

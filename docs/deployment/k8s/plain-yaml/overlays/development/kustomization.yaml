@@ -6,7 +6,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: resume-assistant-dev
+namespace: jobcopilot-dev
 
 resources:
   - ../../base
@@ -19,8 +19,8 @@ commonLabels:
 patches:
   - target:
       kind: Ingress
-      name: resume-assistant
+      name: jobcopilot
     patch: |
       - op: replace
         path: /spec/rules/0/host
-        value: dev.resume-assistant.local
+        value: dev.jobcopilot.local

@@ -57,7 +57,8 @@ function getCommonTimeZones(): string[] {
       return (Intl as unknown as { supportedValuesOf: (key: string) => string[] }).supportedValuesOf('timeZone');
     }
   } catch {
-    // fallback
+    // Fallback when the browser cannot enumerate supported time zones
+    // 浏览器无法枚举支持的时区时使用兜底列表
   }
   return [
     'UTC',
@@ -128,6 +129,7 @@ export default function Profile() {
   }, [fetchProfile]);
 
   // Sync form values when profile loads to avoid stale empty defaults
+  // 资料加载完成后同步表单值，避免保留空的初始默认值
   // 表单值同步：profile 加载完成后回填，避免空默认值残留
   useEffect(() => {
     if (profile) {
@@ -186,7 +188,7 @@ export default function Profile() {
           <div className="flex items-center space-x-4">
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center overflow-hidden">
               {avatarUrl ? (
-                <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                <img src={avatarUrl} alt={t('profile.avatarAlt')} className="w-full h-full object-cover" />
               ) : (
                 <User className="w-8 h-8 text-blue-600" />
               )}

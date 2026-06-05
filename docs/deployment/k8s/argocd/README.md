@@ -4,14 +4,14 @@
 
 ## Overview
 
-This directory provides ArgoCD `Application` manifests for managing the Resume Assistant platform through GitOps.
+This directory provides ArgoCD `Application` manifests for managing the JobCopilot platform through GitOps.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────┐
 │  ArgoCD Root Application                │
-│  (app-of-apps/resume-assistant-root)   │
+│  (app-of-apps/JobCopilot-root)   │
 └─────────────┬───────────────────────────┘
               │ manages
     ┌─────────┼─────────┐
@@ -35,14 +35,14 @@ Edit all files under `applications/` and `app-of-apps/` to point to your actual 
 
 ```yaml
 source:
-  repoURL: https://github.com/your-org/resume-assistant.git
+  repoURL: https://github.com/your-org/JobCopilot.git
   targetRevision: HEAD  # or branch name
 ```
 
 ### 2. Deploy the Root Application
 
 ```bash
-kubectl apply -f app-of-apps/resume-assistant-root.yaml
+kubectl apply -f app-of-apps/JobCopilot-root.yaml
 ```
 
 This creates the root Application which automatically manages the dev, staging, and prod Applications.
@@ -58,9 +58,9 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 
 | Environment | Namespace | Sync Policy | Auto-Sync | Replicas |
 |-------------|-----------|-------------|-----------|----------|
-| **dev** | `resume-assistant-dev` | Automatic | Yes | 1 (minimal) |
-| **staging** | `resume-assistant-staging` | Automatic | Yes | 2 (production-like) |
-| **prod** | `resume-assistant-prod` | Manual | No | 3 (full production) |
+| **dev** | `JobCopilot-dev` | Automatic | Yes | 1 (minimal) |
+| **staging** | `JobCopilot-staging` | Automatic | Yes | 2 (production-like) |
+| **prod** | `JobCopilot-prod` | Manual | No | 3 (full production) |
 
 ### Dev
 
@@ -86,8 +86,8 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 
 ## Adding a New Environment
 
-1. Copy `applications/resume-assistant-dev.yaml`
-2. Rename to `resume-assistant-<env>.yaml`
+1. Copy `applications/JobCopilot-dev.yaml`
+2. Rename to `JobCopilot-<env>.yaml`
 3. Update:
    - `metadata.name`
    - `destination.namespace`
@@ -103,8 +103,8 @@ Never store plain secrets in Git. Options:
 
 1. **Pre-create Secrets** in target namespaces
    ```bash
-   kubectl create secret generic resume-assistant-secrets \
-     --namespace=resume-assistant-prod \
+   kubectl create secret generic JobCopilot-secrets \
+     --namespace=JobCopilot-prod \
      --from-literal=JWT_SECRET=...
    ```
    Then set `secrets.existingSecret` in values.
@@ -141,7 +141,7 @@ syncPolicy:
 
 Use ArgoCD UI or CLI to sync:
 ```bash
-argocd app sync resume-assistant-prod
+argocd app sync JobCopilot-prod
 ```
 
 ## Monitoring
@@ -149,10 +149,10 @@ argocd app sync resume-assistant-prod
 View sync status:
 ```bash
 argocd app list
-argocd app get resume-assistant-prod
+argocd app get JobCopilot-prod
 ```
 
 Check for drift:
 ```bash
-argocd app diff resume-assistant-prod
+argocd app diff JobCopilot-prod
 ```

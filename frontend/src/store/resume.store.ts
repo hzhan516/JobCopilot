@@ -24,7 +24,7 @@ function mapSummaryToVersion(
     content: undefined,
     parsedContent: undefined,
     parseStatus: summary.parseStatus as ResumeVersion['parseStatus'],
-    parseErrorMessage: undefined,
+    parseErrorMessage: summary.parseErrorMessage ?? undefined,
     createdAt: summary.createdAt,
   };
 }
@@ -39,7 +39,7 @@ function adaptVersion(version: ApiResumeVersion): ResumeVersion {
     content: version.content ?? undefined,
     parsedContent: undefined,
     parseStatus: version.parseStatus as ResumeVersion['parseStatus'],
-    parseErrorMessage: undefined,
+    parseErrorMessage: version.parseErrorMessage ?? undefined,
     createdAt: version.createdAt,
   };
 }
@@ -120,7 +120,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
   },
 
   pollParseStatus: async (groupId: string, signal?: AbortSignal) => {
-    const maxRetries = 30;
+    const maxRetries = 90;
     const interval = 2000;
     let attempts = 0;
 

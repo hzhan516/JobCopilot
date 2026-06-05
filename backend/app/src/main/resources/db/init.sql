@@ -764,3 +764,30 @@ CREATE INDEX IF NOT EXISTS idx_outbox_status ON outbox_message(status);
 -- 索引：按状态 + 发送时间查询过期记录（OutboxCleanupScheduler 清理用）
 -- Index for querying expired records by status + sent time (used by OutboxCleanupScheduler)
 CREATE INDEX IF NOT EXISTS idx_outbox_status_sent_at ON outbox_message(status, sent_at);
+
+-- ==========================================
+-- V18-V24: Optimistic locking columns / 乐观锁字段
+-- ==========================================
+-- Keep the dev bootstrap schema aligned with Flyway migrations.
+-- 保持开发环境初始化脚本与 Flyway 迁移一致。
+
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
+COMMENT ON COLUMN jobs.version IS 'Optimistic locking version / 乐观锁版本号';
+
+ALTER TABLE resume_groups ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
+COMMENT ON COLUMN resume_groups.version IS 'Optimistic locking version / 乐观锁版本号';
+
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
+COMMENT ON COLUMN conversations.version IS 'Optimistic locking version / 乐观锁版本号';
+
+ALTER TABLE job_match_results ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
+COMMENT ON COLUMN job_match_results.version IS 'Optimistic locking version / 乐观锁版本号';
+
+ALTER TABLE application_trackings ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
+COMMENT ON COLUMN application_trackings.version IS 'Optimistic locking version / 乐观锁版本号';
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
+COMMENT ON COLUMN users.version IS 'Optimistic locking version / 乐观锁版本号';
+
+ALTER TABLE job_matching_models ADD COLUMN IF NOT EXISTS optimistic_version BIGINT NOT NULL DEFAULT 0;
+COMMENT ON COLUMN job_matching_models.optimistic_version IS 'Optimistic locking version / 乐观锁版本号（与业务 model_version 区分）';

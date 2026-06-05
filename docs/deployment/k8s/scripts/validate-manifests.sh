@@ -5,7 +5,7 @@
 # =============================================================================
 set -e
 
-CHART_DIR="$(dirname "$0")/../helm/resume-assistant"
+CHART_DIR="$(dirname "$0")/../helm/jobcopilot"
 
 echo "========================================"
 echo "Helm Lint / Helm 语法检查"
@@ -17,14 +17,14 @@ echo "========================================"
 echo "Template Validation — Default Values"
 echo "模板验证 — 默认值"
 echo "========================================"
-helm template resume-assistant "$CHART_DIR" > /dev/null
+helm template jobcopilot "$CHART_DIR" > /dev/null
 
 echo ""
 echo "========================================"
 echo "Template Validation — Production Values"
 echo "模板验证 — 生产值"
 echo "========================================"
-helm template resume-assistant "$CHART_DIR" \
+helm template jobcopilot "$CHART_DIR" \
   -f "$CHART_DIR/values.yaml" \
   -f "$CHART_DIR/values-production.yaml" > /dev/null
 
@@ -33,7 +33,7 @@ echo "========================================"
 echo "Template Validation — Minimal Values"
 echo "模板验证 — 最小值"
 echo "========================================"
-helm template resume-assistant "$CHART_DIR" \
+helm template jobcopilot "$CHART_DIR" \
   -f "$CHART_DIR/values.yaml" \
   -f "$CHART_DIR/values-minimal.yaml" > /dev/null
 

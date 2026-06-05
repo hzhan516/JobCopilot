@@ -1,5 +1,6 @@
-import re
 from typing import Any
+
+from app.schemas import JobDetail, BaselineFeature
 
 FEATURE_COLUMNS = [
     "semantic_match",
@@ -26,10 +27,10 @@ def normalize_items(items: list[str]) -> set[str]:
             normalized.add(cleaned)
     return normalized
 
-def extract_features(job_details: dict[str, Any], query: str, resume_text: str) -> dict[str, float]:
-    title = str(job_details.get("title", "")).strip()
-    description = str(job_details.get("description", "")).strip()
-    semantic_match = float(job_details.get("semanticMatch", 0.0))
+def extract_features(job: JobDetail | BaselineFeature, query: str, resume_text: str) -> dict[str, float]:
+    title = (job.title or "").strip()
+    description = (job.description or "").strip()
+    semantic_match = float(job.semantic_match if isinstance(job, BaselineFeature) else 0.0)
 
     query_text = " ".join(part for part in [query, resume_text] if part).strip()
     query_tokens = tokenize_text(query_text)

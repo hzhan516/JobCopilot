@@ -25,6 +25,26 @@ def test_extract_json_text_success():
     assert _extract_json_text(raw_text) == '{"key": "value"}'
 
 
+def test_extract_json_text_nested_resume_payload():
+    raw_text = (
+        '```json\n'
+        '{"name": "Alice", "experience": [{"company": "Acme", "title": "Engineer"}]}\n'
+        '```'
+    )
+
+    assert _extract_json_text(raw_text) == (
+        '{"name": "Alice", "experience": [{"company": "Acme", "title": "Engineer"}]}'
+    )
+
+
+def test_extract_json_text_ignores_braces_inside_strings():
+    raw_text = 'prefix {"summary": "Worked with {templates} and escaped \\" braces", "ok": true} suffix'
+
+    assert _extract_json_text(raw_text) == (
+        '{"summary": "Worked with {templates} and escaped \\" braces", "ok": true}'
+    )
+
+
 def test_extract_json_text_failure():
     raw_text = 'No json here'
     with pytest.raises(ValueError, match="LLM response did not contain a JSON object"):

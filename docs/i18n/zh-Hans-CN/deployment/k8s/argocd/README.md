@@ -4,14 +4,14 @@
 
 ## 概述
 
-本目录提供 ArgoCD `Application` 清单，用于通过 GitOps 管理 Resume Assistant 平台。
+本目录提供 ArgoCD `Application` 清单，用于通过 GitOps 管理 JobCopilot 平台。
 
 ## 架构
 
 ```
 ┌─────────────────────────────────────────┐
 │  ArgoCD 根应用 (Root Application)        │
-│  (app-of-apps/resume-assistant-root)   │
+│  (app-of-apps/JobCopilot-root)   │
 └─────────────┬───────────────────────────┘
               │ 管理
     ┌─────────┼─────────┐
@@ -35,14 +35,14 @@
 
 ```yaml
 source:
-  repoURL: https://github.com/your-org/resume-assistant.git
+  repoURL: https://github.com/your-org/JobCopilot.git
   targetRevision: HEAD  # 或分支名
 ```
 
 ### 2. 部署根应用
 
 ```bash
-kubectl apply -f app-of-apps/resume-assistant-root.yaml
+kubectl apply -f app-of-apps/JobCopilot-root.yaml
 ```
 
 这会创建根 Application，自动管理 dev、staging 和 prod 三个环境的 Applications。
@@ -58,9 +58,9 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 
 | 环境 | 命名空间 | 同步策略 | 自动同步 | 副本数 |
 |-------------|-----------|-------------|-----------|----------|
-| **dev** | `resume-assistant-dev` | 自动 | 是 | 1（最小） |
-| **staging** | `resume-assistant-staging` | 自动 | 是 | 2（类生产） |
-| **prod** | `resume-assistant-prod` | 手动 | 否 | 3（完整生产） |
+| **dev** | `JobCopilot-dev` | 自动 | 是 | 1（最小） |
+| **staging** | `JobCopilot-staging` | 自动 | 是 | 2（类生产） |
+| **prod** | `JobCopilot-prod` | 手动 | 否 | 3（完整生产） |
 
 ### 开发环境 (Dev)
 
@@ -86,8 +86,8 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 
 ## 添加新环境
 
-1. 复制 `applications/resume-assistant-dev.yaml`
-2. 重命名为 `resume-assistant-<env>.yaml`
+1. 复制 `applications/JobCopilot-dev.yaml`
+2. 重命名为 `JobCopilot-<env>.yaml`
 3. 更新以下字段：
    - `metadata.name`
    - `destination.namespace`
@@ -103,8 +103,8 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 
 1. **在目标命名空间预创建 Secrets**
    ```bash
-   kubectl create secret generic resume-assistant-secrets \
-     --namespace=resume-assistant-prod \
+   kubectl create secret generic JobCopilot-secrets \
+     --namespace=JobCopilot-prod \
      --from-literal=JWT_SECRET=...
    ```
    然后在 values 中设置 `secrets.existingSecret`。
@@ -141,7 +141,7 @@ syncPolicy:
 
 使用 ArgoCD UI 或 CLI 执行同步：
 ```bash
-argocd app sync resume-assistant-prod
+argocd app sync JobCopilot-prod
 ```
 
 ## 监控
@@ -149,10 +149,10 @@ argocd app sync resume-assistant-prod
 查看同步状态：
 ```bash
 argocd app list
-argocd app get resume-assistant-prod
+argocd app get JobCopilot-prod
 ```
 
 检查漂移：
 ```bash
-argocd app diff resume-assistant-prod
+argocd app diff JobCopilot-prod
 ```

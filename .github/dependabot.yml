@@ -1,0 +1,173 @@
+version: 2
+updates:
+  # ───────────────────────────────────────────────
+  # Backend — Maven (Java / Spring Boot)
+  # ───────────────────────────────────────────────
+  - package-ecosystem: "maven"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Phoenix"
+    open-pull-requests-limit: 10
+    target-branch: "main"
+    labels:
+      - "dependencies"
+      - "java"
+      - "backend"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    ignore:
+      # Ignore patch-level updates to reduce noise; focus on minor/major
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
+    groups:
+      # Group Spring Boot ecosystem updates together
+      spring-boot:
+        patterns:
+          - "org.springframework.boot:*"
+          - "org.springframework.*"
+      # Group test framework updates
+      test-frameworks:
+        patterns:
+          - "org.junit.*"
+          - "org.mockito:*"
+          - "org.assertj:*"
+          - "com.tngtech.archunit:*"
+      # Group Hibernate / JPA
+      hibernate:
+        patterns:
+          - "org.hibernate.orm:*"
+          - "org.hibernate:*"
+          - "com.pgvector:*"
+      # Group security / JWT
+      security:
+        patterns:
+          - "io.jsonwebtoken:*"
+          - "org.springframework.security:*"
+      # Group PDF / document processing
+      documents:
+        patterns:
+          - "com.itextpdf:*"
+          - "org.apache.pdfbox:*"
+          - "org.apache.poi:*"
+          - "com.github.librepdf:*"
+
+  # ───────────────────────────────────────────────
+  # Frontend — npm (TypeScript / React / Vite)
+  # ───────────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Phoenix"
+    open-pull-requests-limit: 10
+    target-branch: "main"
+    labels:
+      - "dependencies"
+      - "typescript"
+      - "frontend"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
+    groups:
+      # Group React ecosystem updates
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "react-router*"
+      # Group Vite / build tooling
+      build-tools:
+        patterns:
+          - "vite*"
+          - "@vitejs/*"
+          - "rollup*"
+          - "esbuild*"
+      # Group testing libraries
+      testing:
+        patterns:
+          - "vitest"
+          - "@testing-library/*"
+          - "happy-dom"
+      # Group UI / Tailwind
+      ui:
+        patterns:
+          - "tailwindcss"
+          - "@radix-ui/*"
+          - "class-variance-authority"
+          - "clsx"
+          - "tailwind-merge"
+      # Group i18n
+      i18n:
+        patterns:
+          - "i18next"
+          - "react-i18next"
+          - "i18next-*"
+
+  # ───────────────────────────────────────────────
+  # AI Service — pip (Python / FastAPI)
+  # ───────────────────────────────────────────────
+  - package-ecosystem: "pip"
+    directory: "/ai-service"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Phoenix"
+    open-pull-requests-limit: 5
+    target-branch: "main"
+    labels:
+      - "dependencies"
+      - "python"
+      - "ai-service"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
+    groups:
+      # Group ML / data science packages
+      ml:
+        patterns:
+          - "torch*"
+          - "transformers"
+          - "numpy"
+          - "pandas"
+          - "scikit-learn"
+      # Group FastAPI / web framework
+      web:
+        patterns:
+          - "fastapi"
+          - "uvicorn*"
+          - "pydantic*"
+          - "sqlalchemy*"
+          - "starlette"
+
+  # ───────────────────────────────────────────────
+  # GitHub Actions workflows
+  # ───────────────────────────────────────────────
+  - package-ecosystem: "github-actions"
+    directory: "/.github/workflows"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Phoenix"
+    open-pull-requests-limit: 5
+    target-branch: "main"
+    labels:
+      - "dependencies"
+      - "ci-cd"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"

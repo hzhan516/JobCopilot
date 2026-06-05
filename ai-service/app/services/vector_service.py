@@ -7,6 +7,13 @@ from app.config import (
     LLM_REQUEST_TIMEOUT_SECONDS,
 )
 
+EMBEDDING_MODEL_CAPABILITIES = {
+    "gemini/gemini-embedding-001": {"supports_dimensions": False},
+    "gemini/gemini-embedding-2": {"supports_dimensions": False},
+    "text-embedding-3-small": {"supports_dimensions": True},
+    "text-embedding-3-large": {"supports_dimensions": True},
+}
+
 
 # Exponential backoff for transient embedding API failures.
 # 指数退避重试：embedding 服务同样可能遇到限流或网络抖动，复用与 LLM 相同的重试策略。
@@ -21,6 +28,20 @@ RETRY_STRATEGY = retry(
 )
 
 
+def _model_supports_dimensions(model: str) -> bool:
+    normalized = model.strip().lower()
+    capability = EMBEDDING_MODEL_CAPABILITIES.get(normalized)
+    if capability is not None:
+        return bool(capability["supports_dimensions"])
+
+    if "text-embedding-3" in normalized:
+        return True
+
+    # Be conservative for unknown providers. Passing unsupported parameters
+    # turns recoverable vector generation into a hard 502 for the backend.
+    return False
+
+
 @RETRY_STRATEGY
 def generate_embedding(text: str) -> list[float]:
     """Generate an embedding vector with dimension validation to catch model config mismatches early.
@@ -31,12 +52,22 @@ def generate_embedding(text: str) -> list[float]:
     if not cleaned_text:
         raise ValueError("Input text for vector generation is empty.")
 
-    response = litellm.embedding(
-        model=LLM_EMBEDDING_MODEL,
-        input=[cleaned_text],
-        dimensions=LLM_EMBEDDING_MODEL_DIMENSION,
-        timeout=LLM_REQUEST_TIMEOUT_SECONDS,
-    )
+    # dimensions=LLM_EMBEDDING_MODEL_DIMENSION,  # Remove this for gemini-embedding-001/textembedding-gecko compatibility
+    # https://docs.litellm.ai/docs/providers/vertex_embedding
+    # LiteLLM supports 'dimensions' for Vertex models that support the `output_dimensionality` parameter.
+    # Google's `text-embedding-004` and `text-multilingual-embedding-002` support this, as does the latest 
+    # `gemini-embedding-001` (from the gemini SDK, replacing the older text-embedding-gecko models).
+    # OpenAI's `text-embedding-3-*` models also support the `dimensions` parameter.
+    kwargs = {
+        "model": LLM_EMBEDDING_MODEL,
+        "input": [cleaned_text],
+        "timeout": LLM_REQUEST_TIMEOUT_SECONDS,
+    }
+    
+    if _model_supports_dimensions(LLM_EMBEDDING_MODEL):
+        kwargs["dimensions"] = LLM_EMBEDDING_MODEL_DIMENSION
+
+    response = litellm.embedding(**kwargs)
 
     if not response.data:
         raise ValueError("LiteLLM returned no embeddings.")

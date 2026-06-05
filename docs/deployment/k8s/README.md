@@ -4,13 +4,13 @@
 
 ## Overview
 
-This directory provides **production-grade** Kubernetes deployment configurations for the Resume Assistant platform.
+This directory provides **production-grade** Kubernetes deployment configurations for the JobCopilot platform.
 
 ### Three deployment methods
 
 | Method | Best For | File Location |
 |--------|----------|---------------|
-| **Helm Chart** | Production, multi-environment, versioned releases | [`helm/resume-assistant/`](./helm/resume-assistant/) |
+| **Helm Chart** | Production, multi-environment, versioned releases | [`helm/jobcopilot/`](./helm/jobcopilot/) |
 | **ArgoCD GitOps** | Teams with GitOps workflows, audit trails | [`argocd/`](./argocd/) |
 | **Plain YAML + Kustomize** | Quick tests, learning, CI without Helm | [`plain-yaml/`](./plain-yaml/) |
 
@@ -42,11 +42,11 @@ Switch between modes via Helm values: `global.infraMode` (`embedded` or `managed
 
 ```bash
 # From .env file
-./scripts/generate-secrets.sh .env resume-assistant | kubectl apply -f -
+./scripts/generate-secrets.sh .env JobCopilot | kubectl apply -f -
 
 # Or create manually
-kubectl create secret generic resume-assistant-secrets \
-  --namespace=resume-assistant \
+kubectl create secret generic JobCopilot-secrets \
+  --namespace=JobCopilot \
   --from-literal=JWT_SECRET=$(openssl rand -base64 48) \
   --from-literal=POSTGRES_PASSWORD=$(openssl rand -base64 24) \
   --from-literal=INTERNAL_API_KEY=$(openssl rand -base64 32) \
@@ -57,32 +57,32 @@ kubectl create secret generic resume-assistant-secrets \
 
 ```bash
 # Embedded mode (dev)
-helm install resume-assistant ./helm/resume-assistant \
-  --namespace resume-assistant \
+helm install JobCopilot ./helm/jobcopilot \
+  --namespace JobCopilot \
   --create-namespace \
-  -f ./helm/resume-assistant/values.yaml \
-  -f ./helm/resume-assistant/values-minimal.yaml
+  -f ./helm/jobcopilot/values.yaml \
+  -f ./helm/jobcopilot/values-minimal.yaml
 
 # Managed mode (production)
-helm install resume-assistant ./helm/resume-assistant \
-  --namespace resume-assistant \
+helm install JobCopilot ./helm/jobcopilot \
+  --namespace JobCopilot \
   --create-namespace \
-  -f ./helm/resume-assistant/values.yaml \
-  -f ./helm/resume-assistant/values-production.yaml
+  -f ./helm/jobcopilot/values.yaml \
+  -f ./helm/jobcopilot/values-production.yaml
 ```
 
 ### 3. Verify
 
 ```bash
-kubectl get pods -n resume-assistant
-kubectl get ingress -n resume-assistant
+kubectl get pods -n JobCopilot
+kubectl get ingress -n JobCopilot
 
 # Check backend health
-kubectl port-forward svc/resume-assistant-backend 8080:8080 -n resume-assistant
+kubectl port-forward svc/JobCopilot-backend 8080:8080 -n JobCopilot
 curl http://localhost:8080/api/actuator/health
 
 # Check AI service health
-kubectl port-forward svc/resume-assistant-ai-service 8000:8000 -n resume-assistant
+kubectl port-forward svc/JobCopilot-ai-service 8000:8000 -n JobCopilot
 curl http://localhost:8000/health
 ```
 
@@ -154,7 +154,7 @@ Docker Compose uses a shared volume. In K8s, **do not use ReadWriteMany PVC** fo
 k8s/
 ├── README.md                          # This file
 ├── helm/
-│   └── resume-assistant/
+│   └── JobCopilot/
 │       ├── Chart.yaml
 │       ├── values.yaml                # Default (embedded, dev)
 │       ├── values-production.yaml     # Production (managed middleware)
@@ -162,11 +162,11 @@ k8s/
 │       └── templates/                 # All K8s resources
 ├── argocd/
 │   ├── app-of-apps/
-│   │   └── resume-assistant-root.yaml
+│   │   └── JobCopilot-root.yaml
 │   └── applications/
-│       ├── resume-assistant-dev.yaml
-│       ├── resume-assistant-staging.yaml
-│       └── resume-assistant-prod.yaml
+│       ├── JobCopilot-dev.yaml
+│       ├── JobCopilot-staging.yaml
+│       └── JobCopilot-prod.yaml
 ├── plain-yaml/
 │   ├── base/                          # Base Kustomize resources
 │   └── overlays/
@@ -185,8 +185,8 @@ k8s/
 
 ```bash
 # Check PVC binding
-kubectl get pvc -n resume-assistant
-kubectl describe pvc <name> -n resume-assistant
+kubectl get pvc -n JobCopilot
+kubectl describe pvc <name> -n JobCopilot
 
 # Ensure StorageClass exists
 kubectl get storageclass
@@ -196,10 +196,10 @@ kubectl get storageclass
 
 ```bash
 # Verify NetworkPolicy allows backend -> postgres
-kubectl get networkpolicies -n resume-assistant
+kubectl get networkpolicies -n JobCopilot
 
 # Check DNS resolution inside pod
-kubectl exec -it deploy/resume-assistant-backend -n resume-assistant -- nslookup resume-assistant-postgres
+kubectl exec -it deploy/JobCopilot-backend -n JobCopilot -- nslookup JobCopilot-postgres
 ```
 
 ### Ingress not working
@@ -209,7 +209,7 @@ kubectl exec -it deploy/resume-assistant-backend -n resume-assistant -- nslookup
 kubectl get pods -n ingress-nginx
 
 # Check Ingress events
-kubectl describe ingress resume-assistant -n resume-assistant
+kubectl describe ingress JobCopilot -n JobCopilot
 ```
 
 ---

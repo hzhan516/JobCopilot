@@ -5,25 +5,25 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: resume-assistant-staging
+  name: jobcopilot-staging
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
-    repoURL: https://github.com/your-org/resume-assistant.git
+    repoURL: https://github.com/your-org/jobcopilot.git
     targetRevision: HEAD
-    path: docs/deployment/k8s/helm/resume-assistant
+    path: docs/deployment/k8s/helm/jobcopilot
     helm:
       valueFiles:
         - values.yaml
         - values-production.yaml
       parameters:
         - name: namespace.name
-          value: resume-assistant-staging
+          value: jobcopilot-staging
         - name: ingress.host
-          value: staging.resume-assistant.example.com
+          value: staging.jobcopilot.example.com
         - name: backend.replicaCount
           value: "2"
         - name: aiService.replicaCount
@@ -32,7 +32,7 @@ spec:
           value: "2"
   destination:
     server: https://kubernetes.default.svc
-    namespace: resume-assistant-staging
+    namespace: jobcopilot-staging
   syncPolicy:
     automated:
       prune: true

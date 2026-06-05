@@ -1,8 +1,8 @@
-# Resume Assistant — Environment Variables Reference
+# JobCopilot — Environment Variables Reference
 
 > [简体中文](../i18n/zh-Hans-CN/deployment/environment-variables.md) | [繁體中文](../i18n/zh-Hant-TW/deployment/environment-variables.md)
 
-This document describes every environment variable used by the Resume Assistant stack. Variables are organized by functional area, matching the comment blocks in `.env.example`.
+This document describes every environment variable used by the JobCopilot stack. Variables are organized by functional area, matching the comment blocks in `.env.example`.
 
 > **Quick tip**: Run `cp .env.example .env` before editing. Never commit `.env` to version control.
 >
@@ -42,7 +42,7 @@ The following values are **not** defined in `.env.example` but are configurable 
 | Field | Value |
 |-------|-------|
 | **Purpose** | Prefix for container names, volumes, and networks. Enables multiple independent instances on the same Docker host. |
-| **Default** | Directory name of the project root (e.g. `ser594_ai_prject`) |
+| **Default** | Directory name of the project root (e.g. `jobcopilot_ai_prject`) |
 | **Valid values** | Any lowercase alphanumeric string with hyphens/underscores |
 | **Security notes** | Using distinct project names prevents accidental cross-contamination between dev, staging, and production stacks. |
 | **Common mistakes** | Using the same project name for two clones of the repo causes port and volume conflicts. |
@@ -76,7 +76,7 @@ The following values are **not** defined in `.env.example` but are configurable 
 | Field | Value |
 |-------|-------|
 | **Purpose** | Name of the default database created on first container startup. |
-| **Default** | `resume_assistant` |
+| **Default** | `JobCopilot` |
 | **Valid values** | Any valid PostgreSQL identifier |
 | **Security notes** | Database name is not a secret, but changing it from the default makes automated scanning slightly harder. |
 | **Common mistakes** | Renaming this after the volume has been initialized has no effect. `docker-entrypoint-initdb.d` only runs on the first start when the data directory is empty. |
@@ -229,7 +229,7 @@ openssl rand -base64 48
 | Field | Value |
 |-------|-------|
 | **Purpose** | Application name displayed in Spring Boot Actuator, metrics, and logs. |
-| **Default** | `resume-assistant-backend` |
+| **Default** | `JobCopilot-backend` |
 | **Valid values** | Any valid Spring Boot application name |
 | **Security notes** | Not a secret. Used for observability and service discovery. |
 | **Common mistakes** | Using spaces or special characters that break URL-safe identifiers. |
@@ -414,6 +414,16 @@ The following parameters control the AI worker's incremental job training loop.
 | `RETRAIN_INTERVAL_HOURS` | `24` | Interval in hours for the AI worker to check for buffered feedback and retrain. |
 | `MIN_SAMPLES_FOR_RETRAIN` | `10` | Minimum number of buffered feedback samples required before retraining runs. |
 
+### `AI_REDIS_KEY_PREFIX`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Redis key prefix for AI service shared state (feedback buffer, model retrain locks). Allows multiple AI service instances to share the same Redis server without key collisions. |
+| **Default** | `ai:` |
+| **Valid values** | Any string ending with `:` |
+| **Security notes** | Distinct prefixes per environment prevent cross-environment data contamination when multiple stacks share a Redis cluster. |
+| **Common mistakes** | Forgetting to update the prefix when running multiple AI service instances against the same Redis server, causing one instance to read or overwrite another's feedback buffer or lock state. |
+
 ---
 
 ## H. AI Service Logging
@@ -437,7 +447,7 @@ The following parameters control the AI worker's incremental job training loop.
 | Field | Value |
 |-------|-------|
 | **Purpose** | Google Cloud project ID for Vertex AI (only needed if using `vertex_ai/` model prefix). |
-| **Default** | `ser594-ai-service` |
+| **Default** | `jobcopilot-ai-service` |
 | **Valid values** | Any valid Google Cloud project ID |
 | **Security notes** | Not a secret. This identifies the billing project. |
 | **Common mistakes** | Setting this when using Gemini via AI Studio (`gemini/` prefix) — it is ignored in that mode. |
@@ -956,7 +966,7 @@ These variables are consumed by the Python AI service and AI worker for incremen
 | Field | Value |
 |-------|-------|
 | **Purpose** | Sender address displayed in verification emails. |
-| **Default** | `noreply@resume-assistant.local` |
+| **Default** | `noreply@JobCopilot.local` |
 | **Valid values** | Any valid email address |
 | **Security notes** | Some SMTP providers require the `From` address to be verified or registered in their console. Using an unverified address may cause emails to be rejected or land in spam. |
 | **Common mistakes** | Using a personal Gmail address without enabling "App Passwords" or without configuring SPF/DKIM for the domain. |
@@ -1121,6 +1131,18 @@ Redis serves as the shared state layer for distributed caching, distributed lock
 
 ---
 
+### `CAPTCHA_REDIS_KEY_PREFIX`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Redis key prefix for CAPTCHA challenge, token, and rate-limit data. Allows multiple backend instances to share the same Redis server without key collisions. |
+| **Default** | `ra:captcha:` |
+| **Valid values** | Any string ending with `:` |
+| **Security notes** | Changing this does not affect security, but using distinct prefixes per environment (e.g. `staging:captcha:`, `prod:captcha:`) prevents cross-environment data contamination when multiple stacks share a Redis cluster. |
+| **Common mistakes** | Forgetting to update the prefix when running multiple backend instances against the same Redis server, causing one instance to read or delete another's CAPTCHA data. |
+
+---
+
 ## N. Backend Logging
 
 ### `LOG_HIBERNATE_LEVEL`
@@ -1137,7 +1159,7 @@ Redis serves as the shared state layer for distributed caching, distributed lock
 
 | Field | Value |
 |-------|-------|
-| **Purpose** | Log level for application code (`edu.asu.ser594.resumeassistant`). |
+| **Purpose** | Log level for application code (`io.jobcopilot.resumeassistant`). |
 | **Default** | `DEBUG` (dev) / `INFO` (prod) |
 | **Valid values** | `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, `OFF` |
 | **Security notes** | `DEBUG` prints request details, service calls, and exception stack traces. Useful for troubleshooting but generates large log volumes. |

@@ -46,18 +46,43 @@ def _extract_json_text(raw_text: str) -> str:
         cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
         cleaned = re.sub(r"\s*```$", "", cleaned)
 
-    match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
-    if not match:
+    start = cleaned.find("{")
+    if start == -1:
         raise ValueError(f"LLM response did not contain a JSON object: {raw_text}")
 
-    extracted = match.group(0)
-    # Brace-mismatch is a strong signal of truncated JSON.
-    # 大括号不匹配是 JSON 被截断的典型信号，提前拦截可避免下游解析产生晦涩错误。
-    if extracted.count("{") != extracted.count("}"):
-        raise ValueError(f"Extracted JSON is incomplete: braces mismatch in {extracted[:200]}")
+    depth = 0
+    in_string = False
+    escaped = False
 
-    return extracted
+    for index in range(start, len(cleaned)):
+        char = cleaned[index]
 
+        if escaped:
+            escaped = False
+            continue
+
+        if char == "\\" and in_string:
+            escaped = True
+            continue
+
+        if char == '"':
+            in_string = not in_string
+            continue
+
+        if in_string:
+            continue
+
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return cleaned[start:index + 1]
+            if depth < 0:
+                raise ValueError(f"LLM response contained invalid JSON braces: {cleaned[start:index + 1]}")
+
+    extracted = cleaned[start:]
+    raise ValueError(f"Extracted JSON is incomplete: braces mismatch in {extracted[:200]}")
 
 def _safe_json_loads(text: str) -> dict[str, Any]:
     """Safely parse JSON, handling illegal control characters that may appear inside string values in LLM output.
@@ -152,7 +177,10 @@ def generate_json_from_text_prompt(prompt: str) -> dict[str, Any]:
         messages=messages,
     )
     json_text = _extract_json_text(raw_text)
-    return _safe_json_loads(json_text)
+    parsed = _safe_json_loads(json_text)
+    if not isinstance(parsed, dict):
+        raise ValueError(f"LLM JSON response must be an object, got {type(parsed).__name__}")
+    return parsed
 
 
 @RETRY_STRATEGY
@@ -184,4 +212,7 @@ def generate_json_from_image_prompt(
         messages=messages,
     )
     json_text = _extract_json_text(raw_text)
-    return _safe_json_loads(json_text)
+    parsed = _safe_json_loads(json_text)
+    if not isinstance(parsed, dict):
+        raise ValueError(f"LLM JSON response must be an object, got {type(parsed).__name__}")
+    return parsed

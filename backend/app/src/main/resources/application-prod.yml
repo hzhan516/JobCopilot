@@ -3,7 +3,7 @@
 
 spring:
   application:
-    name: ${SPRING_APPLICATION_NAME:resume-assistant-backend}
+    name: ${SPRING_APPLICATION_NAME:jobcopilot-backend}
 
   # Redis 配置 / Redis configuration
   data:
@@ -68,8 +68,8 @@ storage:
   # MinIO 配置（当 type=minio 时生效）/ MinIO config (effective when type=minio)
   minio:
     endpoint: ${MINIO_ENDPOINT:http://minio:9000}
-    access-key: ${MINIO_ACCESS_KEY:minioadmin}
-    secret-key: ${MINIO_SECRET_KEY:minioadmin}
+    access-key: ${MINIO_ACCESS_KEY}
+    secret-key: ${MINIO_SECRET_KEY}
     bucket-name: ${MINIO_BUCKET_NAME:resumes}
     connect-timeout: ${MINIO_CONNECT_TIMEOUT:5000}
     write-timeout: ${MINIO_WRITE_TIMEOUT:60000}
@@ -91,7 +91,7 @@ app:
     max-limit: ${SEARCH_MAX_LIMIT:100}
   email:
     enabled: ${EMAIL_VERIFICATION_ENABLED:false}
-    from: ${EMAIL_FROM:noreply@resume-assistant.local}
+    from: ${EMAIL_FROM:noreply@jobcopilot.local}
     code-expiry-seconds: ${EMAIL_CODE_EXPIRY:300}
     resend-cooldown-seconds: ${EMAIL_RESEND_COOLDOWN:60}
     max-attempts: ${EMAIL_MAX_ATTEMPTS:3}
@@ -121,9 +121,11 @@ jwt:
   access-token-expiration: ${JWT_ACCESS_EXPIRATION:3600000}       # 1小时 / 1 hour
   refresh-token-expiration: ${JWT_REFRESH_EXPIRATION:604800000}    # 7天 / 7 days
 
-# 日志 / Logging
+  # Presigned URL expiry for conversation attachments and other time-limited storage access.
+  # Presigned URL 过期时间，用于对话附件及其他限时存储访问。
+  presigned-url-expiration-hours: ${STORAGE_PRESIGNED_EXPIRY_HOURS:7}
 logging:
   level:
     root: INFO
     org.hibernate.SQL: ${LOG_HIBERNATE_LEVEL:WARN}
-    edu.asu.ser594.resumeassistant: ${LOG_APP_LEVEL:INFO}
+    io.jobcopilot.resumeassistant: ${LOG_APP_LEVEL:INFO}

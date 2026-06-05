@@ -20,6 +20,7 @@ export function ResumeCard({ group, onView, onDelete }: ResumeCardProps) {
         new Date(current.createdAt) > new Date(latest.createdAt) ? current : latest
       )
     : null;
+  const aiParseVersion = group.versions.find((version) => version.versionType === 'ORIGINAL') ?? latestVersion;
 
   const formattedDate = formatDate(group.createdAt, {
     year: 'numeric',
@@ -55,10 +56,10 @@ export function ResumeCard({ group, onView, onDelete }: ResumeCardProps) {
             <span className="text-muted-foreground">{t('resume.card.versions')}</span>
             <span className="font-medium">{group.versions.length}</span>
           </div>
-          {latestVersion && latestVersion.parseStatus !== 'NOT_APPLICABLE' && (
+          {aiParseVersion && aiParseVersion.parseStatus !== 'NOT_APPLICABLE' && (
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">{t('resume.card.latestStatus')}</span>
-              <ParseStatusBadge status={latestVersion.parseStatus} />
+              <ParseStatusBadge status={aiParseVersion.parseStatus} />
             </div>
           )}
         </div>

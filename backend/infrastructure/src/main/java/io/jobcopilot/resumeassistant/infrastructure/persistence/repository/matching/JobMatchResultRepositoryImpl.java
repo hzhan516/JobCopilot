@@ -1,0 +1,55 @@
+package io.jobcopilot.resumeassistant.infrastructure.persistence.repository.matching;
+
+import io.jobcopilot.resumeassistant.domain.matching.entity.JobMatchResult;
+import io.jobcopilot.resumeassistant.domain.matching.repository.JobMatchResultRepository;
+import io.jobcopilot.resumeassistant.infrastructure.persistence.entity.matching.JobMatchResultJpaEntity;
+import io.jobcopilot.resumeassistant.infrastructure.persistence.mapper.matching.JobMatchResultPersistenceMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+/**
+ * 职位匹配结果仓储实现
+ * Job match result repository implementation
+ */
+@Repository
+@RequiredArgsConstructor
+public class JobMatchResultRepositoryImpl implements JobMatchResultRepository {
+
+    private final JpaJobMatchResultRepository jpaRepository;
+    private final JobMatchResultPersistenceMapper mapper;
+
+    @Override
+    public JobMatchResult save(final JobMatchResult result) {
+        JobMatchResultJpaEntity entity = mapper.toEntity(result);
+        if (!jpaRepository.existsById(result.getId())) {
+            entity.setVersion(null);
+        }
+        return mapper.toDomain(jpaRepository.save(entity));
+    }
+
+    @Override
+    public Optional<JobMatchResult> findById(final String matchId) {
+        return jpaRepository.findById(matchId).map(mapper::toDomain);
+    }
+
+    @Override
+    public List<JobMatchResult> findAllByUserId(final UUID userId) {
+        return jpaRepository.findAllByUserIdOrderByCreatedAtDesc(userId.toString())
+                .stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<JobMatchResult> findAllByUserIdOrderByCreatedAtDesc(final UUID userId) {
+        return jpaRepository.findAllByUserIdOrderByCreatedAtDesc(userId.toString())
+                .stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
+}

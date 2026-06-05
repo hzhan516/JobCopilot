@@ -3,7 +3,7 @@
 
 # Backend API Documentation
 
-This document contains the complete interface definitions for the Resume Assistant backend API.
+This document contains the complete interface definitions for the JobCopilot backend API.
 
 ## Basic Information
 

@@ -8,7 +8,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: default-deny-ingress
-  namespace: resume-assistant
+  namespace: jobcopilot
 spec:
   podSelector: {}
   policyTypes:
@@ -21,7 +21,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: default-deny-egress
-  namespace: resume-assistant
+  namespace: jobcopilot
 spec:
   podSelector: {}
   policyTypes:
@@ -42,7 +42,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: frontend-ingress
-  namespace: resume-assistant
+  namespace: jobcopilot
 spec:
   podSelector:
     matchLabels:
@@ -79,7 +79,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: backend-ingress
-  namespace: resume-assistant
+  namespace: jobcopilot
 spec:
   podSelector:
     matchLabels:
@@ -146,7 +146,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: ai-service-ingress
-  namespace: resume-assistant
+  namespace: jobcopilot
 spec:
   podSelector:
     matchLabels:
@@ -199,7 +199,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: rabbitmq-ingress
-  namespace: resume-assistant
+  namespace: jobcopilot
 spec:
   podSelector:
     matchLabels:
@@ -238,7 +238,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: redis-ingress
-  namespace: resume-assistant
+  namespace: jobcopilot
 spec:
   podSelector:
     matchLabels:
@@ -277,7 +277,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: postgres-ingress
-  namespace: resume-assistant
+  namespace: jobcopilot
 spec:
   podSelector:
     matchLabels:

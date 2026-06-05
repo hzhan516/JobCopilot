@@ -276,13 +276,6 @@ export default function Chat() {
   };
 
   const handleSendMessage = async () => {
-    console.log('Chat send clicked', {
-      inputMessage,
-      activeConversationId: activeConversation?.conversationId,
-      isSending,
-      isWaitingForReply,
-    });
-
     if (!inputMessage.trim() || !activeConversation) {
       console.warn('Chat send skipped', {
         hasInput: Boolean(inputMessage.trim()),
@@ -307,9 +300,7 @@ export default function Chat() {
     setIsSending(true);
 
     try {
-      console.log('Chat send request starting', { conversationId, content });
       const updatedConversation = await chatService.sendMessage(conversationId, content);
-      console.log('Chat send request succeeded', updatedConversation);
       const savedMessages = normalizeMessages(updatedConversation);
       syncConversation(updatedConversation);
 

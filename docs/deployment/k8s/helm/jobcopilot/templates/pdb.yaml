@@ -1,0 +1,34 @@
+{{- if .Values.pdb.enabled }}
+# =============================================================================
+# Pod Disruption Budgets / Pod 中断预算
+# =============================================================================
+# Ensures a minimum number of pods remain available during voluntary disruptions
+# (node drains, cluster upgrades).
+# 确保在自愿中断（节点排空、集群升级）期间保持最小可用 Pod 数量。
+
+{{- $components := list "backend" "ai-service" "frontend" }}
+{{- range $components }}
+{{- $componentValues := index $.Values . }}
+{{- if and $componentValues.enabled $componentValues.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "jobcopilot.fullname" $ }}-{{ . }}
+  namespace: {{ include "jobcopilot.namespace" $ }}
+  labels:
+    {{- include "jobcopilot.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ . }}
+spec:
+  {{- if $componentValues.pdb.minAvailable }}
+  minAvailable: {{ $componentValues.pdb.minAvailable }}
+  {{- else }}
+  maxUnavailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: {{ . }}
+      {{- include "jobcopilot.selectorLabels" $ | nindent 6 }}
+---
+{{- end }}
+{{- end }}
+{{- end }}

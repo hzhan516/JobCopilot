@@ -62,7 +62,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         localStorage.removeItem(storageKey);
       } catch (err) {
         const isConflict = axios.isAxiosError(err) && err.response?.status === 409;
-        const isExplicitError = axios.isAxiosError(err) && err.response != null;
+        const isExplicitError = axios.isAxiosError(err) && err.response !== null;
         if (isConflict || isExplicitError) {
           autoSaveEnabledRef.current = false;
           setAutoSaveStatus('conflict');

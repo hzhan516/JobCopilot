@@ -1,9 +1,9 @@
-<!-- Language Switcher / 语言切换 / 語言切換 -->
+<!-- Language Switcher -->
 > [English](README.md) | [简体中文](docs/i18n/zh-Hans-CN/README.md) | [繁體中文](docs/i18n/zh-Hant-TW/README.md)
 
-# Resume Assistant
+# JobCopilot
 
-The **Resume Assistant** is an AI-powered platform designed to streamline the job hunting process for new graduates and career changers. It automatically parses user-uploaded resumes, evaluates them against job market data using semantic vector matching, and provides an interactive AI copilot to iteratively optimize resume content. By combining secure document management, asynchronous AI processing, and personalized recommendations, the system saves users hours of manual tailoring while increasing their interview chances.
+The **JobCopilot** is an AI-powered platform for new graduates and career changers. It parses uploaded resumes, evaluates them against job market data using semantic vector matching, and provides an interactive AI copilot to iteratively improve resume content. Secure document management, asynchronous AI processing, and personalized recommendations save users time and improve interview rates.
 
 **Deployment:** The system is verified through Docker Compose. Copy `.env.example` to `.env`, configure the required values, then run `docker compose --env-file .env up -d --build`. The frontend is available at `http://localhost` by default, or `http://localhost:${FRONTEND_HOST_PORT}` if a custom port is configured.
 
@@ -122,7 +122,7 @@ The backend adopts **Hexagonal Architecture / Domain-Driven Design (DDD)** with 
 
 ```bash
 git clone <repository-url>
-cd resume-assistant
+cd JobCopilot
 ```
 
 ### 2. Configure Environment Variables
@@ -390,9 +390,9 @@ See [docs/deployment/DOCKER_DEPLOY.md](docs/deployment/DOCKER_DEPLOY.md) for det
 
 ## License
 
-This project is developed for academic purposes at Arizona State University (SER594 course).
+This project is developed for academic purposes at JobCopilot Open Source (JobCopilot course).
 
 ## Acknowledgments
 
-- Arizona State University
-- SER594 Course Team
+- JobCopilot Open Source
+- JobCopilot Course Team

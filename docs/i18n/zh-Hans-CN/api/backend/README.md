@@ -3,7 +3,7 @@
 
 # Backend API 文档
 
-本文档包含 Resume Assistant 后端 API 的完整接口定义。
+本文档包含 JobCopilot 后端 API 的完整接口定义。
 
 ## 基础信息
 

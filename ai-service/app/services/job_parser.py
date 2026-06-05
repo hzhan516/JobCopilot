@@ -102,9 +102,10 @@ def _decode_base64_image(data: str) -> tuple[bytes, str]:
 
 
 def _load_image_bytes(image_url: str) -> tuple[bytes, str]:
-    """Load image bytes from data-URI, HTTP(S), or local path with graceful fallback.
-    加载图片字节：支持 data URI、HTTP(S) 及本地路径；对超长字符串可能触发的 OSError 做静默兜底，
-    最后尝试纯 Base64 解码，提高解析容错性。"""
+    """Load image bytes from data-URI or HTTP(S) URL only.
+    Local file path access is intentionally blocked to prevent LFI vulnerabilities.
+    仅支持 data URI 与 HTTP(S) 远程地址加载图片；本地文件路径访问被显式禁止，防止目录遍历攻击。
+    """
     if image_url.startswith("data:"):
         return _decode_base64_image(image_url)
 
@@ -113,16 +114,8 @@ def _load_image_bytes(image_url: str) -> tuple[bytes, str]:
         image_response.raise_for_status()
         return image_response.content, image_response.headers.get("Content-Type", "image/png")
 
-    try:
-        image_path = Path(image_url)
-        if image_path.is_file():
-            return image_path.read_bytes(), "image/png"
-    except OSError:
-        # Very long strings can exceed OS path length limits; fall through to base64 fallback.
-        # 超长字符串可能超出操作系统路径长度限制，继续走 Base64 兜底分支。
-        pass
-
-    return _decode_base64_image(image_url)
+    # Reject anything that is not a known remote URL scheme to prevent LFI.
+    raise ValueError(f"Unsupported image URL scheme (local file access is blocked): {image_url[:50]}")
 
 
 def parse_job_from_image(

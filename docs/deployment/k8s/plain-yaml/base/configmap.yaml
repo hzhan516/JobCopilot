@@ -7,21 +7,21 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: resume-assistant-config
-  namespace: resume-assistant
+  name: jobcopilot-config
+  namespace: jobcopilot
   labels:
-    app.kubernetes.io/name: resume-assistant
+    app.kubernetes.io/name: jobcopilot
     app.kubernetes.io/component: config
 data:
   SPRING_PROFILES_ACTIVE: "dev"
-  SPRING_APPLICATION_NAME: "resume-assistant-backend"
-  SPRING_DATASOURCE_URL: "jdbc:postgresql://resume-assistant-postgres:5432/resume_assistant"
-  SPRING_RABBITMQ_HOST: "resume-assistant-rabbitmq"
+  SPRING_APPLICATION_NAME: "jobcopilot-backend"
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://jobcopilot-postgres:5432/resume_assistant"
+  SPRING_RABBITMQ_HOST: "jobcopilot-rabbitmq"
   SPRING_RABBITMQ_PORT: "5672"
-  REDIS_HOST: "resume-assistant-redis"
+  REDIS_HOST: "jobcopilot-redis"
   REDIS_PORT: "6379"
-  AI_SERVICE_BASE_URL: "http://resume-assistant-ai-service:8000"
-  BACKEND_SERVICE_URL: "http://resume-assistant-backend:8080"
+  AI_SERVICE_BASE_URL: "http://jobcopilot-ai-service:8000"
+  BACKEND_SERVICE_URL: "http://jobcopilot-backend:8080"
   LLM_EMBEDDING_MODEL_DIMENSION: "1536"
   LLM_EMBEDDING_MODEL: "gemini/gemini-embedding-001"
   LLM_TEXT_MODEL: "gemini/gemini-2.5-flash"

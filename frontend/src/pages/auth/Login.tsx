@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import SliderCaptcha from '@/components/SliderCaptcha';
 import { FileText, Loader2, Eye, EyeOff } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { getPostAuthRedirectPath } from '@/utils/authRedirect';
 
 function useLoginSchema() {
   const { t } = useTranslation();
@@ -39,6 +40,7 @@ type LoginFormValues = z.infer<ReturnType<typeof useLoginSchema>>;
 export default function Login() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, loginByGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -62,10 +64,13 @@ export default function Login() {
   });
 
   const { isSubmitting } = form.formState;
+  const postAuthRedirectPath = getPostAuthRedirectPath(location.state);
 
   const resetCaptcha = () => {
     setCaptchaToken('');
     setCaptchaKey((prev) => prev + 1);
+    setGoogleCaptchaVerified(false);
+    setShowGoogleCaptchaModal(false);
   };
 
   const onSubmit = async (values: LoginFormValues) => {
@@ -78,7 +83,7 @@ export default function Login() {
 
     try {
       await login({ email: values.email, password: values.password, captchaToken }, values.rememberMe);
-      navigate('/resumes', { replace: true });
+      navigate(postAuthRedirectPath, { replace: true });
     } catch {
       setError(t('auth.login.errorInvalidCredentials'));
       // 任何业务错误都重置人机验证
@@ -92,11 +97,17 @@ export default function Login() {
       setError(t('auth.login.googleLoginFailed'));
       return;
     }
+    if (!captchaToken || !googleCaptchaVerified) {
+      setError(t('auth.captcha.required'));
+      setGoogleCaptchaVerified(false);
+      setShowGoogleCaptchaModal(true);
+      return;
+    }
     setError('');
     setGoogleLoading(true);
     try {
       await loginByGoogle({ idToken: credentialResponse.credential, captchaToken }, false);
-      navigate('/resumes', { replace: true });
+      navigate(postAuthRedirectPath, { replace: true });
     } catch {
       setError(t('auth.login.googleLoginFailed'));
       resetCaptcha();
@@ -140,7 +151,7 @@ export default function Login() {
             )}
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
                 <FormField
                   control={form.control}
                   name="email"
@@ -279,7 +290,7 @@ export default function Login() {
           <CardFooter className="flex justify-center">
             <p className="text-sm text-gray-600">
               {t('auth.login.noAccount')}{' '}
-              <Link to="/register" className="text-blue-600 hover:underline font-medium">
+              <Link to="/register" state={location.state} className="text-blue-600 hover:underline font-medium">
                 {t('auth.login.registerNow')}
               </Link>
             </p>
@@ -287,7 +298,7 @@ export default function Login() {
         </Card>
 
         <p className="text-center text-sm text-gray-500 mt-8">
-          © 2024 {t('common.appName')}. All rights reserved.
+          {t('common.copyright', { appName: t('common.appName') })}
         </p>
       </div>
 

@@ -1,10 +1,10 @@
-# Resume Assistant Helm Chart
+# JobCopilot Helm Chart
 
-> [English](../../../../../../deployment/k8s/helm/resume-assistant/README.md) | [簡體中文](../../../../../zh-Hans-CN/deployment/k8s/helm/README.md) | [繁體中文](README.md)
+> [English](../../../../../deployment/k8s/helm/jobcopilot/README.md) | [簡體中文](../../../../zh-Hans-CN/deployment/k8s/helm/README.md) | [繁體中文](README.md)
 
 ## 概述
 
-本 Helm Chart 在 Kubernetes 上部署完整的 Resume Assistant 平台。
+本 Helm Chart 在 Kubernetes 上部署完整的 JobCopilot 平台。
 
 ## 安裝
 
@@ -20,21 +20,21 @@
 
 ```bash
 # 先建立命名空間
-kubectl create namespace resume-assistant
+kubectl create namespace JobCopilot
 
 # 使用預設值安裝（自建中介軟體，開發配置）
-helm install resume-assistant . \
-  --namespace resume-assistant
+helm install JobCopilot . \
+  --namespace JobCopilot
 
 # 生產環境安裝（託管中介軟體）
-helm install resume-assistant . \
-  --namespace resume-assistant \
+helm install JobCopilot . \
+  --namespace JobCopilot \
   -f values.yaml \
   -f values-production.yaml
 
 # 最小資源安裝（kind/minikube）
-helm install resume-assistant . \
-  --namespace resume-assistant \
+helm install JobCopilot . \
+  --namespace JobCopilot \
   -f values.yaml \
   -f values-minimal.yaml
 ```
@@ -42,8 +42,8 @@ helm install resume-assistant . \
 ### 升級
 
 ```bash
-helm upgrade resume-assistant . \
-  --namespace resume-assistant \
+helm upgrade JobCopilot . \
+  --namespace JobCopilot \
   -f values.yaml \
   -f values-production.yaml
 ```
@@ -51,9 +51,9 @@ helm upgrade resume-assistant . \
 ### 解除安裝
 
 ```bash
-helm uninstall resume-assistant --namespace resume-assistant
+helm uninstall JobCopilot --namespace JobCopilot
 # 注意：預設不會刪除 PVC，以防止資料遺失
-kubectl delete pvc -n resume-assistant -l app.kubernetes.io/name=resume-assistant
+kubectl delete pvc -n JobCopilot -l app.kubernetes.io/name=JobCopilot
 ```
 
 ---
@@ -66,7 +66,7 @@ kubectl delete pvc -n resume-assistant -l app.kubernetes.io/name=resume-assistan
 |-----------|-------------|---------|
 | `global.infraMode` | 中介軟體模式：`embedded` 或 `managed` | `embedded` |
 | `secrets.existingSecret` | 使用預先建立的 Secret 替代 Helm 管理 | `""` |
-| `ingress.host` | Ingress 網域 | `resume-assistant.local` |
+| `ingress.host` | Ingress 網域 | `JobCopilot.local` |
 | `ingress.tls.enabled` | 啟用 TLS | `false` |
 | `backend.replicaCount` | 後端副本數 | `1` |
 | `backend.springProfilesActive` | Spring 設定檔 | `dev` |
@@ -79,7 +79,7 @@ kubectl delete pvc -n resume-assistant -l app.kubernetes.io/name=resume-assistan
 
 ### 完整值參考
 
-參見 [`values.yaml`](../../../../../../deployment/k8s/helm/resume-assistant/values.yaml)。
+參見 [`values.yaml`](../../../../../deployment/k8s/helm/jobcopilot/values.yaml)。
 
 ---
 
@@ -98,21 +98,21 @@ secrets:
 
 ```bash
 # 手動建立 Secret
-kubectl create secret generic resume-assistant-secrets \
-  --namespace=resume-assistant \
+kubectl create secret generic JobCopilot-secrets \
+  --namespace=JobCopilot \
   --from-literal=JWT_SECRET=... \
   --from-literal=POSTGRES_PASSWORD=...
 
 # 在 values 中引用
-helm install resume-assistant . \
-  --set secrets.existingSecret=resume-assistant-secrets
+helm install JobCopilot . \
+  --set secrets.existingSecret=JobCopilot-secrets
 ```
 
 ### 方式三：External Secrets Operator
 
 ```yaml
 secrets:
-  existingSecret: "resume-assistant-eso-secret"
+  existingSecret: "JobCopilot-eso-secret"
 ```
 
 設定 ESO 從 AWS Secrets Manager、Azure Key Vault 或 GCP Secret Manager 同步。
@@ -130,7 +130,7 @@ secrets:
 
 提供 `init.sql`：
 ```bash
-helm install resume-assistant . \
+helm install JobCopilot . \
   --set-file postgres.initSql=../../../backend/app/src/main/resources/db/init.sql
 ```
 
@@ -146,7 +146,7 @@ helm install resume-assistant . \
 # 對金鑰檔案進行 Base64 編碼
 export GCP_CREDS_B64=$(base64 -w 0 /path/to/gcp-service-account.json)
 
-helm install resume-assistant . \
+helm install JobCopilot . \
   --set secrets.gcpCredentialsJson="$GCP_CREDS_B64"
 ```
 
@@ -161,7 +161,7 @@ Chart 會建立獨立的 Secret，並以唯讀卷形式掛載到 `/app/credentia
 helm lint .
 
 # 渲染模板而不安裝
-helm template resume-assistant . \
+helm template JobCopilot . \
   -f values.yaml \
   -f values-production.yaml > rendered.yaml
 
@@ -179,17 +179,17 @@ global:
 
 backend:
   image:
-    repository: resume-assistant-backend
+    repository: JobCopilot-backend
     tag: "v1.2.3"
 
 aiService:
   image:
-    repository: resume-assistant-ai-service
+    repository: JobCopilot-ai-service
     tag: "v1.2.3"
 
 frontend:
   image:
-    repository: resume-assistant-frontend
+    repository: JobCopilot-frontend
     tag: "v1.2.3"
 ```
 

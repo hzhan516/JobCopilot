@@ -1,7 +1,7 @@
 <!-- Language Switcher / 语言切换 / 語言切換 -->
 > [English](../../../architecture/Architecture.md) | [简体中文](Architecture.md) | [繁體中文](../../zh-Hant-TW/architecture/Architecture.md)
 
-# 智能求职助手 - 架构设计文档
+# JobCopilot - 架构设计文档
 
 
 ---
@@ -10,11 +10,11 @@
 
 | 项目       | 内容                                 |
 |----------|------------------------------------|
-| **文档标题** | 智能求职助手 - 架构设计文档                    |
+| **文档标题** | JobCopilot - 架构设计文档                    |
 | **版本**   | 1.0                                |
 | **日期**   | 2025年1月                            |
 | **作者**   | SER 594 课程项目组                      |
-| **项目**   | 智能求职助手 (Intelligent Job Assistant) |
+| **项目**   | JobCopilot |
 | **状态**   | 草案                                 |
 
 ### 版本历史
@@ -29,7 +29,7 @@
 
 ### 2.1 系统简介
 
-智能求职助手是一个基于人工智能的求职辅助平台，旨在通过先进的AI技术帮助求职者优化求职流程。系统整合了简历智能解析、职位智能匹配、对话式简历优化和求职进度追踪四大核心功能。
+JobCopilot 是一个使用 AI 帮助求职者改进简历、发现相关机会、跟踪申请进度的求职平台。系统结合 Web 技术与 AI 能力，为求职者提供对话式界面。
 
 ### 2.2 设计目标
 
@@ -1097,7 +1097,7 @@ services:
   backend:
     build: ./backend
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/resume_assistant
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/JobCopilot
       - SPRING_RABBITMQ_HOST=rabbitmq
       - JWT_SECRET=${JWT_SECRET}
     depends_on:
@@ -1130,7 +1130,7 @@ services:
   postgres:
     image: docker.io/ankane/pgvector:latest
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-resume_assistant}
+      - POSTGRES_DB=${POSTGRES_DB:-JobCopilot}
       - POSTGRES_USER=${POSTGRES_USER:-resume_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
     volumes:
@@ -1369,4 +1369,4 @@ networks:
 
 ## 文档结束
 
-*本文档由SER 594课程项目组编写，用于智能求职助手项目的架构设计参考。*
+*本文档由 SER 594 课程项目组编写，用于 JobCopilot 项目的架构设计参考。*

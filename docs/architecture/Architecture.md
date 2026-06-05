@@ -1,7 +1,7 @@
 <!-- Language Switcher / 语言切换 / 語言切換 -->
 > [English](Architecture.md) | [简体中文](../i18n/zh-Hans-CN/architecture/Architecture.md) | [繁體中文](../i18n/zh-Hant-TW/architecture/Architecture.md)
 
-# Intelligent Job Assistant - Architecture Document
+# JobCopilot - Architecture Document
 
 
 ---
@@ -10,7 +10,7 @@
 
 | Field               | Value                                    |
 | ------------------- | ---------------------------------------- |
-| **Project Name**    | Intelligent Job Assistant (智能求职助手)       |
+| **Project Name**    | JobCopilot                               |
 | **Document Title**  | System Architecture Document             |
 | **Version**         | 1.0.0                                    |
 | **Date**            | 2025-01                                  |
@@ -30,9 +30,9 @@
 
 ### 2.1 System Purpose
 
-The Intelligent Job Assistant is a comprehensive job search platform that leverages artificial intelligence to help job
-seekers optimize their resumes, discover relevant job opportunities, and track their application progress. The system
-combines modern web technologies with advanced AI capabilities to provide an intelligent, conversational experience for
+JobCopilot is a job search platform that uses AI to help job
+seekers improve their resumes, find relevant opportunities, and track application progress. The system
+combines web technologies with AI capabilities to provide a conversational interface for
 job seekers.
 
 ### 2.2 Key Features
@@ -1686,7 +1686,7 @@ services:
   backend:
     build: ./backend
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/resume_assistant
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/JobCopilot
       - SPRING_RABBITMQ_HOST=rabbitmq
       - JWT_SECRET=${JWT_SECRET}
     depends_on:
@@ -1719,7 +1719,7 @@ services:
   postgres:
     image: docker.io/ankane/pgvector:latest
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-resume_assistant}
+      - POSTGRES_DB=${POSTGRES_DB:-JobCopilot}
       - POSTGRES_USER=${POSTGRES_USER:-resume_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-resume_pass}
     volumes:

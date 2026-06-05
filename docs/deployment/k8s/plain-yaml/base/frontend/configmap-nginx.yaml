@@ -4,10 +4,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: resume-assistant-nginx-config
-  namespace: resume-assistant
+  name: jobcopilot-nginx-config
+  namespace: jobcopilot
   labels:
-    app.kubernetes.io/name: resume-assistant
+    app.kubernetes.io/name: jobcopilot
     app.kubernetes.io/component: frontend
 data:
   default.conf: |
@@ -30,7 +30,7 @@ data:
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
         location /api/ {
-            proxy_pass http://resume-assistant-backend:8080;
+            proxy_pass http://jobcopilot-backend:8080;
             proxy_http_version 1.1;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -42,7 +42,7 @@ data:
         }
 
         location = /api {
-            proxy_pass http://resume-assistant-backend:8080/api;
+            proxy_pass http://jobcopilot-backend:8080/api;
             proxy_http_version 1.1;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;

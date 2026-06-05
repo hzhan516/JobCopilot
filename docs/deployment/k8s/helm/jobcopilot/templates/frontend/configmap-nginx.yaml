@@ -1,0 +1,62 @@
+{{- if .Values.frontend.enabled }}
+# =============================================================================
+# Frontend Nginx ConfigMap
+# =============================================================================
+# Replaces default.conf to reverse-proxy /api to backend and serve SPA.
+# 替换 default.conf，将 /api 反向代理到后端并服务 SPA。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "jobcopilot.fullname" . }}-nginx-config
+  namespace: {{ include "jobcopilot.namespace" . }}
+  labels:
+    {{- include "jobcopilot.frontend.labels" . | nindent 4 }}
+data:
+  default.conf: |
+    server {
+        listen 8080;
+        server_name _;
+
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location = /health {
+            access_log off;
+            add_header Content-Type text/plain;
+            return 200 'ok';
+        }
+
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+        location /api/ {
+            proxy_pass http://{{ include "jobcopilot.fullname" . }}-backend:8080;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_connect_timeout 300;
+            proxy_send_timeout 300;
+            proxy_read_timeout 300;
+        }
+
+        location = /api {
+            proxy_pass http://{{ include "jobcopilot.fullname" . }}-backend:8080/api;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_connect_timeout 300;
+            proxy_send_timeout 300;
+            proxy_read_timeout 300;
+        }
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+    }
+{{- end }}

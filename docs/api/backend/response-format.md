@@ -9,7 +9,7 @@
 
 ## Overview
 
-The Resume Assistant API adopts a unified response format. Regardless of whether the request succeeds or fails, the following structure is returned:
+The JobCopilot API adopts a unified response format. Regardless of whether the request succeeds or fails, the following structure is returned:
 
 ```json
 {
