@@ -1,23 +1,22 @@
 # =============================================================================
-# JobCopilot - Docker Compose Configuration (Example Template)
+# JobCopilot - Docker Compose Configuration
 # =============================================================================
 # This file defines a production-oriented three-tier Docker network deployment.
 # Only the frontend Nginx reverse proxy is exposed to the host. All other
 # services communicate through isolated Docker networks.
 #
 # QUICK START
-#   1. Copy this file to `docker-compose.yml`:
-#        cp docker-compose.yml.example docker-compose.yml
-#   2. Create a `.env` file from `.env.example` and fill in all secrets:
+#   1. Create a `.env` file from `.env.example` and fill in the required values:
 #        cp .env.example .env
-#        # Edit .env — you MUST set VITE_GOOGLE_CLIENT_ID and JWT_SECRET.
-#   3. Launch the stack:
-#        docker-compose up -d
-#   4. Verify health:
+#        # Edit .env — set VITE_GOOGLE_CLIENT_ID, JWT_SECRET, and your AI provider key.
+#   2. Launch the stack:
+#        docker compose --env-file .env up -d --build
+#   3. Verify health:
 #        curl -f http://localhost/health
 #
 # IMPORTANT SECURITY NOTES
-#   - `docker-compose.yml` is gitignored. Never commit secrets.
+#   - `docker-compose.yml` is tracked. Never put secrets directly in this file.
+#   - `.env` is local-only and gitignored. Keep all secrets there.
 #   - Only port 80 (frontend Nginx) is exposed to the host by default.
 #   - Backend, AI service, RabbitMQ, and PostgreSQL are reachable ONLY from
 #     within their respective Docker networks.
@@ -100,7 +99,7 @@ services:
     #       memory: 512M
 
   # ============================================================================
-  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 1 of 3)
+  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 1 of 6)
   # ============================================================================
   # The backend is the ONLY service that spans all three network tiers.
   # It acts as the security gateway between the public internet and the
@@ -151,8 +150,10 @@ services:
       # Port 5672 is NOT exposed to the host; AMQP traffic stays inside Docker.
       - SPRING_RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - SPRING_RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
-      - SPRING_RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:?RabbitMQ username is required}
-      - SPRING_RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:?RabbitMQ password is required}
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_USERNAME:?RabbitMQ username is required}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:?RabbitMQ password is required}
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME:?RabbitMQ username is required}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:?RabbitMQ password is required}
 
       # --- File Storage ---
       # Local filesystem storage is used for the Docker Compose deployment.
@@ -242,7 +243,7 @@ services:
       start_period: 120s
 
   # ============================================================================
-  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 2 of 3)
+  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 2 of 6)
   # ============================================================================
   # The AI service hosts all LLM inference workloads: resume parsing, job
   # parsing, embedding generation, job ranking, and conversation assistance.
@@ -282,8 +283,8 @@ services:
       # --- RabbitMQ Configuration (internal-network) ---
       - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:?RabbitMQ username is required}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:?RabbitMQ password is required}
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME:?RabbitMQ username is required}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:?RabbitMQ password is required}
 
       # --- File Storage (shared with backend, read-only) ---
       - FILE_STORAGE_PATH=/app/uploads
@@ -366,7 +367,7 @@ services:
       start_period: 60s
 
   # ============================================================================
-  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 3 of 4)
+  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 3 of 6)
   # ============================================================================
   # Redis  serves as the shared state layer for distributed caching, locks,
   # and Pub/Sub bridging between backend instances and AI service instances.
@@ -396,7 +397,7 @@ services:
       start_period: 10s
 
   # ============================================================================
-  # TIER 2 — INTERNAL APPLICATION LAYER
+  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 4 of 6)
   # ============================================================================
   # MinIO provides S3-compatible object storage for AI model artifacts generated
   # by the incremental learning worker and loaded by ai-service.
@@ -421,7 +422,7 @@ services:
       start_period: 20s
 
   # ============================================================================
-  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 4 of 4)
+  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 5 of 6)
   # ============================================================================
   # RabbitMQ is the asynchronous message broker between backend and ai-service.
   # It implements the Outbox pattern: the backend publishes commands to
@@ -444,8 +445,8 @@ services:
   #   - The Management UI (port 15672) is NOT exposed to the internet.
   #     Access it via SSH tunnel when needed:
   #       ssh -L 15672:localhost:15672 <your-host>
-  #   - Override default guest/guest credentials via RABBITMQ_DEFAULT_USER and
-  #     RABBITMQ_DEFAULT_PASS in .env.
+  #   - Override default guest/guest credentials via RABBITMQ_USERNAME and
+  #     RABBITMQ_PASSWORD in .env.
   # ============================================================================
   rabbitmq:
     image: public.ecr.aws/docker/library/rabbitmq:3.13-management-alpine
@@ -456,8 +457,6 @@ services:
     # ports:
     #   - "5672:5672"   # AMQP protocol
     #   - "15672:15672" # Management UI (never expose to the internet)
-    env_file:
-      - .env
     environment:
       # Default user created on first startup. Override in .env for security.
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
@@ -481,27 +480,20 @@ services:
       start_period: 60s
 
   # ============================================================================
-  # TIER 3 — DATA LAYER
+  # TIER 2 — INTERNAL APPLICATION LAYER  (Part 6 of 6)
   # ============================================================================
-  # PostgreSQL 15 with the pgvector extension serves as the unified storage
-  # for relational business data and high-dimensional vector embeddings.
+  # The AI worker runs stateful background jobs such as incremental model
+  # retraining. It shares the ai-service image but uses a different command.
   #
   # Network membership:
   #   public-network   — no
-  #   internal-network — no
-  #   db-network       — yes (JDBC from backend ONLY)
-  #
-  # Role:
-  #   - Relational data: users, resumes, jobs, applications, conversations
-  #   - Vector data: resume embeddings, job embeddings (via pgvector)
-  #   - Similarity search: cosine distance on ivfflat/hnsw indexes
+  #   internal-network — yes (RabbitMQ, Redis, MinIO, backend callbacks)
+  #   db-network       — no
   #
   # Security:
-  #   - No host port is mapped. The database is reachable ONLY from the
-  #     backend via the isolated db-network.
-  #   - A strong POSTGRES_PASSWORD is mandatory defense-in-depth even with
-  #     network isolation.
-  #   - pgvector extension is pre-installed in the ankane/pgvector image.
+  #   - No host port is mapped.
+  #   - It receives only the runtime variables required for queue, cache,
+  #     model registry, and internal backend calls.
   # ============================================================================
 
   ai-worker:
@@ -516,8 +508,8 @@ services:
     environment:
       - RABBITMQ_HOST=${RABBITMQ_HOST:-rabbitmq}
       - RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:?RabbitMQ username is required}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:?RabbitMQ password is required}
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME:?RabbitMQ username is required}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:?RabbitMQ password is required}
       - REDIS_HOST=${REDIS_HOST:-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_PASSWORD=${REDIS_PASSWORD:?Redis password is required}
@@ -546,6 +538,30 @@ services:
       retries: 3
       start_period: 30s
 
+  # ============================================================================
+  # TIER 3 — DATA LAYER
+  # ============================================================================
+  # PostgreSQL 15 with the pgvector extension serves as the unified storage
+  # for relational business data and high-dimensional vector embeddings.
+  #
+  # Network membership:
+  #   public-network   — no
+  #   internal-network — no
+  #   db-network       — yes (JDBC from backend ONLY)
+  #
+  # Role:
+  #   - Relational data: users, resumes, jobs, applications, conversations
+  #   - Vector data: resume embeddings, job embeddings (via pgvector)
+  #   - Similarity search: cosine distance on ivfflat/hnsw indexes
+  #
+  # Security:
+  #   - No host port is mapped. The database is reachable ONLY from the
+  #     backend via the isolated db-network.
+  #   - A strong POSTGRES_PASSWORD is mandatory defense-in-depth even with
+  #     network isolation.
+  #   - pgvector extension is pre-installed in the ankane/pgvector image.
+  # ============================================================================
+
   postgres:
     image: docker.io/ankane/pgvector:latest
     container_name: jobcopilot-postgres
@@ -554,8 +570,6 @@ services:
     # GUI (e.g. pgAdmin, DBeaver) during development.
     # ports:
     #   - "5432:5432"
-    env_file:
-      - .env
     environment:
       - POSTGRES_DB=${POSTGRES_DB:?Database name is required}
       - POSTGRES_USER=${POSTGRES_USER:?Database user is required}

@@ -37,7 +37,7 @@ vim .env
 必需配置项：
 
 - `JWT_SECRET`: JWT 签名密钥（生产环境必须修改）
-- 一个兼容 LiteLLM 的模型服务密钥，例如 `GEMINI_API_KEY`、`OPENAI_API_KEY`、`ANTHROPIC_API_KEY` 或 `GROQ_API_KEY`
+- 一个兼容 LiteLLM 的模型服务密钥，例如 `GEMINI_API_KEY`、`OPENAI_API_KEY` 或 `ANTHROPIC_API_KEY`
 - `LLM_TEXT_MODEL`、`LLM_VISION_MODEL` 和 `LLM_EMBEDDING_MODEL`: 与所选模型服务前缀匹配的模型名称
 - `LLM_EMBEDDING_MODEL_DIMENSION`: 嵌入模型输出维度（必须与所选模型一致，默认 1536）
 - `CAPTCHA_ENABLED`: 是否启用 CAPTCHA 验证（`true`/`false`，默认 `true`）

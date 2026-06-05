@@ -1,6 +1,6 @@
 # 贡献者公约行为准则
 
-> **Languages:** [English](../../CODE_OF_CONDUCT.md) | 简体中文 (current) | [繁體中文](../zh-Hant-TW/CODE_OF_CONDUCT.md)
+> **Languages:** [English](../../../CODE_OF_CONDUCT.md) | 简体中文 (current) | [繁體中文](../zh-Hant-TW/CODE_OF_CONDUCT.md)
 
 ## 我们的承诺
 

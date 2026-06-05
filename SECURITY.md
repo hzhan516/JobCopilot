@@ -6,13 +6,16 @@
 
 | Version | Supported |
 |--------:|:---------:|
-| 1.0.x   | ✅        |
+| `main` / latest release | ✅ |
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in ResumeAssistant, please report it privately via email to the project maintainers. Do **not** open a public issue.
+If you discover a security vulnerability in JobCopilot, please report it privately. Do **not** open a public issue.
 
-**Contact:** Please reach out through the project's designated security contact (maintainer email or private messaging channel).
+**Preferred channel:** Use GitHub private vulnerability reporting:
+`https://github.com/<owner>/<repo>/security/advisories/new`
+
+If private vulnerability reporting is not available for your fork or mirror, contact the maintainers through a private channel and include enough detail to reproduce and assess the issue.
 
 We aim to respond within **48 hours** and will work with you to validate, prioritize, and fix the issue.
 
@@ -51,4 +54,4 @@ We aim to respond within **48 hours** and will work with you to validate, priori
 
 ---
 
-*Last updated: 2026-05-26*
+*Last updated: 2026-06-05*

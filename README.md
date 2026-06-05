@@ -3,16 +3,9 @@
 
 # JobCopilot
 
-The **JobCopilot** is an AI-powered platform for new graduates and career changers. It parses uploaded resumes, evaluates them against job market data using semantic vector matching, and provides an interactive AI copilot to iteratively improve resume content. Secure document management, asynchronous AI processing, and personalized recommendations save users time and improve interview rates.
+**JobCopilot** is an AI-powered platform for new graduates and career changers. It parses uploaded resumes, evaluates them against job market data using semantic vector matching, and provides an interactive AI copilot to iteratively improve resume content. Secure document management, asynchronous AI processing, and personalized recommendations save users time and improve interview rates.
 
 **Deployment:** The system is verified through Docker Compose. Copy `.env.example` to `.env`, configure the required values, then run `docker compose --env-file .env up -d --build`. The frontend is available at `http://localhost` by default, or `http://localhost:${FRONTEND_HOST_PORT}` if a custom port is configured.
-
-
-## Team Roster
-
-- **Guixing Jia** (@GuixingJia) - Project Manager, Python AI Service & Frontend
-- **Hansheng Zhang** (@hzhan516) - Java Backend & Database Lead
-- **Mu-Hsi Yu** (@mhsiy) - Frontend & UX Lead, Python AI Service
 
 ## Features
 
@@ -91,7 +84,6 @@ This project adopts a microservices architecture with the following components:
 ├── docs/                      # Architecture, API, deployment, and i18n documentation
 ├── eval/                      # AI evaluation scripts, benchmark cases, and results
 ├── docker-compose.yml         # Docker Compose configuration
-├── docker-compose.yml.example # Docker Compose template/reference
 ├── empty-vertex.json          # Placeholder credentials file for non-Vertex local runs
 └── .env.example               # Environment variables template
 ```
@@ -115,7 +107,7 @@ The backend adopts **Hexagonal Architecture / Domain-Driven Design (DDD)** with 
 
 - Docker 20.10+ and Docker Compose 2.0+
 - Or Podman with podman-compose
-- One LiteLLM-compatible AI provider key for local AI features, such as Gemini, OpenAI, Anthropic, or Groq
+- One LiteLLM-compatible AI provider key for local AI features, such as Gemini, OpenAI, or Anthropic
 - Google Cloud / Vertex AI is optional and is not required for local development
 
 ### 1. Clone the Repository
@@ -150,7 +142,6 @@ Key environment variables:
 | `GEMINI_API_KEY`         | Conditional | Gemini API key used when `LLM_*_MODEL` uses the `gemini/` prefix |
 | `OPENAI_API_KEY`         | Conditional | OpenAI API key used when `LLM_*_MODEL` uses the `openai/` prefix |
 | `ANTHROPIC_API_KEY`      | Conditional | Anthropic API key used when `LLM_*_MODEL` uses the `anthropic/` prefix |
-| `GROQ_API_KEY`           | Conditional | Groq API key used when `LLM_*_MODEL` uses the `groq/` prefix |
 | `LLM_TEXT_MODEL`         | No       | LiteLLM text model name; defaults to a Gemini model in Compose |
 | `LLM_VISION_MODEL`       | No       | LiteLLM vision model name |
 | `LLM_EMBEDDING_MODEL`           | No       | LiteLLM embedding model name |
@@ -163,7 +154,11 @@ Key environment variables:
 | `CAPTCHA_TRACK_WIDTH`    | No       | CAPTCHA track width in pixels. Default: `300` |
 | `REDIS_HOST`             | No       | Redis hostname. Default: `redis` (Docker) or `localhost` |
 | `REDIS_PORT`             | No       | Redis port. Default: `6379` |
-| `REDIS_PASSWORD`         | No       | Redis AUTH password. Leave empty for no-auth (dev default) |
+| `REDIS_PASSWORD`         | Yes      | Redis AUTH password used by Compose; change the local default before deployment |
+| `MINIO_ENDPOINT`         | No       | Internal MinIO endpoint for the AI model registry |
+| `MINIO_ACCESS_KEY`       | Yes      | MinIO access key for the AI model registry |
+| `MINIO_SECRET_KEY`       | Yes      | MinIO secret key for the AI model registry |
+| `MINIO_MODEL_BUCKET`     | No       | MinIO bucket used for trained model artifacts |
 | `CAPTCHA_MAX_ATTEMPTS`   | No       | Maximum CAPTCHA attempts per IP. Default: `5` |
 
 For local development, copy `.env.example` to `.env` and provide one API key that matches the LiteLLM model prefix you choose. For example, the default Gemini models use `GEMINI_API_KEY`.
@@ -390,9 +385,8 @@ See [docs/deployment/DOCKER_DEPLOY.md](docs/deployment/DOCKER_DEPLOY.md) for det
 
 ## License
 
-This project is developed for academic purposes at JobCopilot Open Source (JobCopilot course).
+Distributed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-- JobCopilot Open Source
-- JobCopilot Course Team
+Thanks to the open-source projects, contributors, and users that make JobCopilot possible.

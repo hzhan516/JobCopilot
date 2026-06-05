@@ -7,13 +7,6 @@
 
 **部署：** 系統已通過 Docker Compose 驗證。將 `.env.example` 複製為 `.env`，配置所需值後執行 `docker compose --env-file .env up -d --build`。前端默認可透過 `http://localhost` 存取；如果配置了自訂連接埠，則透過 `http://localhost:${FRONTEND_HOST_PORT}` 存取。
 
-
-## 團隊成員
-
-- **Guixing Jia** (@GuixingJia) — 專案經理，Python AI 服務 & 前端開發
-- **Hansheng Zhang** (@hzhan516) — Java 後端 & 資料庫負責人
-- **Mu-Hsi Yu** (@mhsiy) — 前端 & UX 負責人，Python AI 服務
-
 ## 功能特性
 
 - **身份認證**：郵箱/密碼註冊（支援可選的郵件驗證）以及 Google OAuth 2.0 登入，受滑塊 CAPTCHA 反爬蟲保護
@@ -91,7 +84,6 @@
 ├── docs/                      # 架構、API、部署和國際化文件
 ├── eval/                      # AI 評估指令碼、基準用例和結果
 ├── docker-compose.yml         # Docker Compose 配置
-├── docker-compose.yml.example # Docker Compose 模板/參考
 ├── empty-vertex.json          # 非 Vertex 本地執行的占位憑證檔案
 └── .env.example               # 環境變數模板
 ```
@@ -115,7 +107,7 @@
 
 - Docker 20.10+ 和 Docker Compose 2.0+
 - 或帶 podman-compose 的 Podman
-- 一個 LiteLLM 相容的 AI 服務商金鑰用於本地 AI 功能，例如 Gemini、OpenAI、Anthropic 或 Groq
+- 一個 LiteLLM 相容的 AI 服務商金鑰用於本地 AI 功能，例如 Gemini、OpenAI 或 Anthropic
 - Google Cloud / Vertex AI 為可選項，本地開發不需要強制配置
 
 ### 1. 複製倉庫
@@ -150,7 +142,6 @@ cp .env.example .env
 | `GEMINI_API_KEY`             | 有條件    | 當 `LLM_*_MODEL` 使用 `gemini/` 字首時使用的 Gemini API 金鑰       |
 | `OPENAI_API_KEY`             | 有條件    | 當 `LLM_*_MODEL` 使用 `openai/` 字首時使用的 OpenAI API 金鑰     |
 | `ANTHROPIC_API_KEY`          | 有條件    | 當 `LLM_*_MODEL` 使用 `anthropic/` 字首時使用的 Anthropic API 金鑰 |
-| `GROQ_API_KEY`               | 有條件    | 當 `LLM_*_MODEL` 使用 `groq/` 字首時使用的 Groq API 金鑰          |
 | `LLM_TEXT_MODEL`             | 否        | LiteLLM 文字模型名稱；Compose 中預設為 Gemini 模型               |
 | `LLM_VISION_MODEL`           | 否        | LiteLLM 視覺模型名稱                                             |
 | `LLM_EMBEDDING_MODEL`        | 否        | LiteLLM 嵌入模型名稱                                             |
@@ -163,7 +154,11 @@ cp .env.example .env
 | `CAPTCHA_TRACK_WIDTH`        | 否        | CAPTCHA 軌道寬度（畫素）。預設：`300`                            |
 | `REDIS_HOST`                 | 否        | Redis 主機名。預設：`redis`（Docker）或 `localhost`               |
 | `REDIS_PORT`                 | 否        | Redis 埠。預設：`6379`                                         |
-| `REDIS_PASSWORD`             | 否        | Redis 認證密碼。留空表示無認證（開發預設）                        |
+| `REDIS_PASSWORD`             | 是        | Compose 使用的 Redis 認證密碼；部署前請更改本地預設值              |
+| `MINIO_ENDPOINT`             | 否        | AI 模型註冊表使用的內部 MinIO 端點                                 |
+| `MINIO_ACCESS_KEY`           | 是        | AI 模型註冊表使用的 MinIO 存取金鑰                                 |
+| `MINIO_SECRET_KEY`           | 是        | AI 模型註冊表使用的 MinIO 金鑰                                     |
+| `MINIO_MODEL_BUCKET`         | 否        | 用於儲存訓練模型產物的 MinIO 儲存桶                                |
 | `CAPTCHA_MAX_ATTEMPTS`       | 否        | 每 IP 最大 CAPTCHA 嘗試次數。預設：`5`                           |
 
 本地開發時，將 `.env.example` 複製為 `.env`，並提供與您選擇的 LiteLLM 模型字首匹配的 API 金鑰。例如，預設 Gemini 模型使用 `GEMINI_API_KEY`。
@@ -391,9 +386,8 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ## 授權條款
 
-本專案為學術目的在 JobCopilot Open Source（JobCopilot 課程）開發。
+本專案基於 MIT 授權條款發布。詳情請參見 [LICENSE](../../../LICENSE)。
 
 ## 致謝
 
-- JobCopilot Open Source
-- JobCopilot 課程團隊
+感謝支持 JobCopilot 的開源專案、貢獻者和使用者。

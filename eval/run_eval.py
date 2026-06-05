@@ -258,7 +258,6 @@ def check_live_environment() -> None:
         "gemini/": "GEMINI_API_KEY",
         "openai/": "OPENAI_API_KEY",
         "anthropic/": "ANTHROPIC_API_KEY",
-        "groq/": "GROQ_API_KEY",
     }
 
     required_key = None

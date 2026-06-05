@@ -37,7 +37,7 @@ vim .env
 Required variables:
 
 - `JWT_SECRET`: JWT signing key (must be changed in production)
-- A LiteLLM-compatible model service key, e.g. `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GROQ_API_KEY`
+- A LiteLLM-compatible model service key, e.g. `GEMINI_API_KEY`, `OPENAI_API_KEY`, or `ANTHROPIC_API_KEY`
 - `LLM_TEXT_MODEL`, `LLM_VISION_MODEL`, and `LLM_EMBEDDING_MODEL`: model names matching the selected service prefix
 - `LLM_EMBEDDING_MODEL_DIMENSION`: embedding output dimension (must match the selected model, default 1536)
 - `CAPTCHA_ENABLED`: Enable CAPTCHA verification for auth endpoints (`true`/`false`, default `true`)

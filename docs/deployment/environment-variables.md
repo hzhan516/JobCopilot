@@ -280,16 +280,6 @@ You only need to configure **one** provider. The choice is determined by the pre
 | **Security notes** | Claude models are generally more expensive per token than Gemini Flash. Evaluate cost before switching. |
 | **Common mistakes** | Forgetting to update the model prefix from `gemini/` to `anthropic/` when switching providers. |
 
-### `GROQ_API_KEY`
-
-| Field | Value |
-|-------|-------|
-| **Purpose** | API key for Groq (fast inference) models via LiteLLM. |
-| **Default** | *(empty)* |
-| **Valid values** | A valid Groq API key |
-| **Security notes** | Groq offers very low latency but limited model selection. |
-| **Common mistakes** | Expecting embedding support from Groq — most Groq models are text-generation only. |
-
 ### `OLLAMA_API_BASE`
 
 | Field | Value |

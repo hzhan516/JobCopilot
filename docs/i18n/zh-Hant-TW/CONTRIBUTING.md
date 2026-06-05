@@ -1,8 +1,8 @@
 # 貢獻指南
 
-> **語言**: [English](../../CONTRIBUTING.md) | [簡體中文](../zh-Hans-CN/CONTRIBUTING.md) | **繁體中文**
+> **語言**: [English](../../../CONTRIBUTING.md) | [簡體中文](../zh-Hans-CN/CONTRIBUTING.md) | **繁體中文**
 
-感謝您對 ResumeAssistant 的興趣！本文件提供指南和說明，幫助您快速上手。
+感謝您對 JobCopilot 的興趣！本文件提供指南和說明，幫助您快速上手。
 
 ---
 
@@ -54,11 +54,11 @@
 
 ```bash
 # 在 GitHub 上 Fork 儲存庫，然後克隆您的 Fork
-git clone https://github.com/YOUR_USERNAME/ser594_Team6-ResumeAssistant.git
-cd ser594_Team6-ResumeAssistant
+git clone <your-fork-url>
+cd <repository-name>
 
 # 添加上游遠端儲存庫
-git remote add upstream https://github.com/hzhan516/ser594_Team6-ResumeAssistant.git
+git remote add upstream <upstream-repository-url>
 ```
 
 ---
@@ -70,14 +70,16 @@ git remote add upstream https://github.com/hzhan516/ser594_Team6-ResumeAssistant
 ```bash
 cp .env.example .env
 # 編輯 .env 配置您的參數
-docker compose -f docker-compose.yml.example up -d
+docker compose --env-file .env up -d --build
 ```
 
 ### 方案 B：本地開發
 
 ```bash
 # 1. 啟動基礎設施服務
-docker compose -f docker-compose.infra.yml up -d
+cp .env.example .env
+# 編輯 .env 配置您的本地參數
+docker compose --env-file .env up -d postgres redis rabbitmq minio
 
 # 2. 後端
 cd backend
@@ -103,7 +105,7 @@ uvicorn app.main:app --reload
 - 資料庫憑證（PostgreSQL + pgvector）
 - MinIO / S3 相容儲存
 - RabbitMQ 連線
-- OpenAI / Embedding API 金鑰
+- LiteLLM 提供商 API 金鑰，例如 Gemini、OpenAI 或 Anthropic
 - Google OAuth 憑證
 
 詳見 `docs/deployment/` 詳細配置參考。
@@ -137,23 +139,23 @@ uvicorn app.main:app --reload
 
 ## 分支策略
 
-我們採用簡化的 Git Flow 模型：
+我們採用適合開源協作的輕量主幹開發流程：
 
 | 分支 | 用途 | 保護規則 |
 |--------|---------|------------|
-| `main` | 生產就緒版本 | 受保護；需要 PR + 1 個審查 |
-| `develop` | 下一個版本的整合分支 | 受保護；需要 PR |
-| `feature/*` | 新功能 | 透過 PR 合併到 `develop` |
-| `fix/*` | Bug 修復 | 透過 PR 合併到 `develop` |
-| `hotfix/*` | 緊急生產修復 | 透過 PR 合併到 `main` + `develop` |
-| `sanitize-for-oss` | 開源準備 / 清理 | 長期分支；定期 rebase |
+| `main` | 穩定開發分支和發布來源 | 受保護；需要 PR + 審查 |
+| `feature/*` | 新功能 | 短生命週期分支；透過 PR 合併到 `main` |
+| `fix/*` | Bug 修復 | 短生命週期分支；透過 PR 合併到 `main` |
+| `docs/*` | 僅文件變更 | 短生命週期分支；透過 PR 合併到 `main` |
+| `chore/*` | 維護、依賴、工具鏈變更 | 短生命週期分支；透過 PR 合併到 `main` |
+| `release/v*` | 可選的發布穩定分支 | 僅在維護者準備發布時建立 |
 
 ### 工作流程
 
 ```bash
 # 開始新功能
-git checkout develop
-git pull upstream develop
+git checkout main
+git pull upstream main
 git checkout -b feature/your-feature-name
 
 # 工作、提交、推送
@@ -161,7 +163,7 @@ git add .
 git commit -m "feat(matching): add vector caching for recall"
 git push origin feature/your-feature-name
 
-# 針對 develop 開啟 Pull Request（hotfix 則針對 main）
+# 針對 main 開啟 Pull Request
 ```
 
 ---
@@ -204,7 +206,7 @@ BREAKING CHANGE: /api/v1/* 端點已移除。請遷移至 /api/v2/*。
 
 ### 提交前
 
-1. **更新分支**：`git pull upstream develop`（或 `main`）
+1. **更新分支**：`git pull upstream main`
 2. **本地執行品質檢查**：
    ```bash
    # 後端
@@ -243,7 +245,7 @@ PR 必須包含：
 
 ### 審查流程
 
-1. 作者針對 `develop` 開啟 PR
+1. 作者針對 `main` 開啟 PR
 2. CI 檢查必須通過（建置、測試、Lint、安全掃描）
 3. 至少需要一個維護者審查
 4. 使用 fixup 提交處理審查回饋
@@ -379,7 +381,7 @@ ruff format .           # 格式化
 ## 發布流程
 
 1. **版本號更新**：更新 `backend/pom.xml` 和 `frontend/package.json` 的 `version`
-2. **更新日誌**：用 Conventional Commits 摘要更新 `CHANGELOG.md`
+2. **更新日誌**：如果專案維護 `CHANGELOG.md`，用 Conventional Commits 摘要更新它
 3. **打標籤**：`git tag -a v1.x.x -m "Release v1.x.x"`
 4. **建置**：CI 建置 Docker 映像並推送至倉庫
 5. **部署**：用新映像更新生產環境
@@ -396,6 +398,6 @@ ruff format .           # 格式化
 
 ## 有疑問？
 
-如有任何不清楚的地方，請開啟 [GitHub Discussion](https://github.com/hzhan516/ser594_Team6-ResumeAssistant/discussions) 或在 Issue 中提問。我們很樂意幫助。
+如有任何不清楚的地方，請開啟 [GitHub Discussion](https://github.com/<owner>/<repo>/discussions) 或在 Issue 中提問。我們很樂意幫助。
 
 **感謝貢獻！🚀**
