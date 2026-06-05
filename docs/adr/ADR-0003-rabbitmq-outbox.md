@@ -14,7 +14,7 @@
 
 ## 1. Context
 
-ResumeAssistant has numerous **asynchronous processing scenarios** requiring reliable message delivery:
+JobCopilot has numerous **asynchronous processing scenarios** requiring reliable message delivery:
 
 | Scenario | Producer | Consumer | Reliability Requirement |
 |----------|----------|----------|-------------------------|

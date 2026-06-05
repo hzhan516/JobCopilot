@@ -161,31 +161,28 @@ AMQP 連線需要使用者名稱和密碼。預設的 `guest/guest` 透過環境
 ## 5. 快速開始
 
 ```bash
-# 1. 複製 Compose 範本
-cp docker-compose.yml.example docker-compose.yml
-
-# 2. 複製環境變數範本
+# 1. 複製環境變數範本
 cp .env.example .env
 
-# 3. 編輯 .env，替換所有 [replace-me] 佔位符
+# 2. 編輯 .env，替換所有 [replace-me] 佔位符
 vim .env
 
-# 4. 產生強 JWT 金鑰（48 位元組 = 64 個 base64 字元）
+# 3. 產生強 JWT 金鑰（48 位元組 = 64 個 base64 字元）
 openssl rand -base64 48
 # 將輸出貼到 .env 的 JWT_SECRET 中
 
-# 5. 產生內部 API 金鑰（32 位元組 = 44 個 base64 字元）
+# 4. 產生內部 API 金鑰（32 位元組 = 44 個 base64 字元）
 openssl rand -base64 32
 # 將輸出貼到 .env 的 INTERNAL_API_KEY 中
 #（後端和 AI 服務必須使用完全相同的值）
 
-# 6. 啟動所有服務
+# 5. 啟動所有服務
 docker compose up -d
 
-# 7. 驗證容器健康狀態
+# 6. 驗證容器健康狀態
 docker compose ps
 
-# 8. 檢查前端健康端點
+# 7. 檢查前端健康端點
 curl -f http://localhost/health
 ```
 

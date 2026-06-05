@@ -14,7 +14,7 @@
 
 ## 1. Context / 背景
 
-ResumeAssistant 的核心匹配能力依賴 **文本嵌入（Text Embedding）** — 將簡歷、职位描述、對話上下文轉化為高維向量，通過向量相似度计算匹配分數。
+JobCopilot 的核心匹配能力依賴 **文本嵌入（Text Embedding）** — 將簡歷、职位描述、對話上下文轉化為高維向量，通過向量相似度计算匹配分數。
 
 ### 1.1 原始架構問題
 
@@ -33,7 +33,7 @@ public class ResumeApplicationService {
         
         // ① HTTP 呼叫在事務內 — 長連接阻塞資料庫連接池
         float[] embedding = restTemplate.postForObject(
-            "http://ai-service:8080/embed", cmd.getContent(), float[].class);
+            "http://ai-service:8000/api/v1/ai/embeddings", request, EmbeddingResponse.class);
         
         // ② 若 HTTP 超時，事務回滚，但 AI 服務可能已实際处理（重復生成）
         vectorRepo.save(resume.getId(), embedding);

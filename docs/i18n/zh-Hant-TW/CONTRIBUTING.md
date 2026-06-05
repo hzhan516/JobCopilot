@@ -407,6 +407,6 @@ ruff format .           # 格式化
 
 ## 有疑問？
 
-如有任何不清楚的地方，請開啟 [GitHub Discussion](https://github.com/<owner>/<repo>/discussions) 或在 Issue 中提問。我們很樂意幫助。
+如有任何不清楚的地方，請開啟 [GitHub Discussion](https://github.com/jobcopilot/jobcopilot/discussions) 或在 Issue 中提問。我們很樂意幫助。
 
 **感謝貢獻！🚀**

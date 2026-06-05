@@ -161,31 +161,28 @@ All authentication endpoints (registration, login) require a valid CAPTCHA chall
 ## 5. Quick Start
 
 ```bash
-# 1. Copy the Compose template
-cp docker-compose.yml.example docker-compose.yml
-
-# 2. Copy the environment template
+# 1. Copy the environment template
 cp .env.example .env
 
-# 3. Edit .env and replace all [replace-me] placeholders
+# 2. Edit .env and replace all [replace-me] placeholders
 vim .env
 
-# 4. Generate a strong JWT secret (48 bytes = 64 base64 chars)
+# 3. Generate a strong JWT secret (48 bytes = 64 base64 chars)
 openssl rand -base64 48
 # Paste the output into .env as JWT_SECRET
 
-# 5. Generate an internal API key (32 bytes = 44 base64 chars)
+# 4. Generate an internal API key (32 bytes = 44 base64 chars)
 openssl rand -base64 32
 # Paste the output into .env as INTERNAL_API_KEY
 # (both backend and ai-service must share the exact same value)
 
-# 6. Start all services
+# 5. Start all services
 docker compose up -d
 
-# 7. Verify container health
+# 6. Verify container health
 docker compose ps
 
-# 8. Check the frontend health endpoint
+# 7. Check the frontend health endpoint
 curl -f http://localhost/health
 ```
 

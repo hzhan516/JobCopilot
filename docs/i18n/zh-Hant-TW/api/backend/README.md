@@ -436,7 +436,7 @@ Authorization: Bearer <access_token>
 
 #### 6.1 批次 Upsert 職位向量
 - **URL**: `POST /api/v1/job-vectors/batch`
-- **認證**: 不需要（供內部 AI 服務使用）
+- **認證**: 僅限內部服務呼叫；配置 `INTERNAL_API_KEY` 時必須攜帶 `X-Internal-API-Key`。
 
 ---
 
@@ -538,8 +538,8 @@ Authorization: Bearer <access_token>
 | 取得配對歷史 | GET | `/api/v1/jobs/match/history` | 取得歷史配對記錄 | 是 |
 | 向量搜尋職位 | POST | `/api/v1/jobs/vector-search` | ANN 向量搜尋職位 | 是 |
 | 職位評分 | POST | `/api/v1/jobs/{jobId}/score` | 對職位進行履歷匹配評分 | 是 |
-| 獲取職位數據集 | GET | `/api/v1/job-dataset` | 查詢訓練數據集（內部接口） | 否 |
-| 批次 Upsert 職位向量 | POST | `/api/v1/job-vectors/batch` | 批次 Upsert 職位向量（AI 層） | 否 |
+| 獲取職位數據集 | GET | `/api/v1/job-dataset` | 查詢訓練數據集（內部接口） | 內部 API Key |
+| 批次 Upsert 職位向量 | POST | `/api/v1/job-vectors/batch` | 批次 Upsert 職位向量（AI 層） | 內部 API Key |
 | 建立對話 | POST | `/api/v1/conversations` | 建立新對話 | 是 |
 | 發送訊息 | POST | `/api/v1/conversations/{conversationId}/messages` | 發送對話訊息 | 是 |
 | 取得對話 | GET | `/api/v1/conversations/{conversationId}` | 取得對話詳情（支援訊息分頁） | 是 |

@@ -52,7 +52,7 @@ The following values are **not** defined in `.env.example` but are configurable 
 | Field | Value |
 |-------|-------|
 | **Purpose** | The host port mapped to the Nginx container's port `80`. |
-| **Default** | `8081` (in `docker-compose.yml.example`) |
+| **Default** | `80` (via `${FRONTEND_HOST_PORT:-80}` in `docker-compose.yml`) |
 | **Valid values** | Any free TCP port on the host (`80`, `8080`, `8081`, `3000`, etc.) |
 | **Security notes** | In production, this should be `80` (or `443` behind an external TLS terminator). Do not expose backend/AI/database ports to the host. |
 | **Common mistakes** | Setting this to `80` on macOS/Linux without `sudo` fails because ports < 1024 require root privileges. Use `8081` for local development. |

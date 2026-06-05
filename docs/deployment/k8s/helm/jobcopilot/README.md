@@ -1,6 +1,6 @@
 # JobCopilot Helm Chart
 
-> [English](README.md) | [简体中文](../../../../i18n/zh-Hans-CN/deployment/k8s/helm/README.md) | [繁體中文](../../../../i18n/zh-Hant-TW/deployment/k8s/helm/README.md)
+> [English](README.md) | [简体中文](../../../../i18n/zh-Hans-CN/deployment/k8s/helm/jobcopilot/README.md) | [繁體中文](../../../../i18n/zh-Hant-TW/deployment/k8s/helm/jobcopilot/README.md)
 
 ## Overview
 
@@ -175,7 +175,7 @@ helm template JobCopilot . \
 
 ```yaml
 global:
-  imageRegistry: "ghcr.io/your-org/"
+  imageRegistry: "ghcr.io/jobcopilot/"
 
 backend:
   image:

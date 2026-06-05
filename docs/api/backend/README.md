@@ -376,7 +376,7 @@ This module provides batch vector data ingestion capabilities for the AI layer.
 
 #### 6.1 Batch Upsert Job Vectors
 - **URL**: `POST /api/v1/job-vectors/batch`
-- **Authentication**: Not required (intended for internal AI service use)
+- **Authentication**: Internal service only; requires `X-Internal-API-Key` when `INTERNAL_API_KEY` is configured.
 
 ---
 
@@ -476,8 +476,8 @@ This module provides application status flow, event recording, and statistical a
 | Get Match History | GET | `/api/v1/jobs/match/history` | Get historical match records | Yes |
 | Vector Search Jobs | POST | `/api/v1/jobs/vector-search` | ANN vector search for jobs | Yes |
 | Score Job | POST | `/api/v1/jobs/{jobId}/score` | Score a job against a resume | Yes |
-| Get Job Dataset | GET | `/api/v1/job-dataset` | Query training dataset (internal) | No |
-| Batch Upsert Job Vectors | POST | `/api/v1/job-vectors/batch` | Batch upsert job vectors (AI layer) | No |
+| Get Job Dataset | GET | `/api/v1/job-dataset` | Query training dataset (internal) | Internal API key |
+| Batch Upsert Job Vectors | POST | `/api/v1/job-vectors/batch` | Batch upsert job vectors (AI layer) | Internal API key |
 | Create Conversation | POST | `/api/v1/conversations` | Create new conversation | Yes |
 | Send Message | POST | `/api/v1/conversations/{conversationId}/messages` | Send conversation message | Yes |
 | Get Conversation | GET | `/api/v1/conversations/{conversationId}` | Get conversation details (supports message pagination) | Yes |

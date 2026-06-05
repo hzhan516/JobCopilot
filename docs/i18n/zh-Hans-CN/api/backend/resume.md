@@ -52,7 +52,7 @@
 #### 请求示例 (cURL)
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/resumes \
+curl -X POST http://localhost/api/v1/resumes \
   -H "Authorization: Bearer <your_access_token>" \
   -F "file=@/path/to/resume.pdf" \
   -F "title=My Resume"
@@ -161,12 +161,12 @@ curl -X POST http://localhost:8080/api/v1/resumes \
 
 ```bash
 # 使用上传返回的 originalVersionId 直接下载
-curl -X GET http://localhost:8080/api/v1/resumes/550e8400-e29b-41d4-a716-446655440001/download \
+curl -X GET http://localhost/api/v1/resumes/550e8400-e29b-41d4-a716-446655440001/download \
   -H "Authorization: Bearer <your_access_token>" \
   --output resume.pdf
 
 # 指定导出格式
-curl -X GET "http://localhost:8080/api/v1/resumes/550e8400-e29b-41d4-a716-446655440001/download?format=pdf" \
+curl -X GET "http://localhost/api/v1/resumes/550e8400-e29b-41d4-a716-446655440001/download?format=pdf" \
   -H "Authorization: Bearer <your_access_token>" \
   --output resume.pdf
 ```
@@ -247,7 +247,7 @@ curl -X GET "http://localhost:8080/api/v1/resumes/550e8400-e29b-41d4-a716-446655
 #### 请求示例 (cURL)
 
 ```bash
-curl -X GET http://localhost:8080/api/v1/resumes/groups \
+curl -X GET http://localhost/api/v1/resumes/groups \
   -H "Authorization: Bearer <your_access_token>"
 ```
 
@@ -343,7 +343,7 @@ curl -X GET http://localhost:8080/api/v1/resumes/groups \
 #### 请求示例 (cURL)
 
 ```bash
-curl -X GET http://localhost:8080/api/v1/resumes/groups/550e8400-e29b-41d4-a716-446655440000 \
+curl -X GET http://localhost/api/v1/resumes/groups/550e8400-e29b-41d4-a716-446655440000 \
   -H "Authorization: Bearer <your_access_token>"
 ```
 
@@ -446,7 +446,7 @@ curl -X GET http://localhost:8080/api/v1/resumes/groups/550e8400-e29b-41d4-a716-
 #### 请求示例 (cURL)
 
 ```bash
-curl -X DELETE http://localhost:8080/api/v1/resumes/groups/550e8400-e29b-41d4-a716-446655440000 \
+curl -X DELETE http://localhost/api/v1/resumes/groups/550e8400-e29b-41d4-a716-446655440000 \
   -H "Authorization: Bearer <your_access_token>"
 ```
 
@@ -517,7 +517,7 @@ curl -X DELETE http://localhost:8080/api/v1/resumes/groups/550e8400-e29b-41d4-a7
 #### 请求示例 (cURL)
 
 ```bash
-curl -X GET http://localhost:8080/api/v1/resumes/groups/550e8400-e29b-41d4-a716-446655440000/versions \
+curl -X GET http://localhost/api/v1/resumes/groups/550e8400-e29b-41d4-a716-446655440000/versions \
   -H "Authorization: Bearer <your_access_token>"
 ```
 
@@ -635,7 +635,7 @@ curl -X GET http://localhost:8080/api/v1/resumes/groups/550e8400-e29b-41d4-a716-
 #### 请求示例 (cURL)
 
 ```bash
-curl -X GET http://localhost:8080/api/v1/resumes/versions/550e8400-e29b-41d4-a716-446655440001 \
+curl -X GET http://localhost/api/v1/resumes/versions/550e8400-e29b-41d4-a716-446655440001 \
   -H "Authorization: Bearer <your_access_token>"
 ```
 
@@ -738,7 +738,7 @@ curl -X GET http://localhost:8080/api/v1/resumes/versions/550e8400-e29b-41d4-a71
 #### 请求示例 (cURL)
 
 ```bash
-curl -X DELETE http://localhost:8080/api/v1/resumes/versions/550e8400-e29b-41d4-a716-446655440002 \
+curl -X DELETE http://localhost/api/v1/resumes/versions/550e8400-e29b-41d4-a716-446655440002 \
   -H "Authorization: Bearer <your_access_token>"
 ```
 
@@ -830,7 +830,7 @@ curl -X DELETE http://localhost:8080/api/v1/resumes/versions/550e8400-e29b-41d4-
 #### 请求示例 (cURL)
 
 ```bash
-curl -X PUT http://localhost:8080/api/v1/resumes/versions/550e8400-e29b-41d4-a716-446655440002 \
+curl -X PUT http://localhost/api/v1/resumes/versions/550e8400-e29b-41d4-a716-446655440002 \
   -H "Authorization: Bearer <your_access_token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -944,7 +944,7 @@ curl -X PUT http://localhost:8080/api/v1/resumes/versions/550e8400-e29b-41d4-a71
 #### 请求示例 (cURL)
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/resumes/groups/550e8400-e29b-41d4-a716-446655440000/versions \
+curl -X POST http://localhost/api/v1/resumes/groups/550e8400-e29b-41d4-a716-446655440000/versions \
   -H "Authorization: Bearer <your_access_token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1159,13 +1159,13 @@ ResumeFacade 定义了完整的简历管理接口，以下是接口方法列表�
 
 ```bash
 # 1. 登录获取 token
-TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login/email \
+TOKEN=$(curl -s -X POST http://localhost/api/v1/auth/login/email \
   -H "Content-Type: application/json" \
   -d '{"email":"user@example.com","password":"password123"}' \
   | jq -r '.data.accessToken')
 
 # 2. 上传简历
-RESPONSE=$(curl -s -X POST http://localhost:8080/api/v1/resumes \
+RESPONSE=$(curl -s -X POST http://localhost/api/v1/resumes \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@resume.pdf" \
   -F "title=My Resume")
@@ -1174,7 +1174,7 @@ ORIGINAL_VERSION_ID=$(echo $RESPONSE | jq -r '.data.originalVersionId')
 echo "Original Version ID: $ORIGINAL_VERSION_ID"
 
 # 3. 直接使用 originalVersionId 下载
-curl -X GET "http://localhost:8080/api/v1/resumes/$ORIGINAL_VERSION_ID/download" \
+curl -X GET "http://localhost/api/v1/resumes/$ORIGINAL_VERSION_ID/download" \
   -H "Authorization: Bearer $TOKEN" \
   --output downloaded_resume.pdf
 ```
@@ -1183,13 +1183,13 @@ curl -X GET "http://localhost:8080/api/v1/resumes/$ORIGINAL_VERSION_ID/download"
 
 ```bash
 # 1. 登录获取 token
-TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login/email \
+TOKEN=$(curl -s -X POST http://localhost/api/v1/auth/login/email \
   -H "Content-Type: application/json" \
   -d '{"email":"user@example.com","password":"password123"}' \
   | jq -r '.data.accessToken')
 
 # 2. 上传简历
-RESPONSE=$(curl -s -X POST http://localhost:8080/api/v1/resumes \
+RESPONSE=$(curl -s -X POST http://localhost/api/v1/resumes \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@resume.pdf" \
   -F "title=My Resume")
@@ -1198,7 +1198,7 @@ GROUP_ID=$(echo $RESPONSE | jq -r '.data.groupId')
 echo "Group ID: $GROUP_ID"
 
 # 3. 获取组详情
-GROUP_INFO=$(curl -s "http://localhost:8080/api/v1/resumes/groups/$GROUP_ID" \
+GROUP_INFO=$(curl -s "http://localhost/api/v1/resumes/groups/$GROUP_ID" \
   -H "Authorization: Bearer $TOKEN")
 
 # 4. 提取转换版本ID（可编辑的 Markdown 版本）
@@ -1206,12 +1206,12 @@ CONVERTED_VERSION_ID=$(echo $GROUP_INFO | jq -r '.data.convertedVersion.versionI
 echo "Converted Version ID: $CONVERTED_VERSION_ID"
 
 # 5. 获取版本详情查看当前内容
-VERSION_DETAIL=$(curl -s "http://localhost:8080/api/v1/resumes/versions/$CONVERTED_VERSION_ID" \
+VERSION_DETAIL=$(curl -s "http://localhost/api/v1/resumes/versions/$CONVERTED_VERSION_ID" \
   -H "Authorization: Bearer $TOKEN")
 echo "Current Content: $(echo $VERSION_DETAIL | jq -r '.data.content')"
 
 # 6. 编辑版本内容
-curl -X PUT "http://localhost:8080/api/v1/resumes/versions/$CONVERTED_VERSION_ID" \
+curl -X PUT "http://localhost/api/v1/resumes/versions/$CONVERTED_VERSION_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1219,12 +1219,12 @@ curl -X PUT "http://localhost:8080/api/v1/resumes/versions/$CONVERTED_VERSION_ID
   }'
 
 # 7. 使用版本ID下载
-curl -X GET "http://localhost:8080/api/v1/resumes/$CONVERTED_VERSION_ID/download" \
+curl -X GET "http://localhost/api/v1/resumes/$CONVERTED_VERSION_ID/download" \
   -H "Authorization: Bearer $TOKEN" \
   --output converted_resume.md
 
 # 8. 删除简历组（清理）
-curl -X DELETE "http://localhost:8080/api/v1/resumes/groups/$GROUP_ID" \
+curl -X DELETE "http://localhost/api/v1/resumes/groups/$GROUP_ID" \
   -H "Authorization: Bearer $TOKEN"
 ```
 

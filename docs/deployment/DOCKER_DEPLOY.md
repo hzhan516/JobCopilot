@@ -345,7 +345,7 @@ docker-compose up -d --build --force-recreate
 
 2. Use production configuration:
    ```bash
-   docker-compose -f docker-compose.yml.example -f docker-compose.prod.yml up -d
+   docker compose up -d --build
    ```
 
 3. Configure reverse proxy (Nginx/Traefik)

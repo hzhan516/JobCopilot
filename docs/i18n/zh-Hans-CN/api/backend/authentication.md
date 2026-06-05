@@ -117,7 +117,7 @@
 ### 调用示例 (cURL)
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/register/email \
+curl -X POST http://localhost/api/v1/auth/register/email \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -215,7 +215,7 @@ curl -X POST http://localhost:8080/api/v1/auth/register/email \
 ### 调用示例 (cURL)
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/login/email \
+curl -X POST http://localhost/api/v1/auth/login/email \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -291,7 +291,7 @@ curl -X POST http://localhost:8080/api/v1/auth/login/email \
 ### 调用示例 (cURL)
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/login/google \
+curl -X POST http://localhost/api/v1/auth/login/google \
   -H "Content-Type: application/json" \
   -d '{
     "idToken": "eyJhbGciOiJSUzI1NiIs...",
@@ -376,7 +376,7 @@ curl -X POST http://localhost:8080/api/v1/auth/login/google \
 ### cURL 示例
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/send-verification-code \
+curl -X POST http://localhost/api/v1/auth/send-verification-code \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -417,7 +417,7 @@ curl -X POST http://localhost:8080/api/v1/auth/send-verification-code \
 ### cURL 示例
 
 ```bash
-curl -X GET http://localhost:8080/api/v1/auth/email-verification-enabled
+curl -X GET http://localhost/api/v1/auth/email-verification-enabled
 ```
 
 ---
@@ -501,7 +501,7 @@ Payload 包含以下字段：
 ### cURL 示例
 
 ```bash
-curl -X GET http://localhost:8080/api/v1/auth/captcha
+curl -X GET http://localhost/api/v1/auth/captcha
 ```
 
 ---
@@ -579,7 +579,7 @@ curl -X GET http://localhost:8080/api/v1/auth/captcha
 ### cURL 示例
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/captcha/verify \
+curl -X POST http://localhost/api/v1/auth/captcha/verify \
   -H "Content-Type: application/json" \
   -d '{
     "captchaId": "550e8400-e29b-41d4-a716-446655440000",

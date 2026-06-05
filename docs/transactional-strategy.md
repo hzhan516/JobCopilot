@@ -2,7 +2,7 @@
 
 > **Language**: English | [简体中文](./i18n/zh-Hans-CN/transactional-strategy.md) | [繁體中文](./i18n/zh-Hant-TW/transactional-strategy.md)
 
-> This document defines the usage policy for Spring `@Transactional` in the ResumeAssistant backend `application` module.
+> This document defines the usage policy for Spring `@Transactional` in the JobCopilot backend `application` module.
 > Goal: eliminate transaction boundary leaks, nested transaction pollution, and long-transaction blocking.
 >
 > Version: 2026-05-25 | Branch: `sanitize-for-oss`

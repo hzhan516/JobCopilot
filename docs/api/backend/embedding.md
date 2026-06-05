@@ -14,7 +14,7 @@ This module provides batch vector data ingestion capabilities for the AI layer. 
 **Endpoint:** `POST /api/v1/job-vectors/batch`
 **Description:** Batch upsert job vectors into the database. If a `jobId` already exists and the content is identical, the record is skipped (deduplication); if it differs, it is updated; otherwise, a new record is inserted.
 
-**Authentication:** Not required (intended for internal AI service use)
+**Authentication:** Internal service only. Requires `X-Internal-API-Key` when `INTERNAL_API_KEY` is configured and must not be exposed publicly.
 
 **Request Header:**
 ```http
@@ -101,7 +101,7 @@ Content-Type: application/json
 **Endpoint:** `POST /api/v1/resume-vectors/batch`
 **Description:** Batch upsert resume vectors into the database. If a `resumeVersionId` already exists and the embedding is identical, the record is skipped (deduplication); if it differs, it is updated; otherwise, a new record is inserted.
 
-**Authentication:** Not required (intended for internal AI service use)
+**Authentication:** Internal service only. Requires `X-Internal-API-Key` when `INTERNAL_API_KEY` is configured and must not be exposed publicly.
 
 **Request Header:**
 ```http

@@ -14,7 +14,7 @@
 
 ## 1. Context / 背景
 
-ResumeAssistant 面向三種部署角色：
+JobCopilot 面向三種部署角色：
 
 | 角色 | 部署模式 | 網路需求 |
 |------|----------|----------|
@@ -213,7 +213,7 @@ services:
 
 | 風險 | 緩解措施 |
 |------|----------|
-| 開發者意外提交取消註解了開發連接埠的 `docker-compose.yml` | **Git 忽略 + CI 檢查**：`docker-compose.yml` 被 gitignored（提交的是範例檔案）。CI 執行 `docker compose config`，若檢測到除 `frontend:80` 外的任何主機連接埠則建置失敗。 |
+| 開發者意外提交取消註解了開發連接埠的 `docker-compose.yml` | **CI 檢查**：`docker-compose.yml` 已納入版本控制，且不得包含密鑰。CI 執行 `docker compose config`，若檢測到除 `frontend:80` 外的任何主機連接埠則建置失敗。 |
 | 前端 `VITE_API_BASE_URL` 設為絕對 URL 繞過 Nginx | **建置時斷言**：前端 Dockerfile 檢查 `VITE_API_BASE_URL`；若以 `http` 開頭則建置失敗。文件明確警告不要使用絕對 URL。 |
 | 後端容器逃逸危及所有層 | **執行時加固**：容器以非 root 執行（`USER 1000:1000`），唯讀根檔案系統（`read_only: true`），並丟棄所有 capabilities（`cap_drop: [ALL]`）。 |
 | Docker bridge MTU 不匹配導致雲虛擬機靜默丟包 | **顯式 MTU**：每個網路宣告 `com.docker.network.driver.mtu: 1500` 以匹配標準乙太網路；雲覆蓋層 MTU 問題（例如 AWS VPC 9001 Jumbo Frames）在主機層面處理。 |

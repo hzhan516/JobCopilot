@@ -2,7 +2,7 @@
 
 > **Languages:** [English](../../BRANCHING_AND_COMMITS.md) | [简体中文](../zh-Hans-CN/BRANCHING_AND_COMMITS.md) | 繁體中文 (current)
 
-本文檔定義了 JobCopilot ResumeAssistant 專案的 Git 工程標準，涵蓋分支策略、提交規範、程式碼審查流程和發布管理。
+本文檔定義了 JobCopilot JobCopilot 專案的 Git 工程標準，涵蓋分支策略、提交規範、程式碼審查流程和發布管理。
 
 > **狀態：** 已採納  
 > **範圍：** JobCopilot 組織下的所有倉庫  

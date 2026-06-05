@@ -175,7 +175,7 @@ helm template JobCopilot . \
 
 ```yaml
 global:
-  imageRegistry: "ghcr.io/your-org/"
+  imageRegistry: "ghcr.io/jobcopilot/"
 
 backend:
   image:

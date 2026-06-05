@@ -14,7 +14,7 @@
 
 ## 1. Context
 
-The ResumeAssistant project must support the following long-term evolution goals:
+The JobCopilot project must support the following long-term evolution goals:
 
 1. **AI Service Decoupling** — Core capabilities such as resume parsing, job matching, and conversation generation depend on external LLM services. Providers may change over time (OpenAI → Claude → self-hosted).
 2. **Storage Medium Replaceability** — Currently using PostgreSQL + pgvector for vector storage; future needs may introduce dedicated vector databases (e.g., Milvus, Pinecone) or object storage.

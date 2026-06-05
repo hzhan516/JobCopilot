@@ -14,7 +14,7 @@
 
 ## 1. Context / 背景
 
-ResumeAssistant 项目需要同时支撑以下长期演进目标：
+JobCopilot 项目需要同时支撑以下长期演进目标：
 
 1. **AI 服务解耦** — 简历解析、职位匹配、对话生成等核心能力依赖外部 LLM 服务，外部提供商可能更换（OpenAI → Claude → 自托管）。
 2. **存储介质可替换** — 当前使用 PostgreSQL + pgvector 存储向量，未来可能引入专用向量数据库（如 Milvus、Pinecone）或对象存储。

@@ -35,7 +35,7 @@
 
 ```yaml
 source:
-  repoURL: https://github.com/your-org/JobCopilot.git
+  repoURL: https://github.com/jobcopilot/jobcopilot.git
   targetRevision: HEAD  # 或分支名
 ```
 

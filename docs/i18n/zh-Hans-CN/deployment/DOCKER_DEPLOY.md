@@ -288,7 +288,7 @@ docker-compose up -d
 
 2. 使用生产环境配置：
    ```bash
-   docker-compose -f docker-compose.yml.example -f docker-compose.prod.yml up -d
+   docker compose up -d --build
    ```
 
 3. 配置反向代理（Nginx/Traefik）

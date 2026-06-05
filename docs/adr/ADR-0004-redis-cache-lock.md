@@ -14,7 +14,7 @@
 
 ## 1. Context
 
-ResumeAssistant has the following non-functional requirements that require in-memory high-speed storage:
+JobCopilot has the following non-functional requirements that require in-memory high-speed storage:
 
 | Requirement Scenario | Problem Description | Desired Characteristics |
 |----------------------|---------------------|-------------------------|

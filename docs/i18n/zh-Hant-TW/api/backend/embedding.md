@@ -14,7 +14,7 @@
 **介面：** `POST /api/v1/job-vectors/batch`
 **說明：** 批量寫入職位向量到資料庫。如果 `jobId` 已存在且內容完全相同，則跳過（去重）；如果內容不同則更新；否則插入新記錄。
 
-**驗證：** 不需要（僅供內部 AI 服務使用）
+**驗證：** 僅限內部服務呼叫。配置 `INTERNAL_API_KEY` 時必須攜帶 `X-Internal-API-Key`，不得公開暴露。
 
 **請求標頭：**
 ```http
@@ -101,7 +101,7 @@ Content-Type: application/json
 **介面：** `POST /api/v1/resume-vectors/batch`
 **說明：** 批量寫入履歷向量到資料庫。如果 `resumeVersionId` 已存在且嵌入向量相同，則跳過（去重）；如果不同則更新；否則插入新記錄。
 
-**驗證：** 不需要（僅供內部 AI 服務使用）
+**驗證：** 僅限內部服務呼叫。配置 `INTERNAL_API_KEY` 時必須攜帶 `X-Internal-API-Key`，不得公開暴露。
 
 **請求標頭：**
 ```http

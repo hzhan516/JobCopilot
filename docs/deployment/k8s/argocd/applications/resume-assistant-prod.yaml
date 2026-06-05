@@ -14,7 +14,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/your-org/jobcopilot.git
+    repoURL: https://github.com/jobcopilot/jobcopilot.git
     targetRevision: HEAD
     path: docs/deployment/k8s/helm/jobcopilot
     helm:

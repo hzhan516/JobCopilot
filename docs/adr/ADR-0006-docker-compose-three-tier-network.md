@@ -14,7 +14,7 @@
 
 ## 1. Context / Background
 
-ResumeAssistant targets three deployment personas:
+JobCopilot targets three deployment personas:
 
 | Persona | Deployment Model | Networking Concern |
 |---------|------------------|-------------------|
@@ -213,7 +213,7 @@ All direct host port mappings (backend `8080`, postgres `5432`, rabbitmq `5672`/
 
 | Risk | Mitigation |
 |------|------------|
-| Developer accidentally commits `docker-compose.yml` with dev ports uncommented | **Git ignore + CI lint**: `docker-compose.yml` is gitignored (the example file is committed instead). CI runs `docker compose config` and fails if any host port other than `frontend:80` is detected. |
+| Developer accidentally commits `docker-compose.yml` with dev ports uncommented | **CI lint**: `docker-compose.yml` is tracked and must never contain secrets. CI runs `docker compose config` and fails if any host port other than `frontend:80` is detected. |
 | Frontend `VITE_API_BASE_URL` set to absolute URL bypassing Nginx | **Build-time assertion**: The frontend Dockerfile checks `VITE_API_BASE_URL`; if it starts with `http`, the build fails. Documentation explicitly warns against absolute URLs. |
 | Backend container escape compromises all tiers | **Runtime hardening**: Containers run as non-root (`USER 1000:1000` where possible), read-only root filesystem (`read_only: true`), and dropped capabilities (`cap_drop: [ALL]`). |
 | Docker bridge MTU mismatch causes silent packet loss in cloud VMs | **Explicit MTU**: Each network declares `com.docker.network.driver.mtu: 1500` to match standard Ethernet; cloud overlay MTU issues (e.g., AWS VPC 9001 Jumbo Frames) are handled at the host level. |

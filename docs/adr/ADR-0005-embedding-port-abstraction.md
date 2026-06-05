@@ -14,7 +14,7 @@
 
 ## 1. Context
 
-ResumeAssistant's core matching capability depends on **text embedding** — transforming resumes, job descriptions, and conversation contexts into high-dimensional vectors, then computing match scores via vector similarity.
+JobCopilot's core matching capability depends on **text embedding** — transforming resumes, job descriptions, and conversation contexts into high-dimensional vectors, then computing match scores via vector similarity.
 
 ### 1.1 Original Architecture Problem
 
@@ -33,7 +33,7 @@ public class ResumeApplicationService {
         
         // ① HTTP call inside transaction — long connection blocks DB connection pool
         float[] embedding = restTemplate.postForObject(
-            "http://ai-service:8080/embed", cmd.getContent(), float[].class);
+            "http://ai-service:8000/api/v1/ai/embeddings", request, EmbeddingResponse.class);
         
         // ② If HTTP times out, transaction rolls back, but AI service may have already processed (duplicate generation)
         vectorRepo.save(resume.getId(), embedding);

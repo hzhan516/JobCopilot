@@ -35,7 +35,7 @@ Edit all files under `applications/` and `app-of-apps/` to point to your actual 
 
 ```yaml
 source:
-  repoURL: https://github.com/your-org/JobCopilot.git
+  repoURL: https://github.com/jobcopilot/jobcopilot.git
   targetRevision: HEAD  # or branch name
 ```
 
