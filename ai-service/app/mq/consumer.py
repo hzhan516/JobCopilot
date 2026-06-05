@@ -55,8 +55,12 @@ _executor = concurrent.futures.ThreadPoolExecutor(max_workers=MQ_WORKER_THREADS,
 
 JOB_PARSE_FAILED_MESSAGE = "AI service failed while parsing the job posting. Please try again."
 RESUME_PARSE_FAILED_MESSAGE = "AI service failed while parsing the resume. Please try again."
-CONVERSATION_FAILED_MESSAGE = "AI service failed while generating the chat response. Please try again."
 JOB_RANK_FAILED_MESSAGE = "AI service failed while ranking jobs. Please try again."
+ERROR_RATE_LIMITED = "RATE_LIMITED"
+ERROR_UPSTREAM_TIMEOUT = "UPSTREAM_TIMEOUT"
+ERROR_UPSTREAM_UNAVAILABLE = "UPSTREAM_UNAVAILABLE"
+ERROR_INVALID_MODEL_RESPONSE = "INVALID_MODEL_RESPONSE"
+ERROR_UNKNOWN = "UNKNOWN"
 
 # Dead-letter queue arguments: failed messages are routed to the DLX for later inspection.
 # 死信队列参数：处理失败的消息转发到 DLX，便于后续人工排查与重试。
@@ -196,6 +200,23 @@ def build_failed_event(
     )
 
 
+def classify_ai_error(exc: Exception) -> str:
+    cursor: BaseException | None = exc
+    while cursor is not None:
+        name = cursor.__class__.__name__.lower()
+        message = str(cursor).lower()
+        if "ratelimit" in name or "rate limit" in message or "429" in message or "resource_exhausted" in message:
+            return ERROR_RATE_LIMITED
+        if "timeout" in name or "timeout" in message or "timed out" in message:
+            return ERROR_UPSTREAM_TIMEOUT
+        if "json" in name or "invalid_model_response" in message or "must be an object" in message:
+            return ERROR_INVALID_MODEL_RESPONSE
+        if "503" in message or "502" in message or "500" in message or "unavailable" in message:
+            return ERROR_UPSTREAM_UNAVAILABLE
+        cursor = cursor.__cause__ or cursor.__context__
+    return ERROR_UNKNOWN
+
+
 def handle_job_message(
     body: bytes,
 ) -> AiResultEvent:
@@ -241,11 +262,18 @@ def handle_conversation_message(
         result = process_conversation(command)
     except Exception as exc:
         logger.exception("Conversation processing failed: conversation_id=%s", command.conversation_id)
-        result = build_failed_event(
-            reference_id=command.conversation_id,
-            event_type="CONVERSATION_REPLY",
-            error_message=CONVERSATION_FAILED_MESSAGE,
-            event_entity_type=None,
+        error_code = classify_ai_error(exc)
+        result = AiResultEvent(
+            referenceId=command.conversation_id,
+            type="CONVERSATION_REPLY",
+            status="FAILED",
+            data={
+                "requestId": command.request_id,
+                "locale": command.locale,
+                "errorCode": error_code,
+            },
+            errorMessage=error_code,
+            eventType=None,
         )
 
     return result

@@ -4,6 +4,7 @@ import io.jobcopilot.resumeassistant.api.conversation.dto.ConversationResponse;
 import io.jobcopilot.resumeassistant.api.conversation.dto.CreateConversationRequest;
 import io.jobcopilot.resumeassistant.api.conversation.dto.SendMessageRequest;
 import io.jobcopilot.resumeassistant.application.conversation.service.ConversationApplicationService;
+import io.jobcopilot.resumeassistant.application.conversation.service.ConversationFailureMessageResolver;
 import io.jobcopilot.resumeassistant.application.conversation.service.ConversationQueryService;
 import io.jobcopilot.resumeassistant.domain.conversation.entity.Conversation;
 import org.junit.jupiter.api.DisplayName;
@@ -36,6 +37,9 @@ class ConversationFacadeImplTest {
 
     @Mock
     private ConversationQueryService queryService;
+
+    @Mock
+    private ConversationFailureMessageResolver failureMessageResolver;
 
     @InjectMocks
     private ConversationFacadeImpl conversationFacade;
@@ -110,5 +114,22 @@ class ConversationFacadeImplTest {
         // 那么
         // Then
         assertThat(result).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("Should resolve localized AI failure message")
+    void shouldResolveLocalizedAiFailureMessage() {
+        // 缁欏畾
+        // Given
+        when(failureMessageResolver.resolve("RATE_LIMITED", "zh-CN"))
+                .thenReturn("AI 请求暂时过于频繁，请几分钟后再试。");
+
+        // 褰?
+        // When
+        String message = conversationFacade.resolveAiFailureMessage("RATE_LIMITED", "zh-CN");
+
+        // 閭ｄ箞
+        // Then
+        assertThat(message).isEqualTo("AI 请求暂时过于频繁，请几分钟后再试。");
     }
 }

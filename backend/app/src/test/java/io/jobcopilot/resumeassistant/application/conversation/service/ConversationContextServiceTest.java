@@ -19,6 +19,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -73,6 +74,7 @@ class ConversationContextServiceTest {
         verify(aiMessagePublisherPort).sendConversationRequest(captor.capture());
         assertEquals(conversation.getId().toString(), captor.getValue().conversationId());
         assertEquals("Hello", captor.getValue().currentMessage());
+        assertNotNull(captor.getValue().requestId());
         assertTrue(captor.getValue().init());
     }
 

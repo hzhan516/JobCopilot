@@ -77,6 +77,14 @@ public interface ConversationFacade {
     void failAiReply(String conversationId, String errorMessage);
 
     /**
+     * Resolve an AI failure code into user-readable text for the requested locale.
+     *
+     * @param errorCode AI failure code
+     * @param localeTag BCP 47 locale tag
+     */
+    String resolveAiFailureMessage(String errorCode, String localeTag);
+
+    /**
      * 上传对话附件到 MinIO
      * Upload conversation attachment to MinIO
      */

@@ -41,6 +41,14 @@ public class AiResultMessageListener {
         return queueName + ":" + event.referenceId() + ":" + event.status();
     }
 
+    private static String conversationDedupKey(AiResultEvent event) {
+        String requestId = extractString(event.data(), "requestId");
+        if (requestId == null || requestId.isBlank()) {
+            return dedupKey(event, "conversation");
+        }
+        return "conversation:" + event.referenceId() + ":" + requestId + ":" + event.status();
+    }
+
     @RabbitListener(queues = "${app.rabbitmq.queue.res.job-parse}")
     public void onJobParseResult(AiResultEvent event) {
         String key = dedupKey(event, "job-parse");
@@ -75,7 +83,7 @@ public class AiResultMessageListener {
 
     @RabbitListener(queues = "${app.rabbitmq.queue.res.conversation}")
     public void onConversationReply(AiResultEvent event) {
-        String key = dedupKey(event, "conversation");
+        String key = conversationDedupKey(event);
         if (idempotencyService.isProcessed(key)) {
             log.info("Duplicate CONVERSATION_REPLY result skipped for referenceId: {}", event.referenceId());
             return;
@@ -84,7 +92,10 @@ public class AiResultMessageListener {
         try {
             if (!"COMPLETED".equals(event.status())) {
                 log.warn("Conversation AI reply failed for conversation: {}, error: {}", event.referenceId(), event.errorMessage());
-                String errorContent = "AI response failed: " + (event.errorMessage() != null ? event.errorMessage() : "Unknown error");
+                String errorContent = conversationFacade.resolveAiFailureMessage(
+                        event.errorMessage(),
+                        extractString(event.data(), "locale")
+                );
                 conversationFacade.saveAiReply(
                         event.referenceId(),
                         errorContent,
@@ -184,6 +195,14 @@ public class AiResultMessageListener {
             return ((Number) value).doubleValue();
         }
         return 0.0;
+    }
+
+    private static String extractString(Map<String, Object> data, String key) {
+        if (data == null) {
+            return null;
+        }
+        Object value = data.get(key);
+        return value instanceof String text ? text : null;
     }
 
     private String extractReplyContent(AiResultEvent event) {

@@ -18,6 +18,7 @@ import java.util.Map;
  * @param relatedJobTexts 相关职位 JD 文本列表 / Related job description text list
  * @param init            是否为首次初始化 / Whether this is the first initialization
  * @param locale          用户界面语言 / User interface locale (e.g. en, zh-CN, zh-TW)
+ * @param requestId       Request-level idempotency ID
  */
 public record ConversationRequestCommand(
         String conversationId,
@@ -30,6 +31,7 @@ public record ConversationRequestCommand(
         String primaryJobText,
         List<String> relatedJobTexts,
         boolean init,
-        String locale
+        String locale,
+        String requestId
 ) {
 }

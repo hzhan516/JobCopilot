@@ -6,6 +6,7 @@ import io.jobcopilot.resumeassistant.api.job.facade.JobFacade;
 import io.jobcopilot.resumeassistant.api.matching.facade.MatchingFacade;
 import io.jobcopilot.resumeassistant.api.resume.facade.ResumeFacade;
 import io.jobcopilot.resumeassistant.domain.shared.event.ai.AiResultEvent;
+import io.jobcopilot.resumeassistant.infrastructure.messaging.RedisIdempotencyService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +19,7 @@ import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * AI 结果消息监听器测试 / AI result message listener tests
@@ -43,6 +45,9 @@ class AiResultMessageListenerTest {
 
     @Mock
     private MatchingFacade matchingFacade;
+
+    @Mock
+    private RedisIdempotencyService idempotencyService;
 
     @InjectMocks
     private AiResultMessageListener listener;
@@ -176,22 +181,57 @@ class AiResultMessageListenerTest {
 
     @Test
     @DisplayName("Should not call facade when conversation reply fails / 应在对话回复失败时不调用 Facade")
-    void onConversationReply_WhenFailed_ShouldNotCallFacade() {
+    void onConversationReply_WhenFailed_ShouldSaveLocalizedFailureMessage() {
         // 准备 / Given
         AiResultEvent event = new AiResultEvent(
                 "conv-1",
                 "CONVERSATION_REPLY",
                 "FAILED",
-                null,
-                "AI service error",
+                Map.of("requestId", "req-1", "locale", "zh-CN", "errorCode", "RATE_LIMITED"),
+                "RATE_LIMITED",
                 null
         );
+        when(conversationFacade.resolveAiFailureMessage("RATE_LIMITED", "zh-CN"))
+                .thenReturn("AI 请求暂时过于频繁，请几分钟后再试。");
 
         // 执行 / When
         listener.onConversationReply(event);
 
         // 验证 / Then
-        verify(conversationFacade).saveAiReply(eq("conv-1"), contains("AI response failed"), isNull(), isNull());
-        verify(conversationFacade).failAiReply(eq("conv-1"), contains("AI response failed"));
+        verify(conversationFacade).saveAiReply("conv-1", "AI 请求暂时过于频繁，请几分钟后再试。", null, null);
+        verify(conversationFacade).failAiReply("conv-1", "AI 请求暂时过于频繁，请几分钟后再试。");
+        verify(idempotencyService).markProcessed("conversation:conv-1:req-1:FAILED");
+    }
+
+    @Test
+    @DisplayName("Should process conversation replies with different request ids independently")
+    void onConversationReply_WithDifferentRequestIds_ShouldProcessIndependently() {
+        // 鍑嗗 / Given
+        AiResultEvent first = new AiResultEvent(
+                "conv-1",
+                "CONVERSATION_REPLY",
+                "COMPLETED",
+                Map.of("requestId", "req-1", "content", "First reply"),
+                null,
+                null
+        );
+        AiResultEvent second = new AiResultEvent(
+                "conv-1",
+                "CONVERSATION_REPLY",
+                "COMPLETED",
+                Map.of("requestId", "req-2", "content", "Second reply"),
+                null,
+                null
+        );
+
+        // 鎵ц / When
+        listener.onConversationReply(first);
+        listener.onConversationReply(second);
+
+        // 楠岃瘉 / Then
+        verify(conversationFacade).saveAiReply("conv-1", "First reply", null, null);
+        verify(conversationFacade).saveAiReply("conv-1", "Second reply", null, null);
+        verify(idempotencyService).markProcessed("conversation:conv-1:req-1:COMPLETED");
+        verify(idempotencyService).markProcessed("conversation:conv-1:req-2:COMPLETED");
     }
 }

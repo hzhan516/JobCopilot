@@ -10,6 +10,7 @@ import io.jobcopilot.resumeassistant.application.conversation.command.SendMessag
 import io.jobcopilot.resumeassistant.application.conversation.query.GetConversationQuery;
 import io.jobcopilot.resumeassistant.application.conversation.query.ListConversationsQuery;
 import io.jobcopilot.resumeassistant.application.conversation.service.ConversationApplicationService;
+import io.jobcopilot.resumeassistant.application.conversation.service.ConversationFailureMessageResolver;
 import io.jobcopilot.resumeassistant.application.conversation.service.ConversationQueryService;
 import io.jobcopilot.resumeassistant.domain.conversation.entity.Conversation;
 import io.jobcopilot.resumeassistant.domain.conversation.entity.Message;
@@ -33,6 +34,7 @@ public class ConversationFacadeImpl implements ConversationFacade {
 
     private final ConversationApplicationService applicationService;
     private final ConversationQueryService queryService;
+    private final ConversationFailureMessageResolver failureMessageResolver;
 
     @Override
     public ConversationResponse createConversation(CreateConversationRequest request, UUID userId) {
@@ -110,6 +112,11 @@ public class ConversationFacadeImpl implements ConversationFacade {
     @Override
     public void failAiReply(String conversationId, String errorMessage) {
         applicationService.failAiReply(UUID.fromString(conversationId), errorMessage);
+    }
+
+    @Override
+    public String resolveAiFailureMessage(String errorCode, String localeTag) {
+        return failureMessageResolver.resolve(errorCode, localeTag);
     }
 
     @Override

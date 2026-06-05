@@ -90,6 +90,8 @@ class ConversationData(AppBaseModel):
 
     content: str
     file_url: str | None = Field(default=None, alias="fileUrl")
+    request_id: str | None = Field(default=None, alias="requestId")
+    locale: str | None = None
     resume_modification: ResumeModification = Field(
         default_factory=ResumeModification, alias="resumeModification"
     )
@@ -210,6 +212,7 @@ class ConversationRequestCommand(AppBaseModel):
     related_job_texts: list[str] | None = Field(default=None, alias="relatedJobTexts")
     init: bool | None = None
     locale: str | None = None
+    request_id: str | None = Field(default=None, alias="requestId")
 
 
 class JobRankCommand(AppBaseModel):

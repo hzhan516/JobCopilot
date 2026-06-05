@@ -181,6 +181,8 @@ def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
         data=ConversationData(
             content=content,
             fileUrl=file_url,
+            requestId=command.request_id,
+            locale=command.locale,
             resumeModification=ResumeModification(
                 modified=bool(resume_modification.get("modified", False)),
                 markdown=str(resume_modification.get("markdown", "")),

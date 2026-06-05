@@ -109,7 +109,8 @@ public class ConversationContextService {
                 primaryJobText,
                 relatedJobTexts,
                 init,
-                locale
+                locale,
+                UUID.randomUUID().toString()
         );
         aiMessagePublisherPort.sendConversationRequest(mqCommand);
         log.info("Queued conversation request to outbox for conversation: {}, init={}, locale={}",

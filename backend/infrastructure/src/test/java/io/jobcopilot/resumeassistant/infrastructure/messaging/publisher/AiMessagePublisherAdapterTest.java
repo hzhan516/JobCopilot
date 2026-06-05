@@ -83,7 +83,7 @@ class AiMessagePublisherAdapterTest {
         // 准备 / Given
         ConversationRequestCommand command = new ConversationRequestCommand(
                 "conv-1", "user-1", new ArrayList<>(), "hello", new ArrayList<>(), null,
-                null, null, null, false, "en"
+                null, null, null, false, "en", "req-1"
         );
         when(objectMapper.writeValueAsString(any())).thenReturn("{\"conversationId\":\"conv-1\"}");
         when(outboxMessageRepository.save(any(OutboxMessage.class))).thenAnswer(inv -> inv.getArgument(0));

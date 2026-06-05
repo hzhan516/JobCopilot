@@ -19,8 +19,11 @@ from app.mq.consumer import (
     start_all_consumers,
     JOB_PARSE_FAILED_MESSAGE,
     RESUME_PARSE_FAILED_MESSAGE,
-    CONVERSATION_FAILED_MESSAGE,
     JOB_RANK_FAILED_MESSAGE,
+    ERROR_RATE_LIMITED,
+    ERROR_UPSTREAM_TIMEOUT,
+    ERROR_INVALID_MODEL_RESPONSE,
+    classify_ai_error,
 )
 from app.config import AI_DLQ_QUEUE
 from app.schemas import (
@@ -76,10 +79,17 @@ def test_parse_commands():
     assert isinstance(res_cmd, ResumeParseCommand)
     assert res_cmd.resume_id == "res-1"
     
-    conv_body = json.dumps({"conversationId": "conv-1", "userId": "user-1", "currentMessage": "hello", "messageHistory": []}).encode("utf-8")
+    conv_body = json.dumps({
+        "conversationId": "conv-1",
+        "userId": "user-1",
+        "currentMessage": "hello",
+        "messageHistory": [],
+        "requestId": "req-1",
+    }).encode("utf-8")
     conv_cmd = parse_conversation_command(conv_body)
     assert isinstance(conv_cmd, ConversationRequestCommand)
     assert conv_cmd.conversation_id == "conv-1"
+    assert conv_cmd.request_id == "req-1"
     
     rank_body = json.dumps({"matchId": "match-1", "userId": "user-1", "resumeVersionId": "res-1", "query": "test"}).encode("utf-8")
     rank_cmd = parse_job_rank_command(rank_body)
@@ -145,7 +155,14 @@ def test_handle_resume_message_failure(mock_process):
 
 @patch("app.mq.consumer.process_conversation")
 def test_handle_conversation_message_success(mock_process):
-    body = json.dumps({"conversationId": "conv-1", "userId": "user-1", "currentMessage": "hello", "messageHistory": []}).encode("utf-8")
+    body = json.dumps({
+        "conversationId": "conv-1",
+        "userId": "user-1",
+        "currentMessage": "hello",
+        "messageHistory": [],
+        "requestId": "req-1",
+        "locale": "zh-CN",
+    }).encode("utf-8")
     
     mock_result = AiResultEvent(referenceId="conv-1", type="CONVERSATION_REPLY", status="COMPLETED", data={})
     mock_process.return_value = mock_result
@@ -157,15 +174,30 @@ def test_handle_conversation_message_success(mock_process):
 
 @patch("app.mq.consumer.process_conversation")
 def test_handle_conversation_message_failure(mock_process):
-    body = json.dumps({"conversationId": "conv-1", "userId": "user-1", "currentMessage": "hello", "messageHistory": []}).encode("utf-8")
+    body = json.dumps({
+        "conversationId": "conv-1",
+        "userId": "user-1",
+        "currentMessage": "hello",
+        "messageHistory": [],
+        "requestId": "req-1",
+        "locale": "zh-CN",
+    }).encode("utf-8")
     
-    mock_process.side_effect = Exception("Processing failed")
+    mock_process.side_effect = Exception("429 RESOURCE_EXHAUSTED quota exceeded")
     
     result = handle_conversation_message(body)
     
     mock_process.assert_called_once()
     assert result.status == "FAILED"
-    assert result.error_message == CONVERSATION_FAILED_MESSAGE
+    assert result.error_message == ERROR_RATE_LIMITED
+    assert result.data["requestId"] == "req-1"
+    assert result.data["locale"] == "zh-CN"
+    assert result.data["errorCode"] == ERROR_RATE_LIMITED
+
+def test_classify_ai_error():
+    assert classify_ai_error(Exception("429 RESOURCE_EXHAUSTED quota exceeded")) == ERROR_RATE_LIMITED
+    assert classify_ai_error(TimeoutError("timed out")) == ERROR_UPSTREAM_TIMEOUT
+    assert classify_ai_error(ValueError("response must be an object")) == ERROR_INVALID_MODEL_RESPONSE
 
 @patch("app.mq.consumer.rank_jobs")
 def test_handle_job_rank_message_success(mock_rank):
