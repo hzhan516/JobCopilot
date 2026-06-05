@@ -21,71 +21,88 @@
 
 ## Architecture
 
-This project adopts a microservices architecture with the following components:
+JobCopilot uses a containerized service architecture. The frontend container is the only host-facing entry point by default; backend, AI, data, cache, queue, and model-registry services communicate over Docker networks.
 
 ```text
-┌─────────────┐      ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-│   Frontend  │──────▶│   Backend   │──────▶│  RabbitMQ   │─────▶│  AI Worker  │
-│   (React)   │      │  (Spring    │      │             │      │ (LightGBM)  │
-│             │      │   Boot)     │      └──────┬──────┘      └──────┬──────┘
-└─────────────┘      └──────┬───┬──┘             │                    │
-                            │   │                │                    ▼
-                            │   │  ┌─────────┐   │             ┌─────────────┐
-                            │   └─▶│  Redis  │   │             │    MinIO    │
-                            │      │   :6379 │◀──┘             │(Model Reg.) │
-                            │      └─────────┘                 └─────────────┘
-                            ▼                    ▼                    ▲
-                     ┌─────────────────────────────┐                  │
-                     │ PostgreSQL 15 + pgvector    │                  │
-                     │ business data + embeddings  │                  │
-                     └─────────────────────────────┘                  │
-                            ▲             ▲                           │
-                            │             │      ┌─────────────┐      │
-                            └─────────────┴──────│   AI API    │──────┘
-                                                 │  (FastAPI)  │
-                                                 └─────────────┘
+Browser
+  |
+  | HTTP :${FRONTEND_HOST_PORT:-80}
+  v
+Frontend container
+  React static app + Nginx reverse proxy
+  |
+  | HTTP /api, /health
+  v
+Backend container
+  Spring Boot API, auth, domain workflows, vector persistence
+  |-- JDBC --------> PostgreSQL + pgvector
+  |-- AMQP --------> RabbitMQ --------> AI worker container
+  |-- HTTP --------> AI API container
+  |-- Redis -------> Redis
+  `-- Local files -> shared upload volume
+
+AI API / AI worker
+  |-- LiteLLM-compatible provider for parsing, embeddings, ranking, chat
+  |-- Backend internal API for vector upserts and baseline features
+  |-- Redis feedback buffer, locks, and model reload Pub/Sub
+  `-- MinIO model registry for LightGBM artifacts
 ```
 
-| Service       | Technology                | Port         | Description                          |
-|---------------|---------------------------|--------------|--------------------------------------|
-| Frontend      | React 19 + Vite 7         | `${FRONTEND_HOST_PORT:-80}` -> 8080 | Web user interface and Nginx reverse proxy |
-| Backend       | Java 21 + Spring Boot 3.5 | 8080 internal | REST API, business logic, and slider CAPTCHA protection |
-| AI API        | Python 3 + FastAPI + LiteLLM | 8000 internal | AI processing, embedding generation, ranking, and chat |
-| AI Worker     | Python 3 + LightGBM       | N/A          | Background worker for incremental model training |
-| Database      | PostgreSQL 15 + pgvector  | 5432 internal | Business data and vector storage     |
-| Message Queue | RabbitMQ 3                | 5672 internal | Async message processing             |
-| Cache         | Redis 7                   | 6379 internal | Distributed state, locks, Pub/Sub    |
-| Model Registry| MinIO                     | 9000 internal | Storage for trained LightGBM models  |
+| Component | Technology | Exposure | Responsibility |
+|-----------|------------|----------|----------------|
+| Frontend / Gateway | React 19, Vite 7, Nginx | Host `${FRONTEND_HOST_PORT:-80}` -> container `8080` | Serve UI, proxy `/api` and `/health` to backend |
+| Backend | Java 21, Spring Boot 3.5, DDD modules | Internal `8080`; direct host port disabled by default | REST API, authentication, resume/job/application workflows, vector persistence |
+| AI API | Python 3.11, FastAPI, LiteLLM | Internal `8000`; direct host port disabled by default | Synchronous AI endpoints, embeddings, parsing, ranking, chat support |
+| AI Worker | Python 3.11, RabbitMQ consumers, LightGBM | Internal worker process | Asynchronous parsing, ranking jobs, feedback ingestion, incremental model training |
+| PostgreSQL | PostgreSQL 15 with pgvector | Internal `5432` on `db-network` | Business data and vector storage |
+| RabbitMQ | RabbitMQ 3 management image | Internal `5672`; management port disabled by default | Durable async task transport between backend and AI services |
+| Redis | Redis 7 | Internal `6379` | CAPTCHA state, distributed locks, feedback buffer, model reload Pub/Sub |
+| MinIO | S3-compatible object storage | Internal `9000` | LightGBM model registry for AI worker artifacts |
 
 ## Project Structure
 
 ```text
 .
-├── frontend/                  # React frontend application
-│   ├── src/                   # Source code
-│   ├── package.json           # Node.js dependencies and scripts
-│   └── Dockerfile             # Frontend Docker image
-├── backend/                   # Java Spring Boot backend
-│   ├── app/                   # Application entry point, config, DB init, app tests
-│   ├── api/                   # API DTOs and facade interfaces
-│   ├── domain/                # Domain entities, value objects, domain tests
-│   ├── infrastructure/        # Persistence, storage, messaging, security, converters
-│   ├── trigger/               # HTTP controllers, MQ listeners, controller tests
-│   └── types/                 # Shared types and constants
-├── ai-service/                # Python AI service (API & Worker)
-│   ├── app/                   # AI service source code
-│   │   ├── api/               # FastAPI stateless endpoints
-│   │   ├── worker/            # Stateful background worker (LightGBM)
-│   │   ├── domain/            # Core AI logic and models
-│   │   └── infrastructure/    # External integrations (MinIO, MQ, DB)
-│   ├── tests/                 # Pytest test suite
-│   ├── requirements.txt       # Python dependencies
-│   └── Dockerfile             # AI service Docker image
-├── docs/                      # Architecture, API, deployment, and i18n documentation
-├── eval/                      # AI evaluation scripts, benchmark cases, and results
-├── docker-compose.yml         # Docker Compose configuration
-├── empty-vertex.json          # Placeholder credentials file for non-Vertex local runs
-└── .env.example               # Environment variables template
+|-- backend/                   # Java / Spring Boot backend
+|   |-- api/                   # API DTOs, commands, queries, and facades
+|   |-- app/                   # Application services, schedulers, and startup wiring
+|   |-- domain/                # Domain entities, value objects, ports, and rules
+|   |-- infrastructure/        # Persistence, storage, messaging, security, integrations
+|   |-- trigger/               # REST controllers, WebSocket endpoints, MQ listeners
+|   |-- types/                 # Shared types and constants
+|   |-- scripts/               # Backend maintenance scripts
+|   |-- Dockerfile             # Backend container image
+|   `-- pom.xml                # Maven multi-module build
+|-- frontend/                  # React / Vite / TypeScript frontend
+|   |-- src/                   # UI source code
+|   |   |-- components/        # Reusable UI components
+|   |   |-- pages/             # Route-level pages
+|   |   |-- services/          # API clients and service wrappers
+|   |   |-- store/             # Client state management
+|   |   |-- hooks/             # Shared React hooks
+|   |   |-- i18n/              # Runtime i18n setup
+|   |   `-- locales/           # Translation resources
+|   |-- package.json           # Node.js dependencies and scripts
+|   `-- Dockerfile             # Frontend container image
+|-- ai-service/                # Python / FastAPI AI service and worker
+|   |-- app/
+|   |   |-- api/               # FastAPI endpoints
+|   |   |-- domain/            # AI domain logic and model abstractions
+|   |   |-- infrastructure/    # External integrations
+|   |   |-- mq/                # Messaging integration
+|   |   |-- services/          # AI application services
+|   |   `-- worker/            # Background worker entry points
+|   |-- tests/                 # Pytest test suite
+|   |-- requirements.txt       # Python dependencies
+|   `-- Dockerfile             # AI service container image
+|-- docs/                      # ADRs, API docs, architecture, deployment, i18n
+|-- eval/                      # AI evaluation scripts, datasets, and results
+|-- middleware/                # Custom infrastructure images, such as PostgreSQL
+|-- scripts/                   # Repository-level automation helpers
+|-- .github/                   # CI, issue templates, PR template, CODEOWNERS
+|-- docker-compose.yml         # Local Docker Compose stack
+|-- .env.example               # Environment variable template
+`-- empty-vertex.json          # Placeholder credentials for non-Vertex local runs
 ```
 
 ## Backend Architecture

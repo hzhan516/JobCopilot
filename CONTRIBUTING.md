@@ -115,17 +115,26 @@ See `docs/deployment/` for detailed configuration reference.
 ## Project Structure
 
 ```
-├── backend/           # Java / Spring Boot (DDD Hexagonal Architecture)
-│   ├── app/           # Application layer (Services, Schedulers)
-│   ├── domain/        # Domain layer (Entities, Value Objects, Ports)
-│   ├── api/           # API layer (DTOs, Commands, Queries)
-│   ├── infrastructure/# Adapters (DB, MQ, HTTP, File Storage)
-│   ├── trigger/       # REST Controllers, WebSocket, Event Listeners
-│   └── types/         # Shared types and constants
-├── frontend/          # TypeScript / React / Vite / TailwindCSS
-├── ai-service/        # Python / FastAPI (Embedding, LLM inference)
-├── docs/              # Documentation (English + i18n)
-└── .github/           # CI/CD, Templates, Dependabot
+.
+|-- backend/           # Java / Spring Boot backend using DDD and hexagonal modules
+|   |-- api/           # DTOs, commands, queries, and facade interfaces
+|   |-- app/           # Application services, schedulers, and startup wiring
+|   |-- domain/        # Entities, value objects, ports, and domain rules
+|   |-- infrastructure/ # Persistence, storage, messaging, security, integrations
+|   |-- trigger/       # REST controllers, WebSocket endpoints, MQ listeners
+|   `-- types/         # Shared types and constants
+|-- frontend/          # React / Vite / TypeScript application
+|   `-- src/           # Components, pages, services, store, hooks, i18n, utilities
+|-- ai-service/        # Python / FastAPI AI service and worker
+|   |-- app/           # API, domain, infrastructure, MQ, services, worker code
+|   `-- tests/         # Pytest suite
+|-- docs/              # ADRs, API docs, architecture, deployment, i18n
+|-- eval/              # AI evaluation scripts, datasets, and results
+|-- middleware/        # Custom infrastructure images, such as PostgreSQL
+|-- scripts/           # Repository-level automation helpers
+|-- .github/           # CI, issue templates, PR template, CODEOWNERS
+|-- docker-compose.yml # Local Docker Compose stack
+`-- .env.example       # Environment variable template
 ```
 
 ### Architecture Principles

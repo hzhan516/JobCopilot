@@ -115,17 +115,26 @@ uvicorn app.main:app --reload
 ## 專案結構
 
 ```
-├── backend/           # Java / Spring Boot（DDD 六邊形架構）
-│   ├── app/           # 應用層（Service、Scheduler）
-│   ├── domain/        # 領域層（Entity、Value Object、Port）
-│   ├── api/           # API 層（DTO、Command、Query）
-│   ├── infrastructure/# 介面卡（DB、MQ、HTTP、檔案儲存）
-│   ├── trigger/       # REST Controller、WebSocket、事件監聽器
-│   └── types/         # 共享類型與常數
-├── frontend/          # TypeScript / React / Vite / TailwindCSS
-├── ai-service/        # Python / FastAPI（Embedding、LLM 推理）
-├── docs/              # 文件（英文 + i18n）
-└── .github/           # CI/CD、模板、Dependabot
+.
+|-- backend/           # Java / Spring Boot 後端，採用 DDD 與六邊形模組
+|   |-- api/           # DTO、命令、查詢和外觀介面
+|   |-- app/           # 應用服務、排程器和啟動裝配
+|   |-- domain/        # 實體、值物件、連接埠和領域規則
+|   |-- infrastructure/ # 持久化、儲存、訊息、安全和外部整合
+|   |-- trigger/       # REST 控制器、WebSocket 端點、MQ 監聽器
+|   `-- types/         # 共享型別與常數
+|-- frontend/          # React / Vite / TypeScript 應用
+|   `-- src/           # 元件、頁面、服務、狀態、Hooks、i18n、工具
+|-- ai-service/        # Python / FastAPI AI 服務和 Worker
+|   |-- app/           # API、領域、基礎設施、MQ、服務和 Worker 程式碼
+|   `-- tests/         # Pytest 測試套件
+|-- docs/              # ADR、API 文件、架構、部署和國際化
+|-- eval/              # AI 評估腳本、資料集和結果
+|-- middleware/        # 自訂基礎設施映像，例如 PostgreSQL
+|-- scripts/           # 倉庫級自動化輔助腳本
+|-- .github/           # CI、Issue 模板、PR 模板、CODEOWNERS
+|-- docker-compose.yml # 本地 Docker Compose 堆疊
+`-- .env.example       # 環境變數模板
 ```
 
 ### 架構原則
