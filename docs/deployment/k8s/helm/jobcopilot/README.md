@@ -79,6 +79,8 @@ kubectl delete pvc -n jobcopilot -l app.kubernetes.io/name=jobcopilot
 | `rabbitmq.enabled` | Deploy RabbitMQ StatefulSet | `true` |
 | `redis.enabled` | Deploy Redis StatefulSet | `true` |
 | `minio.enabled` | Deploy MinIO model artifact storage in embedded mode | `true` |
+| `minio.image.tag` | Pinned MinIO image tag used when `minio.image.digest` is empty | `RELEASE.2024-01-16T16-07-38Z` |
+| `minio.image.digest` | Optional MinIO image digest; when set, renders `repository@digest` instead of `repository:tag` | `""` |
 
 ### Full Values Reference
 

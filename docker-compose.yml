@@ -403,7 +403,7 @@ services:
   # by the incremental learning worker and loaded by ai-service.
   # ============================================================================
   minio:
-    image: quay.io/minio/minio:latest
+    image: quay.io/minio/minio:RELEASE.2024-01-16T16-07-38Z
     container_name: jobcopilot-minio
     command: ["server", "/data", "--console-address", ":9001"]
     environment:

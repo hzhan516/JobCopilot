@@ -226,6 +226,7 @@ minio:
     registry: quay.io
     repository: minio/minio
     tag: RELEASE.2024-01-16T16-07-38Z
+    digest: ""
     pullPolicy: IfNotPresent
   replicas: 1
   service:

@@ -28,7 +28,11 @@ spec:
         fsGroupChangePolicy: {{ .Values.minio.podSecurityContext.fsGroupChangePolicy }}
       containers:
         - name: minio
+{{ if .Values.minio.image.digest }}
+          image: "{{ if .Values.minio.image.registry }}{{ .Values.minio.image.registry }}/{{ end }}{{ .Values.minio.image.repository }}@{{ .Values.minio.image.digest }}"
+{{ else }}
           image: "{{ if .Values.minio.image.registry }}{{ .Values.minio.image.registry }}/{{ end }}{{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag }}"
+{{ end }}
           imagePullPolicy: {{ .Values.minio.image.pullPolicy }}
           command: ["minio", "server", "/data", "--console-address", ":9001"]
           env:
