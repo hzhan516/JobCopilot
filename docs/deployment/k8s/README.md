@@ -226,7 +226,7 @@ kubectl exec -it deploy/jobcopilot-backend -n jobcopilot -- nslookup jobcopilot-
 kubectl get pods -n ingress-nginx
 
 # Check Ingress events
-kubectl describe ingress JobCopilot -n jobcopilot
+kubectl describe ingress jobcopilot -n jobcopilot
 ```
 
 ---
