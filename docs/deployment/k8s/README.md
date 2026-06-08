@@ -51,7 +51,7 @@ kubectl create secret generic jobcopilot-secrets \
   --from-literal=POSTGRES_PASSWORD=$(openssl rand -base64 24) \
   --from-literal=RABBITMQ_PASSWORD=$(openssl rand -base64 24) \
   --from-literal=REDIS_PASSWORD=$(openssl rand -base64 24) \
-  --from-literal=MINIO_ACCESS_KEY=jobcopilot-minio \
+  --from-literal=MINIO_ACCESS_KEY=$(openssl rand -hex 16) \
   --from-literal=MINIO_SECRET_KEY=$(openssl rand -base64 32) \
   --from-literal=INTERNAL_API_KEY=$(openssl rand -base64 32) \
   --from-literal=GEMINI_API_KEY=your-gemini-key

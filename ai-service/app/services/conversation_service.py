@@ -224,7 +224,8 @@ def _fallback_content_from_unparseable_response(raw_text: str) -> str:
 
 
 def _normalize_conversation_result(result: dict) -> tuple[str, str | None, dict]:
-    content = str(result.get("content", "")).strip()
+    raw_content = result.get("content")
+    content = "" if raw_content is None else str(raw_content).strip()
     file_url = result.get("fileUrl")
 
     if not content:

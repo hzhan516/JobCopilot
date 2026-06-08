@@ -101,6 +101,27 @@ def test_process_conversation_normalizes_missing_resume_modification(mock_genera
 
 
 @patch("app.services.conversation_service.generate_json_from_text_prompt_with_repair")
+def test_process_conversation_falls_back_when_content_is_none(mock_generate):
+    mock_generate.return_value = JsonGenerationResult(
+        data={"content": None, "fileUrl": None},
+        raw_text='{"content": null}',
+        json_text='{"content": null}',
+    )
+    command = ConversationRequestCommand(
+        conversationId="conv-1",
+        userId="user-1",
+        currentMessage="hello",
+        messageHistory=[],
+        requestId="req-1",
+        locale="en",
+    )
+
+    result = process_conversation(command)
+
+    assert result.data.content == "I received your message, but I could not generate a detailed response."
+
+
+@patch("app.services.conversation_service.generate_json_from_text_prompt_with_repair")
 def test_process_conversation_coerces_string_false_resume_modification(mock_generate):
     mock_generate.return_value = JsonGenerationResult(
         data={
