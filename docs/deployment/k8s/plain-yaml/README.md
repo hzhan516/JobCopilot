@@ -1,4 +1,4 @@
-﻿# Plain YAML + Kustomize Deployment
+# Plain YAML + Kustomize Deployment
 
 > [English](README.md) | [简体中文](../../../i18n/zh-Hans-CN/deployment/k8s/plain-yaml/README.md) | [繁體中文](../../../i18n/zh-Hant-TW/deployment/k8s/plain-yaml/README.md)
 
