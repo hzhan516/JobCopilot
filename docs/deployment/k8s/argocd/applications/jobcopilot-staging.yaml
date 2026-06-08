@@ -1,0 +1,42 @@
+# =============================================================================
+# ArgoCD Application — Staging Environment
+# ArgoCD Application — 预发布环境
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jobcopilot-staging
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: "https://github.com/<owner>/<repo>.git"
+    targetRevision: "main"
+    path: docs/deployment/k8s/helm/jobcopilot
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-production.yaml
+      parameters:
+        - name: namespace.name
+          value: jobcopilot-staging
+        - name: ingress.host
+          value: staging.jobcopilot.example.com
+        - name: backend.replicaCount
+          value: "2"
+        - name: aiService.replicaCount
+          value: "2"
+        - name: frontend.replicaCount
+          value: "2"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: jobcopilot-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground

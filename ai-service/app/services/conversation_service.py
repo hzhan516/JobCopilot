@@ -1,14 +1,26 @@
 import json
 import logging
+import re
 from pathlib import Path
 from urllib.parse import urlparse
 
 from app.schemas import AiResultEvent, ConversationRequestCommand, ConversationData, ResumeModification
 from app.services.file_parser import download_file_bytes, extract_resume_text
-from app.services.llm_client import generate_json_from_text_prompt
+from app.services.llm_client import LlmJsonParseError, generate_json_from_text_prompt_with_repair
 
 
 logger = logging.getLogger(__name__)
+
+CONVERSATION_JSON_CONTRACT = """
+{
+  "content": "string",
+  "fileUrl": null,
+  "resumeModification": {
+    "modified": false,
+    "markdown": "string"
+  }
+}
+""".strip()
 
 
 def _infer_file_format(file_url: str) -> str | None:
@@ -142,6 +154,106 @@ Current Message:
 """.strip()
 
 
+def _strip_code_fences(text: str) -> str:
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+    return cleaned.strip()
+
+
+def _extract_jsonish_string_field(text: str, field_name: str) -> str | None:
+    """Extract a string field from malformed JSON-ish model output.
+
+    The scanner tolerates unescaped quotes inside the value and only stops on a quote
+    that looks like a JSON field boundary.
+    """
+    pattern = re.compile(rf'"{re.escape(field_name)}"\s*:\s*"')
+    match = pattern.search(text)
+    if not match:
+        return None
+
+    value_chars: list[str] = []
+    i = match.end()
+    while i < len(text):
+        char = text[i]
+
+        if char == "\\" and i + 1 < len(text):
+            next_char = text[i + 1]
+            if next_char == "n":
+                value_chars.append("\n")
+            elif next_char == "r":
+                value_chars.append("\r")
+            elif next_char == "t":
+                value_chars.append("\t")
+            else:
+                value_chars.append(next_char)
+            i += 2
+            continue
+
+        if char == '"':
+            lookahead = text[i + 1:].lstrip()
+            if lookahead.startswith(",") or lookahead.startswith("}"):
+                break
+            value_chars.append(char)
+            i += 1
+            continue
+
+        value_chars.append(char)
+        i += 1
+
+    value = "".join(value_chars).strip()
+    return value or None
+
+
+def _fallback_content_from_unparseable_response(raw_text: str) -> str:
+    """Recover a user-visible reply from malformed JSON before giving up."""
+    cleaned = _strip_code_fences(raw_text)
+    content = _extract_jsonish_string_field(cleaned, "content")
+    if content:
+        return content
+
+    # If the model ignored the JSON contract and returned plain text, use it directly.
+    if not cleaned.startswith("{"):
+        return cleaned
+
+    logger.warning(
+        "Could not recover content field from malformed conversation JSON; using generic fallback"
+    )
+    return "I generated a reply, but it could not be formatted correctly. Please try again."
+
+
+def _normalize_conversation_result(result: dict) -> tuple[str, str | None, dict]:
+    content = str(result.get("content", "")).strip()
+    file_url = result.get("fileUrl")
+
+    if not content:
+        content = "I received your message, but I could not generate a detailed response."
+
+    if file_url is not None:
+        file_url = str(file_url).strip() or None
+
+    resume_modification = result.get("resumeModification")
+    if not isinstance(resume_modification, dict):
+        resume_modification = {"modified": False, "markdown": ""}
+    else:
+        resume_modification = {
+            "modified": _coerce_bool(resume_modification.get("modified", False)),
+            "markdown": str(resume_modification.get("markdown") or ""),
+        }
+
+    return content, file_url, resume_modification
+
+
+def _coerce_bool(value: object) -> bool:
+    """Coerce common model-produced boolean variants without treating 'false' as truthy."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "1", "yes"}
+    return bool(value)
+
+
 def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
     """Execute the conversation workflow and package the LLM response into a standardized event.
     执行对话工作流：调用 LLM 生成回复，对空内容做兜底处理，并将结果封装为标准事件回传后端。"""
@@ -152,26 +264,39 @@ def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
         len(command.message_history),
         len(command.file_urls),
     )
-    result = generate_json_from_text_prompt(prompt)
+    fallback_used = False
+    repaired = False
+    try:
+        generation = generate_json_from_text_prompt_with_repair(
+            prompt,
+            repair_context=CONVERSATION_JSON_CONTRACT,
+        )
+        result = generation.data
+        repaired = generation.repaired
+    except LlmJsonParseError as exc:
+        fallback_used = True
+        result = {
+            "content": _fallback_content_from_unparseable_response(exc.raw_text),
+            "fileUrl": None,
+            "resumeModification": {"modified": False, "markdown": ""},
+        }
+        logger.warning(
+            "Conversation JSON fallback used: conversation_id=%s, raw_text_length=%d, original_error=%s, repair_error=%s",
+            command.conversation_id,
+            len(exc.raw_text),
+            exc.original_error,
+            exc.repair_error,
+        )
 
-    content = str(result.get("content", "")).strip()
-    file_url = result.get("fileUrl")
-
-    if not content:
-        content = "I received your message, but I could not generate a detailed response."
-
-    if file_url is not None:
-        file_url = str(file_url).strip() or None
-        
-    resume_modification = result.get("resumeModification")
-    if not isinstance(resume_modification, dict):
-        resume_modification = {"modified": False, "markdown": ""}
+    content, file_url, resume_modification = _normalize_conversation_result(result)
     logger.info(
-        "Conversation model result received: conversation_id=%s, content_length=%d, has_file_url=%s, has_resume_modification=%s",
+        "Conversation model result received: conversation_id=%s, content_length=%d, has_file_url=%s, has_resume_modification=%s, repaired=%s, fallback_used=%s",
         command.conversation_id,
         len(content),
         file_url is not None,
         bool(resume_modification),
+        repaired,
+        fallback_used,
     )
 
     return AiResultEvent(
@@ -184,8 +309,8 @@ def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
             requestId=command.request_id,
             locale=command.locale,
             resumeModification=ResumeModification(
-                modified=bool(resume_modification.get("modified", False)),
-                markdown=str(resume_modification.get("markdown", "")),
+                modified=resume_modification["modified"],
+                markdown=resume_modification["markdown"],
             ),
         ),
         errorMessage=None,

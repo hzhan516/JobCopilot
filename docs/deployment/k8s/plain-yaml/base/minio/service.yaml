@@ -1,0 +1,23 @@
+# =============================================================================
+# MinIO Service / S3-compatible model artifact storage
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: jobcopilot-minio
+  namespace: jobcopilot
+  labels:
+    app.kubernetes.io/name: jobcopilot
+    app.kubernetes.io/component: minio
+spec:
+  type: ClusterIP
+  ports:
+    - name: api
+      port: 9000
+      targetPort: api
+    - name: console
+      port: 9001
+      targetPort: console
+  selector:
+    app.kubernetes.io/name: jobcopilot
+    app.kubernetes.io/component: minio

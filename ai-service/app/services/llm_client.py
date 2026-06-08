@@ -3,6 +3,7 @@ import logging
 import re
 import base64
 import threading
+from dataclasses import dataclass
 from typing import Any
 
 import litellm
@@ -18,6 +19,38 @@ from app.config import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class LlmJsonParseError(ValueError):
+    """Raised when an LLM response cannot be parsed as the requested JSON object."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        raw_text: str,
+        json_text: str | None = None,
+        repair_raw_text: str | None = None,
+        original_error: Exception | None = None,
+        repair_error: Exception | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.raw_text = raw_text
+        self.json_text = json_text
+        self.repair_raw_text = repair_raw_text
+        self.original_error = original_error
+        self.repair_error = repair_error
+
+
+@dataclass(frozen=True)
+class JsonGenerationResult:
+    """Parsed JSON object plus telemetry about the model-output repair path."""
+
+    data: dict[str, Any]
+    raw_text: str
+    json_text: str
+    repaired: bool = False
+    repair_raw_text: str | None = None
 
 # 全局并发锁：防止 FastAPI 的 I/O 并发瞬间打爆 Vertex AI 导致 429
 # Global Semaphore: Threading bounded semaphore to cap concurrent LLM requests
@@ -132,6 +165,15 @@ def _safe_json_loads(text: str) -> dict[str, Any]:
         raise
 
 
+def _parse_json_object_from_text(raw_text: str) -> tuple[dict[str, Any], str]:
+    """Extract and parse one JSON object from raw LLM text without applying model repair."""
+    json_text = _extract_json_text(raw_text)
+    parsed = _safe_json_loads(json_text)
+    if not isinstance(parsed, dict):
+        raise ValueError(f"LLM JSON response must be an object, got {type(parsed).__name__}")
+    return parsed, json_text
+
+
 @RETRY_STRATEGY
 def _generate_text(model: str, messages: list[dict[str, Any]]) -> str:
     """Execute a text-only LLM completion with retries and empty-response guard.
@@ -176,11 +218,90 @@ def generate_json_from_text_prompt(prompt: str) -> dict[str, Any]:
         model=LLM_TEXT_MODEL,
         messages=messages,
     )
-    json_text = _extract_json_text(raw_text)
-    parsed = _safe_json_loads(json_text)
-    if not isinstance(parsed, dict):
-        raise ValueError(f"LLM JSON response must be an object, got {type(parsed).__name__}")
+    parsed, _ = _parse_json_object_from_text(raw_text)
     return parsed
+
+
+def _build_json_repair_prompt(raw_text: str, parse_error: Exception, context: str | None = None) -> str:
+    """Build a constrained prompt that converts malformed model output into valid JSON only."""
+    context_section = f"\nExpected JSON contract:\n{context.strip()}\n" if context and context.strip() else ""
+    return f"""
+Convert the malformed model output below into one valid JSON object.
+Return JSON only. Do not add markdown fences or explanatory text.
+Preserve the user's visible answer as much as possible.
+If a field is missing, use a safe empty default.
+{context_section}
+Parse error:
+{parse_error}
+
+Malformed output:
+{raw_text[:12000]}
+""".strip()
+
+
+def generate_json_from_text_prompt_with_repair(
+    prompt: str,
+    *,
+    repair_context: str | None = None,
+) -> JsonGenerationResult:
+    """Generate a JSON object and make one model-assisted repair attempt before failing.
+
+    This is intended for user-facing flows like conversation where a valid natural-language
+    answer can often be recovered from malformed JSON. Strict extraction flows should keep
+    using generate_json_from_text_prompt().
+    """
+    messages = [{"role": "user", "content": prompt}]
+    raw_text = _generate_text(
+        model=LLM_TEXT_MODEL,
+        messages=messages,
+    )
+
+    parse_error: Exception | None = None
+    try:
+        parsed, json_text = _parse_json_object_from_text(raw_text)
+        return JsonGenerationResult(data=parsed, raw_text=raw_text, json_text=json_text)
+    except Exception as first_error:
+        parse_error = first_error
+        logger.warning(
+            "LLM JSON parse failed; attempting model repair: error=%s, raw_text_length=%d",
+            first_error,
+            len(raw_text),
+        )
+
+    repair_prompt = _build_json_repair_prompt(raw_text, parse_error, repair_context)
+    repair_raw_text: str | None = None
+    try:
+        repair_raw_text = _generate_text(
+            model=LLM_TEXT_MODEL,
+            messages=[{"role": "user", "content": repair_prompt}],
+        )
+        parsed, json_text = _parse_json_object_from_text(repair_raw_text)
+        logger.info(
+            "LLM JSON repair succeeded: original_length=%d, repair_length=%d",
+            len(raw_text),
+            len(repair_raw_text),
+        )
+        return JsonGenerationResult(
+            data=parsed,
+            raw_text=raw_text,
+            json_text=json_text,
+            repaired=True,
+            repair_raw_text=repair_raw_text,
+        )
+    except Exception as repair_error:
+        logger.error(
+            "LLM JSON repair failed: first_error=%s, repair_error=%s, raw_text_prefix=%r",
+            parse_error,
+            repair_error,
+            raw_text[:500],
+        )
+        raise LlmJsonParseError(
+            "LLM JSON response could not be parsed or repaired.",
+            raw_text=raw_text,
+            repair_raw_text=repair_raw_text,
+            original_error=parse_error,
+            repair_error=repair_error,
+        ) from repair_error
 
 
 @RETRY_STRATEGY

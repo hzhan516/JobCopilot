@@ -1,0 +1,30 @@
+# =============================================================================
+# ArgoCD App of Apps — Root Application
+# ArgoCD App of Apps — 根应用
+# =============================================================================
+# This Application manages all environment-specific Applications.
+# 本 Application 管理所有环境特定的 Application。
+# Deploy this first, then ArgoCD will auto-sync the child apps.
+# 先部署此应用，然后 ArgoCD 会自动同步子应用。
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jobcopilot-root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: "https://github.com/<owner>/<repo>.git"
+    targetRevision: "main"
+    path: docs/deployment/k8s/argocd/applications
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

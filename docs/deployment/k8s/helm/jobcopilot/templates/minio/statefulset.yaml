@@ -1,0 +1,101 @@
+{{- if and (eq .Values.global.infraMode "embedded") .Values.minio.enabled }}
+# =============================================================================
+# MinIO StatefulSet / model artifact registry
+# =============================================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "jobcopilot.fullname" . }}-minio
+  namespace: {{ include "jobcopilot.namespace" . }}
+  labels:
+    {{- include "jobcopilot.minio.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.minio.replicas }}
+  serviceName: {{ include "jobcopilot.fullname" . }}-minio
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: minio
+      {{- include "jobcopilot.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: minio
+        {{- include "jobcopilot.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "jobcopilot.serviceAccountName" . }}-minio
+      securityContext:
+        fsGroup: {{ .Values.minio.podSecurityContext.fsGroup }}
+        fsGroupChangePolicy: {{ .Values.minio.podSecurityContext.fsGroupChangePolicy }}
+      containers:
+        - name: minio
+          image: "{{ if .Values.minio.image.registry }}{{ .Values.minio.image.registry }}/{{ end }}{{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag }}"
+          imagePullPolicy: {{ .Values.minio.image.pullPolicy }}
+          command: ["minio", "server", "/data", "--console-address", ":9001"]
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jobcopilot.secretName" . }}
+                  key: MINIO_ACCESS_KEY
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jobcopilot.secretName" . }}
+                  key: MINIO_SECRET_KEY
+          ports:
+            - name: api
+              containerPort: 9000
+            - name: console
+              containerPort: 9001
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: api
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: api
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          {{- with .Values.minio.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          securityContext:
+            runAsUser: {{ .Values.minio.containerSecurityContext.runAsUser }}
+            runAsGroup: {{ .Values.minio.containerSecurityContext.runAsGroup }}
+            allowPrivilegeEscalation: {{ .Values.minio.containerSecurityContext.allowPrivilegeEscalation }}
+            capabilities:
+              drop:
+                - ALL
+      {{- if and .Values.global.rootlessMode (eq .Values.minio.persistence.type "emptyDir") }}
+      volumes:
+        - name: data
+          emptyDir: {}
+      {{- end }}
+  {{- if and (not .Values.global.rootlessMode) .Values.minio.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "jobcopilot.minio.labels" . | nindent 10 }}
+      spec:
+        accessModes:
+          - {{ .Values.minio.storage.accessMode }}
+        {{- if .Values.minio.storage.storageClassName }}
+        storageClassName: {{ .Values.minio.storage.storageClassName }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.minio.storage.size }}
+  {{- end }}
+{{- end }}
