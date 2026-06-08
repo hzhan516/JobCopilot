@@ -229,7 +229,7 @@ openssl rand -base64 48
 | Field | Value |
 |-------|-------|
 | **Purpose** | Application name displayed in Spring Boot Actuator, metrics, and logs. |
-| **Default** | `JobCopilot-backend` |
+| **Default** | `jobcopilot-backend` |
 | **Valid values** | Any valid Spring Boot application name |
 | **Security notes** | Not a secret. Used for observability and service discovery. |
 | **Common mistakes** | Using spaces or special characters that break URL-safe identifiers. |
@@ -266,7 +266,7 @@ You only need to configure **one** provider. The choice is determined by the pre
 |-------|-------|
 | **Purpose** | API key for OpenAI models (GPT-4o, etc.) via LiteLLM. |
 | **Default** | *(empty)* |
-| **Valid values** | A valid OpenAI API key starting with `sk-` |
+| **Valid values** | A valid OpenAI Service key starting with `sk-` |
 | **Security notes** | OpenAI is a paid service. Set spending limits and monitor usage dashboards to avoid unexpected bills. |
 | **Common mistakes** | Setting this **and** `GEMINI_API_KEY` at the same time. LiteLLM will use whichever provider matches the model prefix, but having multiple keys increases the attack surface. |
 
@@ -956,7 +956,7 @@ These variables are consumed by the Python AI service and AI worker for incremen
 | Field | Value |
 |-------|-------|
 | **Purpose** | Sender address displayed in verification emails. |
-| **Default** | `noreply@JobCopilot.local` |
+| **Default** | `noreply@jobcopilot.local` |
 | **Valid values** | Any valid email address |
 | **Security notes** | Some SMTP providers require the `From` address to be verified or registered in their console. Using an unverified address may cause emails to be rejected or land in spam. |
 | **Common mistakes** | Using a personal Gmail address without enabling "App Passwords" or without configuring SPF/DKIM for the domain. |

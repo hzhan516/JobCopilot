@@ -1,6 +1,6 @@
 # @Transactional 统一策略文档
 
-> **语言**: [English](../transactional-strategy.md) | **简体中文** | [繁體中文](./zh-Hant-TW/transactional-strategy.md)
+> **语言**: [English](../../transactional-strategy.md) | **简体中文** | [繁體中文](../zh-Hant-TW/transactional-strategy.md)
 
 > 本文档规定 JobCopilot 后端 `application` 模块中 Spring `@Transactional` 的使用规范。
 > 目标：消除事务边界泄漏、嵌套事务污染、长事务阻塞等隐患。

@@ -39,7 +39,7 @@ data:
   CAPTCHA_TRACK_WIDTH: "300"
   CAPTCHA_MAX_ATTEMPTS: "5"
   STORAGE_TYPE: "local"
-  MINIO_ENDPOINT: "http://minio:9000"
+  MINIO_ENDPOINT: "http://jobcopilot-minio:9000"
   MINIO_MODEL_BUCKET: "ai-models"
   SEARCH_MAX_LIMIT: "100"
   MANAGEMENT_HEALTH_MAIL_ENABLED: "false"

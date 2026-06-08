@@ -1,6 +1,6 @@
 # 原生 YAML + Kustomize 部署
 
-> [English](../../../../../../deployment/k8s/plain-yaml/README.md) | [简体中文](README.md) | [繁體中文](../../../../../zh-Hant-TW/deployment/k8s/plain-yaml/README.md)
+> [English](../../../../../deployment/k8s/plain-yaml/README.md) | [简体中文](README.md) | [繁體中文](../../../../zh-Hant-TW/deployment/k8s/plain-yaml/README.md)
 
 ## 概述
 
@@ -20,8 +20,10 @@ plain-yaml/
 │   ├── postgres/
 │   ├── rabbitmq/
 │   ├── redis/
+│   ├── minio/
 │   ├── backend/
 │   ├── ai-service/
+│   ├── ai-worker/
 │   └── frontend/
 └── overlays/
     ├── development/
@@ -34,13 +36,18 @@ plain-yaml/
 
 ```bash
 # 从 .env 生成
-../scripts/generate-secrets.sh .env JobCopilot | kubectl apply -f -
+../scripts/generate-secrets.sh .env jobcopilot | kubectl apply -f -
 
 # 或手动创建
-kubectl create secret generic JobCopilot-secrets \
-  --namespace=JobCopilot \
+kubectl create secret generic jobcopilot-secrets \
+  --namespace=jobcopilot \
   --from-literal=JWT_SECRET=your-secret \
-  --from-literal=POSTGRES_PASSWORD=your-password
+  --from-literal=POSTGRES_PASSWORD=your-password \
+  --from-literal=RABBITMQ_PASSWORD=your-rabbitmq-password \
+  --from-literal=REDIS_PASSWORD=your-redis-password \
+  --from-literal=MINIO_ACCESS_KEY=your-minio-access-key \
+  --from-literal=MINIO_SECRET_KEY=your-minio-secret-key \
+  --from-literal=INTERNAL_API_KEY=your-internal-api-key
 ```
 
 ### 2. 部署基础层
@@ -74,7 +81,7 @@ cat > overlays/my-env/kustomization.yaml <<EOF
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: JobCopilot-my-env
+namespace: jobcopilot-my-env
 
 resources:
   - ../../base
@@ -87,11 +94,11 @@ commonLabels:
 patches:
   - target:
       kind: Ingress
-      name: JobCopilot
+      name: jobcopilot
     patch: |
       - op: replace
         path: /spec/rules/0/host
-        value: my-env.JobCopilot.example.com
+        value: my-env.jobcopilot.example.com
 EOF
 ```
 
@@ -103,7 +110,7 @@ EOF
 patches:
   - target:
       kind: Deployment
-      name: JobCopilot-backend
+      name: jobcopilot-backend
     patch: |
       - op: add
         path: /spec/template/spec/containers/0/resources
@@ -125,7 +132,7 @@ resources:
   - base/namespace.yaml
   - base/configmap.yaml
   # ... 其他资源 ...
-  # 不要包含 postgres/、rabbitmq/、redis/ 的 StatefulSet
+  # 不要包含 postgres/、rabbitmq/、redis/、minio/ 的 StatefulSet
 ```
 
 ## 不使用 Kustomize
@@ -141,8 +148,8 @@ kubectl apply -f base/configmap.yaml
 推荐顺序：
 1. Namespace、ConfigMap、Secret
 2. NetworkPolicies
-3. PostgreSQL、RabbitMQ、Redis（StatefulSets + Services）
-4. Backend、AI Service、Frontend（Deployments + Services）
+3. PostgreSQL、RabbitMQ、Redis、MinIO（StatefulSets + Services）
+4. Backend、AI Service、AI Worker、Frontend（Deployments + Services）
 5. Ingress
 
 ## 验证

@@ -229,7 +229,7 @@ openssl rand -base64 48
 | 字段 | 值 |
 |------|-----|
 | **用途** | Spring Boot 应用名称，显示在 Actuator、指标和日志中。 |
-| **默认值** | `JobCopilot-backend` |
+| **默认值** | `jobcopilot-backend` |
 | **有效取值** | 任意有效的 Spring Boot 应用名称 |
 | **安全说明** | 不是机密。用于可观测性和服务发现。 |
 | **常见错误** | 使用空格或特殊字符，破坏 URL 安全标识符。 |
@@ -266,7 +266,7 @@ openssl rand -base64 48
 |------|-----|
 | **用途** | 通过 LiteLLM 使用 OpenAI 模型（GPT-4o 等）的 API 密钥。 |
 | **默认值** | *（空）* |
-| **有效取值** | 以 `sk-` 开头的有效 OpenAI API 密钥 |
+| **有效取值** | 以 `sk-` 开头的有效 OpenAI Service 密钥 |
 | **安全说明** | OpenAI 是付费服务。请设置消费限额并监控使用仪表板，以避免意外账单。 |
 | **常见错误** | 同时设置此变量和 `GEMINI_API_KEY`。LiteLLM 将使用与模型前缀匹配的提供商，但保留多个密钥会增加攻击面。 |
 
@@ -651,7 +651,7 @@ openssl rand -base64 32
 
 ### AI 模型产物存储 (MinIO)
 
-这些变量由 Python AI 服务（AI API 和 AI Worker）使用，用于保存和加载增量匹配模型 artifact。它们与上方后端简历文件存储设置是分开的。
+这些变量由 Python AI 服务（AI Service 和 AI Worker）使用，用于保存和加载增量匹配模型 artifact。它们与上方后端简历文件存储设置是分开的。
 
 ### `MINIO_ENDPOINT`
 
@@ -946,7 +946,7 @@ openssl rand -base64 32
 | 字段 | 值 |
 |------|-----|
 | **用途** | 验证邮件中显示的发件人地址。 |
-| **默认值** | `noreply@JobCopilot.local` |
+| **默认值** | `noreply@jobcopilot.local` |
 | **有效取值** | 任意有效的邮箱地址 |
 | **安全说明** | 某些SMTP服务商要求 `From` 地址在其控制台中已验证或已注册。使用未验证的地址可能导致邮件被拒收或进入垃圾箱。 |
 | **常见错误** | 使用个人Gmail地址但未启用"应用专用密码"，或未为域名配置SPF/DKIM记录。 |

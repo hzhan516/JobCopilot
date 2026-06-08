@@ -2,7 +2,7 @@
 
 > **Languages:** [English](../../BRANCHING_AND_COMMITS.md) | [简体中文](../zh-Hans-CN/BRANCHING_AND_COMMITS.md) | 繁體中文 (current)
 
-本文檔定義了 JobCopilot JobCopilot 專案的 Git 工程標準，涵蓋分支策略、提交規範、程式碼審查流程和發布管理。
+本文檔定義了 JobCopilot 專案的 Git 工程標準，涵蓋分支策略、提交規範、程式碼審查流程和發布管理。
 
 > **狀態：** 已採納  
 > **範圍：** JobCopilot 組織下的所有倉庫  
@@ -17,11 +17,11 @@
 ```
 main（受保護，始終可部署）
   ↑
-feat/RES-123-resume-upload
+feat/123-resume-upload
   ↑
-fix/RES-456-login-timeout
+fix/456-login-timeout
   ↑
-hotfix/RES-789-connection-pool
+hotfix/789-connection-pool
 ```
 
 ### 為什麼選擇 GitHub Flow？
@@ -29,44 +29,44 @@ hotfix/RES-789-connection-pool
 | 因素 | 我們的情況 | 適配度 |
 |--------|--------------|--------|
 | 團隊規模 | 3 名核心成員 | ✅ 完美適配 |
-| 發布節奏 | 每週至雙週 | ✅ 完美適配 |
+| 發布節奏 | 持續交付或按標籤發布 | 強適配 |
 | CI/CD 成熟度 | 正在建設中（CI就緒，CD進行中） | ✅ 良好 |
-| 功能開關 | 尚未實現 | ⚠️ 可接受 |
-| 複雜度 | 低 —— 簡單的 trunk + feature 分支 | ✅ 完美適配 |
+| 功能開關 | 可選；大型功能建議使用 | 良好適配 |
+| 複雜度 | 低 —— `main` 加短生命週期主題分支 | 強適配 |
 
 ### 被我們拒絕的替代策略
 
 | 策略 | 未採用原因 |
 |----------|-------------|
-| **GitFlow** | 對我們的節奏來說太重；`develop` 分支增加開銷卻無實際價值 |
+| **GitFlow** | 對本專案來說偏重；長期存在的 `develop` 分支會增加開銷 |
 | **Trunk-Based** | 需要功能開關和 >80% 覆蓋率 —— 尚未就緒 |
-| **Release Flow** | 團隊 < 10 人時過度複雜 |
+| **Release Flow** | 僅在後續需要長期維護多個發布線時採用 |
 
 ### 分支命名規範
 
 ```
-{type}/{ticket-id}-{short-description}
+{type}/{issue-number-or-short-description}
 ```
 
 **類型：**
 
 | 類型 | 用途 | 範例 |
 |------|---------|---------|
-| `feat` | 新功能 | `feat/RES-123-resume-upload` |
-| `fix` | Bug 修復 | `fix/RES-456-login-timeout` |
-| `hotfix` | 生產環境緊急修復 | `hotfix/RES-789-connection-pool` |
-| `chore` | 維護、相依性更新 | `chore/RES-200-bump-spring-boot` |
-| `docs` | 僅文件變更 | `docs/RES-300-deployment-guide` |
-| `refactor` | 程式碼重構，無行為變更 | `refactor/RES-400-extract-validator` |
-| `test` | 測試新增 | `test/RES-500-auth-edge-cases` |
-| `perf` | 效能改進 | `perf/RES-600-vector-caching` |
-| `ci` | CI/CD 設定 | `ci/RES-700-add-jacoco` |
-| `style` | 程式碼格式化 | `style/RES-800-spotless-format` |
+| `feat` | 新功能 | `feat/123-resume-upload` |
+| `fix` | Bug 修復 | `fix/456-login-timeout` |
+| `hotfix` | 生產環境緊急修復 | `hotfix/789-connection-pool` |
+| `chore` | 維護、相依性更新 | `chore/200-bump-spring-boot` |
+| `docs` | 僅文件變更 | `docs/300-deployment-guide` |
+| `refactor` | 程式碼重構，無行為變更 | `refactor/400-extract-validator` |
+| `test` | 測試新增 | `test/500-auth-edge-cases` |
+| `perf` | 效能改進 | `perf/600-vector-caching` |
+| `ci` | CI/CD 設定 | `ci/700-add-jacoco` |
+| `style` | 程式碼格式化 | `style/800-spotless-format` |
 
 **規則：**
 - 全部小寫，空格用連字號替代
 - `type/` 後最多 50 個字元
-- 有 ticket/issue 編號時必須包含
+- 有 issue 編號時優先包含；否則使用清晰的短描述
 - 合併後分支自動刪除（通過 GitHub 設定）
 
 ### 分支生命週期目標
@@ -132,7 +132,7 @@ hotfix/RES-789-connection-pool
 2. **祈使語氣** —— "add feature" 而非 "added feature"
 3. **主題 ≤ 72 字元** —— 必須能放入 `git log --oneline`
 4. **正文每行 72 字元** —— 終端可讀
-5. **引用 Issue** —— `Fixes #123` 或 `Refs RES-456`
+5. **引用 Issue** —— `Fixes #123` 或 `Refs #456`
 6. **main 上不允許 WIP 提交** —— 先 squash 或互動式 rebase
 7. **破壞性變更必須顯式聲明：**
    ```
@@ -226,7 +226,7 @@ allow_deletions: false
 require_conversation_resolution: true
 ```
 
-### `develop` 分支（如使用）
+### `release/*` 分支（可选）
 
 ```yaml
 required_reviews: 1
@@ -241,7 +241,7 @@ require_status_checks:
 
 ### 合併前 CI 流水線
 
-CI 在每個 PR 和 push 到 `main`/`develop` 時執行：
+CI 在每個 PR 以及推送到 `main` 和受支援的 `release/*` 分支時執行：
 
 | 階段 | 檢查 | 目標時長 |
 |-------|--------|----------------|
@@ -292,13 +292,13 @@ MAJOR.MINOR.PATCH[-prerelease]
 
 我們**只發布 Docker 鏡像** —— 不發布到 Maven Central、npm registry 或 PyPI。
 
-**製品倉庫：** `ghcr.io/jobcopilot/resumeassistant`
+**製品倉庫：** `ghcr.io/<owner>/jobcopilot`
 
 | 組件 | 鏡像標籤 | 範例 |
 |-----------|-----------|---------|
-| 後端 | `ghcr.io/jobcopilot/resumeassistant/backend:vX.Y.Z` | `backend:v1.2.0` |
-| 前端 | `ghcr.io/jobcopilot/resumeassistant/frontend:vX.Y.Z` | `frontend:v1.2.0` |
-| AI 服務 | `ghcr.io/jobcopilot/resumeassistant/ai-service:vX.Y.Z` | `ai-service:v1.2.0` |
+| 後端 | `ghcr.io/<owner>/jobcopilot/backend:vX.Y.Z` | `backend:v1.2.0` |
+| 前端 | `ghcr.io/<owner>/jobcopilot/frontend:vX.Y.Z` | `frontend:v1.2.0` |
+| AI 服務 | `ghcr.io/<owner>/jobcopilot/ai-service:vX.Y.Z` | `ai-service:v1.2.0` |
 
 **標籤策略：**
 - `vX.Y.Z` —— 精確發布（不可變）
@@ -317,14 +317,14 @@ MAJOR.MINOR.PATCH[-prerelease]
 3. 人工審查並合併發布 PR
 4. 自動建立 Git 標籤 `vX.Y.Z`
 5. 發布帶自動生成說明的 GitHub Release
-6. 建置並推送 Docker 鏡像到 `ghcr.io/jobcopilot/resumeassistant/*:vX.Y.Z`
+6. 建置並推送 Docker 鏡像到 `ghcr.io/<owner>/jobcopilot/*:vX.Y.Z`
 7. **不發布到套件管理器** —— 容器是唯一的分發製品
 
 ### 熱修復流程
 
 ```
 1. 從最新發布標籤建立分支：
-   git checkout -b hotfix/RES-XXX-description v1.2.0
+   git checkout -b hotfix/issue-XXX-description v1.2.0
 
 2. 實現修復並附帶測試
 
@@ -434,7 +434,7 @@ git config --global commit.gpgsign true
 
 ```bash
 # 開始功能開發
-git checkout -b feat/RES-123-description main
+git checkout -b feat/123-description main
 
 # 保持分支 rebase
 git fetch upstream

@@ -90,7 +90,7 @@ This violates the principle of least privilege:
 │   │   │         internal-network (bridge, /16)                           │
 │   │   │                                                                │
 │   │   │   ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐ │
-│   │   │   │ai-api  │  │rabbitmq│  │ redis  │  │ai-worker│  │ minio  │ │
+│   │   │   │ai-service  │  │rabbitmq│  │ redis  │  │ai-worker│  │ minio  │ │
 │   │   │   │:8000   │  │:5672   │  │:6379   │  │ (train) │  │:9000   │ │
 │   │   │   └────────┘  └────────┘  └────────┘  └────────┘  └────────┘ │
 │   │   └────────────────────────────────────────────────────────────────┘
@@ -113,7 +113,7 @@ This violates the principle of least privilege:
 |---------|---------------|------------------|------------|------------|------|
 | **frontend** (Nginx) | ✅ | ❌ | ❌ | `80:8080` | Single HTTP entry point; reverse-proxies `/api/*` to backend |
 | **backend** (Spring Boot) | ✅ | ✅ | ✅ | None | Gateway; spans all tiers |
-| **ai-api** (FastAPI) | ❌ | ✅ | ❌ | None | LLM inference, embedding, parsing |
+| **ai-service** (FastAPI) | ❌ | ✅ | ❌ | None | LLM inference, embedding, parsing |
 | **ai-worker** (LightGBM) | ❌ | ✅ | ❌ | None | Incremental model training |
 | **rabbitmq** | ❌ | ✅ | ❌ | None | Async message broker (Outbox pattern) |
 | **redis** | ❌ | ✅ | ❌ | None | Cache, distributed locks (ShedLock), feedback buffer |
@@ -126,7 +126,7 @@ The **backend** is the only container attached to all three networks. This is in
 
 1. **Traffic control**: All external HTTP requests enter through `frontend:80` → `backend:8080`. The backend decides whether to query PostgreSQL, publish a RabbitMQ message, or call the AI service.
 2. **Secret centralization**: Only the backend needs PostgreSQL credentials, RabbitMQ credentials, and the `INTERNAL_API_KEY` for AI service authentication. Other tiers never see cross-tier secrets.
-3. **Observability**: A single request can be traced through `Nginx → backend → (db | mq | ai-api)` without jumping between network boundaries.
+3. **Observability**: A single request can be traced through `Nginx → backend → (db | mq | ai-service)` without jumping between network boundaries.
 
 ### 2.4 Docker Compose Implementation
 
@@ -162,7 +162,7 @@ services:
       - db-network
     # No host ports — unreachable except via public-network
 
-  ai-api:
+  ai-service:
     networks:
       - internal-network
 
@@ -184,7 +184,7 @@ services:
       - db-network
 ```
 
-All direct host port mappings (backend `8080`, postgres `5432`, rabbitmq `5672`/`15672`, ai-api `8000`) are **commented out** by default. Uncommenting them prints a `SECURITY WARNING` in the file header and must be reverted before shipping.
+All direct host port mappings (backend `8080`, postgres `5432`, rabbitmq `5672`/`15672`, ai-service `8000`) are **commented out** by default. Uncommenting them prints a `SECURITY WARNING` in the file header and must be reverted before shipping.
 
 ---
 

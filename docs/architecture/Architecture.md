@@ -48,11 +48,11 @@ Backend container
   Spring Boot API, auth, domain workflows, vector persistence
   |-- JDBC --------> PostgreSQL + pgvector
   |-- AMQP --------> RabbitMQ --------> AI worker container
-  |-- HTTP --------> AI API container
+  |-- HTTP --------> AI Service container
   |-- Redis -------> Redis
   `-- Local files -> shared upload volume
 
-AI API / AI worker
+AI Service / AI worker
   |-- LiteLLM-compatible provider for parsing, embeddings, ranking, chat
   |-- Backend internal API for vector upserts and baseline features
   |-- Redis feedback buffer, locks, and model reload Pub/Sub
@@ -65,7 +65,7 @@ AI API / AI worker
 |-----------|------------|------------------|----------------|
 | Frontend / Gateway | React 19, Vite 7, Nginx | Host `${FRONTEND_HOST_PORT:-80}` -> container `8080` | UI delivery, reverse proxy for backend API and health checks |
 | Backend | Java 21, Spring Boot 3.5 | Internal `8080`; optional dev-only host mapping | REST API, authentication, domain workflows, transactions, persistence, MQ publishing/consuming |
-| AI API | Python 3.11, FastAPI, LiteLLM | Internal `8000`; optional dev-only host mapping | Embeddings, parsing, ranking, chat-oriented endpoints |
+| AI Service | Python 3.11, FastAPI, LiteLLM | Internal `8000`; optional dev-only host mapping | Embeddings, parsing, ranking, chat-oriented endpoints |
 | AI Worker | Python 3.11, RabbitMQ consumers, LightGBM | Internal worker process | Async task processing, feedback ingestion, incremental model training |
 | PostgreSQL | PostgreSQL 15 + pgvector | Internal `5432` on `db-network` | Business tables and vector tables |
 | RabbitMQ | RabbitMQ 3 management image | Internal `5672`; management UI disabled by default | Durable queue transport and DLQ support |
@@ -145,7 +145,7 @@ Frontend -> Backend: poll or fetch updated resume status
 ```text
 Frontend -> Backend: request matches
 Backend -> PostgreSQL/pgvector: semantic recall
-Backend -> AI API or RabbitMQ: ranking/explanation work
+Backend -> AI Service or RabbitMQ: ranking/explanation work
 AI service -> LiteLLM provider: rank or explain matches
 Backend -> Frontend: return ordered jobs and match metadata
 ```
@@ -160,7 +160,7 @@ AI worker -> Backend internal API: fetch baseline features
 AI worker -> LightGBM: train when threshold/lock allows
 AI worker -> MinIO: upload model artifact and latest metadata
 AI worker -> Redis Pub/Sub: publish model reload event
-AI API model manager -> MinIO: load latest model
+AI Service model manager -> MinIO: load latest model
 ```
 
 ## Deployment Topology
@@ -173,7 +173,7 @@ Docker Compose defines three tiers:
 | `internal-network` | `backend`, `ai-service`, `ai-worker`, `rabbitmq`, `redis`, `minio` | Internal service-to-service communication |
 | `db-network` | `backend`, `postgres` | Database access isolated from other services |
 
-Only `frontend` maps a host port by default. Backend, AI API, RabbitMQ management, Redis, PostgreSQL, and MinIO are internal unless development-only port mappings are intentionally uncommented.
+Only `frontend` maps a host port by default. Backend, AI service, RabbitMQ management, Redis, PostgreSQL, and MinIO are internal unless development-only port mappings are intentionally uncommented.
 
 ## Security Boundaries
 

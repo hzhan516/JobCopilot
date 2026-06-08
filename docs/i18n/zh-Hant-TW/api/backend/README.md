@@ -410,19 +410,39 @@ Authorization: Bearer <access_token>
 - **URL**: `GET /api/v1/jobs`
 - **認證**: 需要
 
-#### 3.4 啟動職位配對
+#### 3.4 更新職位
+- **URL**: `PUT /api/v1/jobs/{jobId}`
+- **認證**: 需要
+
+#### 3.5 隱藏職位
+- **URL**: `DELETE /api/v1/jobs/{jobId}`
+- **認證**: 需要
+
+#### 3.6 職位評分
+- **URL**: `POST /api/v1/jobs/{jobId}/score`
+- **認證**: 需要
+
+#### 3.7 記錄職位行為
+- **URL**: `POST /api/v1/jobs/{jobId}/track`
+- **認證**: 需要
+
+#### 3.8 取得評分歷史
+- **URL**: `GET /api/v1/jobs/scores/history`
+- **認證**: 需要
+
+#### 3.9 啟動職位配對
 - **URL**: `POST /api/v1/jobs/match`
 - **認證**: 需要
 
-#### 3.5 查詢配對結果
+#### 3.10 查詢配對結果
 - **URL**: `GET /api/v1/jobs/match/{matchId}`
 - **認證**: 需要
 
-#### 3.6 取得配對歷史
+#### 3.11 取得配對歷史
 - **URL**: `GET /api/v1/jobs/match/history`
 - **認證**: 需要
 
-#### 3.7 向量搜尋職位
+#### 3.12 向量搜尋職位
 - **URL**: `POST /api/v1/jobs/vector-search`
 - **認證**: 需要
 
@@ -533,11 +553,15 @@ Authorization: Bearer <access_token>
 | 提交職位 | POST | `/api/v1/jobs` | 提交職位連結非同步剖析 | 是 |
 | 取得職位詳情 | GET | `/api/v1/jobs/{jobId}` | 取得職位剖析狀態 | 是 |
 | 取得職位列表 | GET | `/api/v1/jobs` | 取得使用者所有職位 | 是 |
+| 更新職位 | PUT | `/api/v1/jobs/{jobId}` | 更新職位剖析內容 | 是 |
+| 隱藏職位 | DELETE | `/api/v1/jobs/{jobId}` | 從使用者列表隱藏職位 | 是 |
+| 職位評分 | POST | `/api/v1/jobs/{jobId}/score` | 對職位進行履歷匹配評分 | 是 |
+| 記錄職位行為 | POST | `/api/v1/jobs/{jobId}/track` | 記錄點擊、申請、拒絕等操作 | 是 |
+| 取得評分歷史 | GET | `/api/v1/jobs/scores/history` | 取得已儲存的職位評分歷史 | 是 |
 | 啟動職位配對 | POST | `/api/v1/jobs/match` | 啟動非同步職位配對 | 是 |
 | 查詢配對結果 | GET | `/api/v1/jobs/match/{matchId}` | 查詢配對任務結果 | 是 |
 | 取得配對歷史 | GET | `/api/v1/jobs/match/history` | 取得歷史配對記錄 | 是 |
 | 向量搜尋職位 | POST | `/api/v1/jobs/vector-search` | ANN 向量搜尋職位 | 是 |
-| 職位評分 | POST | `/api/v1/jobs/{jobId}/score` | 對職位進行履歷匹配評分 | 是 |
 | 獲取職位數據集 | GET | `/api/v1/job-dataset` | 查詢訓練數據集（內部接口） | 內部 API Key |
 | 批次 Upsert 職位向量 | POST | `/api/v1/job-vectors/batch` | 批次 Upsert 職位向量（AI 層） | 內部 API Key |
 | 建立對話 | POST | `/api/v1/conversations` | 建立新對話 | 是 |

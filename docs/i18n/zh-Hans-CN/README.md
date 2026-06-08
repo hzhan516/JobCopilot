@@ -37,11 +37,11 @@ Backend container
   Spring Boot API、认证、领域工作流、向量持久化
   |-- JDBC --------> PostgreSQL + pgvector
   |-- AMQP --------> RabbitMQ --------> AI worker container
-  |-- HTTP --------> AI API container
+  |-- HTTP --------> AI Service container
   |-- Redis -------> Redis
   `-- Local files -> shared upload volume
 
-AI API / AI worker
+AI Service / AI worker
   |-- LiteLLM 兼容提供商：解析、嵌入、排序、对话
   |-- 后端内部 API：向量写入和基线特征读取
   |-- Redis：反馈缓冲、分布式锁、模型重载 Pub/Sub
@@ -52,7 +52,7 @@ AI API / AI worker
 |------|------|----------|------|
 | 前端 / 网关 | React 19、Vite 7、Nginx | 主机 `${FRONTEND_HOST_PORT:-80}` -> 容器 `8080` | 提供 UI，代理 `/api` 和 `/health` 到后端 |
 | 后端 | Java 21、Spring Boot 3.5、DDD 模块 | 内部 `8080`；默认不直接暴露到主机 | REST API、认证、简历/职位/申请工作流、向量持久化 |
-| AI API | Python 3.11、FastAPI、LiteLLM | 内部 `8000`；默认不直接暴露到主机 | 同步 AI 端点、嵌入、解析、排序、对话支持 |
+| AI Service | Python 3.11、FastAPI、LiteLLM | 内部 `8000`；默认不直接暴露到主机 | 同步 AI 端点、嵌入、解析、排序、对话支持 |
 | AI Worker | Python 3.11、RabbitMQ 消费者、LightGBM | 内部工作进程 | 异步解析、职位排序任务、反馈采集、增量模型训练 |
 | PostgreSQL | PostgreSQL 15 + pgvector | `db-network` 内部 `5432` | 业务数据和向量存储 |
 | RabbitMQ | RabbitMQ 3 management 镜像 | 内部 `5672`；管理端口默认关闭 | 后端与 AI 服务之间的持久化异步任务传输 |
@@ -157,7 +157,7 @@ cp .env.example .env
 | `VITE_GOOGLE_CLIENT_ID`      | 是        | 前端登录流程使用的 Google OAuth 2.0 客户端 ID                      |
 | `INTERNAL_API_KEY`           | 推荐      | 后端调用 AI 服务的共享密钥                                        |
 | `GEMINI_API_KEY`             | 有条件    | 当 `LLM_*_MODEL` 使用 `gemini/` 前缀时使用的 Gemini API 密钥       |
-| `OPENAI_API_KEY`             | 有条件    | 当 `LLM_*_MODEL` 使用 `openai/` 前缀时使用的 OpenAI API 密钥     |
+| `OPENAI_API_KEY`             | 有条件    | 当 `LLM_*_MODEL` 使用 `openai/` 前缀时使用的 OpenAI Service 密钥     |
 | `ANTHROPIC_API_KEY`          | 有条件    | 当 `LLM_*_MODEL` 使用 `anthropic/` 前缀时使用的 Anthropic API 密钥 |
 | `LLM_TEXT_MODEL`             | 否        | LiteLLM 文本模型名称；Compose 中默认为 Gemini 模型               |
 | `LLM_VISION_MODEL`           | 否        | LiteLLM 视觉模型名称                                             |
@@ -351,7 +351,7 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ## 部署
 
-详细部署说明请参见 [docs/deployment/DOCKER_DEPLOY.md](docs/deployment/DOCKER_DEPLOY.md)，内容包括：
+详细部署说明请参见 [../../deployment/DOCKER_DEPLOY.md](../../deployment/DOCKER_DEPLOY.md)，内容包括：
 
 - 生产环境部署检查清单
 - 环境配置

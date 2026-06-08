@@ -20,21 +20,21 @@
 
 ```bash
 # 先建立命名空間
-kubectl create namespace JobCopilot
+kubectl create namespace jobcopilot
 
 # 使用預設值安裝（自建中介軟體，開發配置）
-helm install JobCopilot . \
-  --namespace JobCopilot
+helm install jobcopilot . \
+  --namespace jobcopilot
 
 # 生產環境安裝（託管中介軟體）
-helm install JobCopilot . \
-  --namespace JobCopilot \
+helm install jobcopilot . \
+  --namespace jobcopilot \
   -f values.yaml \
   -f values-production.yaml
 
 # 最小資源安裝（kind/minikube）
-helm install JobCopilot . \
-  --namespace JobCopilot \
+helm install jobcopilot . \
+  --namespace jobcopilot \
   -f values.yaml \
   -f values-minimal.yaml
 ```
@@ -42,8 +42,8 @@ helm install JobCopilot . \
 ### 升級
 
 ```bash
-helm upgrade JobCopilot . \
-  --namespace JobCopilot \
+helm upgrade jobcopilot . \
+  --namespace jobcopilot \
   -f values.yaml \
   -f values-production.yaml
 ```
@@ -51,9 +51,9 @@ helm upgrade JobCopilot . \
 ### 解除安裝
 
 ```bash
-helm uninstall JobCopilot --namespace JobCopilot
+helm uninstall jobcopilot --namespace jobcopilot
 # 注意：預設不會刪除 PVC，以防止資料遺失
-kubectl delete pvc -n JobCopilot -l app.kubernetes.io/name=JobCopilot
+kubectl delete pvc -n jobcopilot -l app.kubernetes.io/name=jobcopilot
 ```
 
 ---
@@ -66,16 +66,19 @@ kubectl delete pvc -n JobCopilot -l app.kubernetes.io/name=JobCopilot
 |-----------|-------------|---------|
 | `global.infraMode` | 中介軟體模式：`embedded` 或 `managed` | `embedded` |
 | `secrets.existingSecret` | 使用預先建立的 Secret 替代 Helm 管理 | `""` |
-| `ingress.host` | Ingress 網域 | `JobCopilot.local` |
+| `ingress.host` | Ingress 網域 | `jobcopilot.local` |
 | `ingress.tls.enabled` | 啟用 TLS | `false` |
 | `backend.replicaCount` | 後端副本數 | `1` |
 | `backend.springProfilesActive` | Spring 設定檔 | `dev` |
 | `backend.storageType` | 檔案儲存：`local`、`s3`、`minio`、`oss` | `local` |
 | `aiService.replicaCount` | AI 服務副本數 | `1` |
 | `aiService.llmEmbeddingDimension` | 嵌入向量維度 | `1536` |
+| `aiWorker.enabled` | 部署後台 AI worker | `true` |
+| `aiWorker.replicaCount` | AI worker 副本數 | `1` |
 | `postgres.enabled` | 部署 PostgreSQL StatefulSet | `true` |
 | `rabbitmq.enabled` | 部署 RabbitMQ StatefulSet | `true` |
 | `redis.enabled` | 部署 Redis StatefulSet | `true` |
+| `minio.enabled` | 在 embedded 模式部署 MinIO 模型製品儲存 | `true` |
 
 ### 完整值參考
 
@@ -98,21 +101,26 @@ secrets:
 
 ```bash
 # 手動建立 Secret
-kubectl create secret generic JobCopilot-secrets \
-  --namespace=JobCopilot \
+kubectl create secret generic jobcopilot-secrets \
+  --namespace=jobcopilot \
   --from-literal=JWT_SECRET=... \
-  --from-literal=POSTGRES_PASSWORD=...
+  --from-literal=POSTGRES_PASSWORD=... \
+  --from-literal=RABBITMQ_PASSWORD=... \
+  --from-literal=REDIS_PASSWORD=... \
+  --from-literal=MINIO_ACCESS_KEY=... \
+  --from-literal=MINIO_SECRET_KEY=... \
+  --from-literal=INTERNAL_API_KEY=...
 
 # 在 values 中引用
-helm install JobCopilot . \
-  --set secrets.existingSecret=JobCopilot-secrets
+helm install jobcopilot . \
+  --set secrets.existingSecret=jobcopilot-secrets
 ```
 
 ### 方式三：External Secrets Operator
 
 ```yaml
 secrets:
-  existingSecret: "JobCopilot-eso-secret"
+  existingSecret: "jobcopilot-eso-secret"
 ```
 
 設定 ESO 從 AWS Secrets Manager、Azure Key Vault 或 GCP Secret Manager 同步。
@@ -130,7 +138,7 @@ secrets:
 
 提供 `init.sql`：
 ```bash
-helm install JobCopilot . \
+helm install jobcopilot . \
   --set-file postgres.initSql=../../../backend/app/src/main/resources/db/init.sql
 ```
 
@@ -146,7 +154,7 @@ helm install JobCopilot . \
 # 對金鑰檔案進行 Base64 編碼
 export GCP_CREDS_B64=$(base64 -w 0 /path/to/gcp-service-account.json)
 
-helm install JobCopilot . \
+helm install jobcopilot . \
   --set secrets.gcpCredentialsJson="$GCP_CREDS_B64"
 ```
 
@@ -161,7 +169,7 @@ Chart 會建立獨立的 Secret，並以唯讀卷形式掛載到 `/app/credentia
 helm lint .
 
 # 渲染模板而不安裝
-helm template JobCopilot . \
+helm template jobcopilot . \
   -f values.yaml \
   -f values-production.yaml > rendered.yaml
 
@@ -175,21 +183,26 @@ helm template JobCopilot . \
 
 ```yaml
 global:
-  imageRegistry: "ghcr.io/jobcopilot/"
+  imageRegistry: "ghcr.io/<owner>/jobcopilot/"
 
 backend:
   image:
-    repository: JobCopilot-backend
+    repository: jobcopilot-backend
     tag: "v1.2.3"
 
 aiService:
   image:
-    repository: JobCopilot-ai-service
+    repository: jobcopilot-ai-service
+    tag: "v1.2.3"
+
+aiWorker:
+  image:
+    repository: jobcopilot-ai-service
     tag: "v1.2.3"
 
 frontend:
   image:
-    repository: JobCopilot-frontend
+    repository: jobcopilot-frontend
     tag: "v1.2.3"
 ```
 

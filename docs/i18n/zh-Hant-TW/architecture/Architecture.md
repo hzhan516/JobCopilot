@@ -48,11 +48,11 @@ Backend container
   Spring Boot API、認證、領域工作流、向量持久化
   |-- JDBC --------> PostgreSQL + pgvector
   |-- AMQP --------> RabbitMQ --------> AI worker container
-  |-- HTTP --------> AI API container
+  |-- HTTP --------> AI Service container
   |-- Redis -------> Redis
   `-- Local files -> shared upload volume
 
-AI API / AI worker
+AI Service / AI worker
   |-- LiteLLM 相容提供商：解析、嵌入、排序、對話
   |-- 後端內部 API：向量寫入和基線特徵讀取
   |-- Redis：回饋緩衝、分散式鎖、模型重載 Pub/Sub
@@ -65,7 +65,7 @@ AI API / AI worker
 |------|------|----------|------|
 | 前端 / 閘道 | React 19、Vite 7、Nginx | 主機 `${FRONTEND_HOST_PORT:-80}` -> 容器 `8080` | 提供 UI，反向代理後端 API 和健康檢查 |
 | 後端 | Java 21、Spring Boot 3.5 | 內部 `8080`；可選開發連接埠映射 | REST API、認證、領域工作流、交易、持久化、MQ 發布/消費 |
-| AI API | Python 3.11、FastAPI、LiteLLM | 內部 `8000`；可選開發連接埠映射 | 嵌入、解析、排序和對話相關同步端點 |
+| AI Service | Python 3.11、FastAPI、LiteLLM | 內部 `8000`；可選開發連接埠映射 | 嵌入、解析、排序和對話相關同步端點 |
 | AI Worker | Python 3.11、RabbitMQ 消費者、LightGBM | 內部工作程序 | 非同步任務處理、回饋採集、增量模型訓練 |
 | PostgreSQL | PostgreSQL 15 + pgvector | `db-network` 內部 `5432` | 業務表和向量表 |
 | RabbitMQ | RabbitMQ 3 management 映像 | 內部 `5672`；管理 UI 預設關閉 | 持久化佇列傳輸和 DLQ 支援 |
@@ -145,7 +145,7 @@ Frontend -> Backend: 輪詢或取得更新後的履歷狀態
 ```text
 Frontend -> Backend: 請求匹配結果
 Backend -> PostgreSQL/pgvector: 語義召回
-Backend -> AI API or RabbitMQ: 排序/解釋任務
+Backend -> AI Service or RabbitMQ: 排序/解釋任務
 AI service -> LiteLLM provider: 排序或解釋匹配結果
 Backend -> Frontend: 返回排序後的職位和匹配元資料
 ```
@@ -160,7 +160,7 @@ AI worker -> Backend internal API: 取得基線特徵
 AI worker -> LightGBM: 滿足閾值且取得鎖後訓練
 AI worker -> MinIO: 上傳模型產物和 latest 元資料
 AI worker -> Redis Pub/Sub: 發布模型重載事件
-AI API model manager -> MinIO: 載入最新模型
+AI Service model manager -> MinIO: 載入最新模型
 ```
 
 ## 部署拓撲
@@ -173,7 +173,7 @@ Docker Compose 定義三層網路：
 | `internal-network` | `backend`、`ai-service`、`ai-worker`、`rabbitmq`、`redis`、`minio` | 內部服務通訊 |
 | `db-network` | `backend`、`postgres` | 資料庫存取與其他服務隔離 |
 
-預設只有 `frontend` 映射主機連接埠。後端、AI API、RabbitMQ 管理端、Redis、PostgreSQL 和 MinIO 都保持內部存取，除非明確開啟開發用連接埠映射。
+預設只有 `frontend` 映射主機連接埠。後端、AI Service、RabbitMQ 管理端、Redis、PostgreSQL 和 MinIO 都保持內部存取，除非明確開啟開發用連接埠映射。
 
 ## 安全邊界
 

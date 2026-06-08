@@ -211,4 +211,4 @@ Trigger (ProfileController)
 ## 其他语言
 
 - [English (英文)](../../../../api/backend/profile.md)
-- [繁體中文 (Traditional Chinese)](../../zh-Hant-TW/api/backend/profile.md)
+- [繁體中文 (Traditional Chinese)](../../../zh-Hant-TW/api/backend/profile.md)

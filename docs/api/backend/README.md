@@ -350,19 +350,39 @@ This module provides job link submission, async parsing, intelligent matching, a
 - **URL**: `GET /api/v1/jobs`
 - **Authentication**: Required
 
-#### 3.4 Start Job Matching
+#### 3.4 Update Job
+- **URL**: `PUT /api/v1/jobs/{jobId}`
+- **Authentication**: Required
+
+#### 3.5 Hide Job
+- **URL**: `DELETE /api/v1/jobs/{jobId}`
+- **Authentication**: Required
+
+#### 3.6 Score Job
+- **URL**: `POST /api/v1/jobs/{jobId}/score`
+- **Authentication**: Required
+
+#### 3.7 Track Job Action
+- **URL**: `POST /api/v1/jobs/{jobId}/track`
+- **Authentication**: Required
+
+#### 3.8 Get Score History
+- **URL**: `GET /api/v1/jobs/scores/history`
+- **Authentication**: Required
+
+#### 3.9 Start Job Matching
 - **URL**: `POST /api/v1/jobs/match`
 - **Authentication**: Required
 
-#### 3.5 Query Match Results
+#### 3.10 Query Match Results
 - **URL**: `GET /api/v1/jobs/match/{matchId}`
 - **Authentication**: Required
 
-#### 3.6 Get Match History
+#### 3.11 Get Match History
 - **URL**: `GET /api/v1/jobs/match/history`
 - **Authentication**: Required
 
-#### 3.7 Vector Search Jobs
+#### 3.12 Vector Search Jobs
 - **URL**: `POST /api/v1/jobs/vector-search`
 - **Authentication**: Required
 
@@ -471,11 +491,15 @@ This module provides application status flow, event recording, and statistical a
 | Submit Job | POST | `/api/v1/jobs` | Submit job link for async parsing | Yes |
 | Get Job Details | GET | `/api/v1/jobs/{jobId}` | Get job parsing status | Yes |
 | Get Job List | GET | `/api/v1/jobs` | Get all jobs for user | Yes |
+| Update Job | PUT | `/api/v1/jobs/{jobId}` | Update parsed job content | Yes |
+| Hide Job | DELETE | `/api/v1/jobs/{jobId}` | Hide job from user-facing lists | Yes |
+| Score Job | POST | `/api/v1/jobs/{jobId}/score` | Score a job against a resume | Yes |
+| Track Job Action | POST | `/api/v1/jobs/{jobId}/track` | Track click/apply/reject actions | Yes |
+| Get Score History | GET | `/api/v1/jobs/scores/history` | Get saved scoring history | Yes |
 | Start Job Matching | POST | `/api/v1/jobs/match` | Start async job matching | Yes |
 | Query Match Results | GET | `/api/v1/jobs/match/{matchId}` | Query match task results | Yes |
 | Get Match History | GET | `/api/v1/jobs/match/history` | Get historical match records | Yes |
 | Vector Search Jobs | POST | `/api/v1/jobs/vector-search` | ANN vector search for jobs | Yes |
-| Score Job | POST | `/api/v1/jobs/{jobId}/score` | Score a job against a resume | Yes |
 | Get Job Dataset | GET | `/api/v1/job-dataset` | Query training dataset (internal) | Internal API key |
 | Batch Upsert Job Vectors | POST | `/api/v1/job-vectors/batch` | Batch upsert job vectors (AI layer) | Internal API key |
 | Create Conversation | POST | `/api/v1/conversations` | Create new conversation | Yes |

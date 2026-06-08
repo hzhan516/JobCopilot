@@ -2,7 +2,7 @@
 
 > **Languages:** English (current) | [简体中文](i18n/zh-Hans-CN/BRANCHING_AND_COMMITS.md) | [繁體中文](i18n/zh-Hant-TW/BRANCHING_AND_COMMITS.md)
 
-This document defines the Git engineering standards for the JobCopilot JobCopilot project. It covers branching strategy, commit conventions, code review workflows, and release management.
+This document defines the Git engineering standards for the JobCopilot project. It covers branching strategy, commit conventions, code review workflows, and release management.
 
 > **Status:** Accepted  
 > **Scope:** All repositories under the JobCopilot organization
@@ -16,56 +16,56 @@ We use **GitHub Flow** — a lightweight, trunk-based branching model optimized 
 ```
 main (protected, always deployable)
   ↑
-feat/RES-123-resume-upload
+feat/123-resume-upload
   ↑
-fix/RES-456-login-timeout
+fix/456-login-timeout
   ↑
-hotfix/RES-789-connection-pool
+hotfix/789-connection-pool
 ```
 
 ### Why GitHub Flow?
 
 | Factor | Our Situation | Fit |
 |--------|--------------|-----|
-| Team size | 3 core members | ✅ Perfect |
-| Release cadence | Weekly to bi-weekly | ✅ Perfect |
-| CI/CD maturity | Building up (CI exists, CD in progress) | ✅ Good |
-| Feature flags | Not yet implemented | ⚠️ Acceptable |
-| Complexity | Low — simple trunk + feature branches | ✅ Perfect |
+| Contributor model | Open-source contributors and maintainers | Strong fit |
+| Release cadence | Continuous delivery or tagged releases | Strong fit |
+| CI/CD maturity | PR validation with optional release automation | Strong fit |
+| Feature flags | Optional; recommended for large features | Good fit |
+| Complexity | Low -- simple trunk plus short-lived topic branches | Strong fit |
 
 ### Alternative Strategies We Rejected
 
 | Strategy | Why Not Used |
 |----------|-------------|
-| **GitFlow** | Too heavy for our cadence; `develop` branch adds overhead without value |
+| **GitFlow** | Too heavy for this project; a long-lived `develop` branch adds overhead without clear value |
 | **Trunk-Based** | Requires feature flags and >80% coverage — not ready yet |
-| **Release Flow** | Overkill for a team < 10 |
+| **Release Flow** | Use only if the project later needs long-lived release trains |
 
 ### Branch Naming Convention
 
 ```
-{type}/{ticket-id}-{short-description}
+{type}/{issue-number-or-short-description}
 ```
 
 **Types:**
 
 | Type | Purpose | Example |
 |------|---------|---------|
-| `feat` | New feature | `feat/RES-123-resume-upload` |
-| `fix` | Bug fix | `fix/RES-456-login-timeout` |
-| `hotfix` | Production emergency | `hotfix/RES-789-connection-pool` |
-| `chore` | Maintenance, deps | `chore/RES-200-bump-spring-boot` |
-| `docs` | Documentation only | `docs/RES-300-deployment-guide` |
-| `refactor` | Code restructure, no behavior change | `refactor/RES-400-extract-validator` |
-| `test` | Test additions | `test/RES-500-auth-edge-cases` |
-| `perf` | Performance improvements | `perf/RES-600-vector-caching` |
-| `ci` | CI/CD configuration | `ci/RES-700-add-jacoco` |
-| `style` | Code formatting only | `style/RES-800-spotless-format` |
+| `feat` | New feature | `feat/123-resume-upload` |
+| `fix` | Bug fix | `fix/456-login-timeout` |
+| `hotfix` | Production emergency | `hotfix/789-connection-pool` |
+| `chore` | Maintenance, deps | `chore/200-bump-spring-boot` |
+| `docs` | Documentation only | `docs/300-deployment-guide` |
+| `refactor` | Code restructure, no behavior change | `refactor/400-extract-validator` |
+| `test` | Test additions | `test/500-auth-edge-cases` |
+| `perf` | Performance improvements | `perf/600-vector-caching` |
+| `ci` | CI/CD configuration | `ci/700-add-jacoco` |
+| `style` | Code formatting only | `style/800-spotless-format` |
 
 **Rules:**
 - All lowercase, hyphens for spaces
 - Maximum 50 characters after `type/`
-- Always include ticket/issue number when available
+- Include the issue number when available; otherwise use a clear short description
 - Branches deleted automatically after merge (via GitHub setting)
 
 ### Branch Lifetime Targets
@@ -131,7 +131,7 @@ Every commit must follow the [Conventional Commits](https://www.conventionalcomm
 2. **Imperative mood** — "add feature" not "added feature"
 3. **Subject ≤ 72 chars** — must fit in `git log --oneline`
 4. **Body wraps at 72 chars** — readable in terminal
-5. **Reference issues** — `Fixes #123` or `Refs RES-456`
+5. **Reference issues** — `Fixes #123` or `Refs #456`
 6. **No WIP commits on main** — squash or interactive rebase first
 7. **Breaking changes must be explicit:**
    ```
@@ -156,7 +156,7 @@ Contents of `.gitmessage`:
 #
 # What changed?
 #
-# Refs: RES-XXX
+# Refs: #XXX
 #
 # Types: feat|fix|perf|refactor|docs|test|chore|ci|style|revert
 # Breaking: add ! after type or BREAKING CHANGE: in footer
@@ -247,7 +247,7 @@ allow_deletions: false
 require_conversation_resolution: true
 ```
 
-### `develop` Branch (if used)
+### `release/*` Branches (optional)
 
 ```yaml
 required_reviews: 1
@@ -262,7 +262,7 @@ require_status_checks:
 
 ### Pre-merge CI Pipeline
 
-Our CI runs on every PR and push to `main`/`develop`:
+Our CI runs on every PR and push to `main` and supported `release/*` branches:
 
 | Stage | Checks | Target Duration |
 |-------|--------|----------------|
@@ -313,13 +313,13 @@ Examples:
 
 We publish **Docker images only** — no Maven Central, npm registry, or PyPI publishing.
 
-**Artifact registry:** `ghcr.io/jobcopilot/resumeassistant`
+**Artifact registry:** `ghcr.io/<owner>/jobcopilot`
 
 | Component | Image Tag | Example |
 |-----------|-----------|---------|
-| Backend | `ghcr.io/jobcopilot/resumeassistant/backend:vX.Y.Z` | `backend:v1.2.0` |
-| Frontend | `ghcr.io/jobcopilot/resumeassistant/frontend:vX.Y.Z` | `frontend:v1.2.0` |
-| AI Service | `ghcr.io/jobcopilot/resumeassistant/ai-service:vX.Y.Z` | `ai-service:v1.2.0` |
+| Backend | `ghcr.io/<owner>/jobcopilot/backend:vX.Y.Z` | `backend:v1.2.0` |
+| Frontend | `ghcr.io/<owner>/jobcopilot/frontend:vX.Y.Z` | `frontend:v1.2.0` |
+| AI Service | `ghcr.io/<owner>/jobcopilot/ai-service:vX.Y.Z` | `ai-service:v1.2.0` |
 
 **Tag strategy:**
 - `vX.Y.Z` — exact release (immutable)
@@ -338,14 +338,14 @@ We use [release-please](https://github.com/googleapis/release-please) for zero-t
 3. Human reviews and merges the release PR
 4. Git tag `vX.Y.Z` created automatically
 5. GitHub Release published with auto-generated notes
-6. Docker images built and pushed to `ghcr.io/jobcopilot/resumeassistant/*:vX.Y.Z`
+6. Docker images built and pushed to `ghcr.io/<owner>/jobcopilot/*:vX.Y.Z`
 7. **No package registry publishing** — containers are the only distribution artifact
 
 ### Hotfix Process
 
 ```
 1. Create branch from latest release tag:
-   git checkout -b hotfix/RES-XXX-description v1.2.0
+   git checkout -b hotfix/issue-XXX-description v1.2.0
 
 2. Implement fix with test
 
@@ -455,7 +455,7 @@ Track weekly at: `.github/health-dashboard.md`
 
 ```bash
 # Start feature
-git checkout -b feat/RES-123-description main
+git checkout -b feat/123-description main
 
 # Keep branch rebased
 git fetch upstream

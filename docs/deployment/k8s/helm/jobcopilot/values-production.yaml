@@ -115,6 +115,12 @@ redis:
   #   size: 20Gi
 
 # ------------------------------------------------------------------------------
+# MinIO (disabled in production - use managed S3-compatible object storage)
+# ------------------------------------------------------------------------------
+minio:
+  enabled: false
+
+# ------------------------------------------------------------------------------
 # Backend / Java Spring Boot
 # ------------------------------------------------------------------------------
 backend:
@@ -172,6 +178,22 @@ aiService:
     enabled: true
     minAvailable: 2
   backendServiceUrl: "http://backend:8080"
+  minioEndpoint: "https://your-s3-compatible-model-registry.example.com"
+
+# ------------------------------------------------------------------------------
+# AI Worker / background jobs
+# ------------------------------------------------------------------------------
+aiWorker:
+  replicaCount: 2
+  image:
+    tag: stable
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
 
 # ------------------------------------------------------------------------------
 # Frontend / React + Nginx

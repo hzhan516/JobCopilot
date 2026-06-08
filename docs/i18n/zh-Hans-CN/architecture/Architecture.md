@@ -48,11 +48,11 @@ Backend container
   Spring Boot API、认证、领域工作流、向量持久化
   |-- JDBC --------> PostgreSQL + pgvector
   |-- AMQP --------> RabbitMQ --------> AI worker container
-  |-- HTTP --------> AI API container
+  |-- HTTP --------> AI Service container
   |-- Redis -------> Redis
   `-- Local files -> shared upload volume
 
-AI API / AI worker
+AI Service / AI worker
   |-- LiteLLM 兼容提供商：解析、嵌入、排序、对话
   |-- 后端内部 API：向量写入和基线特征读取
   |-- Redis：反馈缓冲、分布式锁、模型重载 Pub/Sub
@@ -65,7 +65,7 @@ AI API / AI worker
 |------|------|----------|------|
 | 前端 / 网关 | React 19、Vite 7、Nginx | 主机 `${FRONTEND_HOST_PORT:-80}` -> 容器 `8080` | 提供 UI，反向代理后端 API 和健康检查 |
 | 后端 | Java 21、Spring Boot 3.5 | 内部 `8080`；可选开发端口映射 | REST API、认证、领域工作流、事务、持久化、MQ 发布/消费 |
-| AI API | Python 3.11、FastAPI、LiteLLM | 内部 `8000`；可选开发端口映射 | 嵌入、解析、排序和对话相关同步端点 |
+| AI Service | Python 3.11、FastAPI、LiteLLM | 内部 `8000`；可选开发端口映射 | 嵌入、解析、排序和对话相关同步端点 |
 | AI Worker | Python 3.11、RabbitMQ 消费者、LightGBM | 内部工作进程 | 异步任务处理、反馈采集、增量模型训练 |
 | PostgreSQL | PostgreSQL 15 + pgvector | `db-network` 内部 `5432` | 业务表和向量表 |
 | RabbitMQ | RabbitMQ 3 management 镜像 | 内部 `5672`；管理 UI 默认关闭 | 持久化队列传输和 DLQ 支持 |
@@ -145,7 +145,7 @@ Frontend -> Backend: 轮询或获取更新后的简历状态
 ```text
 Frontend -> Backend: 请求匹配结果
 Backend -> PostgreSQL/pgvector: 语义召回
-Backend -> AI API or RabbitMQ: 排序/解释任务
+Backend -> AI Service or RabbitMQ: 排序/解释任务
 AI service -> LiteLLM provider: 排序或解释匹配结果
 Backend -> Frontend: 返回排序后的职位和匹配元数据
 ```
@@ -160,7 +160,7 @@ AI worker -> Backend internal API: 获取基线特征
 AI worker -> LightGBM: 满足阈值且获取锁后训练
 AI worker -> MinIO: 上传模型产物和 latest 元数据
 AI worker -> Redis Pub/Sub: 发布模型重载事件
-AI API model manager -> MinIO: 加载最新模型
+AI Service model manager -> MinIO: 加载最新模型
 ```
 
 ## 部署拓扑
@@ -173,7 +173,7 @@ Docker Compose 定义三层网络：
 | `internal-network` | `backend`、`ai-service`、`ai-worker`、`rabbitmq`、`redis`、`minio` | 内部服务通信 |
 | `db-network` | `backend`、`postgres` | 数据库访问与其他服务隔离 |
 
-默认只有 `frontend` 映射主机端口。后端、AI API、RabbitMQ 管理端、Redis、PostgreSQL 和 MinIO 都保持内部访问，除非显式开启开发用端口映射。
+默认只有 `frontend` 映射主机端口。后端、AI Service、RabbitMQ 管理端、Redis、PostgreSQL 和 MinIO 都保持内部访问，除非显式开启开发用端口映射。
 
 ## 安全边界
 

@@ -20,21 +20,21 @@ This Helm chart deploys the complete JobCopilot platform on Kubernetes.
 
 ```bash
 # Create namespace first
-kubectl create namespace JobCopilot
+kubectl create namespace jobcopilot
 
 # Install with defaults (embedded middleware, dev profile)
-helm install JobCopilot . \
-  --namespace JobCopilot
+helm install jobcopilot . \
+  --namespace jobcopilot
 
 # Install for production (managed middleware)
-helm install JobCopilot . \
-  --namespace JobCopilot \
+helm install jobcopilot . \
+  --namespace jobcopilot \
   -f values.yaml \
   -f values-production.yaml
 
 # Install for minimal resources (kind/minikube)
-helm install JobCopilot . \
-  --namespace JobCopilot \
+helm install jobcopilot . \
+  --namespace jobcopilot \
   -f values.yaml \
   -f values-minimal.yaml
 ```
@@ -42,8 +42,8 @@ helm install JobCopilot . \
 ### Upgrade
 
 ```bash
-helm upgrade JobCopilot . \
-  --namespace JobCopilot \
+helm upgrade jobcopilot . \
+  --namespace jobcopilot \
   -f values.yaml \
   -f values-production.yaml
 ```
@@ -51,9 +51,9 @@ helm upgrade JobCopilot . \
 ### Uninstall
 
 ```bash
-helm uninstall JobCopilot --namespace JobCopilot
+helm uninstall jobcopilot --namespace jobcopilot
 # Note: PVCs are NOT deleted by default to prevent data loss
-kubectl delete pvc -n JobCopilot -l app.kubernetes.io/name=JobCopilot
+kubectl delete pvc -n jobcopilot -l app.kubernetes.io/name=jobcopilot
 ```
 
 ---
@@ -66,16 +66,19 @@ kubectl delete pvc -n JobCopilot -l app.kubernetes.io/name=JobCopilot
 |-----------|-------------|---------|
 | `global.infraMode` | Middleware mode: `embedded` or `managed` | `embedded` |
 | `secrets.existingSecret` | Use pre-created Secret instead of Helm-managed | `""` |
-| `ingress.host` | Ingress domain | `JobCopilot.local` |
+| `ingress.host` | Ingress domain | `jobcopilot.local` |
 | `ingress.tls.enabled` | Enable TLS | `false` |
 | `backend.replicaCount` | Backend replicas | `1` |
 | `backend.springProfilesActive` | Spring profile | `dev` |
 | `backend.storageType` | File storage: `local`, `s3`, `minio`, `oss` | `local` |
 | `aiService.replicaCount` | AI service replicas | `1` |
 | `aiService.llmEmbeddingDimension` | Embedding vector dimension | `1536` |
+| `aiWorker.enabled` | Deploy background AI worker | `true` |
+| `aiWorker.replicaCount` | AI worker replicas | `1` |
 | `postgres.enabled` | Deploy PostgreSQL StatefulSet | `true` |
 | `rabbitmq.enabled` | Deploy RabbitMQ StatefulSet | `true` |
 | `redis.enabled` | Deploy Redis StatefulSet | `true` |
+| `minio.enabled` | Deploy MinIO model artifact storage in embedded mode | `true` |
 
 ### Full Values Reference
 
@@ -98,21 +101,26 @@ secrets:
 
 ```bash
 # Create Secret manually
-kubectl create secret generic JobCopilot-secrets \
-  --namespace=JobCopilot \
+kubectl create secret generic jobcopilot-secrets \
+  --namespace=jobcopilot \
   --from-literal=JWT_SECRET=... \
-  --from-literal=POSTGRES_PASSWORD=...
+  --from-literal=POSTGRES_PASSWORD=... \
+  --from-literal=RABBITMQ_PASSWORD=... \
+  --from-literal=REDIS_PASSWORD=... \
+  --from-literal=MINIO_ACCESS_KEY=... \
+  --from-literal=MINIO_SECRET_KEY=... \
+  --from-literal=INTERNAL_API_KEY=...
 
 # Reference in values
-helm install JobCopilot . \
-  --set secrets.existingSecret=JobCopilot-secrets
+helm install jobcopilot . \
+  --set secrets.existingSecret=jobcopilot-secrets
 ```
 
 ### Option 3: External Secrets Operator
 
 ```yaml
 secrets:
-  existingSecret: "JobCopilot-eso-secret"
+  existingSecret: "jobcopilot-eso-secret"
 ```
 
 Configure ESO to sync from AWS Secrets Manager, Azure Key Vault, or GCP Secret Manager.
@@ -130,7 +138,7 @@ When `global.infraMode=embedded`, the chart mounts `init.sql` and `init-db.sh` i
 
 To provide `init.sql`:
 ```bash
-helm install JobCopilot . \
+helm install jobcopilot . \
   --set-file postgres.initSql=../../../backend/app/src/main/resources/db/init.sql
 ```
 
@@ -146,7 +154,7 @@ To mount a GCP service account key:
 # Base64-encode the key file
 export GCP_CREDS_B64=$(base64 -w 0 /path/to/gcp-service-account.json)
 
-helm install JobCopilot . \
+helm install jobcopilot . \
   --set secrets.gcpCredentialsJson="$GCP_CREDS_B64"
 ```
 
@@ -161,7 +169,7 @@ The chart will create a separate Secret and mount it as a read-only volume at `/
 helm lint .
 
 # Render templates without installing
-helm template JobCopilot . \
+helm template jobcopilot . \
   -f values.yaml \
   -f values-production.yaml > rendered.yaml
 
@@ -175,21 +183,26 @@ helm template JobCopilot . \
 
 ```yaml
 global:
-  imageRegistry: "ghcr.io/jobcopilot/"
+  imageRegistry: "ghcr.io/<owner>/jobcopilot/"
 
 backend:
   image:
-    repository: JobCopilot-backend
+    repository: jobcopilot-backend
     tag: "v1.2.3"
 
 aiService:
   image:
-    repository: JobCopilot-ai-service
+    repository: jobcopilot-ai-service
+    tag: "v1.2.3"
+
+aiWorker:
+  image:
+    repository: jobcopilot-ai-service
     tag: "v1.2.3"
 
 frontend:
   image:
-    repository: JobCopilot-frontend
+    repository: jobcopilot-frontend
     tag: "v1.2.3"
 ```
 

@@ -78,6 +78,23 @@ redis:
     size: 2Gi
 
 # ------------------------------------------------------------------------------
+# MinIO / model artifact registry
+# ------------------------------------------------------------------------------
+minio:
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "500m"
+  persistence:
+    enabled: true
+    type: emptyDir
+  storage:
+    size: 5Gi
+
+# ------------------------------------------------------------------------------
 # Backend / Java Spring Boot
 # ------------------------------------------------------------------------------
 backend:
@@ -94,6 +111,19 @@ backend:
 # AI Service / Python FastAPI
 # ------------------------------------------------------------------------------
 aiService:
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+# ------------------------------------------------------------------------------
+# AI Worker / background jobs
+# ------------------------------------------------------------------------------
+aiWorker:
   replicaCount: 1
   resources:
     requests:

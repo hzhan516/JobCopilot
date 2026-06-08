@@ -410,19 +410,39 @@ Authorization: Bearer <access_token>
 - **URL**: `GET /api/v1/jobs`
 - **认证**: 需要
 
-#### 3.4 启动职位匹配
+#### 3.4 更新职位
+- **URL**: `PUT /api/v1/jobs/{jobId}`
+- **认证**: 需要
+
+#### 3.5 隐藏职位
+- **URL**: `DELETE /api/v1/jobs/{jobId}`
+- **认证**: 需要
+
+#### 3.6 职位评分
+- **URL**: `POST /api/v1/jobs/{jobId}/score`
+- **认证**: 需要
+
+#### 3.7 记录职位行为
+- **URL**: `POST /api/v1/jobs/{jobId}/track`
+- **认证**: 需要
+
+#### 3.8 获取评分历史
+- **URL**: `GET /api/v1/jobs/scores/history`
+- **认证**: 需要
+
+#### 3.9 启动职位匹配
 - **URL**: `POST /api/v1/jobs/match`
 - **认证**: 需要
 
-#### 3.5 查询匹配结果
+#### 3.10 查询匹配结果
 - **URL**: `GET /api/v1/jobs/match/{matchId}`
 - **认证**: 需要
 
-#### 3.6 获取匹配历史
+#### 3.11 获取匹配历史
 - **URL**: `GET /api/v1/jobs/match/history`
 - **认证**: 需要
 
-#### 3.7 向量搜索职位
+#### 3.12 向量搜索职位
 - **URL**: `POST /api/v1/jobs/vector-search`
 - **认证**: 需要
 
@@ -533,11 +553,15 @@ Authorization: Bearer <access_token>
 | 提交职位 | POST | `/api/v1/jobs` | 提交职位链接异步解析 | 是 |
 | 获取职位详情 | GET | `/api/v1/jobs/{jobId}` | 获取职位解析状态 | 是 |
 | 获取职位列表 | GET | `/api/v1/jobs` | 获取用户所有职位 | 是 |
+| 更新职位 | PUT | `/api/v1/jobs/{jobId}` | 更新职位解析内容 | 是 |
+| 隐藏职位 | DELETE | `/api/v1/jobs/{jobId}` | 从用户列表隐藏职位 | 是 |
+| 职位评分 | POST | `/api/v1/jobs/{jobId}/score` | 对职位进行简历匹配评分 | 是 |
+| 记录职位行为 | POST | `/api/v1/jobs/{jobId}/track` | 记录点击、申请、拒绝等操作 | 是 |
+| 获取评分历史 | GET | `/api/v1/jobs/scores/history` | 获取已保存的职位评分历史 | 是 |
 | 启动职位匹配 | POST | `/api/v1/jobs/match` | 启动异步职位匹配 | 是 |
 | 查询匹配结果 | GET | `/api/v1/jobs/match/{matchId}` | 查询匹配任务结果 | 是 |
 | 获取匹配历史 | GET | `/api/v1/jobs/match/history` | 获取历史匹配记录 | 是 |
 | 向量搜索职位 | POST | `/api/v1/jobs/vector-search` | ANN 向量搜索职位 | 是 |
-| 职位评分 | POST | `/api/v1/jobs/{jobId}/score` | 对职位进行简历匹配评分 | 是 |
 | 获取职位数据集 | GET | `/api/v1/job-dataset` | 查询训练数据集（内部接口） | 内部 API Key |
 | 批量 Upsert 职位向量 | POST | `/api/v1/job-vectors/batch` | 批量 Upsert 职位向量（AI 层） | 内部 API Key |
 | 创建对话 | POST | `/api/v1/conversations` | 创建新对话 | 是 |

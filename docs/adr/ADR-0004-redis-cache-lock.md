@@ -20,7 +20,7 @@ JobCopilot has the following non-functional requirements that require in-memory 
 |----------------------|---------------------|-------------------------|
 | **Verification Code TTL** | SMS/email verification codes for user registration/login must be valid for 5 minutes | Key-value storage + TTL auto-expiration |
 | **Distributed Task Deduplication** | `OutboxRelayScheduler` and `IncrementalRetrainingScheduler` must guarantee single-instance execution in multi-instance microservice deployments | Distributed lock + auto-release |
-| **AI Call Throttling Cache** | Repeated submission of the same resume within a short timeframe should avoid duplicate external AI API calls (cost-sensitive) | Short-lived cache + idempotency key |
+| **AI Call Throttling Cache** | Repeated submission of the same resume within a short timeframe should avoid duplicate external AI Service calls (cost-sensitive) | Short-lived cache + idempotency key |
 | **Session State** | WebSocket conversation context requires fast read/write | Low latency, high-concurrency read/write |
 
 ### 1.1 Candidate Solutions

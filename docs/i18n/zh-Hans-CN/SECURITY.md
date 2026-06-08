@@ -13,7 +13,7 @@
 如果您在 JobCopilot 中发现了安全漏洞，请私下向项目维护者报告。**请勿**公开提交 Issue。
 
 **首选渠道：** 使用 GitHub 私密漏洞报告：
-`https://github.com/jobcopilot/jobcopilot/security/advisories/new`
+`https://github.com/<owner>/<repo>/security/advisories/new`
 
 如果您的 fork 或镜像无法使用私密漏洞报告，请通过私密渠道联系维护者，并提供足够的信息以便复现和评估问题。
 

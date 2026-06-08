@@ -1,5 +1,5 @@
 <!-- Language Switcher / 语言切换 / 語言切換 -->
-> [English](../../../../api/backend/embedding.md) | [简体中文](../../zh-Hans-CN/api/backend/embedding.md) | [繁體中文](embedding.md)
+> [English](../../../../api/backend/embedding.md) | [简体中文](../../../zh-Hans-CN/api/backend/embedding.md) | [繁體中文](embedding.md)
 
 # Embedding / 職位向量模組 API 文件
 

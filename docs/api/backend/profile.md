@@ -205,5 +205,5 @@ Trigger (ProfileController)
 
 ## i18n
 
-- [简体中文 (Simplified Chinese)](../../../i18n/zh-Hans-CN/api/backend/profile.md)
-- [繁體中文 (Traditional Chinese)](../../../i18n/zh-Hant-TW/api/backend/profile.md)
+- [简体中文 (Simplified Chinese)](../../i18n/zh-Hans-CN/api/backend/profile.md)
+- [繁體中文 (Traditional Chinese)](../../i18n/zh-Hant-TW/api/backend/profile.md)

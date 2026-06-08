@@ -90,7 +90,7 @@ services:
 │   │   │         internal-network（bridge, /16）                          │
 │   │   │                                                                │
 │   │   │   ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐ │
-│   │   │   │ai-api  │  │rabbitmq│  │ redis  │  │ai-worker│  │ minio  │ │
+│   │   │   │ai-service  │  │rabbitmq│  │ redis  │  │ai-worker│  │ minio  │ │
 │   │   │   │:8000   │  │:5672   │  │:6379   │  │ (訓練)  │  │:9000   │ │
 │   │   │   └────────┘  └────────┘  └────────┘  └────────┘  └────────┘ │
 │   │   └────────────────────────────────────────────────────────────────┘
@@ -113,7 +113,7 @@ services:
 |------|---------------|------------------|------------|------------|------|
 | **frontend** (Nginx) | ✅ | ❌ | ❌ | `80:8080` | 唯一 HTTP 入口；反向代理 `/api/*` 到後端 |
 | **backend** (Spring Boot) | ✅ | ✅ | ✅ | 無 | 閘道；跨三層 |
-| **ai-api** (FastAPI) | ❌ | ✅ | ❌ | 無 | LLM 推理、向量化、解析 |
+| **ai-service** (FastAPI) | ❌ | ✅ | ❌ | 無 | LLM 推理、向量化、解析 |
 | **ai-worker** (LightGBM) | ❌ | ✅ | ❌ | 無 | 增量模型訓練 |
 | **rabbitmq** | ❌ | ✅ | ❌ | 無 | 非同步訊息代理（Outbox 模式） |
 | **redis** | ❌ | ✅ | ❌ | 無 | 快取、分散式鎖（ShedLock）、回饋緩衝 |
@@ -126,7 +126,7 @@ services:
 
 1. **流量控制**：所有外部 HTTP 請求通過 `frontend:80` → `backend:8080` 進入。後端決定是查詢 PostgreSQL、發布 RabbitMQ 訊息，還是呼叫 AI 服務。
 2. **金鑰集中化**：只有後端需要 PostgreSQL 憑證、RabbitMQ 憑證和用於 AI 服務認證的 `INTERNAL_API_KEY`。其他層永遠不會看到跨層金鑰。
-3. **可觀測性**：單個請求可以追蹤 `Nginx → backend → (db | mq | ai-api)`，無需跨越網路邊界跳轉。
+3. **可觀測性**：單個請求可以追蹤 `Nginx → backend → (db | mq | ai-service)`，無需跨越網路邊界跳轉。
 
 ### 2.4 Docker Compose 實現
 
@@ -162,7 +162,7 @@ services:
       - db-network
     # 無主機連接埠 — 僅通過 public-network 可達
 
-  ai-api:
+  ai-service:
     networks:
       - internal-network
 
@@ -184,7 +184,7 @@ services:
       - db-network
 ```
 
-所有直接主機連接埠對應（後端 `8080`、postgres `5432`、rabbitmq `5672`/`15672`、ai-api `8000`）**預設註解掉**。取消註解會在檔案頭部印出 `SECURITY WARNING`，且必須在發布前恢復。
+所有直接主機連接埠對應（後端 `8080`、postgres `5432`、rabbitmq `5672`/`15672`、ai-service `8000`）**預設註解掉**。取消註解會在檔案頭部印出 `SECURITY WARNING`，且必須在發布前恢復。
 
 ---
 
