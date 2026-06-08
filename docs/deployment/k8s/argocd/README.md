@@ -11,7 +11,7 @@ This directory provides ArgoCD `Application` manifests for managing the JobCopil
 ```
 ┌─────────────────────────────────────────┐
 │  ArgoCD Root Application                │
-│  (app-of-apps/JobCopilot-root)   │
+│  (app-of-apps/jobcopilot-root)   │
 └─────────────┬───────────────────────────┘
               │ manages
     ┌─────────┼─────────┐
@@ -35,14 +35,14 @@ Edit all files under `applications/` and `app-of-apps/` to point to your actual 
 
 ```yaml
 source:
-  repoURL: https://github.com/your-org/JobCopilot.git
-  targetRevision: HEAD  # or branch name
+  repoURL: "https://github.com/<owner>/<repo>.git"
+  targetRevision: "main"  # or a release branch/tag
 ```
 
 ### 2. Deploy the Root Application
 
 ```bash
-kubectl apply -f app-of-apps/JobCopilot-root.yaml
+kubectl apply -f app-of-apps/jobcopilot-root.yaml
 ```
 
 This creates the root Application which automatically manages the dev, staging, and prod Applications.
@@ -58,9 +58,9 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 
 | Environment | Namespace | Sync Policy | Auto-Sync | Replicas |
 |-------------|-----------|-------------|-----------|----------|
-| **dev** | `JobCopilot-dev` | Automatic | Yes | 1 (minimal) |
-| **staging** | `JobCopilot-staging` | Automatic | Yes | 2 (production-like) |
-| **prod** | `JobCopilot-prod` | Manual | No | 3 (full production) |
+| **dev** | `jobcopilot-dev` | Automatic | Yes | 1 (minimal) |
+| **staging** | `jobcopilot-staging` | Automatic | Yes | 2 (production-like) |
+| **prod** | `jobcopilot-prod` | Manual | No | 3 (full production) |
 
 ### Dev
 
@@ -86,8 +86,8 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 
 ## Adding a New Environment
 
-1. Copy `applications/JobCopilot-dev.yaml`
-2. Rename to `JobCopilot-<env>.yaml`
+1. Copy `applications/jobcopilot-dev.yaml`
+2. Rename to `jobcopilot-<env>.yaml`
 3. Update:
    - `metadata.name`
    - `destination.namespace`
@@ -103,8 +103,8 @@ Never store plain secrets in Git. Options:
 
 1. **Pre-create Secrets** in target namespaces
    ```bash
-   kubectl create secret generic JobCopilot-secrets \
-     --namespace=JobCopilot-prod \
+   kubectl create secret generic jobcopilot-secrets \
+     --namespace=jobcopilot-prod \
      --from-literal=JWT_SECRET=...
    ```
    Then set `secrets.existingSecret` in values.
@@ -141,7 +141,7 @@ syncPolicy:
 
 Use ArgoCD UI or CLI to sync:
 ```bash
-argocd app sync JobCopilot-prod
+argocd app sync jobcopilot-prod
 ```
 
 ## Monitoring
@@ -149,10 +149,10 @@ argocd app sync JobCopilot-prod
 View sync status:
 ```bash
 argocd app list
-argocd app get JobCopilot-prod
+argocd app get jobcopilot-prod
 ```
 
 Check for drift:
 ```bash
-argocd app diff JobCopilot-prod
+argocd app diff jobcopilot-prod
 ```

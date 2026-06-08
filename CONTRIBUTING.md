@@ -1,8 +1,8 @@
-# Contributing to ResumeAssistant
+# Contributing to JobCopilot
 
 > **Language**: English | [简体中文](./docs/i18n/zh-Hans-CN/CONTRIBUTING.md) | [繁體中文](./docs/i18n/zh-Hant-TW/CONTRIBUTING.md)
 
-Thank you for your interest in contributing to ResumeAssistant! This document provides guidelines and instructions to help you get started.
+Thank you for your interest in contributing to JobCopilot! This document provides guidelines and instructions to help you get started.
 
 ---
 
@@ -54,11 +54,11 @@ This project adheres to a standard of respectful, constructive collaboration. By
 
 ```bash
 # Fork the repository on GitHub, then clone your fork
-git clone https://github.com/YOUR_USERNAME/ser594_Team6-ResumeAssistant.git
-cd ser594_Team6-ResumeAssistant
+git clone <your-fork-url>
+cd <repository-name>
 
 # Add upstream remote
-git remote add upstream https://github.com/hzhan516/ser594_Team6-ResumeAssistant.git
+git remote add upstream <upstream-repository-url>
 ```
 
 ---
@@ -70,14 +70,16 @@ git remote add upstream https://github.com/hzhan516/ser594_Team6-ResumeAssistant
 ```bash
 cp .env.example .env
 # Edit .env with your configuration
-docker compose -f docker-compose.yml.example up -d
+docker compose --env-file .env up -d --build
 ```
 
 ### Option B: Local Development
 
 ```bash
-# 1. Start infrastructure services
-docker compose -f docker-compose.infra.yml up -d
+# 1. Start shared infrastructure services
+cp .env.example .env
+# Edit .env with your local configuration
+docker compose --env-file .env up -d postgres redis rabbitmq minio
 
 # 2. Backend
 cd backend
@@ -103,7 +105,7 @@ Copy `.env.example` to `.env` and configure:
 - Database credentials (PostgreSQL + pgvector)
 - MinIO / S3-compatible storage
 - RabbitMQ connection
-- OpenAI / Embedding API keys
+- LiteLLM provider API key, such as Gemini, OpenAI, or Anthropic
 - Google OAuth credentials
 
 See `docs/deployment/` for detailed configuration reference.
@@ -113,17 +115,26 @@ See `docs/deployment/` for detailed configuration reference.
 ## Project Structure
 
 ```
-├── backend/           # Java / Spring Boot (DDD Hexagonal Architecture)
-│   ├── app/           # Application layer (Services, Schedulers)
-│   ├── domain/        # Domain layer (Entities, Value Objects, Ports)
-│   ├── api/           # API layer (DTOs, Commands, Queries)
-│   ├── infrastructure/# Adapters (DB, MQ, HTTP, File Storage)
-│   ├── trigger/       # REST Controllers, WebSocket, Event Listeners
-│   └── types/         # Shared types and constants
-├── frontend/          # TypeScript / React / Vite / TailwindCSS
-├── ai-service/        # Python / FastAPI (Embedding, LLM inference)
-├── docs/              # Documentation (English + i18n)
-└── .github/           # CI/CD, Templates, Dependabot
+.
+|-- backend/           # Java / Spring Boot backend using DDD and hexagonal modules
+|   |-- api/           # DTOs, commands, queries, and facade interfaces
+|   |-- app/           # Application services, schedulers, and startup wiring
+|   |-- domain/        # Entities, value objects, ports, and domain rules
+|   |-- infrastructure/ # Persistence, storage, messaging, security, integrations
+|   |-- trigger/       # REST controllers, WebSocket endpoints, MQ listeners
+|   `-- types/         # Shared types and constants
+|-- frontend/          # React / Vite / TypeScript application
+|   `-- src/           # Components, pages, services, store, hooks, i18n, utilities
+|-- ai-service/        # Python / FastAPI AI service and worker
+|   |-- app/           # API, domain, infrastructure, MQ, services, worker code
+|   `-- tests/         # Pytest suite
+|-- docs/              # ADRs, API docs, architecture, deployment, i18n
+|-- eval/              # AI evaluation scripts, datasets, and results
+|-- middleware/        # Custom infrastructure images, such as PostgreSQL
+|-- scripts/           # Repository-level automation helpers
+|-- .github/           # CI, issue templates, PR template, CODEOWNERS
+|-- docker-compose.yml # Local Docker Compose stack
+`-- .env.example       # Environment variable template
 ```
 
 ### Architecture Principles
@@ -137,23 +148,23 @@ See `docs/deployment/` for detailed configuration reference.
 
 ## Branching Strategy
 
-We follow a simplified Git Flow model:
+We follow a lightweight trunk-based workflow suitable for open-source contributions:
 
 | Branch | Purpose | Protection |
 |--------|---------|------------|
-| `main` | Production-ready releases | Protected; requires PR + 1 review |
-| `develop` | Integration branch for next release | Protected; requires PR |
-| `feature/*` | New features | Merge to `develop` via PR |
-| `fix/*` | Bug fixes | Merge to `develop` via PR |
-| `hotfix/*` | Urgent production fixes | Merge to `main` + `develop` via PR |
-| `sanitize-for-oss` | OSS preparation / cleanup | Long-running; periodic rebase |
+| `main` | Stable development branch and release source | Protected; requires PR + review |
+| `feature/*` | New features | Short-lived; PR into `main` |
+| `fix/*` | Bug fixes | Short-lived; PR into `main` |
+| `docs/*` | Documentation-only changes | Short-lived; PR into `main` |
+| `chore/*` | Maintenance, dependencies, tooling | Short-lived; PR into `main` |
+| `release/v*` | Optional release stabilization branch | Created only when maintainers prepare a release |
 
 ### Workflow
 
 ```bash
 # Start new feature
-git checkout develop
-git pull upstream develop
+git checkout main
+git pull upstream main
 git checkout -b feature/your-feature-name
 
 # Work, commit, push
@@ -161,7 +172,7 @@ git add .
 git commit -m "feat(matching): add vector caching for recall"
 git push origin feature/your-feature-name
 
-# Open Pull Request against develop (or main for hotfixes)
+# Open a Pull Request against main
 ```
 
 ---
@@ -204,7 +215,7 @@ BREAKING CHANGE: /api/v1/* endpoints removed. Migrate to /api/v2/*.
 
 ### Before Submitting
 
-1. **Update your branch**: `git pull upstream develop` (or `main`)
+1. **Update your branch**: `git pull upstream main`
 2. **Run quality checks locally**:
    ```bash
    # Backend
@@ -243,7 +254,7 @@ PRs must include:
 
 ### Review Flow
 
-1. Author opens PR against `develop`
+1. Author opens PR against `main`
 2. CI checks must pass (build, test, lint, security scan)
 3. At least one maintainer review required
 4. Address review feedback with fixup commits
@@ -379,7 +390,7 @@ ruff format .           # Format
 ## Release Process
 
 1. **Version bump**: Update `version` in `backend/pom.xml` and `frontend/package.json`
-2. **Changelog**: Update `CHANGELOG.md` with Conventional Commits summary
+2. **Changelog**: Update `CHANGELOG.md` with Conventional Commits summary if the project maintains one
 3. **Tag**: `git tag -a v1.x.x -m "Release v1.x.x"`
 4. **Build**: CI builds Docker images and pushes to registry
 5. **Deploy**: Update production environment with new images
@@ -396,6 +407,6 @@ ruff format .           # Format
 
 ## Questions?
 
-If anything is unclear, open a [GitHub Discussion](https://github.com/hzhan516/ser594_Team6-ResumeAssistant/discussions) or ask in an issue. We're here to help.
+If anything is unclear, open a [GitHub Discussion](https://github.com/<owner>/<repo>/discussions) or ask in an issue. We're here to help.
 
 **Thank you for contributing! 🚀**

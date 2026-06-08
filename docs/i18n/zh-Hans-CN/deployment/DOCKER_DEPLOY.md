@@ -1,5 +1,5 @@
 <!-- Language Switcher / 语言切换 / 語言切換 -->
-> [English](../../deployment/DOCKER_DEPLOY.md) | [简体中文](DOCKER_DEPLOY.md) | [繁體中文](../zh-Hant-TW/deployment/DOCKER_DEPLOY.md)
+> [English](../../../deployment/DOCKER_DEPLOY.md) | [简体中文](DOCKER_DEPLOY.md) | [繁體中文](../../zh-Hant-TW/deployment/DOCKER_DEPLOY.md)
 
 # Docker/Podman 部署指南
 
@@ -37,7 +37,7 @@ vim .env
 必需配置项：
 
 - `JWT_SECRET`: JWT 签名密钥（生产环境必须修改）
-- 一个兼容 LiteLLM 的模型服务密钥，例如 `GEMINI_API_KEY`、`OPENAI_API_KEY`、`ANTHROPIC_API_KEY` 或 `GROQ_API_KEY`
+- 一个兼容 LiteLLM 的模型服务密钥，例如 `GEMINI_API_KEY`、`OPENAI_API_KEY` 或 `ANTHROPIC_API_KEY`
 - `LLM_TEXT_MODEL`、`LLM_VISION_MODEL` 和 `LLM_EMBEDDING_MODEL`: 与所选模型服务前缀匹配的模型名称
 - `LLM_EMBEDDING_MODEL_DIMENSION`: 嵌入模型输出维度（必须与所选模型一致，默认 1536）
 - `CAPTCHA_ENABLED`: 是否启用 CAPTCHA 验证（`true`/`false`，默认 `true`）
@@ -163,7 +163,7 @@ docker-compose up -d --build backend
 docker-compose exec backend sh
 
 # 进入数据库容器
-docker-compose exec postgres psql -U resume_user -d JobCopilot
+docker-compose exec postgres psql -U resume_user -d resume_assistant
 ```
 
 ## 数据持久化
@@ -180,10 +180,10 @@ docker-compose exec postgres psql -U resume_user -d JobCopilot
 docker volume ls
 
 # 备份数据（PostgreSQL）
-docker-compose exec postgres pg_dump -U resume_user JobCopilot > backup.sql
+docker-compose exec postgres pg_dump -U resume_user resume_assistant > backup.sql
 
 # 恢复数据
-docker-compose exec -T postgres psql -U resume_user JobCopilot < backup.sql
+docker-compose exec -T postgres psql -U resume_user resume_assistant < backup.sql
 ```
 
 ## 故障排查
@@ -252,8 +252,8 @@ docker-compose up -d
 
 **解决**：手动执行初始化 SQL：
 ```bash
-docker exec -i JobCopilot-postgres \
-  psql -U resume_user -d JobCopilot \
+docker exec -i jobcopilot-postgres \
+  psql -U resume_user -d resume_assistant \
   < backend/app/src/main/resources/db/migration/init_outbox_message.sql
 ```
 
@@ -263,9 +263,9 @@ docker-compose down -v
 docker-compose up -d
 ```
 
-### `FATAL: database "JobCopilot" does not exist`（PostgreSQL）
+### `FATAL: database "resume_assistant" does not exist`（PostgreSQL）
 
-**现象**：后端或 PostgreSQL 健康检查报错 `database "JobCopilot" does not exist` 或 `role "resume_user" does not exist`。
+**现象**：后端或 PostgreSQL 健康检查报错 `database "resume_assistant" does not exist` 或 `role "resume_user" does not exist`。
 
 **原因**：`postgres-data` 数据卷已被初始化过（例如使用默认的 `postgres` 凭据或来自之前的项目）。PostgreSQL 的 `docker-entrypoint-initdb.d` 以及 `POSTGRES_USER`/`POSTGRES_DB` 环境变量仅在数据目录为空时的**首次**初始化生效。
 
@@ -288,7 +288,7 @@ docker-compose up -d
 
 2. 使用生产环境配置：
    ```bash
-   docker-compose -f docker-compose.yml.example -f docker-compose.prod.yml up -d
+   docker compose up -d --build
    ```
 
 3. 配置反向代理（Nginx/Traefik）
@@ -338,8 +338,8 @@ docker-compose up -d --build backend
 
 1. **手动执行 SQL**（推荐用于有数据的开发环境）：
    ```bash
-   docker exec -i JobCopilot-postgres \
-     psql -U resume_user -d JobCopilot \
+   docker exec -i jobcopilot-postgres \
+     psql -U resume_user -d resume_assistant \
      < backend/app/src/main/resources/db/migration/init_outbox_message.sql
    ```
 

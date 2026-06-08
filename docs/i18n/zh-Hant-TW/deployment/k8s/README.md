@@ -1,6 +1,6 @@
 # Kubernetes 部署指南
 
-> [English](../../../../deployment/k8s/README.md) | [簡體中文](../../zh-Hans-CN/deployment/k8s/README.md) | [繁體中文](README.md)
+> [English](../../../../deployment/k8s/README.md) | [簡體中文](../../../zh-Hans-CN/deployment/k8s/README.md) | [繁體中文](README.md)
 
 ## 概述
 
@@ -18,7 +18,7 @@
 
 | 模式 | 說明 | 適用時機 |
 |------|------|----------|
-| **自建 (Embedded)** | PostgreSQL + RabbitMQ + Redis 以 StatefulSet 執行在 K8s 內 | 開發、測試、小型叢集 |
+| **自建 (Embedded)** | PostgreSQL + RabbitMQ + Redis + MinIO 以 StatefulSet 執行在 K8s 內 | 開發、測試、小型叢集 |
 | **託管 (Managed)** | 使用雲廠商託管資料庫 / 訊息佇列 / 快取 (RDS, CloudAMQP, ElastiCache) | **生產環境推薦** |
 
 透過 Helm values 切換模式：`global.infraMode`（`embedded` 或 `managed`）。
@@ -42,13 +42,17 @@
 
 ```bash
 # 從 .env 檔案生成
-./scripts/generate-secrets.sh .env JobCopilot | kubectl apply -f -
+./scripts/generate-secrets.sh .env jobcopilot | kubectl apply -f -
 
 # 或手動建立
-kubectl create secret generic JobCopilot-secrets \
-  --namespace=JobCopilot \
+kubectl create secret generic jobcopilot-secrets \
+  --namespace=jobcopilot \
   --from-literal=JWT_SECRET=$(openssl rand -base64 48) \
   --from-literal=POSTGRES_PASSWORD=$(openssl rand -base64 24) \
+  --from-literal=RABBITMQ_PASSWORD=$(openssl rand -base64 24) \
+  --from-literal=REDIS_PASSWORD=$(openssl rand -base64 24) \
+  --from-literal=MINIO_ACCESS_KEY=$(openssl rand -hex 16) \
+  --from-literal=MINIO_SECRET_KEY=$(openssl rand -base64 32) \
   --from-literal=INTERNAL_API_KEY=$(openssl rand -base64 32) \
   --from-literal=GEMINI_API_KEY=your-gemini-key
 ```
@@ -57,15 +61,15 @@ kubectl create secret generic JobCopilot-secrets \
 
 ```bash
 # 自建模式（開發）
-helm install JobCopilot ./helm/jobcopilot \
-  --namespace JobCopilot \
+helm install jobcopilot ./helm/jobcopilot \
+  --namespace jobcopilot \
   --create-namespace \
   -f ./helm/jobcopilot/values.yaml \
   -f ./helm/jobcopilot/values-minimal.yaml
 
 # 託管模式（生產）
-helm install JobCopilot ./helm/jobcopilot \
-  --namespace JobCopilot \
+helm install jobcopilot ./helm/jobcopilot \
+  --namespace jobcopilot \
   --create-namespace \
   -f ./helm/jobcopilot/values.yaml \
   -f ./helm/jobcopilot/values-production.yaml
@@ -74,15 +78,15 @@ helm install JobCopilot ./helm/jobcopilot \
 ### 3. 驗證
 
 ```bash
-kubectl get pods -n JobCopilot
-kubectl get ingress -n JobCopilot
+kubectl get pods -n jobcopilot
+kubectl get ingress -n jobcopilot
 
 # 檢查後端健康
-kubectl port-forward svc/JobCopilot-backend 8080:8080 -n JobCopilot
+kubectl port-forward svc/jobcopilot-backend 8080:8080 -n jobcopilot
 curl http://localhost:8080/api/actuator/health
 
 # 檢查 AI 服務健康
-kubectl port-forward svc/JobCopilot-ai-service 8000:8000 -n JobCopilot
+kubectl port-forward svc/jobcopilot-ai-service 8000:8000 -n jobcopilot
 curl http://localhost:8000/health
 ```
 
@@ -128,7 +132,7 @@ curl http://localhost:8000/health
 
 三層 NetworkPolicy 隔離：
 - **第一層**: Ingress -> 僅前端
-- **第二層**: 後端 <-> AI 服務 <-> RabbitMQ <-> Redis
+- **第二層**: 後端 <-> AI 服務 / AI Worker <-> RabbitMQ <-> Redis / MinIO
 - **第三層**: 後端 -> 僅 PostgreSQL
 
 ---
@@ -154,7 +158,7 @@ Docker Compose 使用共享卷。在 K8s 中，**生產環境不要使用 ReadWr
 k8s/
 ├── README.md                          # 本檔案
 ├── helm/
-│   └── JobCopilot/
+│   └── jobcopilot/
 │       ├── Chart.yaml
 │       ├── values.yaml                # 預設值（自建、開發）
 │       ├── values-production.yaml     # 生產覆蓋（託管中介軟體）
@@ -162,13 +166,26 @@ k8s/
 │       └── templates/                 # 所有 K8s 資源
 ├── argocd/
 │   ├── app-of-apps/
-│   │   └── JobCopilot-root.yaml
+│   │   └── jobcopilot-root.yaml
 │   └── applications/
-│       ├── JobCopilot-dev.yaml
-│       ├── JobCopilot-staging.yaml
-│       └── JobCopilot-prod.yaml
+│       ├── jobcopilot-dev.yaml
+│       ├── jobcopilot-staging.yaml
+│       └── jobcopilot-prod.yaml
 ├── plain-yaml/
 │   ├── base/                          # Kustomize 基礎資源
+│   │   ├── namespace.yaml
+│   │   ├── configmap.yaml
+│   │   ├── secrets-placeholder.yaml
+│   │   ├── network-policies.yaml
+│   │   ├── ingress.yaml
+│   │   ├── postgres/
+│   │   ├── rabbitmq/
+│   │   ├── redis/
+│   │   ├── minio/
+│   │   ├── backend/
+│   │   ├── ai-service/
+│   │   ├── ai-worker/
+│   │   └── frontend/
 │   └── overlays/
 │       ├── development/
 │       └── production/
@@ -185,8 +202,8 @@ k8s/
 
 ```bash
 # 檢查 PVC 綁定
-kubectl get pvc -n JobCopilot
-kubectl describe pvc <name> -n JobCopilot
+kubectl get pvc -n jobcopilot
+kubectl describe pvc <name> -n jobcopilot
 
 # 確保 StorageClass 存在
 kubectl get storageclass
@@ -196,10 +213,10 @@ kubectl get storageclass
 
 ```bash
 # 驗證 NetworkPolicy 允許後端存取 PostgreSQL
-kubectl get networkpolicies -n JobCopilot
+kubectl get networkpolicies -n jobcopilot
 
 # 檢查 Pod 內 DNS 解析
-kubectl exec -it deploy/JobCopilot-backend -n JobCopilot -- nslookup JobCopilot-postgres
+kubectl exec -it deploy/jobcopilot-backend -n jobcopilot -- nslookup jobcopilot-postgres
 ```
 
 ### Ingress 不工作
@@ -209,7 +226,7 @@ kubectl exec -it deploy/JobCopilot-backend -n JobCopilot -- nslookup JobCopilot-
 kubectl get pods -n ingress-nginx
 
 # 檢查 Ingress 事件
-kubectl describe ingress JobCopilot -n JobCopilot
+kubectl describe ingress jobcopilot -n jobcopilot
 ```
 
 ---

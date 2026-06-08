@@ -52,7 +52,7 @@
 #### Request Example (cURL)
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/resumes \
+curl -X POST http://localhost/api/v1/resumes \
   -H "Authorization: Bearer <your_access_token>" \
   -F "file=@/path/to/resume.pdf" \
   -F "title=My Resume"
@@ -161,12 +161,12 @@ curl -X POST http://localhost:8080/api/v1/resumes \
 
 ```bash
 # Download directly using the originalVersionId returned by upload
-curl -X GET http://localhost:8080/api/v1/resumes/550e8400-e29b-41d4-a716-446655440001/download \
+curl -X GET http://localhost/api/v1/resumes/550e8400-e29b-41d4-a716-446655440001/download \
   -H "Authorization: Bearer <your_access_token>" \
   --output resume.pdf
 
 # Specify export format
-curl -X GET "http://localhost:8080/api/v1/resumes/550e8400-e29b-41d4-a716-446655440001/download?format=pdf" \
+curl -X GET "http://localhost/api/v1/resumes/550e8400-e29b-41d4-a716-446655440001/download?format=pdf" \
   -H "Authorization: Bearer <your_access_token>" \
   --output resume.pdf
 ```
@@ -247,7 +247,7 @@ No request parameters needed; retrieved based on the currently logged-in user's 
 #### Request Example (cURL)
 
 ```bash
-curl -X GET http://localhost:8080/api/v1/resumes/groups \
+curl -X GET http://localhost/api/v1/resumes/groups \
   -H "Authorization: Bearer <your_access_token>"
 ```
 
@@ -343,7 +343,7 @@ Returns a list of all resume groups for the current user.
 #### Request Example (cURL)
 
 ```bash
-curl -X GET http://localhost:8080/api/v1/resumes/groups/550e8400-e29b-41d4-a716-446655440000 \
+curl -X GET http://localhost/api/v1/resumes/groups/550e8400-e29b-41d4-a716-446655440000 \
   -H "Authorization: Bearer <your_access_token>"
 ```
 
@@ -446,7 +446,7 @@ curl -X GET http://localhost:8080/api/v1/resumes/groups/550e8400-e29b-41d4-a716-
 #### Request Example (cURL)
 
 ```bash
-curl -X DELETE http://localhost:8080/api/v1/resumes/groups/550e8400-e29b-41d4-a716-446655440000 \
+curl -X DELETE http://localhost/api/v1/resumes/groups/550e8400-e29b-41d4-a716-446655440000 \
   -H "Authorization: Bearer <your_access_token>"
 ```
 
@@ -517,7 +517,7 @@ curl -X DELETE http://localhost:8080/api/v1/resumes/groups/550e8400-e29b-41d4-a7
 #### Request Example (cURL)
 
 ```bash
-curl -X GET http://localhost:8080/api/v1/resumes/groups/550e8400-e29b-41d4-a716-446655440000/versions \
+curl -X GET http://localhost/api/v1/resumes/groups/550e8400-e29b-41d4-a716-446655440000/versions \
   -H "Authorization: Bearer <your_access_token>"
 ```
 
@@ -635,7 +635,7 @@ Returns a detailed list of all versions under this group.
 #### Request Example (cURL)
 
 ```bash
-curl -X GET http://localhost:8080/api/v1/resumes/versions/550e8400-e29b-41d4-a716-446655440001 \
+curl -X GET http://localhost/api/v1/resumes/versions/550e8400-e29b-41d4-a716-446655440001 \
   -H "Authorization: Bearer <your_access_token>"
 ```
 
@@ -738,7 +738,7 @@ curl -X GET http://localhost:8080/api/v1/resumes/versions/550e8400-e29b-41d4-a71
 #### Request Example (cURL)
 
 ```bash
-curl -X DELETE http://localhost:8080/api/v1/resumes/versions/550e8400-e29b-41d4-a716-446655440002 \
+curl -X DELETE http://localhost/api/v1/resumes/versions/550e8400-e29b-41d4-a716-446655440002 \
   -H "Authorization: Bearer <your_access_token>"
 ```
 
@@ -830,7 +830,7 @@ curl -X DELETE http://localhost:8080/api/v1/resumes/versions/550e8400-e29b-41d4-
 #### Request Example (cURL)
 
 ```bash
-curl -X PUT http://localhost:8080/api/v1/resumes/versions/550e8400-e29b-41d4-a716-446655440002 \
+curl -X PUT http://localhost/api/v1/resumes/versions/550e8400-e29b-41d4-a716-446655440002 \
   -H "Authorization: Bearer <your_access_token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -944,7 +944,7 @@ Returns updated version details; structure is the same as Get Single Version Det
 #### Request Example (cURL)
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/resumes/groups/550e8400-e29b-41d4-a716-446655440000/versions \
+curl -X POST http://localhost/api/v1/resumes/groups/550e8400-e29b-41d4-a716-446655440000/versions \
   -H "Authorization: Bearer <your_access_token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1158,13 +1158,13 @@ ResumeFacade defines the complete resume management interface; below is the list
 
 ```bash
 # 1. Login to get token
-TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login/email \
+TOKEN=$(curl -s -X POST http://localhost/api/v1/auth/login/email \
   -H "Content-Type: application/json" \
   -d '{"email":"user@example.com","password":"password123"}' \
   | jq -r '.data.accessToken')
 
 # 2. Upload resume
-RESPONSE=$(curl -s -X POST http://localhost:8080/api/v1/resumes \
+RESPONSE=$(curl -s -X POST http://localhost/api/v1/resumes \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@resume.pdf" \
   -F "title=My Resume")
@@ -1173,7 +1173,7 @@ ORIGINAL_VERSION_ID=$(echo $RESPONSE | jq -r '.data.originalVersionId')
 echo "Original Version ID: $ORIGINAL_VERSION_ID"
 
 # 3. Download directly using originalVersionId
-curl -X GET "http://localhost:8080/api/v1/resumes/$ORIGINAL_VERSION_ID/download" \
+curl -X GET "http://localhost/api/v1/resumes/$ORIGINAL_VERSION_ID/download" \
   -H "Authorization: Bearer $TOKEN" \
   --output downloaded_resume.pdf
 ```
@@ -1182,13 +1182,13 @@ curl -X GET "http://localhost:8080/api/v1/resumes/$ORIGINAL_VERSION_ID/download"
 
 ```bash
 # 1. Login to get token
-TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login/email \
+TOKEN=$(curl -s -X POST http://localhost/api/v1/auth/login/email \
   -H "Content-Type: application/json" \
   -d '{"email":"user@example.com","password":"password123"}' \
   | jq -r '.data.accessToken')
 
 # 2. Upload resume
-RESPONSE=$(curl -s -X POST http://localhost:8080/api/v1/resumes \
+RESPONSE=$(curl -s -X POST http://localhost/api/v1/resumes \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@resume.pdf" \
   -F "title=My Resume")
@@ -1197,7 +1197,7 @@ GROUP_ID=$(echo $RESPONSE | jq -r '.data.groupId')
 echo "Group ID: $GROUP_ID"
 
 # 3. Get group details
-GROUP_INFO=$(curl -s "http://localhost:8080/api/v1/resumes/groups/$GROUP_ID" \
+GROUP_INFO=$(curl -s "http://localhost/api/v1/resumes/groups/$GROUP_ID" \
   -H "Authorization: Bearer $TOKEN")
 
 # 4. Extract converted version ID (editable Markdown version)
@@ -1205,12 +1205,12 @@ CONVERTED_VERSION_ID=$(echo $GROUP_INFO | jq -r '.data.convertedVersion.versionI
 echo "Converted Version ID: $CONVERTED_VERSION_ID"
 
 # 5. Get version details to view current content
-VERSION_DETAIL=$(curl -s "http://localhost:8080/api/v1/resumes/versions/$CONVERTED_VERSION_ID" \
+VERSION_DETAIL=$(curl -s "http://localhost/api/v1/resumes/versions/$CONVERTED_VERSION_ID" \
   -H "Authorization: Bearer $TOKEN")
 echo "Current Content: $(echo $VERSION_DETAIL | jq -r '.data.content')"
 
 # 6. Edit version content
-curl -X PUT "http://localhost:8080/api/v1/resumes/versions/$CONVERTED_VERSION_ID" \
+curl -X PUT "http://localhost/api/v1/resumes/versions/$CONVERTED_VERSION_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1218,12 +1218,12 @@ curl -X PUT "http://localhost:8080/api/v1/resumes/versions/$CONVERTED_VERSION_ID
   }'
 
 # 7. Download using version ID
-curl -X GET "http://localhost:8080/api/v1/resumes/$CONVERTED_VERSION_ID/download" \
+curl -X GET "http://localhost/api/v1/resumes/$CONVERTED_VERSION_ID/download" \
   -H "Authorization: Bearer $TOKEN" \
   --output converted_resume.md
 
 # 8. Delete resume group (cleanup)
-curl -X DELETE "http://localhost:8080/api/v1/resumes/groups/$GROUP_ID" \
+curl -X DELETE "http://localhost/api/v1/resumes/groups/$GROUP_ID" \
   -H "Authorization: Bearer $TOKEN"
 ```
 

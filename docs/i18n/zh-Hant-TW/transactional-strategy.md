@@ -2,7 +2,7 @@
 
 > **語言**: [English](../../transactional-strategy.md) | [簡體中文](../zh-Hans-CN/transactional-strategy.md) | **繁體中文**
 
-> 本文件規定 ResumeAssistant 後端 `application` 模組中 Spring `@Transactional` 的使用規範。
+> 本文件規定 JobCopilot 後端 `application` 模組中 Spring `@Transactional` 的使用規範。
 > 目標：消除交易邊界洩漏、巢狀交易污染、長交易阻塞等隱患。
 >
 > 版本：2026-05-25 | 分支：`sanitize-for-oss`

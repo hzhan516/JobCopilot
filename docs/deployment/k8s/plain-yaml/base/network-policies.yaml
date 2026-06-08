@@ -1,9 +1,6 @@
 # =============================================================================
-# Network Policies — Three-tier isolation
-# 网络策略 — 三层隔离
+# Network Policies - three-tier isolation
 # =============================================================================
-# Default deny all ingress
-# 默认拒绝所有入站流量
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -15,8 +12,6 @@ spec:
     - Ingress
 
 ---
-# Default deny all egress (allow DNS)
-# 默认拒绝所有出站流量（允许 DNS）
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -36,8 +31,7 @@ spec:
           port: 53
 
 ---
-# Tier 1 — Frontend ingress
-# Tier 1 — 前端入站流量
+# Frontend accepts ingress-controller traffic and calls backend.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -73,8 +67,7 @@ spec:
           port: 8080
 
 ---
-# Tier 2 — Backend
-# Tier 2 — 后端
+# Backend accepts frontend and AI callback traffic, then calls internal dependencies.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -99,6 +92,13 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/component: ai-service
+      ports:
+        - protocol: TCP
+          port: 8080
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: ai-worker
       ports:
         - protocol: TCP
           port: 8080
@@ -140,8 +140,7 @@ spec:
           port: 8000
 
 ---
-# Tier 2 — AI Service
-# Tier 2 — AI 服务
+# AI service accepts backend REST calls and reaches MQ, cache, backend, and MinIO.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -191,10 +190,65 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: minio
+      ports:
+        - protocol: TCP
+          port: 9000
 
 ---
-# Tier 2 — RabbitMQ
-# Tier 2 — RabbitMQ
+# AI worker has no public ingress; it consumes queues and writes model artifacts.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ai-worker-egress
+  namespace: jobcopilot
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: ai-worker
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: rabbitmq
+      ports:
+        - protocol: TCP
+          port: 5672
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: minio
+      ports:
+        - protocol: TCP
+          port: 9000
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: backend
+      ports:
+        - protocol: TCP
+          port: 8080
+
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -222,6 +276,13 @@ spec:
       ports:
         - protocol: TCP
           port: 5672
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: ai-worker
+      ports:
+        - protocol: TCP
+          port: 5672
   egress:
     - to:
         - namespaceSelector: {}
@@ -232,8 +293,6 @@ spec:
           port: 53
 
 ---
-# Tier 2 — Redis
-# Tier 2 — Redis
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -261,6 +320,13 @@ spec:
       ports:
         - protocol: TCP
           port: 6379
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: ai-worker
+      ports:
+        - protocol: TCP
+          port: 6379
   egress:
     - to:
         - namespaceSelector: {}
@@ -271,8 +337,43 @@ spec:
           port: 53
 
 ---
-# Tier 3 — PostgreSQL
-# Tier 3 — PostgreSQL
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: minio-ingress
+  namespace: jobcopilot
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: minio
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: ai-service
+      ports:
+        - protocol: TCP
+          port: 9000
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: ai-worker
+      ports:
+        - protocol: TCP
+          port: 9000
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

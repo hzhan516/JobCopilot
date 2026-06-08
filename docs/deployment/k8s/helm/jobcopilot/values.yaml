@@ -218,6 +218,42 @@ redis:
         - ALL
 
 # ------------------------------------------------------------------------------
+# MinIO (embedded mode only)
+# ------------------------------------------------------------------------------
+minio:
+  enabled: true
+  image:
+    registry: quay.io
+    repository: minio/minio
+    tag: RELEASE.2024-01-16T16-07-38Z
+    digest: ""
+    pullPolicy: IfNotPresent
+  replicas: 1
+  service:
+    type: ClusterIP
+    apiPort: 9000
+    consolePort: 9001
+  resources: {}
+  persistence:
+    enabled: true
+    type: pvc
+    hostPath: ""
+  storage:
+    size: 10Gi
+    storageClassName: ""
+    accessMode: ReadWriteOnce
+  podSecurityContext:
+    fsGroup: 1000
+    fsGroupChangePolicy: OnRootMismatch
+  containerSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# ------------------------------------------------------------------------------
 # Backend / Java Spring Boot
 # ------------------------------------------------------------------------------
 backend:
@@ -312,8 +348,35 @@ aiService:
   backendQueryTimeout: 5
   backendBatchUpsertTimeout: 30
   backendBatchSize: 100
-  minioEndpoint: "http://minio:9000"
+  minioEndpoint: ""
   minioModelBucket: "ai-models"
+
+# ------------------------------------------------------------------------------
+# AI Worker / background queue consumers and model training
+# ------------------------------------------------------------------------------
+aiWorker:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: localhost/jobcopilot-ai-service
+    tag: latest
+    pullPolicy: IfNotPresent
+  command:
+    - python
+    - -m
+    - app.worker_main
+  resources: {}
+  podAnnotations: {}
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
 
 # ------------------------------------------------------------------------------
 # Frontend / React + Nginx

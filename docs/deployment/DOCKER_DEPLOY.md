@@ -37,7 +37,7 @@ vim .env
 Required variables:
 
 - `JWT_SECRET`: JWT signing key (must be changed in production)
-- A LiteLLM-compatible model service key, e.g. `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GROQ_API_KEY`
+- A LiteLLM-compatible model service key, e.g. `GEMINI_API_KEY`, `OPENAI_API_KEY`, or `ANTHROPIC_API_KEY`
 - `LLM_TEXT_MODEL`, `LLM_VISION_MODEL`, and `LLM_EMBEDDING_MODEL`: model names matching the selected service prefix
 - `LLM_EMBEDDING_MODEL_DIMENSION`: embedding output dimension (must match the selected model, default 1536)
 - `CAPTCHA_ENABLED`: Enable CAPTCHA verification for auth endpoints (`true`/`false`, default `true`)
@@ -164,7 +164,7 @@ docker-compose up -d --build backend
 docker-compose exec backend sh
 
 # Enter database container
-docker-compose exec postgres psql -U resume_user -d JobCopilot
+docker-compose exec postgres psql -U resume_user -d resume_assistant
 ```
 
 ## Data Persistence
@@ -181,10 +181,10 @@ Data is persisted via Docker volumes:
 docker volume ls
 
 # Backup data (PostgreSQL)
-docker-compose exec postgres pg_dump -U resume_user JobCopilot > backup.sql
+docker-compose exec postgres pg_dump -U resume_user resume_assistant > backup.sql
 
 # Restore data
-docker-compose exec -T postgres psql -U resume_user JobCopilot < backup.sql
+docker-compose exec -T postgres psql -U resume_user resume_assistant < backup.sql
 ```
 
 ## Queue Parameter Changes & Reset
@@ -230,8 +230,8 @@ If the database has already been initialized, adding a new `.sql` file will **no
 
 1. **Manual SQL execution** (recommended for dev environments with data):
    ```bash
-   docker exec -i JobCopilot-postgres \
-     psql -U resume_user -d JobCopilot \
+   docker exec -i jobcopilot-postgres \
+     psql -U resume_user -d resume_assistant \
      < backend/app/src/main/resources/db/migration/init_outbox_message.sql
    ```
 
@@ -291,8 +291,8 @@ docker-compose up -d
 
 **Fix**: Manually execute the initialization SQL:
 ```bash
-docker exec -i JobCopilot-postgres \
-  psql -U resume_user -d JobCopilot \
+docker exec -i jobcopilot-postgres \
+  psql -U resume_user -d resume_assistant \
   < backend/app/src/main/resources/db/migration/init_outbox_message.sql
 ```
 
@@ -302,9 +302,9 @@ docker-compose down -v
 docker-compose up -d
 ```
 
-### `FATAL: database "JobCopilot" does not exist` (PostgreSQL)
+### `FATAL: database "resume_assistant" does not exist` (PostgreSQL)
 
-**Symptom**: Backend or postgres healthcheck fails with `database "JobCopilot" does not exist` or `role "resume_user" does not exist`.
+**Symptom**: Backend or postgres healthcheck fails with `database "resume_assistant" does not exist` or `role "resume_user" does not exist`.
 
 **Cause**: The `postgres-data` volume was already initialized (e.g., with default `postgres` credentials or from a previous project). PostgreSQL `docker-entrypoint-initdb.d` and `POSTGRES_USER`/`POSTGRES_DB` environment variables only apply on the **first** initialization when the data directory is empty.
 
@@ -345,7 +345,7 @@ docker-compose up -d --build --force-recreate
 
 2. Use production configuration:
    ```bash
-   docker-compose -f docker-compose.yml.example -f docker-compose.prod.yml up -d
+   docker compose up -d --build
    ```
 
 3. Configure reverse proxy (Nginx/Traefik)

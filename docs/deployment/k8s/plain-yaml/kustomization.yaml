@@ -20,10 +20,13 @@ resources:
   - base/rabbitmq/statefulset.yaml
   - base/redis/service.yaml
   - base/redis/statefulset.yaml
+  - base/minio/service.yaml
+  - base/minio/statefulset.yaml
   - base/backend/service.yaml
   - base/backend/deployment.yaml
   - base/ai-service/service.yaml
   - base/ai-service/deployment.yaml
+  - base/ai-worker/deployment.yaml
   - base/frontend/configmap-nginx.yaml
   - base/frontend/service.yaml
   - base/frontend/deployment.yaml

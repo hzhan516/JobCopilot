@@ -3,9 +3,11 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from app.services.llm_client import (
+    LlmJsonParseError,
     _extract_json_text,
     _generate_text,
     _safe_json_loads,
+    generate_json_from_text_prompt_with_repair,
     generate_json_from_text_prompt,
     generate_json_from_image_prompt,
 )
@@ -117,6 +119,39 @@ def test_generate_json_from_text_prompt(mock_generate):
     mock_generate.assert_called_once()
     kwargs = mock_generate.call_args.kwargs
     assert kwargs["messages"] == [{"role": "user", "content": "test prompt"}]
+
+
+@patch("app.services.llm_client._generate_text")
+def test_generate_json_from_text_prompt_with_repair_succeeds(mock_generate):
+    mock_generate.side_effect = [
+        '{"content": "bad "quote"", "fileUrl": null}',
+        '{"content": "bad quote", "fileUrl": null}',
+    ]
+
+    result = generate_json_from_text_prompt_with_repair(
+        "test prompt",
+        repair_context='{"content": "string", "fileUrl": null}',
+    )
+
+    assert result.data == {"content": "bad quote", "fileUrl": None}
+    assert result.repaired is True
+    assert mock_generate.call_count == 2
+    repair_messages = mock_generate.call_args_list[1].kwargs["messages"]
+    assert "Convert the malformed model output" in repair_messages[0]["content"]
+
+
+@patch("app.services.llm_client._generate_text")
+def test_generate_json_from_text_prompt_with_repair_raises_with_raw_text(mock_generate):
+    mock_generate.side_effect = [
+        '{"content": "bad "quote"", "fileUrl": null}',
+        "still not json",
+    ]
+
+    with pytest.raises(LlmJsonParseError) as exc_info:
+        generate_json_from_text_prompt_with_repair("test prompt")
+
+    assert exc_info.value.raw_text == '{"content": "bad "quote"", "fileUrl": null}'
+    assert exc_info.value.repair_raw_text == "still not json"
 
 
 @patch("app.services.llm_client._generate_text")

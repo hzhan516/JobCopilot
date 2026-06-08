@@ -7,13 +7,6 @@
 
 **部署：** 系統已通過 Docker Compose 驗證。將 `.env.example` 複製為 `.env`，配置所需值後執行 `docker compose --env-file .env up -d --build`。前端默認可透過 `http://localhost` 存取；如果配置了自訂連接埠，則透過 `http://localhost:${FRONTEND_HOST_PORT}` 存取。
 
-
-## 團隊成員
-
-- **Guixing Jia** (@GuixingJia) — 專案經理，Python AI 服務 & 前端開發
-- **Hansheng Zhang** (@hzhan516) — Java 後端 & 資料庫負責人
-- **Mu-Hsi Yu** (@mhsiy) — 前端 & UX 負責人，Python AI 服務
-
 ## 功能特性
 
 - **身份認證**：郵箱/密碼註冊（支援可選的郵件驗證）以及 Google OAuth 2.0 登入，受滑塊 CAPTCHA 反爬蟲保護
@@ -28,72 +21,88 @@
 
 ## 系統架構
 
-本專案採用微服務架構，包含以下元件：
+JobCopilot 採用容器化服務架構。預設情況下，只有前端容器面向主機暴露連接埠；後端、AI、資料、快取、訊息佇列和模型註冊表服務都透過 Docker 網路通訊。
 
 ```text
-┌─────────────┐      ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-│     前端    │──────▶│     後端    │──────▶│  RabbitMQ   │─────▶│  AI Worker  │
-│   (React)   │      │  (Spring    │      │             │      │ (LightGBM)  │
-│             │      │   Boot)     │      └──────┬──────┘      └──────┬──────┘
-└─────────────┘      └──────┬───┬──┘             │                    │
-                            │   │                │                    ▼
-                            │   │  ┌─────────┐   │             ┌─────────────┐
-                            │   └─▶│  Redis  │   │             │    MinIO    │
-                            │      │   :6379 │◀──┘             │ (模型註冊表)│
-                            │      └─────────┘                 └─────────────┘
-                            ▼                    ▼                    ▲
-                     ┌─────────────────────────────┐                  │
-                     │ PostgreSQL 15 + pgvector    │                  │
-                     │ 業務資料 + 向量儲存         │                  │
-                     └─────────────────────────────┘                  │
-                            ▲             ▲                           │
-                            │             │      ┌─────────────┐      │
-                            └─────────────┴──────│   AI API    │──────┘
-                                                 │  (FastAPI)  │
-                                                 └─────────────┘
+Browser
+  |
+  | HTTP :${FRONTEND_HOST_PORT:-80}
+  v
+Frontend container
+  React 靜態應用 + Nginx 反向代理
+  |
+  | HTTP /api, /health
+  v
+Backend container
+  Spring Boot API、認證、領域工作流、向量持久化
+  |-- JDBC --------> PostgreSQL + pgvector
+  |-- AMQP --------> RabbitMQ --------> AI worker container
+  |-- HTTP --------> AI Service container
+  |-- Redis -------> Redis
+  `-- Local files -> shared upload volume
+
+AI Service / AI worker
+  |-- LiteLLM 相容提供商：解析、嵌入、排序、對話
+  |-- 後端內部 API：向量寫入和基線特徵讀取
+  |-- Redis：回饋緩衝、分散式鎖、模型重載 Pub/Sub
+  `-- MinIO：LightGBM 模型產物註冊表
 ```
 
-| 服務        | 技術棧                      | 連接埠          | 說明                              |
-|-------------|----------------------------|-----------------|-----------------------------------|
-| 前端        | React 19 + Vite 7          | `${FRONTEND_HOST_PORT:-80}` → 8080 | Web 使用者介面和 Nginx 反向代理      |
-| 後端        | Java 21 + Spring Boot 3.5  | 8080 (內部)      | REST API、業務邏輯和滑塊 CAPTCHA 保護 |
-| AI API      | Python 3 + FastAPI + LiteLLM | 8000 (內部)    | AI 處理、嵌入生成、排序和對話       |
-| AI Worker   | Python 3 + LightGBM        | 無              | 增量模型訓練的背景工作程序          |
-| 資料庫      | PostgreSQL 15 + pgvector   | 5432 (內部)      | 業務資料和向量儲存                  |
-| 訊息佇列    | RabbitMQ 3                 | 5672 (內部)      | 非同步訊息處理                        |
-| 快取        | Redis 7                    | 6379 (內部)      | 分散式狀態、鎖、Pub/Sub             |
-| 模型註冊表  | MinIO                      | 9000 (內部)      | 儲存已訓練的 LightGBM 模型          |
+| 元件 | 技術 | 暴露方式 | 職責 |
+|------|------|----------|------|
+| 前端 / 閘道 | React 19、Vite 7、Nginx | 主機 `${FRONTEND_HOST_PORT:-80}` -> 容器 `8080` | 提供 UI，代理 `/api` 和 `/health` 到後端 |
+| 後端 | Java 21、Spring Boot 3.5、DDD 模組 | 內部 `8080`；預設不直接暴露到主機 | REST API、認證、履歷/職位/申請工作流、向量持久化 |
+| AI Service | Python 3.11、FastAPI、LiteLLM | 內部 `8000`；預設不直接暴露到主機 | 同步 AI 端點、嵌入、解析、排序、對話支援 |
+| AI Worker | Python 3.11、RabbitMQ 消費者、LightGBM | 內部工作程序 | 非同步解析、職位排序任務、回饋採集、增量模型訓練 |
+| PostgreSQL | PostgreSQL 15 + pgvector | `db-network` 內部 `5432` | 業務資料和向量儲存 |
+| RabbitMQ | RabbitMQ 3 management 映像 | 內部 `5672`；管理連接埠預設關閉 | 後端與 AI 服務之間的持久化非同步任務傳輸 |
+| Redis | Redis 7 | 內部 `6379` | CAPTCHA 狀態、分散式鎖、回饋緩衝、模型重載 Pub/Sub |
+| MinIO | S3 相容物件儲存 | 內部 `9000` | AI Worker 的 LightGBM 模型產物註冊表 |
 
 ## 專案結構
 
 ```text
 .
-├── frontend/                  # React 前端應用
-│   ├── src/                   # 原始碼
-│   ├── package.json           # Node.js 依賴和指令碼
-│   └── Dockerfile             # 前端 Docker 映像檔
-├── backend/                   # Java Spring Boot 後端
-│   ├── app/                   # 應用入口、配置、資料庫初始化、應用測試
-│   ├── api/                   # API DTO 和外觀介面
-│   ├── domain/                # 領域實體、值物件、領域測試
-│   ├── infrastructure/        # 持久化、儲存、訊息、安全、轉換器
-│   ├── trigger/               # HTTP 控制器、MQ 監聽器、控制器測試
-│   └── types/                 # 共享型別和常數
-├── ai-service/                # Python AI 服務（API 與 Worker）
-│   ├── app/                   # AI 服務原始碼
-│   │   ├── api/               # FastAPI 無狀態端點
-│   │   ├── worker/            # 有狀態背景工作程序（LightGBM）
-│   │   ├── domain/            # 核心 AI 邏輯和模型
-│   │   └── infrastructure/    # 外部整合（MinIO、MQ、DB）
-│   ├── tests/                 # Pytest 測試套件
-│   ├── requirements.txt       # Python 依賴
-│   └── Dockerfile             # AI 服務 Docker 映像檔
-├── docs/                      # 架構、API、部署和國際化文件
-├── eval/                      # AI 評估指令碼、基準用例和結果
-├── docker-compose.yml         # Docker Compose 配置
-├── docker-compose.yml.example # Docker Compose 模板/參考
-├── empty-vertex.json          # 非 Vertex 本地執行的占位憑證檔案
-└── .env.example               # 環境變數模板
+|-- backend/                   # Java / Spring Boot 後端
+|   |-- api/                   # API DTO、命令、查詢和外觀介面
+|   |-- app/                   # 應用服務、排程器和啟動裝配
+|   |-- domain/                # 領域實體、值物件、連接埠和業務規則
+|   |-- infrastructure/        # 持久化、儲存、訊息、安全和外部整合
+|   |-- trigger/               # REST 控制器、WebSocket 端點、MQ 監聽器
+|   |-- types/                 # 共享型別和常數
+|   |-- scripts/               # 後端維護腳本
+|   |-- Dockerfile             # 後端容器映像
+|   `-- pom.xml                # Maven 多模組建置
+|-- frontend/                  # React / Vite / TypeScript 前端
+|   |-- src/                   # UI 原始碼
+|   |   |-- components/        # 可重用 UI 元件
+|   |   |-- pages/             # 路由頁面
+|   |   |-- services/          # API 客戶端和服務封裝
+|   |   |-- store/             # 客戶端狀態管理
+|   |   |-- hooks/             # 共享 React Hooks
+|   |   |-- i18n/              # 執行時國際化設定
+|   |   `-- locales/           # 翻譯資源
+|   |-- package.json           # Node.js 依賴和腳本
+|   `-- Dockerfile             # 前端容器映像
+|-- ai-service/                # Python / FastAPI AI 服務和 Worker
+|   |-- app/
+|   |   |-- api/               # FastAPI 端點
+|   |   |-- domain/            # AI 領域邏輯和模型抽象
+|   |   |-- infrastructure/    # 外部整合
+|   |   |-- mq/                # 訊息整合
+|   |   |-- services/          # AI 應用服務
+|   |   `-- worker/            # 背景 Worker 入口
+|   |-- tests/                 # Pytest 測試套件
+|   |-- requirements.txt       # Python 依賴
+|   `-- Dockerfile             # AI 服務容器映像
+|-- docs/                      # ADR、API 文件、架構、部署和國際化
+|-- eval/                      # AI 評估腳本、資料集和結果
+|-- middleware/                # 自訂基礎設施映像，例如 PostgreSQL
+|-- scripts/                   # 倉庫級自動化輔助腳本
+|-- .github/                   # CI、Issue 模板、PR 模板、CODEOWNERS
+|-- docker-compose.yml         # 本地 Docker Compose 堆疊
+|-- .env.example               # 環境變數模板
+`-- empty-vertex.json          # 非 Vertex 本地執行的占位憑證檔案
 ```
 
 ## 後端架構
@@ -115,7 +124,7 @@
 
 - Docker 20.10+ 和 Docker Compose 2.0+
 - 或帶 podman-compose 的 Podman
-- 一個 LiteLLM 相容的 AI 服務商金鑰用於本地 AI 功能，例如 Gemini、OpenAI、Anthropic 或 Groq
+- 一個 LiteLLM 相容的 AI 服務商金鑰用於本地 AI 功能，例如 Gemini、OpenAI 或 Anthropic
 - Google Cloud / Vertex AI 為可選項，本地開發不需要強制配置
 
 ### 1. 複製倉庫
@@ -148,9 +157,8 @@ cp .env.example .env
 | `VITE_GOOGLE_CLIENT_ID`      | 是        | 前端登入流程使用的 Google OAuth 2.0 客戶端 ID                      |
 | `INTERNAL_API_KEY`           | 推薦      | 後端呼叫 AI 服務的共享金鑰                                        |
 | `GEMINI_API_KEY`             | 有條件    | 當 `LLM_*_MODEL` 使用 `gemini/` 字首時使用的 Gemini API 金鑰       |
-| `OPENAI_API_KEY`             | 有條件    | 當 `LLM_*_MODEL` 使用 `openai/` 字首時使用的 OpenAI API 金鑰     |
+| `OPENAI_API_KEY`             | 有條件    | 當 `LLM_*_MODEL` 使用 `openai/` 字首時使用的 OpenAI Service 金鑰     |
 | `ANTHROPIC_API_KEY`          | 有條件    | 當 `LLM_*_MODEL` 使用 `anthropic/` 字首時使用的 Anthropic API 金鑰 |
-| `GROQ_API_KEY`               | 有條件    | 當 `LLM_*_MODEL` 使用 `groq/` 字首時使用的 Groq API 金鑰          |
 | `LLM_TEXT_MODEL`             | 否        | LiteLLM 文字模型名稱；Compose 中預設為 Gemini 模型               |
 | `LLM_VISION_MODEL`           | 否        | LiteLLM 視覺模型名稱                                             |
 | `LLM_EMBEDDING_MODEL`        | 否        | LiteLLM 嵌入模型名稱                                             |
@@ -163,7 +171,11 @@ cp .env.example .env
 | `CAPTCHA_TRACK_WIDTH`        | 否        | CAPTCHA 軌道寬度（畫素）。預設：`300`                            |
 | `REDIS_HOST`                 | 否        | Redis 主機名。預設：`redis`（Docker）或 `localhost`               |
 | `REDIS_PORT`                 | 否        | Redis 埠。預設：`6379`                                         |
-| `REDIS_PASSWORD`             | 否        | Redis 認證密碼。留空表示無認證（開發預設）                        |
+| `REDIS_PASSWORD`             | 是        | Compose 使用的 Redis 認證密碼；部署前請更改本地預設值              |
+| `MINIO_ENDPOINT`             | 否        | AI 模型註冊表使用的內部 MinIO 端點                                 |
+| `MINIO_ACCESS_KEY`           | 是        | AI 模型註冊表使用的 MinIO 存取金鑰                                 |
+| `MINIO_SECRET_KEY`           | 是        | AI 模型註冊表使用的 MinIO 金鑰                                     |
+| `MINIO_MODEL_BUCKET`         | 否        | 用於儲存訓練模型產物的 MinIO 儲存桶                                |
 | `CAPTCHA_MAX_ATTEMPTS`       | 否        | 每 IP 最大 CAPTCHA 嘗試次數。預設：`5`                           |
 
 本地開發時，將 `.env.example` 複製為 `.env`，並提供與您選擇的 LiteLLM 模型字首匹配的 API 金鑰。例如，預設 Gemini 模型使用 `GEMINI_API_KEY`。
@@ -339,7 +351,7 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ## 部署
 
-詳細部署說明請參見 [docs/deployment/DOCKER_DEPLOY.md](docs/deployment/DOCKER_DEPLOY.md)，內容包括：
+詳細部署說明請參見 [../../deployment/DOCKER_DEPLOY.md](../../deployment/DOCKER_DEPLOY.md)，內容包括：
 
 - 生產環境部署檢查清單
 - 環境配置
@@ -391,9 +403,8 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ## 授權條款
 
-本專案為學術目的在 JobCopilot Open Source（JobCopilot 課程）開發。
+本專案基於 MIT 授權條款發布。詳情請參見 [LICENSE](../../../LICENSE)。
 
 ## 致謝
 
-- JobCopilot Open Source
-- JobCopilot 課程團隊
+感謝支持 JobCopilot 的開源專案、貢獻者和使用者。

@@ -1,6 +1,6 @@
 # ArgoCD GitOps 部署
 
-> [English](../../../../../../deployment/k8s/argocd/README.md) | [简体中文](README.md) | [繁體中文](../../../../../zh-Hant-TW/deployment/k8s/argocd/README.md)
+> [English](../../../../../deployment/k8s/argocd/README.md) | [简体中文](README.md) | [繁體中文](../../../../zh-Hant-TW/deployment/k8s/argocd/README.md)
 
 ## 概述
 
@@ -11,7 +11,7 @@
 ```
 ┌─────────────────────────────────────────┐
 │  ArgoCD 根应用 (Root Application)        │
-│  (app-of-apps/JobCopilot-root)   │
+│  (app-of-apps/jobcopilot-root)   │
 └─────────────┬───────────────────────────┘
               │ 管理
     ┌─────────┼─────────┐
@@ -35,14 +35,14 @@
 
 ```yaml
 source:
-  repoURL: https://github.com/your-org/JobCopilot.git
-  targetRevision: HEAD  # 或分支名
+  repoURL: "https://github.com/<owner>/<repo>.git"
+  targetRevision: "main"  # 或发布分支/标签
 ```
 
 ### 2. 部署根应用
 
 ```bash
-kubectl apply -f app-of-apps/JobCopilot-root.yaml
+kubectl apply -f app-of-apps/jobcopilot-root.yaml
 ```
 
 这会创建根 Application，自动管理 dev、staging 和 prod 三个环境的 Applications。
@@ -58,9 +58,9 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 
 | 环境 | 命名空间 | 同步策略 | 自动同步 | 副本数 |
 |-------------|-----------|-------------|-----------|----------|
-| **dev** | `JobCopilot-dev` | 自动 | 是 | 1（最小） |
-| **staging** | `JobCopilot-staging` | 自动 | 是 | 2（类生产） |
-| **prod** | `JobCopilot-prod` | 手动 | 否 | 3（完整生产） |
+| **dev** | `jobcopilot-dev` | 自动 | 是 | 1（最小） |
+| **staging** | `jobcopilot-staging` | 自动 | 是 | 2（类生产） |
+| **prod** | `jobcopilot-prod` | 手动 | 否 | 3（完整生产） |
 
 ### 开发环境 (Dev)
 
@@ -86,8 +86,8 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 
 ## 添加新环境
 
-1. 复制 `applications/JobCopilot-dev.yaml`
-2. 重命名为 `JobCopilot-<env>.yaml`
+1. 复制 `applications/jobcopilot-dev.yaml`
+2. 重命名为 `jobcopilot-<env>.yaml`
 3. 更新以下字段：
    - `metadata.name`
    - `destination.namespace`
@@ -103,8 +103,8 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 
 1. **在目标命名空间预创建 Secrets**
    ```bash
-   kubectl create secret generic JobCopilot-secrets \
-     --namespace=JobCopilot-prod \
+   kubectl create secret generic jobcopilot-secrets \
+     --namespace=jobcopilot-prod \
      --from-literal=JWT_SECRET=...
    ```
    然后在 values 中设置 `secrets.existingSecret`。
@@ -141,7 +141,7 @@ syncPolicy:
 
 使用 ArgoCD UI 或 CLI 执行同步：
 ```bash
-argocd app sync JobCopilot-prod
+argocd app sync jobcopilot-prod
 ```
 
 ## 监控
@@ -149,10 +149,10 @@ argocd app sync JobCopilot-prod
 查看同步状态：
 ```bash
 argocd app list
-argocd app get JobCopilot-prod
+argocd app get jobcopilot-prod
 ```
 
 检查漂移：
 ```bash
-argocd app diff JobCopilot-prod
+argocd app diff jobcopilot-prod
 ```

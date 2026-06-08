@@ -3,16 +3,9 @@
 
 # JobCopilot
 
-The **JobCopilot** is an AI-powered platform for new graduates and career changers. It parses uploaded resumes, evaluates them against job market data using semantic vector matching, and provides an interactive AI copilot to iteratively improve resume content. Secure document management, asynchronous AI processing, and personalized recommendations save users time and improve interview rates.
+**JobCopilot** is an AI-powered platform for new graduates and career changers. It parses uploaded resumes, evaluates them against job market data using semantic vector matching, and provides an interactive AI copilot to iteratively improve resume content. Secure document management, asynchronous AI processing, and personalized recommendations save users time and improve interview rates.
 
 **Deployment:** The system is verified through Docker Compose. Copy `.env.example` to `.env`, configure the required values, then run `docker compose --env-file .env up -d --build`. The frontend is available at `http://localhost` by default, or `http://localhost:${FRONTEND_HOST_PORT}` if a custom port is configured.
-
-
-## Team Roster
-
-- **Guixing Jia** (@GuixingJia) - Project Manager, Python AI Service & Frontend
-- **Hansheng Zhang** (@hzhan516) - Java Backend & Database Lead
-- **Mu-Hsi Yu** (@mhsiy) - Frontend & UX Lead, Python AI Service
 
 ## Features
 
@@ -28,72 +21,88 @@ The **JobCopilot** is an AI-powered platform for new graduates and career change
 
 ## Architecture
 
-This project adopts a microservices architecture with the following components:
+JobCopilot uses a containerized service architecture. The frontend container is the only host-facing entry point by default; backend, AI, data, cache, queue, and model-registry services communicate over Docker networks.
 
 ```text
-┌─────────────┐      ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-│   Frontend  │──────▶│   Backend   │──────▶│  RabbitMQ   │─────▶│  AI Worker  │
-│   (React)   │      │  (Spring    │      │             │      │ (LightGBM)  │
-│             │      │   Boot)     │      └──────┬──────┘      └──────┬──────┘
-└─────────────┘      └──────┬───┬──┘             │                    │
-                            │   │                │                    ▼
-                            │   │  ┌─────────┐   │             ┌─────────────┐
-                            │   └─▶│  Redis  │   │             │    MinIO    │
-                            │      │   :6379 │◀──┘             │(Model Reg.) │
-                            │      └─────────┘                 └─────────────┘
-                            ▼                    ▼                    ▲
-                     ┌─────────────────────────────┐                  │
-                     │ PostgreSQL 15 + pgvector    │                  │
-                     │ business data + embeddings  │                  │
-                     └─────────────────────────────┘                  │
-                            ▲             ▲                           │
-                            │             │      ┌─────────────┐      │
-                            └─────────────┴──────│   AI API    │──────┘
-                                                 │  (FastAPI)  │
-                                                 └─────────────┘
+Browser
+  |
+  | HTTP :${FRONTEND_HOST_PORT:-80}
+  v
+Frontend container
+  React static app + Nginx reverse proxy
+  |
+  | HTTP /api, /health
+  v
+Backend container
+  Spring Boot API, auth, domain workflows, vector persistence
+  |-- JDBC --------> PostgreSQL + pgvector
+  |-- AMQP --------> RabbitMQ --------> AI worker container
+  |-- HTTP --------> AI API container
+  |-- Redis -------> Redis
+  `-- Local files -> shared upload volume
+
+AI API / AI worker
+  |-- LiteLLM-compatible provider for parsing, embeddings, ranking, chat
+  |-- Backend internal API for vector upserts and baseline features
+  |-- Redis feedback buffer, locks, and model reload Pub/Sub
+  `-- MinIO model registry for LightGBM artifacts
 ```
 
-| Service       | Technology                | Port         | Description                          |
-|---------------|---------------------------|--------------|--------------------------------------|
-| Frontend      | React 19 + Vite 7         | `${FRONTEND_HOST_PORT:-80}` -> 8080 | Web user interface and Nginx reverse proxy |
-| Backend       | Java 21 + Spring Boot 3.5 | 8080 internal | REST API, business logic, and slider CAPTCHA protection |
-| AI API        | Python 3 + FastAPI + LiteLLM | 8000 internal | AI processing, embedding generation, ranking, and chat |
-| AI Worker     | Python 3 + LightGBM       | N/A          | Background worker for incremental model training |
-| Database      | PostgreSQL 15 + pgvector  | 5432 internal | Business data and vector storage     |
-| Message Queue | RabbitMQ 3                | 5672 internal | Async message processing             |
-| Cache         | Redis 7                   | 6379 internal | Distributed state, locks, Pub/Sub    |
-| Model Registry| MinIO                     | 9000 internal | Storage for trained LightGBM models  |
+| Component | Technology | Exposure | Responsibility |
+|-----------|------------|----------|----------------|
+| Frontend / Gateway | React 19, Vite 7, Nginx | Host `${FRONTEND_HOST_PORT:-80}` -> container `8080` | Serve UI, proxy `/api` and `/health` to backend |
+| Backend | Java 21, Spring Boot 3.5, DDD modules | Internal `8080`; direct host port disabled by default | REST API, authentication, resume/job/application workflows, vector persistence |
+| AI API | Python 3.11, FastAPI, LiteLLM | Internal `8000`; direct host port disabled by default | Synchronous AI endpoints, embeddings, parsing, ranking, chat support |
+| AI Worker | Python 3.11, RabbitMQ consumers, LightGBM | Internal worker process | Asynchronous parsing, ranking jobs, feedback ingestion, incremental model training |
+| PostgreSQL | PostgreSQL 15 with pgvector | Internal `5432` on `db-network` | Business data and vector storage |
+| RabbitMQ | RabbitMQ 3 management image | Internal `5672`; management port disabled by default | Durable async task transport between backend and AI services |
+| Redis | Redis 7 | Internal `6379` | CAPTCHA state, distributed locks, feedback buffer, model reload Pub/Sub |
+| MinIO | S3-compatible object storage | Internal `9000` | LightGBM model registry for AI worker artifacts |
 
 ## Project Structure
 
 ```text
 .
-├── frontend/                  # React frontend application
-│   ├── src/                   # Source code
-│   ├── package.json           # Node.js dependencies and scripts
-│   └── Dockerfile             # Frontend Docker image
-├── backend/                   # Java Spring Boot backend
-│   ├── app/                   # Application entry point, config, DB init, app tests
-│   ├── api/                   # API DTOs and facade interfaces
-│   ├── domain/                # Domain entities, value objects, domain tests
-│   ├── infrastructure/        # Persistence, storage, messaging, security, converters
-│   ├── trigger/               # HTTP controllers, MQ listeners, controller tests
-│   └── types/                 # Shared types and constants
-├── ai-service/                # Python AI service (API & Worker)
-│   ├── app/                   # AI service source code
-│   │   ├── api/               # FastAPI stateless endpoints
-│   │   ├── worker/            # Stateful background worker (LightGBM)
-│   │   ├── domain/            # Core AI logic and models
-│   │   └── infrastructure/    # External integrations (MinIO, MQ, DB)
-│   ├── tests/                 # Pytest test suite
-│   ├── requirements.txt       # Python dependencies
-│   └── Dockerfile             # AI service Docker image
-├── docs/                      # Architecture, API, deployment, and i18n documentation
-├── eval/                      # AI evaluation scripts, benchmark cases, and results
-├── docker-compose.yml         # Docker Compose configuration
-├── docker-compose.yml.example # Docker Compose template/reference
-├── empty-vertex.json          # Placeholder credentials file for non-Vertex local runs
-└── .env.example               # Environment variables template
+|-- backend/                   # Java / Spring Boot backend
+|   |-- api/                   # API DTOs, commands, queries, and facades
+|   |-- app/                   # Application services, schedulers, and startup wiring
+|   |-- domain/                # Domain entities, value objects, ports, and rules
+|   |-- infrastructure/        # Persistence, storage, messaging, security, integrations
+|   |-- trigger/               # REST controllers, WebSocket endpoints, MQ listeners
+|   |-- types/                 # Shared types and constants
+|   |-- scripts/               # Backend maintenance scripts
+|   |-- Dockerfile             # Backend container image
+|   `-- pom.xml                # Maven multi-module build
+|-- frontend/                  # React / Vite / TypeScript frontend
+|   |-- src/                   # UI source code
+|   |   |-- components/        # Reusable UI components
+|   |   |-- pages/             # Route-level pages
+|   |   |-- services/          # API clients and service wrappers
+|   |   |-- store/             # Client state management
+|   |   |-- hooks/             # Shared React hooks
+|   |   |-- i18n/              # Runtime i18n setup
+|   |   `-- locales/           # Translation resources
+|   |-- package.json           # Node.js dependencies and scripts
+|   `-- Dockerfile             # Frontend container image
+|-- ai-service/                # Python / FastAPI AI service and worker
+|   |-- app/
+|   |   |-- api/               # FastAPI endpoints
+|   |   |-- domain/            # AI domain logic and model abstractions
+|   |   |-- infrastructure/    # External integrations
+|   |   |-- mq/                # Messaging integration
+|   |   |-- services/          # AI application services
+|   |   `-- worker/            # Background worker entry points
+|   |-- tests/                 # Pytest test suite
+|   |-- requirements.txt       # Python dependencies
+|   `-- Dockerfile             # AI service container image
+|-- docs/                      # ADRs, API docs, architecture, deployment, i18n
+|-- eval/                      # AI evaluation scripts, datasets, and results
+|-- middleware/                # Custom infrastructure images, such as PostgreSQL
+|-- scripts/                   # Repository-level automation helpers
+|-- .github/                   # CI, issue templates, PR template, CODEOWNERS
+|-- docker-compose.yml         # Local Docker Compose stack
+|-- .env.example               # Environment variable template
+`-- empty-vertex.json          # Placeholder credentials for non-Vertex local runs
 ```
 
 ## Backend Architecture
@@ -115,7 +124,7 @@ The backend adopts **Hexagonal Architecture / Domain-Driven Design (DDD)** with 
 
 - Docker 20.10+ and Docker Compose 2.0+
 - Or Podman with podman-compose
-- One LiteLLM-compatible AI provider key for local AI features, such as Gemini, OpenAI, Anthropic, or Groq
+- One LiteLLM-compatible AI provider key for local AI features, such as Gemini, OpenAI, or Anthropic
 - Google Cloud / Vertex AI is optional and is not required for local development
 
 ### 1. Clone the Repository
@@ -150,7 +159,6 @@ Key environment variables:
 | `GEMINI_API_KEY`         | Conditional | Gemini API key used when `LLM_*_MODEL` uses the `gemini/` prefix |
 | `OPENAI_API_KEY`         | Conditional | OpenAI API key used when `LLM_*_MODEL` uses the `openai/` prefix |
 | `ANTHROPIC_API_KEY`      | Conditional | Anthropic API key used when `LLM_*_MODEL` uses the `anthropic/` prefix |
-| `GROQ_API_KEY`           | Conditional | Groq API key used when `LLM_*_MODEL` uses the `groq/` prefix |
 | `LLM_TEXT_MODEL`         | No       | LiteLLM text model name; defaults to a Gemini model in Compose |
 | `LLM_VISION_MODEL`       | No       | LiteLLM vision model name |
 | `LLM_EMBEDDING_MODEL`           | No       | LiteLLM embedding model name |
@@ -163,7 +171,11 @@ Key environment variables:
 | `CAPTCHA_TRACK_WIDTH`    | No       | CAPTCHA track width in pixels. Default: `300` |
 | `REDIS_HOST`             | No       | Redis hostname. Default: `redis` (Docker) or `localhost` |
 | `REDIS_PORT`             | No       | Redis port. Default: `6379` |
-| `REDIS_PASSWORD`         | No       | Redis AUTH password. Leave empty for no-auth (dev default) |
+| `REDIS_PASSWORD`         | Yes      | Redis AUTH password used by Compose; change the local default before deployment |
+| `MINIO_ENDPOINT`         | No       | Internal MinIO endpoint for the AI model registry |
+| `MINIO_ACCESS_KEY`       | Yes      | MinIO access key for the AI model registry |
+| `MINIO_SECRET_KEY`       | Yes      | MinIO secret key for the AI model registry |
+| `MINIO_MODEL_BUCKET`     | No       | MinIO bucket used for trained model artifacts |
 | `CAPTCHA_MAX_ATTEMPTS`   | No       | Maximum CAPTCHA attempts per IP. Default: `5` |
 
 For local development, copy `.env.example` to `.env` and provide one API key that matches the LiteLLM model prefix you choose. For example, the default Gemini models use `GEMINI_API_KEY`.
@@ -390,9 +402,8 @@ See [docs/deployment/DOCKER_DEPLOY.md](docs/deployment/DOCKER_DEPLOY.md) for det
 
 ## License
 
-This project is developed for academic purposes at JobCopilot Open Source (JobCopilot course).
+Distributed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-- JobCopilot Open Source
-- JobCopilot Course Team
+Thanks to the open-source projects, contributors, and users that make JobCopilot possible.

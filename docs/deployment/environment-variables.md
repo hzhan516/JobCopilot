@@ -52,7 +52,7 @@ The following values are **not** defined in `.env.example` but are configurable 
 | Field | Value |
 |-------|-------|
 | **Purpose** | The host port mapped to the Nginx container's port `80`. |
-| **Default** | `8081` (in `docker-compose.yml.example`) |
+| **Default** | `80` (via `${FRONTEND_HOST_PORT:-80}` in `docker-compose.yml`) |
 | **Valid values** | Any free TCP port on the host (`80`, `8080`, `8081`, `3000`, etc.) |
 | **Security notes** | In production, this should be `80` (or `443` behind an external TLS terminator). Do not expose backend/AI/database ports to the host. |
 | **Common mistakes** | Setting this to `80` on macOS/Linux without `sudo` fails because ports < 1024 require root privileges. Use `8081` for local development. |
@@ -229,7 +229,7 @@ openssl rand -base64 48
 | Field | Value |
 |-------|-------|
 | **Purpose** | Application name displayed in Spring Boot Actuator, metrics, and logs. |
-| **Default** | `JobCopilot-backend` |
+| **Default** | `jobcopilot-backend` |
 | **Valid values** | Any valid Spring Boot application name |
 | **Security notes** | Not a secret. Used for observability and service discovery. |
 | **Common mistakes** | Using spaces or special characters that break URL-safe identifiers. |
@@ -266,7 +266,7 @@ You only need to configure **one** provider. The choice is determined by the pre
 |-------|-------|
 | **Purpose** | API key for OpenAI models (GPT-4o, etc.) via LiteLLM. |
 | **Default** | *(empty)* |
-| **Valid values** | A valid OpenAI API key starting with `sk-` |
+| **Valid values** | A valid OpenAI Service key starting with `sk-` |
 | **Security notes** | OpenAI is a paid service. Set spending limits and monitor usage dashboards to avoid unexpected bills. |
 | **Common mistakes** | Setting this **and** `GEMINI_API_KEY` at the same time. LiteLLM will use whichever provider matches the model prefix, but having multiple keys increases the attack surface. |
 
@@ -279,16 +279,6 @@ You only need to configure **one** provider. The choice is determined by the pre
 | **Valid values** | A valid Anthropic API key |
 | **Security notes** | Claude models are generally more expensive per token than Gemini Flash. Evaluate cost before switching. |
 | **Common mistakes** | Forgetting to update the model prefix from `gemini/` to `anthropic/` when switching providers. |
-
-### `GROQ_API_KEY`
-
-| Field | Value |
-|-------|-------|
-| **Purpose** | API key for Groq (fast inference) models via LiteLLM. |
-| **Default** | *(empty)* |
-| **Valid values** | A valid Groq API key |
-| **Security notes** | Groq offers very low latency but limited model selection. |
-| **Common mistakes** | Expecting embedding support from Groq — most Groq models are text-generation only. |
 
 ### `OLLAMA_API_BASE`
 
@@ -966,7 +956,7 @@ These variables are consumed by the Python AI service and AI worker for incremen
 | Field | Value |
 |-------|-------|
 | **Purpose** | Sender address displayed in verification emails. |
-| **Default** | `noreply@JobCopilot.local` |
+| **Default** | `noreply@jobcopilot.local` |
 | **Valid values** | Any valid email address |
 | **Security notes** | Some SMTP providers require the `From` address to be verified or registered in their console. Using an unverified address may cause emails to be rejected or land in spam. |
 | **Common mistakes** | Using a personal Gmail address without enabling "App Passwords" or without configuring SPF/DKIM for the domain. |

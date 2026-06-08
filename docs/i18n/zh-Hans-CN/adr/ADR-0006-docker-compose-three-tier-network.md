@@ -14,7 +14,7 @@
 
 ## 1. Context / 背景
 
-ResumeAssistant 面向三种部署角色：
+JobCopilot 面向三种部署角色：
 
 | 角色 | 部署模式 | 网络需求 |
 |------|----------|----------|
@@ -90,7 +90,7 @@ services:
 │   │   │         internal-network（bridge, /16）                          │
 │   │   │                                                                │
 │   │   │   ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐ │
-│   │   │   │ai-api  │  │rabbitmq│  │ redis  │  │ai-worker│  │ minio  │ │
+│   │   │   │ai-service  │  │rabbitmq│  │ redis  │  │ai-worker│  │ minio  │ │
 │   │   │   │:8000   │  │:5672   │  │:6379   │  │ (训练)  │  │:9000   │ │
 │   │   │   └────────┘  └────────┘  └────────┘  └────────┘  └────────┘ │
 │   │   └────────────────────────────────────────────────────────────────┘
@@ -113,7 +113,7 @@ services:
 |------|---------------|------------------|------------|------------|------|
 | **frontend** (Nginx) | ✅ | ❌ | ❌ | `80:8080` | 唯一 HTTP 入口；反向代理 `/api/*` 到后端 |
 | **backend** (Spring Boot) | ✅ | ✅ | ✅ | 无 | 网关；跨三层 |
-| **ai-api** (FastAPI) | ❌ | ✅ | ❌ | 无 | LLM 推理、向量化、解析 |
+| **ai-service** (FastAPI) | ❌ | ✅ | ❌ | 无 | LLM 推理、向量化、解析 |
 | **ai-worker** (LightGBM) | ❌ | ✅ | ❌ | 无 | 增量模型训练 |
 | **rabbitmq** | ❌ | ✅ | ❌ | 无 | 异步消息代理（Outbox 模式） |
 | **redis** | ❌ | ✅ | ❌ | 无 | 缓存、分布式锁（ShedLock）、反馈缓冲 |
@@ -126,7 +126,7 @@ services:
 
 1. **流量控制**：所有外部 HTTP 请求通过 `frontend:80` → `backend:8080` 进入。后端决定是查询 PostgreSQL、发布 RabbitMQ 消息，还是调用 AI 服务。
 2. **密钥集中化**：只有后端需要 PostgreSQL 凭据、RabbitMQ 凭据和用于 AI 服务认证的 `INTERNAL_API_KEY`。其他层永远不会看到跨层密钥。
-3. **可观测性**：单个请求可以追踪 `Nginx → backend → (db | mq | ai-api)`，无需跨越网络边界跳转。
+3. **可观测性**：单个请求可以追踪 `Nginx → backend → (db | mq | ai-service)`，无需跨越网络边界跳转。
 
 ### 2.4 Docker Compose 实现
 
@@ -162,7 +162,7 @@ services:
       - db-network
     # 无宿主机端口 — 仅通过 public-network 可达
 
-  ai-api:
+  ai-service:
     networks:
       - internal-network
 
@@ -184,7 +184,7 @@ services:
       - db-network
 ```
 
-所有直接宿主机端口映射（后端 `8080`、postgres `5432`、rabbitmq `5672`/`15672`、ai-api `8000`）**默认注释掉**。取消注释会在文件头部打印 `SECURITY WARNING`，且必须在发布前恢复。
+所有直接宿主机端口映射（后端 `8080`、postgres `5432`、rabbitmq `5672`/`15672`、ai-service `8000`）**默认注释掉**。取消注释会在文件头部打印 `SECURITY WARNING`，且必须在发布前恢复。
 
 ---
 
@@ -213,7 +213,7 @@ services:
 
 | 风险 | 缓解措施 |
 |------|----------|
-| 开发者意外提交取消注释了开发端口的 `docker-compose.yml` | **Git 忽略 + CI 检查**：`docker-compose.yml` 被 gitignored（提交的是示例文件）。CI 运行 `docker compose config`，若检测到除 `frontend:80` 外的任何宿主机端口则构建失败。 |
+| 开发者意外提交取消注释了开发端口的 `docker-compose.yml` | **CI 检查**：`docker-compose.yml` 已纳入版本控制，且不得包含密钥。CI 运行 `docker compose config`，若检测到除 `frontend:80` 外的任何宿主机端口则构建失败。 |
 | 前端 `VITE_API_BASE_URL` 设为绝对 URL 绕过 Nginx | **构建时断言**：前端 Dockerfile 检查 `VITE_API_BASE_URL`；若以 `http` 开头则构建失败。文档明确警告不要使用绝对 URL。 |
 | 后端容器逃逸危及所有层 | **运行时加固**：容器以非 root 运行（`USER 1000:1000`），只读根文件系统（`read_only: true`），并丢弃所有 capabilities（`cap_drop: [ALL]`）。 |
 | Docker bridge MTU 不匹配导致云虚拟机静默丢包 | **显式 MTU**：每个网络声明 `com.docker.network.driver.mtu: 1500` 以匹配标准以太网；云覆盖层 MTU 问题（例如 AWS VPC 9001 Jumbo Frames）在宿主机层面处理。 |

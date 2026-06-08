@@ -14,9 +14,9 @@ keywords:
   - spring-boot
   - fastapi
   - pgvector
-home: https://github.com/your-org/jobcopilot
+home: https://github.com/<owner>/<repo>
 sources:
-  - https://github.com/your-org/jobcopilot
+  - https://github.com/<owner>/<repo>
 maintainers:
-  - name: JobCopilot Labs
+  - name: jobcopilot Labs
     email: team@jobcopilot.io

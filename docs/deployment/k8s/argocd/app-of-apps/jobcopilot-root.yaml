@@ -16,8 +16,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/your-org/jobcopilot.git
-    targetRevision: HEAD
+    repoURL: "https://github.com/<owner>/<repo>.git"
+    targetRevision: "main"
     path: docs/deployment/k8s/argocd/applications
   destination:
     server: https://kubernetes.default.svc

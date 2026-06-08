@@ -338,6 +338,85 @@ Content-Type: application/json
 
 ---
 
+### 1.11 更新职位 (Update Job)
+**Endpoint:** `PUT /api/v1/jobs/{jobId}`
+**描述:** 更新当前用户拥有的职位解析内容。
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+Content-Type: application/json
+```
+
+**Request Body (`UpdateJobRequest`):**
+```json
+{
+  "title": "Senior Software Engineer",
+  "company": "Tech Corp",
+  "salary": "$120k-$150k",
+  "location": "Remote",
+  "description": "Updated job description...",
+  "requirements": ["Java", "Spring Boot", "AWS"]
+}
+```
+
+**Response Body (`JobResponse`):**
+与 1.2 响应格式相同。
+
+### 1.12 记录职位行为 (Track Job Action)
+**Endpoint:** `POST /api/v1/jobs/{jobId}/track`
+**描述:** 记录用户对职位的操作，例如 `CLICK`、`APPLY` 或 `REJECT`。
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+```
+
+**Query Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `action` | String | Yes | 操作类型，例如 `CLICK`、`APPLY` 或 `REJECT`。 |
+| `resumeVersionId` | UUID String | No | 与本次操作关联的简历版本 ID。 |
+
+**Response Body:**
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": null
+}
+```
+
+### 1.13 获取评分历史 (Get Score History)
+**Endpoint:** `GET /api/v1/jobs/scores/history`
+**描述:** 获取当前用户保存的职位评分历史。
+
+**Request Header:**
+```http
+Authorization: Bearer <user-jwt-token>
+```
+
+**Response Body (`List<JobScoreHistoryResponse>`):**
+```json
+[
+  {
+    "id": "score-record-uuid",
+    "jobId": "job-uuid-1234",
+    "resumeVersionId": "550e8400-e29b-41d4-a716-446655440002",
+    "suitable": true,
+    "finalScore": 0.85,
+    "skillScore": 0.9,
+    "experienceScore": 0.8,
+    "overallScore": 0.85,
+    "summary": "The resume matches key requirements.",
+    "createdAt": "2026-04-15T10:30:00Z"
+  }
+]
+```
+
+---
+
 ## 2. 后端与 AI 服务层交互接口 (Backend to Python AI Service via MQ)
 
 为了遵循系统架构，Java 后端不再直接通过 HTTP 同步调用 AI 服务，而是通过 **RabbitMQ** 发布异步任务请求，并监听 AI 服务的处理结果回调。

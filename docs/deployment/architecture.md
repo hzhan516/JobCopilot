@@ -22,7 +22,7 @@ JobCopilot is an AI-powered job-search platform deployed as a **three-tier Docke
             |                               |
             v                               v
    +------------------+           +------------------+
-   |  backend : 8080  |           |  ai-api   :8000  |
+   |  backend : 8080  |           |  ai-service   :8000  |
    |  (Spring Boot)   |<--------->|  (FastAPI)       |
    +------------------+           +------------------+
             |                               |
@@ -53,7 +53,7 @@ JobCopilot is an AI-powered job-search platform deployed as a **three-tier Docke
 | Network | Services | External Exposure | Purpose |
 |---------|----------|-------------------|---------|
 | **Public** | `frontend` (Nginx), `backend` | Host `${FRONTEND_HOST_PORT:-80}` to `frontend:8080` | Single entry point for all HTTP/HTTPS traffic |
-| **Internal** | `backend`, `ai-api`, `ai-worker`, `rabbitmq`, `redis`, `minio` | None (Docker DNS only) | Inter-service communication via container names |
+| **Internal** | `backend`, `ai-service`, `ai-worker`, `rabbitmq`, `redis`, `minio` | None (Docker DNS only) | Inter-service communication via container names |
 | **Database** | `backend`, `postgres` | None (Docker DNS only) | Isolated persistent data storage |
 
 > **Note on Development Template**: The current `docker-compose.yml` exposes only the frontend by default. Direct host ports for backend (`8080`), AI service (`8000`), PostgreSQL (`5432`), RabbitMQ (`5672`), and RabbitMQ Management (`15672`) are kept as commented development-only examples. In a **production deployment**, only the frontend host port should be exposed.
@@ -78,7 +78,7 @@ JobCopilot is an AI-powered job-search platform deployed as a **three-tier Docke
 | **Role** | REST API gateway, JWT authentication, CAPTCHA verification, business logic orchestration, and RabbitMQ producer. |
 | **Security notes** | The only service that spans all three network tiers. Communicates with PostgreSQL via Docker DNS (`postgres:5432`) and with RabbitMQ (`rabbitmq:5672`). All outbound REST calls to `ai-service` include the `X-Internal-API-Key` header. |
 
-### 3.3 AI API (FastAPI)
+### 3.3 AI Service (FastAPI)
 
 | Attribute | Value |
 |-----------|-------|
@@ -111,7 +111,7 @@ JobCopilot is an AI-powered job-search platform deployed as a **three-tier Docke
 |-----------|-------|
 | **Networks** | `internal-network` |
 | **Host ports** | None by default; `5672:5672` and `15672:15672` are commented dev-only examples |
-| **Role** | Async message broker between backend, AI API, and AI Worker (Outbox pattern). |
+| **Role** | Async message broker between backend, AI Service, and AI Worker (Outbox pattern). |
 | **Security notes** | Override the default `guest/guest` credentials via `RABBITMQ_USERNAME` and `RABBITMQ_PASSWORD`. The Management UI (`:15672`) should never be exposed to the public internet; access it via SSH tunnel: `ssh -L 15672:localhost:15672 <host>`. Message size limit is set to 10 MB (`max_message_size 10485760`) to accommodate vectors and resume summaries. |
 
 ### 3.7 Redis (Cache & Locks)
@@ -130,7 +130,7 @@ JobCopilot is an AI-powered job-search platform deployed as a **three-tier Docke
 | **Networks** | `internal-network` |
 | **Host ports** | None in production |
 | **Role** | Object storage for trained LightGBM model artifacts. |
-| **Security notes** | No external access. Used exclusively by `ai-worker` (write) and `ai-api` (read). |
+| **Security notes** | No external access. Used exclusively by `ai-worker` (write) and `ai-service` (read). |
 
 ## 4. Defense in Depth
 
@@ -161,31 +161,28 @@ All authentication endpoints (registration, login) require a valid CAPTCHA chall
 ## 5. Quick Start
 
 ```bash
-# 1. Copy the Compose template
-cp docker-compose.yml.example docker-compose.yml
-
-# 2. Copy the environment template
+# 1. Copy the environment template
 cp .env.example .env
 
-# 3. Edit .env and replace all [replace-me] placeholders
+# 2. Edit .env and replace all [replace-me] placeholders
 vim .env
 
-# 4. Generate a strong JWT secret (48 bytes = 64 base64 chars)
+# 3. Generate a strong JWT secret (48 bytes = 64 base64 chars)
 openssl rand -base64 48
 # Paste the output into .env as JWT_SECRET
 
-# 5. Generate an internal API key (32 bytes = 44 base64 chars)
+# 4. Generate an internal API key (32 bytes = 44 base64 chars)
 openssl rand -base64 32
 # Paste the output into .env as INTERNAL_API_KEY
 # (both backend and ai-service must share the exact same value)
 
-# 6. Start all services
+# 5. Start all services
 docker compose up -d
 
-# 7. Verify container health
+# 6. Verify container health
 docker compose ps
 
-# 8. Check the frontend health endpoint
+# 7. Check the frontend health endpoint
 curl -f http://localhost/health
 ```
 
@@ -235,5 +232,5 @@ docker compose exec ai-service env | grep INTERNAL_API_KEY
 **Solution**: PostgreSQL is isolated on the internal Docker network and does **not** expose port `5432` to the host in production. This is expected behavior. To access the database, enter the container:
 
 ```bash
-docker compose exec postgres psql -U resume_user -d JobCopilot
+docker compose exec postgres psql -U resume_user -d resume_assistant
 ```

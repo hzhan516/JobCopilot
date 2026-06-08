@@ -20,21 +20,21 @@
 
 ```bash
 # 先创建命名空间
-kubectl create namespace JobCopilot
+kubectl create namespace jobcopilot
 
 # 使用默认值安装（自建中间件，开发配置）
-helm install JobCopilot . \
-  --namespace JobCopilot
+helm install jobcopilot . \
+  --namespace jobcopilot
 
 # 生产环境安装（托管中间件）
-helm install JobCopilot . \
-  --namespace JobCopilot \
+helm install jobcopilot . \
+  --namespace jobcopilot \
   -f values.yaml \
   -f values-production.yaml
 
 # 最小资源安装（kind/minikube）
-helm install JobCopilot . \
-  --namespace JobCopilot \
+helm install jobcopilot . \
+  --namespace jobcopilot \
   -f values.yaml \
   -f values-minimal.yaml
 ```
@@ -42,8 +42,8 @@ helm install JobCopilot . \
 ### 升级
 
 ```bash
-helm upgrade JobCopilot . \
-  --namespace JobCopilot \
+helm upgrade jobcopilot . \
+  --namespace jobcopilot \
   -f values.yaml \
   -f values-production.yaml
 ```
@@ -51,9 +51,9 @@ helm upgrade JobCopilot . \
 ### 卸载
 
 ```bash
-helm uninstall JobCopilot --namespace JobCopilot
+helm uninstall jobcopilot --namespace jobcopilot
 # 注意：默认不会删除 PVC，以防止数据丢失
-kubectl delete pvc -n JobCopilot -l app.kubernetes.io/name=JobCopilot
+kubectl delete pvc -n jobcopilot -l app.kubernetes.io/name=jobcopilot
 ```
 
 ---
@@ -64,18 +64,21 @@ kubectl delete pvc -n JobCopilot -l app.kubernetes.io/name=JobCopilot
 
 | 参数                                | 说明                              | 默认值                      |
 |-----------------------------------|---------------------------------|--------------------------|
-| `global.infraMode`                | 中间件模式：`embedded` 或 `managed`    | `embedded`               |
-| `secrets.existingSecret`          | 使用预创建的 Secret 替代 Helm 管理        | `""`                     |
-| `ingress.host`                    | Ingress 域名                      | `JobCopilot.local` |
-| `ingress.tls.enabled`             | 启用 TLS                          | `false`                  |
-| `backend.replicaCount`            | 后端副本数                           | `1`                      |
-| `backend.springProfilesActive`    | Spring 配置文件                     | `dev`                    |
-| `backend.storageType`             | 文件存储：`local`、`s3`、`minio`、`oss` | `local`                  |
-| `aiService.replicaCount`          | AI 服务副本数                        | `1`                      |
-| `aiService.llmEmbeddingDimension` | 嵌入向量维度                          | `1536`                   |
-| `postgres.enabled`                | 部署 PostgreSQL StatefulSet       | `true`                   |
-| `rabbitmq.enabled`                | 部署 RabbitMQ StatefulSet         | `true`                   |
-| `redis.enabled`                   | 部署 Redis StatefulSet            | `true`                   |
+| `global.infraMode` | 中间件模式：`embedded` 或 `managed` | `embedded` |
+| `secrets.existingSecret` | 使用预创建的 Secret 替代 Helm 管理 | `""` |
+| `ingress.host` | Ingress 域名 | `jobcopilot.local` |
+| `ingress.tls.enabled` | 启用 TLS | `false` |
+| `backend.replicaCount` | 后端副本数 | `1` |
+| `backend.springProfilesActive` | Spring 配置文件 | `dev` |
+| `backend.storageType` | 文件存储：`local`、`s3`、`minio`、`oss` | `local` |
+| `aiService.replicaCount` | AI 服务副本数 | `1` |
+| `aiService.llmEmbeddingDimension` | 嵌入向量维度 | `1536` |
+| `aiWorker.enabled` | 部署后台 AI worker | `true` |
+| `aiWorker.replicaCount` | AI worker 副本数 | `1` |
+| `postgres.enabled` | 部署 PostgreSQL StatefulSet | `true` |
+| `rabbitmq.enabled` | 部署 RabbitMQ StatefulSet | `true` |
+| `redis.enabled` | 部署 Redis StatefulSet | `true` |
+| `minio.enabled` | 在 embedded 模式部署 MinIO 模型制品存储 | `true` |
 
 ### 完整值参考
 
@@ -98,21 +101,26 @@ secrets:
 
 ```bash
 # 手动创建 Secret
-kubectl create secret generic JobCopilot-secrets \
-  --namespace=JobCopilot \
+kubectl create secret generic jobcopilot-secrets \
+  --namespace=jobcopilot \
   --from-literal=JWT_SECRET=... \
-  --from-literal=POSTGRES_PASSWORD=...
+  --from-literal=POSTGRES_PASSWORD=... \
+  --from-literal=RABBITMQ_PASSWORD=... \
+  --from-literal=REDIS_PASSWORD=... \
+  --from-literal=MINIO_ACCESS_KEY=... \
+  --from-literal=MINIO_SECRET_KEY=... \
+  --from-literal=INTERNAL_API_KEY=...
 
 # 在 values 中引用
-helm install JobCopilot . \
-  --set secrets.existingSecret=JobCopilot-secrets
+helm install jobcopilot . \
+  --set secrets.existingSecret=jobcopilot-secrets
 ```
 
 ### 方式三：External Secrets Operator
 
 ```yaml
 secrets:
-  existingSecret: "JobCopilot-eso-secret"
+  existingSecret: "jobcopilot-eso-secret"
 ```
 
 配置 ESO 从 AWS Secrets Manager、Azure Key Vault 或 GCP Secret Manager 同步。
@@ -130,7 +138,7 @@ secrets:
 
 提供 `init.sql`：
 ```bash
-helm install JobCopilot . \
+helm install jobcopilot . \
   --set-file postgres.initSql=../../../backend/app/src/main/resources/db/init.sql
 ```
 
@@ -146,7 +154,7 @@ helm install JobCopilot . \
 # 对密钥文件进行 Base64 编码
 export GCP_CREDS_B64=$(base64 -w 0 /path/to/gcp-service-account.json)
 
-helm install JobCopilot . \
+helm install jobcopilot . \
   --set secrets.gcpCredentialsJson="$GCP_CREDS_B64"
 ```
 
@@ -161,7 +169,7 @@ Chart 会创建独立的 Secret，并以只读卷形式挂载到 `/app/credentia
 helm lint .
 
 # 渲染模板而不安装
-helm template JobCopilot . \
+helm template jobcopilot . \
   -f values.yaml \
   -f values-production.yaml > rendered.yaml
 
@@ -175,21 +183,26 @@ helm template JobCopilot . \
 
 ```yaml
 global:
-  imageRegistry: "ghcr.io/your-org/"
+  imageRegistry: "ghcr.io/<owner>/jobcopilot/"
 
 backend:
   image:
-    repository: JobCopilot-backend
+    repository: jobcopilot-backend
     tag: "v1.2.3"
 
 aiService:
   image:
-    repository: JobCopilot-ai-service
+    repository: jobcopilot-ai-service
+    tag: "v1.2.3"
+
+aiWorker:
+  image:
+    repository: jobcopilot-ai-service
     tag: "v1.2.3"
 
 frontend:
   image:
-    repository: JobCopilot-frontend
+    repository: jobcopilot-frontend
     tag: "v1.2.3"
 ```
 

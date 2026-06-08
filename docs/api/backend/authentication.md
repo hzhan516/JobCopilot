@@ -117,7 +117,7 @@
 ### cURL Example
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/register/email \
+curl -X POST http://localhost/api/v1/auth/register/email \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -214,7 +214,7 @@ curl -X POST http://localhost:8080/api/v1/auth/register/email \
 ### cURL Example
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/login/email \
+curl -X POST http://localhost/api/v1/auth/login/email \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -289,7 +289,7 @@ Same response format as email login (first login will automatically register and
 ### cURL Example
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/login/google \
+curl -X POST http://localhost/api/v1/auth/login/google \
   -H "Content-Type: application/json" \
   -d '{
     "idToken": "eyJhbGciOiJSUzI1NiIs..."
@@ -373,7 +373,7 @@ curl -X POST http://localhost:8080/api/v1/auth/login/google \
 ### cURL Example
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/send-verification-code \
+curl -X POST http://localhost/api/v1/auth/send-verification-code \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com"
@@ -413,7 +413,7 @@ curl -X POST http://localhost:8080/api/v1/auth/send-verification-code \
 ### cURL Example
 
 ```bash
-curl -X GET http://localhost:8080/api/v1/auth/email-verification-enabled
+curl -X GET http://localhost/api/v1/auth/email-verification-enabled
 ```
 
 ---
@@ -497,7 +497,7 @@ Returned when the same IP requests too many challenges (default: >20 per minute)
 ### cURL Example
 
 ```bash
-curl -X GET http://localhost:8080/api/v1/auth/captcha
+curl -X GET http://localhost/api/v1/auth/captcha
 ```
 
 ---
@@ -575,7 +575,7 @@ curl -X GET http://localhost:8080/api/v1/auth/captcha
 ### cURL Example
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/captcha/verify \
+curl -X POST http://localhost/api/v1/auth/captcha/verify \
   -H "Content-Type: application/json" \
   -d '{
     "captchaId": "550e8400-e29b-41d4-a716-446655440000",

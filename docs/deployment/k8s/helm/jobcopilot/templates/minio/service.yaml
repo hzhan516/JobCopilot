@@ -1,0 +1,24 @@
+{{- if and (eq .Values.global.infraMode "embedded") .Values.minio.enabled }}
+# =============================================================================
+# MinIO Service / model artifact storage
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "jobcopilot.fullname" . }}-minio
+  namespace: {{ include "jobcopilot.namespace" . }}
+  labels:
+    {{- include "jobcopilot.minio.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.minio.service.type }}
+  ports:
+    - name: api
+      port: {{ .Values.minio.service.apiPort }}
+      targetPort: api
+    - name: console
+      port: {{ .Values.minio.service.consolePort }}
+      targetPort: console
+  selector:
+    app.kubernetes.io/component: minio
+    {{- include "jobcopilot.selectorLabels" . | nindent 4 }}
+{{- end }}

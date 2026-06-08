@@ -20,8 +20,10 @@ plain-yaml/
 │   ├── postgres/
 │   ├── rabbitmq/
 │   ├── redis/
+│   ├── minio/
 │   ├── backend/
 │   ├── ai-service/
+│   ├── ai-worker/
 │   └── frontend/
 └── overlays/
     ├── development/
@@ -34,13 +36,18 @@ plain-yaml/
 
 ```bash
 # Generate from .env
-../scripts/generate-secrets.sh .env JobCopilot | kubectl apply -f -
+../scripts/generate-secrets.sh .env jobcopilot | kubectl apply -f -
 
 # Or create manually
-kubectl create secret generic JobCopilot-secrets \
-  --namespace=JobCopilot \
+kubectl create secret generic jobcopilot-secrets \
+  --namespace=jobcopilot \
   --from-literal=JWT_SECRET=your-secret \
-  --from-literal=POSTGRES_PASSWORD=your-password
+  --from-literal=POSTGRES_PASSWORD=your-password \
+  --from-literal=RABBITMQ_PASSWORD=your-rabbitmq-password \
+  --from-literal=REDIS_PASSWORD=your-redis-password \
+  --from-literal=MINIO_ACCESS_KEY=your-minio-access-key \
+  --from-literal=MINIO_SECRET_KEY=your-minio-secret-key \
+  --from-literal=INTERNAL_API_KEY=your-internal-api-key
 ```
 
 ### 2. Deploy Base
@@ -74,7 +81,7 @@ cat > overlays/my-env/kustomization.yaml <<EOF
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: JobCopilot-my-env
+namespace: jobcopilot-my-env
 
 resources:
   - ../../base
@@ -87,11 +94,11 @@ commonLabels:
 patches:
   - target:
       kind: Ingress
-      name: JobCopilot
+      name: jobcopilot
     patch: |
       - op: replace
         path: /spec/rules/0/host
-        value: my-env.JobCopilot.example.com
+        value: my-env.jobcopilot.example.com
 EOF
 ```
 
@@ -103,7 +110,7 @@ Add a patch to your overlay:
 patches:
   - target:
       kind: Deployment
-      name: JobCopilot-backend
+      name: jobcopilot-backend
     patch: |
       - op: add
         path: /spec/template/spec/containers/0/resources

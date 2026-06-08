@@ -1,18 +1,10 @@
 {{- if .Values.networkPolicy.enabled }}
 # =============================================================================
-# Network Policies — Three-tier isolation
-# 网络策略 — 三层隔离
+# Network Policies - three-tier isolation
 # =============================================================================
-# Tier 1: Public ingress → frontend only
-# Tier 2: Internal services (backend ↔ ai-service ↔ rabbitmq ↔ redis)
-# Tier 3: Database — backend → postgres only
-
 {{- $fullname := include "jobcopilot.fullname" . }}
 {{- $ns := include "jobcopilot.namespace" . }}
 
-# -----------------------------------------------------------------------------
-# Default deny all ingress / 默认拒绝所有入站流量
-# -----------------------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -26,9 +18,6 @@ spec:
     - Ingress
 
 ---
-# -----------------------------------------------------------------------------
-# Default deny all egress (allow DNS) / 默认拒绝所有出站流量（允许 DNS）
-# -----------------------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -41,7 +30,6 @@ spec:
   policyTypes:
     - Egress
   egress:
-    # Allow DNS resolution / 允许 DNS 解析
     - to:
         - namespaceSelector: {}
       ports:
@@ -51,10 +39,7 @@ spec:
           port: 53
 
 ---
-# -----------------------------------------------------------------------------
-# Tier 1 — Frontend: allow ingress from Ingress Controller
-# Tier 1 — 前端：允许来自 Ingress Controller 的入站流量
-# -----------------------------------------------------------------------------
+# Frontend accepts ingress-controller traffic and calls backend.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -77,7 +62,6 @@ spec:
             matchLabels:
               app.kubernetes.io/name: ingress-nginx
   egress:
-    # DNS / DNS
     - to:
         - namespaceSelector: {}
       ports:
@@ -85,7 +69,6 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # To backend API / 访问后端 API
     - to:
         - podSelector:
             matchLabels:
@@ -96,10 +79,7 @@ spec:
           port: 8080
 
 ---
-# -----------------------------------------------------------------------------
-# Tier 2 — Backend: allow ingress from frontend and ai-service
-# Tier 2 — 后端：允许来自前端和 AI 服务的入站流量
-# -----------------------------------------------------------------------------
+# Backend accepts frontend and AI callback traffic, then calls internal dependencies.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -132,8 +112,15 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: ai-worker
+              {{- include "jobcopilot.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
   egress:
-    # DNS / DNS
     - to:
         - namespaceSelector: {}
       ports:
@@ -141,7 +128,6 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # To postgres / 访问 PostgreSQL
     - to:
         - podSelector:
             matchLabels:
@@ -150,7 +136,6 @@ spec:
       ports:
         - protocol: TCP
           port: 5432
-    # To rabbitmq / 访问 RabbitMQ
     - to:
         - podSelector:
             matchLabels:
@@ -159,7 +144,6 @@ spec:
       ports:
         - protocol: TCP
           port: 5672
-    # To redis / 访问 Redis
     - to:
         - podSelector:
             matchLabels:
@@ -168,7 +152,6 @@ spec:
       ports:
         - protocol: TCP
           port: 6379
-    # To ai-service / 访问 AI 服务
     - to:
         - podSelector:
             matchLabels:
@@ -179,10 +162,7 @@ spec:
           port: 8000
 
 ---
-# -----------------------------------------------------------------------------
-# Tier 2 — AI Service: allow ingress from backend
-# Tier 2 — AI 服务：允许来自后端的入站流量
-# -----------------------------------------------------------------------------
+# AI service accepts backend REST calls and reaches MQ, cache, backend, and MinIO.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -208,7 +188,6 @@ spec:
         - protocol: TCP
           port: 8000
   egress:
-    # DNS / DNS
     - to:
         - namespaceSelector: {}
       ports:
@@ -216,7 +195,6 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # To rabbitmq / 访问 RabbitMQ
     - to:
         - podSelector:
             matchLabels:
@@ -225,7 +203,6 @@ spec:
       ports:
         - protocol: TCP
           port: 5672
-    # To redis / 访问 Redis
     - to:
         - podSelector:
             matchLabels:
@@ -234,7 +211,71 @@ spec:
       ports:
         - protocol: TCP
           port: 6379
-    # To backend / 访问后端
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: backend
+              {{- include "jobcopilot.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: minio
+              {{- include "jobcopilot.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9000
+
+---
+# AI worker has no public ingress; it consumes queues and writes model artifacts.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $fullname }}-ai-worker-egress
+  namespace: {{ $ns }}
+  labels:
+    {{- include "jobcopilot.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: ai-worker
+      {{- include "jobcopilot.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: rabbitmq
+              {{- include "jobcopilot.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5672
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: redis
+              {{- include "jobcopilot.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 6379
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: minio
+              {{- include "jobcopilot.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9000
     - to:
         - podSelector:
             matchLabels:
@@ -245,10 +286,6 @@ spec:
           port: 8080
 
 ---
-# -----------------------------------------------------------------------------
-# Tier 2 — RabbitMQ: allow ingress from backend and ai-service
-# Tier 2 — RabbitMQ：允许来自后端和 AI 服务的入站流量
-# -----------------------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -281,8 +318,15 @@ spec:
       ports:
         - protocol: TCP
           port: 5672
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: ai-worker
+              {{- include "jobcopilot.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5672
   egress:
-    # DNS only / 仅 DNS
     - to:
         - namespaceSelector: {}
       ports:
@@ -292,10 +336,6 @@ spec:
           port: 53
 
 ---
-# -----------------------------------------------------------------------------
-# Tier 2 — Redis: allow ingress from backend and ai-service
-# Tier 2 — Redis：允许来自后端和 AI 服务的入站流量
-# -----------------------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -328,8 +368,15 @@ spec:
       ports:
         - protocol: TCP
           port: 6379
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: ai-worker
+              {{- include "jobcopilot.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 6379
   egress:
-    # DNS only / 仅 DNS
     - to:
         - namespaceSelector: {}
       ports:
@@ -339,10 +386,48 @@ spec:
           port: 53
 
 ---
-# -----------------------------------------------------------------------------
-# Tier 3 — PostgreSQL: allow ingress from backend only
-# Tier 3 — PostgreSQL：仅允许来自后端的入站流量
-# -----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $fullname }}-minio-ingress
+  namespace: {{ $ns }}
+  labels:
+    {{- include "jobcopilot.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: minio
+      {{- include "jobcopilot.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: ai-service
+              {{- include "jobcopilot.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9000
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: ai-worker
+              {{- include "jobcopilot.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9000
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -368,7 +453,6 @@ spec:
         - protocol: TCP
           port: 5432
   egress:
-    # DNS only / 仅 DNS
     - to:
         - namespaceSelector: {}
       ports:

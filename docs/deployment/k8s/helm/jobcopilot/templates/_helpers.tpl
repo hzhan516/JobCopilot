@@ -109,6 +109,14 @@ app.kubernetes.io/component: redis
 {{- end }}
 
 {{/*
+MinIO labels
+*/}}
+{{- define "jobcopilot.minio.labels" -}}
+{{ include "jobcopilot.labels" . }}
+app.kubernetes.io/component: minio
+{{- end }}
+
+{{/*
 Backend labels
 */}}
 {{- define "jobcopilot.backend.labels" -}}
@@ -122,6 +130,14 @@ AI Service labels
 {{- define "jobcopilot.ai-service.labels" -}}
 {{ include "jobcopilot.labels" . }}
 app.kubernetes.io/component: ai-service
+{{- end }}
+
+{{/*
+AI Worker labels
+*/}}
+{{- define "jobcopilot.ai-worker.labels" -}}
+{{ include "jobcopilot.labels" . }}
+app.kubernetes.io/component: ai-worker
 {{- end }}
 
 {{/*

@@ -14,7 +14,7 @@
 
 ## 1. Context / Background
 
-ResumeAssistant targets three deployment personas:
+JobCopilot targets three deployment personas:
 
 | Persona | Deployment Model | Networking Concern |
 |---------|------------------|-------------------|
@@ -90,7 +90,7 @@ This violates the principle of least privilege:
 │   │   │         internal-network (bridge, /16)                           │
 │   │   │                                                                │
 │   │   │   ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐ │
-│   │   │   │ai-api  │  │rabbitmq│  │ redis  │  │ai-worker│  │ minio  │ │
+│   │   │   │ai-service  │  │rabbitmq│  │ redis  │  │ai-worker│  │ minio  │ │
 │   │   │   │:8000   │  │:5672   │  │:6379   │  │ (train) │  │:9000   │ │
 │   │   │   └────────┘  └────────┘  └────────┘  └────────┘  └────────┘ │
 │   │   └────────────────────────────────────────────────────────────────┘
@@ -113,7 +113,7 @@ This violates the principle of least privilege:
 |---------|---------------|------------------|------------|------------|------|
 | **frontend** (Nginx) | ✅ | ❌ | ❌ | `80:8080` | Single HTTP entry point; reverse-proxies `/api/*` to backend |
 | **backend** (Spring Boot) | ✅ | ✅ | ✅ | None | Gateway; spans all tiers |
-| **ai-api** (FastAPI) | ❌ | ✅ | ❌ | None | LLM inference, embedding, parsing |
+| **ai-service** (FastAPI) | ❌ | ✅ | ❌ | None | LLM inference, embedding, parsing |
 | **ai-worker** (LightGBM) | ❌ | ✅ | ❌ | None | Incremental model training |
 | **rabbitmq** | ❌ | ✅ | ❌ | None | Async message broker (Outbox pattern) |
 | **redis** | ❌ | ✅ | ❌ | None | Cache, distributed locks (ShedLock), feedback buffer |
@@ -126,7 +126,7 @@ The **backend** is the only container attached to all three networks. This is in
 
 1. **Traffic control**: All external HTTP requests enter through `frontend:80` → `backend:8080`. The backend decides whether to query PostgreSQL, publish a RabbitMQ message, or call the AI service.
 2. **Secret centralization**: Only the backend needs PostgreSQL credentials, RabbitMQ credentials, and the `INTERNAL_API_KEY` for AI service authentication. Other tiers never see cross-tier secrets.
-3. **Observability**: A single request can be traced through `Nginx → backend → (db | mq | ai-api)` without jumping between network boundaries.
+3. **Observability**: A single request can be traced through `Nginx → backend → (db | mq | ai-service)` without jumping between network boundaries.
 
 ### 2.4 Docker Compose Implementation
 
@@ -162,7 +162,7 @@ services:
       - db-network
     # No host ports — unreachable except via public-network
 
-  ai-api:
+  ai-service:
     networks:
       - internal-network
 
@@ -184,7 +184,7 @@ services:
       - db-network
 ```
 
-All direct host port mappings (backend `8080`, postgres `5432`, rabbitmq `5672`/`15672`, ai-api `8000`) are **commented out** by default. Uncommenting them prints a `SECURITY WARNING` in the file header and must be reverted before shipping.
+All direct host port mappings (backend `8080`, postgres `5432`, rabbitmq `5672`/`15672`, ai-service `8000`) are **commented out** by default. Uncommenting them prints a `SECURITY WARNING` in the file header and must be reverted before shipping.
 
 ---
 
@@ -213,7 +213,7 @@ All direct host port mappings (backend `8080`, postgres `5432`, rabbitmq `5672`/
 
 | Risk | Mitigation |
 |------|------------|
-| Developer accidentally commits `docker-compose.yml` with dev ports uncommented | **Git ignore + CI lint**: `docker-compose.yml` is gitignored (the example file is committed instead). CI runs `docker compose config` and fails if any host port other than `frontend:80` is detected. |
+| Developer accidentally commits `docker-compose.yml` with dev ports uncommented | **CI lint**: `docker-compose.yml` is tracked and must never contain secrets. CI runs `docker compose config` and fails if any host port other than `frontend:80` is detected. |
 | Frontend `VITE_API_BASE_URL` set to absolute URL bypassing Nginx | **Build-time assertion**: The frontend Dockerfile checks `VITE_API_BASE_URL`; if it starts with `http`, the build fails. Documentation explicitly warns against absolute URLs. |
 | Backend container escape compromises all tiers | **Runtime hardening**: Containers run as non-root (`USER 1000:1000` where possible), read-only root filesystem (`read_only: true`), and dropped capabilities (`cap_drop: [ALL]`). |
 | Docker bridge MTU mismatch causes silent packet loss in cloud VMs | **Explicit MTU**: Each network declares `com.docker.network.driver.mtu: 1500` to match standard Ethernet; cloud overlay MTU issues (e.g., AWS VPC 9001 Jumbo Frames) are handled at the host level. |

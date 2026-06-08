@@ -14,7 +14,7 @@
 
 ## 1. Context
 
-The ResumeAssistant core functionality involves persisting two types of data:
+The JobCopilot core functionality involves persisting two types of data:
 
 | Data Type | Examples | Query Patterns |
 |-----------|----------|----------------|
