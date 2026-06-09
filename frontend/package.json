@@ -87,7 +87,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
-    "happy-dom": "^20.9.0",
+    "happy-dom": "^20.10.2",
     "kimi-plugin-inspect-react": "^1.0.3",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
@@ -96,7 +96,7 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",
-    "vitest": "^3.2.4",
+    "vitest": "^4.1.8",
     "prettier": "^3.5.3",
     "eslint-config-prettier": "^10.1.5"
   },
