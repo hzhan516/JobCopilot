@@ -39,7 +39,7 @@
         <mapstruct.version>1.6.3</mapstruct.version>
         <jackson.version>2.18.2</jackson.version>
         <validation-api.version>3.1.0</validation-api.version>
-        <minio.version>8.5.17</minio.version>
+        <minio.version>9.0.1</minio.version>
         <shedlock.version>6.3.1</shedlock.version>
 
         <!-- API Docs -->
