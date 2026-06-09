@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Resume Assistant - PostgreSQL initialization wrapper
+# JobCopilot - PostgreSQL initialization wrapper
 # 智能求职助手 - PostgreSQL 初始化包装脚本
 #
 # This script reads LLM_EMBEDDING_MODEL_DIMENSION from the environment
@@ -18,7 +18,7 @@ if [ ! -f "$TEMPLATE" ]; then
 fi
 
 echo "============================================================"
-echo "Resume Assistant Database Initialization"
+echo "JobCopilot Database Initialization"
 echo "Embedding dimension from env: ${DIM}"
 echo "============================================================"
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run live AI evaluation metrics for the Resume Assistant project.
+"""Run live AI evaluation metrics for the JobCopilot project.
 
 The script evaluates real AI-service pipeline functions:
 - resume parsing extraction quality
@@ -284,7 +284,7 @@ def check_live_environment() -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run Resume Assistant AI evaluation.")
+    parser = argparse.ArgumentParser(description="Run JobCopilot AI evaluation.")
     parser.add_argument(
         "--output",
         default=str(RESULTS_DIR / "metrics.json"),

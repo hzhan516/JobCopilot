@@ -29,7 +29,7 @@ public class JavaMailEmailSenderAdapter implements EmailSenderPort {
 
     private final JavaMailSender mailSender;
 
-    @Value("${app.email.from:noreply@resume-assistant.local}")
+    @Value("${app.email.from:noreply@jobcopilot.local}")
     private String from;
 
     @Override
@@ -39,7 +39,7 @@ public class JavaMailEmailSenderAdapter implements EmailSenderPort {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(from);
             helper.setTo(to);
-            helper.setSubject("Resume Assistant - Verification Code / 智能求职助手 - 验证码");
+            helper.setSubject("JobCopilot - Verification Code / 智能求职助手 - 验证码");
             helper.setText(buildHtmlBody(code), true);
             mailSender.send(message);
         } catch (MessagingException e) {
@@ -51,7 +51,7 @@ public class JavaMailEmailSenderAdapter implements EmailSenderPort {
     private String buildHtmlBody(String code) {
         return """
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #2563eb;">Resume Assistant / 智能求职助手</h2>
+                <h2 style="color: #2563eb;">JobCopilot / 智能求职助手</h2>
                 <p>Your verification code is / 您的验证码是:</p>
                 <div style="font-size: 32px; font-weight: bold; color: #1f2937; letter-spacing: 4px; padding: 16px; background: #f3f4f6; border-radius: 8px; text-align: center; margin: 16px 0;">
                     %s
