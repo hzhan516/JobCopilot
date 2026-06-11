@@ -58,7 +58,7 @@ vi.mock('sonner', () => ({
 // Mock UI components
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, disabled, variant, size, className, asChild }: any) => {
-    if (asChild) return <a className={className}>{children}</a>
+    if (asChild) return <>{children}</>
     return <button onClick={onClick} disabled={disabled} className={className}>{children}</button>
   },
 }))
@@ -345,15 +345,10 @@ describe('JobDetail page', () => {
     mockGetScoreHistory.mockResolvedValue([])
     mockTrackAction.mockResolvedValue({})
 
-    const { toast } = await import('sonner')
-
     renderJobDetail()
 
-    await waitFor(() => {
-      const applyButtons = screen.getAllByRole('button')
-      const applyBtn = applyButtons.find((b) => b.textContent?.includes('Mark as Applied'))
-      if (applyBtn) fireEvent.click(applyBtn)
-    })
+    await waitFor(() => expect(screen.getByText('jobDetail.markAsApplied')).toBeInTheDocument())
+    fireEvent.click(screen.getByText('jobDetail.markAsApplied').closest('button')!)
 
     await waitFor(() => {
       expect(mockTrackAction).toHaveBeenCalledWith('job-1', 'APPLY', undefined)

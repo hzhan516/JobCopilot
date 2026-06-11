@@ -12,10 +12,6 @@ updates:
       timezone: "America/Phoenix"
     open-pull-requests-limit: 10
     target-branch: "main"
-    labels:
-      - "dependencies"
-      - "java"
-      - "backend"
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
@@ -67,10 +63,6 @@ updates:
       timezone: "America/Phoenix"
     open-pull-requests-limit: 10
     target-branch: "main"
-    labels:
-      - "dependencies"
-      - "typescript"
-      - "frontend"
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
@@ -124,10 +116,6 @@ updates:
       timezone: "America/Phoenix"
     open-pull-requests-limit: 5
     target-branch: "main"
-    labels:
-      - "dependencies"
-      - "python"
-      - "ai-service"
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
@@ -164,10 +152,6 @@ updates:
       timezone: "America/Phoenix"
     open-pull-requests-limit: 5
     target-branch: "main"
-    labels:
-      - "dependencies"
-      - "ci-cd"
-      - "github-actions"
     commit-message:
       prefix: "chore(deps)"
       include: "scope"

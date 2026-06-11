@@ -108,7 +108,7 @@ vi.mock('@/components/ui/select', () => ({
 }))
 
 vi.mock('@/components/ui/form', () => ({
-  Form: ({ children }: any) => <form>{children}</form>,
+  Form: ({ children }: any) => <div>{children}</div>,
   FormControl: ({ children }: any) => <div>{children}</div>,
   FormField: ({ render, name }: any) => render({ field: { value: '', onChange: vi.fn(), name } }),
   FormItem: ({ children }: any) => <div>{children}</div>,
@@ -384,7 +384,7 @@ describe('Profile page', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByAltText('avatar')).toBeInTheDocument()
+    expect(screen.getByAltText('profile.avatarAlt')).toBeInTheDocument()
   })
 
   it('renders avatar fallback when no avatarUrl', () => {
