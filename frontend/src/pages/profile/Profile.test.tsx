@@ -384,7 +384,7 @@ describe('Profile page', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByAltText('avatar')).toBeInTheDocument()
+    expect(screen.getByAltText('profile.avatarAlt')).toBeInTheDocument()
   })
 
   it('renders avatar fallback when no avatarUrl', () => {

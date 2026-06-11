@@ -7,6 +7,7 @@ from app.infrastructure.redis.client import RedisBuffer
 
 logger = logging.getLogger(__name__)
 
+
 def handle_feedback_message(ch, method, properties, body: bytes):
     try:
         command = FeedbackCommand.model_validate(json.loads(body.decode("utf-8")))
@@ -26,7 +27,9 @@ def handle_feedback_message(ch, method, properties, body: bytes):
         try:
             features = json.loads(command.context)
         except json.JSONDecodeError:
-            logger.warning("Feedback context is not valid JSON: match_id=%s", command.match_id)
+            logger.warning(
+                "Feedback context is not valid JSON: match_id=%s", command.match_id
+            )
 
     sample = {
         "type": "feedback",

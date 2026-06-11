@@ -1,15 +1,15 @@
 """Test feedback consumer module.
 反馈消费者测试：覆盖正常处理、字段缺失、Redis 失败、重复消息幂等性。
 """
+
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 
 from app.worker.consumers.feedback import handle_feedback_message
 
-
 # ── Normal flow ────────────────────────────────────────────
+
 
 def test_handle_feedback_message_success(mock_redis_buffer):
     """Valid feedback payload should be appended to Redis buffer and acked.
@@ -31,7 +31,9 @@ def test_handle_feedback_message_success(mock_redis_buffer):
     body = json.dumps(payload).encode("utf-8")
 
     mock_redis_buffer.append = AsyncMock()
-    with patch("app.worker.consumers.feedback.RedisBuffer", return_value=mock_redis_buffer):
+    with patch(
+        "app.worker.consumers.feedback.RedisBuffer", return_value=mock_redis_buffer
+    ):
         handle_feedback_message(mock_ch, mock_method, None, body)
 
     mock_redis_buffer.append.assert_called_once()
@@ -43,6 +45,7 @@ def test_handle_feedback_message_success(mock_redis_buffer):
 
 # ── Invalid JSON ───────────────────────────────────────────
 
+
 def test_handle_feedback_message_invalid_json(mock_redis_buffer):
     """Invalid JSON should be nacked without requeue.
     非法 JSON 应被 nack 且不重新入队。"""
@@ -51,7 +54,9 @@ def test_handle_feedback_message_invalid_json(mock_redis_buffer):
     mock_method.delivery_tag = 2
 
     mock_redis_buffer.append = AsyncMock()
-    with patch("app.worker.consumers.feedback.RedisBuffer", return_value=mock_redis_buffer):
+    with patch(
+        "app.worker.consumers.feedback.RedisBuffer", return_value=mock_redis_buffer
+    ):
         handle_feedback_message(mock_ch, mock_method, None, b"not json")
 
     mock_redis_buffer.append.assert_not_called()
@@ -59,6 +64,7 @@ def test_handle_feedback_message_invalid_json(mock_redis_buffer):
 
 
 # ── Missing required fields ────────────────────────────────
+
 
 def test_handle_feedback_message_missing_fields(mock_redis_buffer):
     """Payload missing required fields should be nacked.
@@ -75,7 +81,9 @@ def test_handle_feedback_message_missing_fields(mock_redis_buffer):
     body = json.dumps(payload).encode("utf-8")
 
     mock_redis_buffer.append = AsyncMock()
-    with patch("app.worker.consumers.feedback.RedisBuffer", return_value=mock_redis_buffer):
+    with patch(
+        "app.worker.consumers.feedback.RedisBuffer", return_value=mock_redis_buffer
+    ):
         handle_feedback_message(mock_ch, mock_method, None, body)
 
     mock_redis_buffer.append.assert_not_called()
@@ -83,6 +91,7 @@ def test_handle_feedback_message_missing_fields(mock_redis_buffer):
 
 
 # ── Null/None fields ─────────────────────────────────────
+
 
 def test_handle_feedback_message_null_feedback_type(mock_redis_buffer):
     """Null feedbackType should be treated as invalid and nacked.
@@ -102,7 +111,9 @@ def test_handle_feedback_message_null_feedback_type(mock_redis_buffer):
     body = json.dumps(payload).encode("utf-8")
 
     mock_redis_buffer.append = AsyncMock()
-    with patch("app.worker.consumers.feedback.RedisBuffer", return_value=mock_redis_buffer):
+    with patch(
+        "app.worker.consumers.feedback.RedisBuffer", return_value=mock_redis_buffer
+    ):
         handle_feedback_message(mock_ch, mock_method, None, body)
 
     mock_redis_buffer.append.assert_not_called()
@@ -110,6 +121,7 @@ def test_handle_feedback_message_null_feedback_type(mock_redis_buffer):
 
 
 # ── Redis append failure ─────────────────────────────────
+
 
 def test_handle_feedback_message_redis_failure(mock_redis_buffer):
     """Redis append failure should result in nack with requeue=True.
@@ -129,7 +141,9 @@ def test_handle_feedback_message_redis_failure(mock_redis_buffer):
     body = json.dumps(payload).encode("utf-8")
 
     mock_redis_buffer.append = AsyncMock(side_effect=Exception("Redis connection lost"))
-    with patch("app.worker.consumers.feedback.RedisBuffer", return_value=mock_redis_buffer):
+    with patch(
+        "app.worker.consumers.feedback.RedisBuffer", return_value=mock_redis_buffer
+    ):
         handle_feedback_message(mock_ch, mock_method, None, body)
 
     mock_redis_buffer.append.assert_called_once()
@@ -137,6 +151,7 @@ def test_handle_feedback_message_redis_failure(mock_redis_buffer):
 
 
 # ── Duplicate message idempotency ──────────────────────────
+
 
 def test_handle_feedback_message_duplicate_idempotent(mock_redis_buffer):
     """Duplicate delivery should be idempotent (same data appended twice is acceptable).
@@ -156,7 +171,9 @@ def test_handle_feedback_message_duplicate_idempotent(mock_redis_buffer):
     body = json.dumps(payload).encode("utf-8")
 
     mock_redis_buffer.append = AsyncMock()
-    with patch("app.worker.consumers.feedback.RedisBuffer", return_value=mock_redis_buffer):
+    with patch(
+        "app.worker.consumers.feedback.RedisBuffer", return_value=mock_redis_buffer
+    ):
         # First delivery
         handle_feedback_message(mock_ch, mock_method, None, body)
         # Second delivery (duplicate)

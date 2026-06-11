@@ -1,4 +1,3 @@
-import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 
@@ -6,6 +5,7 @@ from app.main import app, initialize_mq, _start_mq_consumer_once
 import app.main as main_module
 
 client = TestClient(app)
+
 
 def test_root():
     response = client.get("/")
@@ -16,11 +16,13 @@ def test_root():
         "status": "running",
     }
 
+
 def test_health_check_healthy(monkeypatch):
     monkeypatch.setattr(main_module, "_mq_is_connected", True)
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
+
 
 def test_health_check_unhealthy(monkeypatch):
     monkeypatch.setattr(main_module, "_mq_is_connected", False)
@@ -29,10 +31,12 @@ def test_health_check_unhealthy(monkeypatch):
     assert response.json()["status"] == "degraded"
     assert response.json()["mq_connected"] is False
 
+
 def test_status():
     response = client.get("/api/status")
     assert response.status_code == 200
     assert response.json()["ready"] is True
+
 
 @patch("app.main.create_connection")
 @patch("app.main.setup_all_queues")
@@ -42,50 +46,55 @@ def test_initialize_mq_success(mock_start, mock_setup, mock_create, monkeypatch)
     mock_channel = MagicMock()
     mock_conn.channel.return_value = mock_channel
     mock_create.return_value = mock_conn
-    
+
     monkeypatch.setattr(main_module, "_mq_is_connected", False)
     initialize_mq()
-    
+
     assert main_module._mq_is_connected is True
     mock_create.assert_called_once()
     mock_setup.assert_called_once_with(mock_channel)
     mock_start.assert_called_once_with(mock_channel)
 
+
 @patch("time.sleep")
 @patch("app.main.create_connection")
 @patch("app.main.setup_all_queues")
 @patch("app.main.start_all_consumers")
-def test_initialize_mq_retries_after_failure(mock_start, mock_setup, mock_create, mock_sleep, monkeypatch):
+def test_initialize_mq_retries_after_failure(
+    mock_start, mock_setup, mock_create, mock_sleep, monkeypatch
+):
     mock_conn = MagicMock()
     mock_channel = MagicMock()
     mock_conn.channel.return_value = mock_channel
     mock_create.side_effect = [Exception("Connection failed"), mock_conn]
-    
+
     monkeypatch.setattr(main_module, "_mq_is_connected", True)
     initialize_mq()
-        
+
     assert main_module._mq_is_connected is True
     assert mock_create.call_count == 2
     mock_sleep.assert_called_once_with(5)
     mock_setup.assert_called_once_with(mock_channel)
     mock_start.assert_called_once_with(mock_channel)
 
+
 @patch("threading.Thread")
 def test_start_mq_consumer_once(mock_thread, monkeypatch):
     monkeypatch.setattr(main_module, "_mq_started", False)
-    
+
     mock_thread_instance = MagicMock()
     mock_thread.return_value = mock_thread_instance
-    
+
     _start_mq_consumer_once()
-    
+
     assert main_module._mq_started is True
     mock_thread.assert_called_once()
     mock_thread_instance.start.assert_called_once()
-    
+
     # Second call should be a no-op because _mq_started is already True.
     _start_mq_consumer_once()
     mock_thread.assert_called_once()
+
 
 @patch("app.main.evaluate_suitability_with_vertex")
 def test_evaluate_suitability(mock_eval):
@@ -94,27 +103,24 @@ def test_evaluate_suitability(mock_eval):
         "summary": "Good fit",
         "breakdown": {"skillScore": 80, "experienceScore": 90, "overallScore": 85},
         "vertexScore": 85,
-        "finalScore": 85
+        "finalScore": 85,
     }
-    
+
     payload = {
-        "resume": {
-            "name": "John",
-            "skills": ["Python"],
-            "experience": []
-        },
+        "resume": {"name": "John", "skills": ["Python"], "experience": []},
         "job": {
             "title": "Dev",
             "company": "Tech",
             "description": "Python dev",
-            "requirements": []
-        }
+            "requirements": [],
+        },
     }
-    
+
     response = client.post("/api/v1/suitability", json=payload)
     assert response.status_code == 200
     assert response.json()["suitable"] is True
     mock_eval.assert_called_once()
+
 
 @patch("app.main.find_job_matches")
 def test_match_jobs(mock_match):
@@ -122,15 +128,11 @@ def test_match_jobs(mock_match):
         "matches": [],
         "total": 0,
         "recallTime": 10,
-        "rankTime": 20
+        "rankTime": 20,
     }
-    
-    payload = {
-        "userId": "user-123",
-        "query": "Python developer",
-        "topK": 5
-    }
-    
+
+    payload = {"userId": "user-123", "query": "Python developer", "topK": 5}
+
     response = client.post("/api/v1/match", json=payload)
     assert response.status_code == 200
     assert response.json()["total"] == 0
@@ -189,14 +191,15 @@ def test_batch_embeddings_keeps_partial_successes(mock_generate_embedding):
     assert body["failedIndices"] == [1]
     assert body["errorCount"] == 1
 
+
 @patch("app.main._start_mq_consumer_once")
 def test_startup_event(mock_start):
     import asyncio
     from app.main import lifespan, app
-    
+
     async def run_lifespan():
         async with lifespan(app):
             pass
-            
+
     asyncio.run(run_lifespan())
     mock_start.assert_called_once()

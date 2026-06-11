@@ -1,5 +1,4 @@
 import json
-import pytest
 from unittest.mock import MagicMock, patch
 
 from app.mq.consumer import (
@@ -35,6 +34,7 @@ from app.schemas import (
     JobRankResultPayload,
 )
 
+
 @patch("pika.BlockingConnection")
 @patch("pika.ConnectionParameters")
 @patch("pika.PlainCredentials")
@@ -42,18 +42,19 @@ def test_create_connection(mock_creds, mock_params, mock_conn):
     mock_creds.return_value = "creds"
     mock_params.return_value = "params"
     mock_conn.return_value = "connection"
-    
+
     conn = create_connection()
-    
+
     assert conn == "connection"
     mock_creds.assert_called_once()
     mock_params.assert_called_once()
     mock_conn.assert_called_once_with("params")
 
+
 def test_setup_all_queues():
     mock_channel = MagicMock()
     setup_all_queues(mock_channel)
-    
+
     assert mock_channel.exchange_declare.call_count == 2
     assert mock_channel.queue_declare.call_count == 9
     assert mock_channel.queue_bind.call_count == 9
@@ -67,34 +68,49 @@ def test_setup_all_queues():
         assert call.kwargs["durable"] is True
         assert call.kwargs["arguments"] == QUEUE_ARGUMENTS
 
+
 def test_parse_commands():
-    job_body = json.dumps({"jobId": "job-1", "url": "http://test.com/job.pdf", "imageCheckEnabled": False}).encode("utf-8")
+    job_body = json.dumps(
+        {"jobId": "job-1", "url": "http://test.com/job.pdf", "imageCheckEnabled": False}
+    ).encode("utf-8")
     job_cmd = parse_job_command(job_body)
     assert isinstance(job_cmd, JobParseCommand)
     assert job_cmd.job_id == "job-1"
     assert job_cmd.screenshot_url is None
-    
-    resume_body = json.dumps({"resumeId": "res-1", "fileUrl": "http://test.com/res.pdf", "format": "pdf"}).encode("utf-8")
+
+    resume_body = json.dumps(
+        {"resumeId": "res-1", "fileUrl": "http://test.com/res.pdf", "format": "pdf"}
+    ).encode("utf-8")
     res_cmd = parse_resume_command(resume_body)
     assert isinstance(res_cmd, ResumeParseCommand)
     assert res_cmd.resume_id == "res-1"
-    
-    conv_body = json.dumps({
-        "conversationId": "conv-1",
-        "userId": "user-1",
-        "currentMessage": "hello",
-        "messageHistory": [],
-        "requestId": "req-1",
-    }).encode("utf-8")
+
+    conv_body = json.dumps(
+        {
+            "conversationId": "conv-1",
+            "userId": "user-1",
+            "currentMessage": "hello",
+            "messageHistory": [],
+            "requestId": "req-1",
+        }
+    ).encode("utf-8")
     conv_cmd = parse_conversation_command(conv_body)
     assert isinstance(conv_cmd, ConversationRequestCommand)
     assert conv_cmd.conversation_id == "conv-1"
     assert conv_cmd.request_id == "req-1"
-    
-    rank_body = json.dumps({"matchId": "match-1", "userId": "user-1", "resumeVersionId": "res-1", "query": "test"}).encode("utf-8")
+
+    rank_body = json.dumps(
+        {
+            "matchId": "match-1",
+            "userId": "user-1",
+            "resumeVersionId": "res-1",
+            "query": "test",
+        }
+    ).encode("utf-8")
     rank_cmd = parse_job_rank_command(rank_body)
     assert isinstance(rank_cmd, JobRankCommand)
     assert rank_cmd.match_id == "match-1"
+
 
 def test_build_failed_event():
     event = build_failed_event("ref-1", "JOB_PARSE", "error msg", "JOB")
@@ -105,88 +121,112 @@ def test_build_failed_event():
     assert event.error_message == "error msg"
     assert event.event_type == "JOB"
 
+
 @patch("app.mq.consumer.process_job")
 def test_handle_job_message_success(mock_process):
-    body = json.dumps({"jobId": "job-1", "url": "http://test.com/job.pdf", "imageCheckEnabled": False}).encode("utf-8")
-    
-    mock_result = AiResultEvent(referenceId="job-1", type="JOB_PARSE", status="COMPLETED", data={})
+    body = json.dumps(
+        {"jobId": "job-1", "url": "http://test.com/job.pdf", "imageCheckEnabled": False}
+    ).encode("utf-8")
+
+    mock_result = AiResultEvent(
+        referenceId="job-1", type="JOB_PARSE", status="COMPLETED", data={}
+    )
     mock_process.return_value = mock_result
-    
+
     result = handle_job_message(body)
-    
+
     mock_process.assert_called_once()
     assert result == mock_result
 
+
 @patch("app.mq.consumer.process_job")
 def test_handle_job_message_failure(mock_process):
-    body = json.dumps({"jobId": "job-1", "url": "http://test.com/job.pdf", "imageCheckEnabled": False}).encode("utf-8")
-    
+    body = json.dumps(
+        {"jobId": "job-1", "url": "http://test.com/job.pdf", "imageCheckEnabled": False}
+    ).encode("utf-8")
+
     mock_process.side_effect = Exception("Processing failed")
-    
+
     result = handle_job_message(body)
-    
+
     mock_process.assert_called_once()
     assert result.status == "FAILED"
     assert result.error_message == JOB_PARSE_FAILED_MESSAGE
 
+
 @patch("app.mq.consumer.process_resume")
 def test_handle_resume_message_success(mock_process):
-    body = json.dumps({"resumeId": "res-1", "fileUrl": "http://test.com/res.pdf", "format": "pdf"}).encode("utf-8")
-    
-    mock_result = AiResultEvent(referenceId="res-1", type="RESUME_PARSE", status="COMPLETED", data={})
+    body = json.dumps(
+        {"resumeId": "res-1", "fileUrl": "http://test.com/res.pdf", "format": "pdf"}
+    ).encode("utf-8")
+
+    mock_result = AiResultEvent(
+        referenceId="res-1", type="RESUME_PARSE", status="COMPLETED", data={}
+    )
     mock_process.return_value = mock_result
-    
+
     result = handle_resume_message(body)
-    
+
     mock_process.assert_called_once()
     assert result == mock_result
 
+
 @patch("app.mq.consumer.process_resume")
 def test_handle_resume_message_failure(mock_process):
-    body = json.dumps({"resumeId": "res-1", "fileUrl": "http://test.com/res.pdf", "format": "pdf"}).encode("utf-8")
-    
+    body = json.dumps(
+        {"resumeId": "res-1", "fileUrl": "http://test.com/res.pdf", "format": "pdf"}
+    ).encode("utf-8")
+
     mock_process.side_effect = Exception("Processing failed")
-    
+
     result = handle_resume_message(body)
-    
+
     mock_process.assert_called_once()
     assert result.status == "FAILED"
     assert result.error_message == RESUME_PARSE_FAILED_MESSAGE
 
+
 @patch("app.mq.consumer.process_conversation")
 def test_handle_conversation_message_success(mock_process):
-    body = json.dumps({
-        "conversationId": "conv-1",
-        "userId": "user-1",
-        "currentMessage": "hello",
-        "messageHistory": [],
-        "requestId": "req-1",
-        "locale": "zh-CN",
-    }).encode("utf-8")
-    
-    mock_result = AiResultEvent(referenceId="conv-1", type="CONVERSATION_REPLY", status="COMPLETED", data={})
+    body = json.dumps(
+        {
+            "conversationId": "conv-1",
+            "userId": "user-1",
+            "currentMessage": "hello",
+            "messageHistory": [],
+            "requestId": "req-1",
+            "locale": "zh-CN",
+        }
+    ).encode("utf-8")
+
+    mock_result = AiResultEvent(
+        referenceId="conv-1", type="CONVERSATION_REPLY", status="COMPLETED", data={}
+    )
     mock_process.return_value = mock_result
-    
+
     result = handle_conversation_message(body)
-    
+
     mock_process.assert_called_once()
     assert result == mock_result
 
+
 @patch("app.mq.consumer.process_conversation")
 def test_handle_conversation_message_failure(mock_process):
-    body = json.dumps({
-        "conversationId": "conv-1",
-        "userId": "user-1",
-        "currentMessage": "hello",
-        "messageHistory": [],
-        "requestId": "req-1",
-        "locale": "zh-CN",
-    }).encode("utf-8")
-    
+    body = json.dumps(
+        {
+            "conversationId": "conv-1",
+            "userId": "user-1",
+            "currentMessage": "hello",
+            "messageHistory": [],
+            "requestId": "req-1",
+            "locale": "zh-CN",
+        }
+    ).encode("utf-8")
+
     mock_process.side_effect = Exception("429 RESOURCE_EXHAUSTED quota exceeded")
-    
+
     result = handle_conversation_message(body)
-    
+
     mock_process.assert_called_once()
     assert result.status == "FAILED"
     assert result.error_message == ERROR_RATE_LIMITED
@@ -194,16 +234,33 @@ def test_handle_conversation_message_failure(mock_process):
     assert result.data["locale"] == "zh-CN"
     assert result.data["errorCode"] == ERROR_RATE_LIMITED
 
+
 def test_classify_ai_error():
-    assert classify_ai_error(Exception("429 RESOURCE_EXHAUSTED quota exceeded")) == ERROR_RATE_LIMITED
+    assert (
+        classify_ai_error(Exception("429 RESOURCE_EXHAUSTED quota exceeded"))
+        == ERROR_RATE_LIMITED
+    )
     assert classify_ai_error(TimeoutError("timed out")) == ERROR_UPSTREAM_TIMEOUT
-    assert classify_ai_error(ValueError("response must be an object")) == ERROR_INVALID_MODEL_RESPONSE
+    assert (
+        classify_ai_error(ValueError("response must be an object"))
+        == ERROR_INVALID_MODEL_RESPONSE
+    )
+
 
 @patch("app.mq.consumer.rank_jobs")
 def test_handle_job_rank_message_success(mock_rank):
-    body = json.dumps({"matchId": "match-1", "userId": "user-1", "resumeVersionId": "res-1", "query": "test"}).encode("utf-8")
-    
-    mock_result = JobRankResultPayload(matchId="match-1", status="COMPLETED", rankTimeMs=100, rankedResults=[])
+    body = json.dumps(
+        {
+            "matchId": "match-1",
+            "userId": "user-1",
+            "resumeVersionId": "res-1",
+            "query": "test",
+        }
+    ).encode("utf-8")
+
+    mock_result = JobRankResultPayload(
+        matchId="match-1", status="COMPLETED", rankTimeMs=100, rankedResults=[]
+    )
     mock_rank.return_value = mock_result
 
     result = handle_job_rank_message(body)
@@ -213,10 +270,18 @@ def test_handle_job_rank_message_success(mock_rank):
     assert result.reference_id == "match-1"
     assert result.data.rank_time_ms == 100
 
+
 @patch("app.mq.consumer.rank_jobs")
 def test_handle_job_rank_message_failure(mock_rank):
-    body = json.dumps({"matchId": "match-1", "userId": "user-1", "resumeVersionId": "res-1", "query": "test"}).encode("utf-8")
-    
+    body = json.dumps(
+        {
+            "matchId": "match-1",
+            "userId": "user-1",
+            "resumeVersionId": "res-1",
+            "query": "test",
+        }
+    ).encode("utf-8")
+
     mock_rank.side_effect = Exception("Processing failed")
 
     result = handle_job_rank_message(body)
@@ -225,6 +290,7 @@ def test_handle_job_rank_message_failure(mock_rank):
     assert result.status == "FAILED"
     assert result.reference_id == "match-1"
     assert result.error_message == JOB_RANK_FAILED_MESSAGE
+
 
 @patch("app.mq.consumer.publish_ai_result")
 @patch("app.mq.consumer._executor.submit")
@@ -269,11 +335,13 @@ def test_async_handler_nacks_failure(mock_submit):
     nack_callback()
     mock_channel.basic_nack.assert_called_once_with(delivery_tag=1, requeue=False)
 
+
 def test_start_all_consumers():
     mock_channel = MagicMock()
     start_all_consumers(mock_channel)
-    
+
     from app.mq.consumer import MQ_WORKER_THREADS
+
     mock_channel.basic_qos.assert_called_once_with(prefetch_count=MQ_WORKER_THREADS)
     assert mock_channel.basic_consume.call_count == 4
     for call in mock_channel.basic_consume.call_args_list:

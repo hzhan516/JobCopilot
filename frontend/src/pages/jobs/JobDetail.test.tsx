@@ -351,7 +351,7 @@ describe('JobDetail page', () => {
 
     await waitFor(() => {
       const applyButtons = screen.getAllByRole('button')
-      const applyBtn = applyButtons.find((b) => b.textContent?.includes('Mark as Applied'))
+      const applyBtn = applyButtons.find((b) => b.textContent?.includes('jobDetail.markAsApplied'))
       if (applyBtn) fireEvent.click(applyBtn)
     })
 

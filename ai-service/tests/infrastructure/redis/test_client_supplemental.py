@@ -1,16 +1,16 @@
 """Test Redis client module (supplemental).
 Redis 客户端补充测试：覆盖连接中断降级、pipeline 错误、超时场景。
 """
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
+
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from app.infrastructure.redis.client import RedisBuffer
 from app.config import REDIS_KEY_PREFIX
 
-
 # ── Connection failure during append ───────────────────────
+
 
 @pytest.mark.asyncio
 async def test_redis_buffer_append_connection_failure():
@@ -28,6 +28,7 @@ async def test_redis_buffer_append_connection_failure():
 
 # ── Drain with empty list ──────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_redis_buffer_drain_empty():
     """When buffer is empty, drain should return empty list.
@@ -43,11 +44,14 @@ async def test_redis_buffer_drain_empty():
         results = await buffer.drain()
 
         assert results == []
-        mock_pipe.lrange.assert_called_once_with(REDIS_KEY_PREFIX + "feedback:buffer", 0, -1)
+        mock_pipe.lrange.assert_called_once_with(
+            REDIS_KEY_PREFIX + "feedback:buffer", 0, -1
+        )
         mock_pipe.delete.assert_called_once_with(REDIS_KEY_PREFIX + "feedback:buffer")
 
 
 # ── Drain with pipeline failure ────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_redis_buffer_drain_pipeline_failure():
@@ -66,6 +70,7 @@ async def test_redis_buffer_drain_pipeline_failure():
 
 
 # ── Lock expiry ────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_redis_buffer_acquire_lock_with_custom_ttl():
@@ -87,6 +92,7 @@ async def test_redis_buffer_acquire_lock_with_custom_ttl():
 
 # ── Release lock with wrong instance ───────────────────────
 
+
 @pytest.mark.asyncio
 async def test_redis_buffer_release_lock_wrong_instance():
     """Releasing lock with wrong instance ID should not delete the lock.
@@ -103,6 +109,7 @@ async def test_redis_buffer_release_lock_wrong_instance():
 
 
 # ── Broadcast with connection failure ──────────────────────
+
 
 @pytest.mark.asyncio
 async def test_redis_buffer_broadcast_connection_failure():

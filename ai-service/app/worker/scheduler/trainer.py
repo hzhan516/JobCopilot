@@ -12,6 +12,7 @@ from sklearn.metrics import roc_auc_score
 
 logger = logging.getLogger(__name__)
 
+
 class IncrementalTrainer:
     def __init__(self):
         self.redis_buffer = RedisBuffer()
@@ -35,9 +36,11 @@ class IncrementalTrainer:
         try:
             logger.info("Acquired retrain lock. Starting batch retraining...")
             new_samples = await self.redis_buffer.drain()
-            
+
             if len(new_samples) < MIN_SAMPLES_FOR_RETRAIN:
-                logger.info(f"Insufficient samples ({len(new_samples)} < {MIN_SAMPLES_FOR_RETRAIN}). Skipping.")
+                logger.info(
+                    f"Insufficient samples ({len(new_samples)} < {MIN_SAMPLES_FOR_RETRAIN}). Skipping."
+                )
                 for sample in new_samples:
                     await self.redis_buffer.append(sample)
                 return
@@ -46,12 +49,10 @@ class IncrementalTrainer:
             baseline_samples = []
             for item in raw_baseline:
                 features = extract_features(
-                    item, 
-                    query="", 
-                    resume_text=item.get("requirements", "")
+                    item, query="", resume_text=item.get("requirements", "")
                 )
                 baseline_samples.append({"label": 1, "features": features})
-            
+
             all_samples = baseline_samples + new_samples
 
             X, y = self._build_matrix(all_samples)
@@ -59,10 +60,12 @@ class IncrementalTrainer:
                 return
 
             model, metrics = self._train_model(X, y)
-            
+
             version = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
             model_str = model.model_to_string()
-            object_key = self.minio_registry.upload_model(model_str.encode("utf-8"), version)
+            object_key = self.minio_registry.upload_model(
+                model_str.encode("utf-8"), version
+            )
 
             meta = {
                 "version": version,
@@ -94,7 +97,7 @@ class IncrementalTrainer:
         split_idx = int(len(X) * 0.8)
         if split_idx == 0:
             split_idx = len(X)
-        
+
         X_train, X_val = X[:split_idx], X[split_idx:]
         y_train, y_val = y[:split_idx], y[split_idx:]
 
@@ -111,7 +114,7 @@ class IncrementalTrainer:
             "verbose": -1,
             "seed": 42,
         }
-        
+
         model = lgb.train(
             params,
             train_data,

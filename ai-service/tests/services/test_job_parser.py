@@ -6,18 +6,20 @@ from app.services.job_parser import (
     parse_job_text,
 )
 
+
 def test_normalize_requirements():
     assert _normalize_requirements([" Python ", "Java", "", "  "]) == ["Python", "Java"]
     assert _normalize_requirements("Python") == ["Python"]
     assert _normalize_requirements("  ") == []
     assert _normalize_requirements(None) == []
 
+
 def test_build_job_content():
     data = {
         "title": " Software Engineer ",
         "company": " Google ",
         "description": " Write code. ",
-        "requirements": ["Python", "Java"]
+        "requirements": ["Python", "Java"],
     }
     content = _build_job_content(data)
     assert content.title == "Software Engineer"
@@ -36,7 +38,9 @@ def test_parse_job_text_prompt_allows_json_schema_braces(monkeypatch):
             "requirements": ["Java"],
         }
 
-    monkeypatch.setattr(job_parser, "generate_json_from_text_prompt", fake_generate_json)
+    monkeypatch.setattr(
+        job_parser, "generate_json_from_text_prompt", fake_generate_json
+    )
 
     content = parse_job_text("Backend Engineer at Acme. Build APIs with Java.")
 
@@ -61,7 +65,9 @@ def test_parse_job_from_image_prompt_allows_json_schema_braces(monkeypatch):
         }
 
     monkeypatch.setattr(job_parser, "_load_image_bytes", fake_load_image_bytes)
-    monkeypatch.setattr(job_parser, "generate_json_from_image_prompt", fake_generate_json)
+    monkeypatch.setattr(
+        job_parser, "generate_json_from_image_prompt", fake_generate_json
+    )
 
     content = parse_job_from_image("data:image/png;base64,abc", "Frontend Engineer")
 

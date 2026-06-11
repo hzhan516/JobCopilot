@@ -5,14 +5,18 @@ JobCopilot AI service entry point, responsible for task scheduling, HTTP APIs, a
 
 import logging
 import os
-import sys
 import threading
 
-from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
-from app.config import LOG_LEVEL, LLM_EMBEDDING_MODEL, LLM_EMBEDDING_MODEL_DIMENSION, INTERNAL_API_KEY, ENV
+from app.config import (
+    LOG_LEVEL,
+    LLM_EMBEDDING_MODEL,
+    INTERNAL_API_KEY,
+    ENV,
+)
 from app.mq.consumer import create_connection, setup_all_queues, start_all_consumers
 
 from app.schemas import (
@@ -39,8 +43,9 @@ logger = logging.getLogger(__name__)
 _mq_connection = None
 _mq_channel = None
 
-import asyncio
-from app.api.model_manager import model_manager
+import asyncio  # noqa: E402
+from app.api.model_manager import model_manager  # noqa: E402
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -136,13 +141,14 @@ async def health_check():
             content={
                 "status": "degraded",
                 "mq_connected": False,
-                "message": "Initializing or waiting for RabbitMQ connection..."
-            }
+                "message": "Initializing or waiting for RabbitMQ connection...",
+            },
         )
     return {
         "status": "healthy",
         "mq_connected": True,
-        "vertex_project_configured": os.getenv("VERTEX_PROJECT_ID") is not None and os.getenv("VERTEX_PROJECT_ID") != "jobcopilot-ai-service",
+        "vertex_project_configured": os.getenv("VERTEX_PROJECT_ID") is not None
+        and os.getenv("VERTEX_PROJECT_ID") != "jobcopilot-ai-service",
         "vertex_location": os.getenv("VERTEX_LOCATION", "global"),
     }
 
@@ -173,7 +179,11 @@ def initialize_mq() -> None:
     while attempt < MAX_MQ_RETRIES:
         attempt += 1
         try:
-            logger.info("Starting RabbitMQ consumers (Attempt %d/%d)...", attempt, MAX_MQ_RETRIES)
+            logger.info(
+                "Starting RabbitMQ consumers (Attempt %d/%d)...",
+                attempt,
+                MAX_MQ_RETRIES,
+            )
             connection = create_connection()
             channel = connection.channel()
             setup_all_queues(channel)
@@ -185,10 +195,19 @@ def initialize_mq() -> None:
             break
         except Exception as e:
             _mq_is_connected = False
-            logger.warning("RabbitMQ consumer startup failed (Attempt %d/%d): %s. Retrying in %d seconds...", attempt, MAX_MQ_RETRIES, e, retry_delay)
+            logger.warning(
+                "RabbitMQ consumer startup failed (Attempt %d/%d): %s. Retrying in %d seconds...",
+                attempt,
+                MAX_MQ_RETRIES,
+                e,
+                retry_delay,
+            )
             time.sleep(retry_delay)
     else:
-        logger.error("Max MQ retries (%d) exceeded. RabbitMQ unavailable. Shutting down.", MAX_MQ_RETRIES)
+        logger.error(
+            "Max MQ retries (%d) exceeded. RabbitMQ unavailable. Shutting down.",
+            MAX_MQ_RETRIES,
+        )
         os._exit(1)
 
 
@@ -210,8 +229,6 @@ def _start_mq_consumer_once() -> None:
         logger.info("RabbitMQ consumer thread started.")
 
 
-
-
 @app.post("/api/v1/suitability", response_model=SuitabilityResponse)
 def evaluate_suitability(request: SuitabilityRequest) -> SuitabilityResponse:
     return evaluate_suitability_with_vertex(request)
@@ -227,6 +244,7 @@ def batch_embeddings(request: EmbeddingRequest) -> EmbeddingResponse:
     # Runtime guard — schema validation already enforces limits, but defense in depth.
     # 运行时守卫：schema 校验已生效，此处为纵深防御。
     from app.config import EMBEDDING_MAX_BATCH_SIZE, EMBEDDING_MAX_TEXT_LENGTH
+
     if len(request.texts) > EMBEDDING_MAX_BATCH_SIZE:
         raise HTTPException(
             status_code=400,
@@ -252,7 +270,9 @@ def batch_embeddings(request: EmbeddingRequest) -> EmbeddingResponse:
         try:
             embeddings.append(generate_embedding(text))
         except Exception:
-            logger.exception("Embedding failed for input index=%d, length=%d", index, len(text))
+            logger.exception(
+                "Embedding failed for input index=%d, length=%d", index, len(text)
+            )
             failed_indices.append(index)
 
     if not embeddings:

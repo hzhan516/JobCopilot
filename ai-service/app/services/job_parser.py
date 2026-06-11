@@ -2,7 +2,6 @@ from typing import Any
 
 import base64
 import re
-from pathlib import Path
 
 import httpx
 
@@ -112,10 +111,14 @@ def _load_image_bytes(image_url: str) -> tuple[bytes, str]:
     if image_url.startswith("http://") or image_url.startswith("https://"):
         image_response = httpx.get(image_url, timeout=30.0, follow_redirects=True)
         image_response.raise_for_status()
-        return image_response.content, image_response.headers.get("Content-Type", "image/png")
+        return image_response.content, image_response.headers.get(
+            "Content-Type", "image/png"
+        )
 
     # Reject anything that is not a known remote URL scheme to prevent LFI.
-    raise ValueError(f"Unsupported image URL scheme (local file access is blocked): {image_url[:50]}")
+    raise ValueError(
+        f"Unsupported image URL scheme (local file access is blocked): {image_url[:50]}"
+    )
 
 
 def parse_job_from_image(

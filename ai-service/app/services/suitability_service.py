@@ -1,13 +1,12 @@
 import json
 import logging
-import re
 
 from app.schemas import SuitabilityBreakdown, SuitabilityRequest, SuitabilityResponse
 from app.config import LLM_TEXT_MODEL
 from app.services.llm_client import generate_json_from_text_prompt
 
-
 logger = logging.getLogger(__name__)
+
 
 def _normalize_items(items: list[str]) -> set[str]:
     normalized: set[str] = set()
@@ -36,7 +35,6 @@ def _calculate_experience_score(experience_items: list[dict]) -> float:
         return 0.8
 
     return 1.0
-
 
 
 def evaluate_suitability_baseline(request: SuitabilityRequest) -> SuitabilityResponse:
@@ -123,7 +121,9 @@ Job:
 """.strip()
 
 
-def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> SuitabilityResponse:
+def evaluate_suitability_with_vertex(
+    request: SuitabilityRequest,
+) -> SuitabilityResponse:
     """Evaluate suitability using the configured LLM and optional incremental model scores.
     人岗匹配度评估主入口：优先使用 LLM 做深度语义评估；若 LLM 异常则降级到基线规则；
     有增量自适应模型时使用模型输出作为最终分数，否则兼容旧版 70/30 加权模型。"""
@@ -134,7 +134,10 @@ def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> Suitability
         result = generate_json_from_text_prompt(prompt)
 
         vertex_suitable = bool(result.get("suitable", False))
-        summary = str(result.get("summary", "")).strip() or "Vertex AI did not return a summary."
+        summary = (
+            str(result.get("summary", "")).strip()
+            or "Vertex AI did not return a summary."
+        )
 
         skill_score = _clamp_score(float(result.get("skillScore", 0.0)))
         experience_score = _clamp_score(float(result.get("experienceScore", 0.0)))
@@ -170,5 +173,7 @@ def evaluate_suitability_with_vertex(request: SuitabilityRequest) -> Suitability
         )
 
     except Exception:
-        logger.exception("Vertex suitability evaluation failed; falling back to baseline")
+        logger.exception(
+            "Vertex suitability evaluation failed; falling back to baseline"
+        )
         return evaluate_suitability_baseline(request)
