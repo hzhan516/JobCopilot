@@ -11,7 +11,6 @@ public final class ScreenshotValidator {
     private static final long MAX_BASE64_LENGTH = 7L * 1024 * 1024;
 
     private ScreenshotValidator() {
-        throw new AssertionError("No instances");
         // Utility class — prevent instantiation
         throw new AssertionError("Utility class");
     }
