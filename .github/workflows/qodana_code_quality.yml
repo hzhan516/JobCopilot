@@ -7,14 +7,20 @@ name: Qodana
 on:
   workflow_dispatch:
   pull_request:
+    branches:
+      - main
+      - develop
   push:
     branches:
-      - master
-      - upload_and_download
+      - main
 
 jobs:
   qodana:
     runs-on: ubuntu-latest
+    # Skip Qodana for Dependabot PRs; dependency updates typically do not touch
+    # business code, and running a full/static analysis on lockfile changes is
+    # low-value while consuming CI minutes and Qodana quota.
+    if: github.actor != 'dependabot[bot]'
     permissions:
       contents: write
       pull-requests: write
@@ -22,15 +28,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+
       - name: 'Qodana Scan'
+        if: env.QODANA_TOKEN != ''
         uses: JetBrains/qodana-action@v2024.3.4
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
         with:
-          # When pr-mode is set to true, Qodana analyzes only the files that have been changed
-          pr-mode: false
+          # Analyze only the files that have been changed in the PR.
+          pr-mode: true
           use-caches: true
           post-pr-comment: true
           use-annotations: true

@@ -40,7 +40,9 @@ jobs:
           cache: maven
 
       - name: Build, Test & Verify (JaCoCo)
-        run: mvn verify --batch-mode
+        # Skip OWASP dependency-check here; it runs in a separate nightly workflow
+        # so that dependency update PRs are not blocked by transient CVE false-positives.
+        run: mvn verify --batch-mode -Ddependency-check.skip=true
 
       - name: JaCoCo Coverage Report
         run: mvn jacoco:report --batch-mode
@@ -81,13 +83,13 @@ jobs:
         run: npm run lint
 
       - name: Type Check
-        run: npm run type-check || echo "No type-check script defined"
+        run: npm run type-check
 
       - name: Build
         run: npm run build
 
       - name: Test
-        run: npm run test:run || npm run test || npx vitest run
+        run: npm run test:run
 
   # ───────────────────────────────────────────────
   # AI Service (Python / FastAPI)
@@ -117,12 +119,10 @@ jobs:
         run: ruff check .
 
       - name: Format Check with Black
-        run: black --check . || echo "Black formatting issues found"
+        run: black --check .
 
       - name: Test with pytest
-        run: |
-          pytest --cov=app --cov-report=xml --cov-report=term
-        continue-on-error: true
+        run: pytest --cov=app --cov-report=xml --cov-report=term
 
   # ───────────────────────────────────────────────
   # Security Scan
@@ -151,11 +151,9 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-      - name: Dependency Vulnerability Check (OWASP)
-        run: |
-          cd backend
-          mvn verify --batch-mode -DskipTests
-        continue-on-error: true
+      # OWASP dependency-check is executed in a separate nightly workflow
+      # (security-dependency-check.yml) so it does not block regular CI or
+      # dependency update PRs with transient false-positives.
 
   # ───────────────────────────────────────────────
   # Docker Build Test
@@ -163,7 +161,10 @@ jobs:
   docker-build-test:
     name: Docker Build Test
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    # Skip Docker build for Dependabot PRs to save CI minutes. Dependency manifest
+    # changes do not affect Docker image build logic, and the regular CI already
+    # validates that each service builds correctly.
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
     strategy:
       matrix:
         service: [backend, frontend, ai-service]

@@ -10,7 +10,7 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "America/Phoenix"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 3
     target-branch: "main"
     labels:
       - "dependencies"
@@ -20,9 +20,11 @@ updates:
       prefix: "chore(deps)"
       include: "scope"
     ignore:
-      # Ignore patch-level updates to reduce noise; focus on minor/major
+      # Block major version upgrades to avoid unpredictable breaking changes.
+      # Only patch and minor updates are accepted automatically.
       - dependency-name: "*"
-        update-types: ["version-update:semver-patch"]
+        update-types: ["version-update:semver-major"]
+    rebase-strategy: "auto"
     groups:
       # Group Spring Boot ecosystem updates together
       spring-boot:
@@ -62,10 +64,10 @@ updates:
     directory: "/frontend"
     schedule:
       interval: "weekly"
-      day: "monday"
+      day: "tuesday"
       time: "09:00"
       timezone: "America/Phoenix"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 3
     target-branch: "main"
     labels:
       - "dependencies"
@@ -75,8 +77,10 @@ updates:
       prefix: "chore(deps)"
       include: "scope"
     ignore:
+      # Block major version upgrades to avoid unpredictable breaking changes.
       - dependency-name: "*"
-        update-types: ["version-update:semver-patch"]
+        update-types: ["version-update:semver-major"]
+    rebase-strategy: "auto"
     groups:
       # Group React ecosystem updates
       react:
@@ -119,10 +123,10 @@ updates:
     directory: "/ai-service"
     schedule:
       interval: "weekly"
-      day: "monday"
+      day: "wednesday"
       time: "09:00"
       timezone: "America/Phoenix"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
     target-branch: "main"
     labels:
       - "dependencies"
@@ -132,8 +136,10 @@ updates:
       prefix: "chore(deps)"
       include: "scope"
     ignore:
+      # Block major version upgrades to avoid unpredictable breaking changes.
       - dependency-name: "*"
-        update-types: ["version-update:semver-patch"]
+        update-types: ["version-update:semver-major"]
+    rebase-strategy: "auto"
     groups:
       # Group ML / data science packages
       ml:
@@ -159,10 +165,10 @@ updates:
     directory: "/.github/workflows"
     schedule:
       interval: "weekly"
-      day: "monday"
+      day: "thursday"
       time: "09:00"
       timezone: "America/Phoenix"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
     target-branch: "main"
     labels:
       - "dependencies"
@@ -171,3 +177,8 @@ updates:
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
+    ignore:
+      # Block major version upgrades to avoid unpredictable breaking changes.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    rebase-strategy: "auto"
