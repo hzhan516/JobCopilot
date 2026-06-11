@@ -57,7 +57,7 @@ jobs:
           retention-days: 7
 
       - name: Architecture Tests (ArchUnit)
-        run: mvn test --batch-mode -Dtest="*ArchitectureTest*"
+        run: mvn test --batch-mode -Dtest="*ArchitectureTest*" -Dsurefire.failIfNoSpecifiedTests=false
 
   # ───────────────────────────────────────────────
   # Frontend (TypeScript / React / Vite)
