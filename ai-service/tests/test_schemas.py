@@ -13,14 +13,19 @@ def test_embedding_request_valid_batch():
 def test_embedding_request_batch_size_exceeded():
     """Should reject batch exceeding max size / 应拒绝超出最大 batch size 的请求"""
     texts = ["text"] * (EMBEDDING_MAX_BATCH_SIZE + 1)
-    with pytest.raises(ValueError, match=f"Batch size exceeds maximum of {EMBEDDING_MAX_BATCH_SIZE}"):
+    with pytest.raises(
+        ValueError, match=f"Batch size exceeds maximum of {EMBEDDING_MAX_BATCH_SIZE}"
+    ):
         EmbeddingRequest(texts=texts)
 
 
 def test_embedding_request_single_text_length_exceeded():
     """Should reject text exceeding max length / 应拒绝超出最大长度的文本"""
     texts = ["a" * (EMBEDDING_MAX_TEXT_LENGTH + 1)]
-    with pytest.raises(ValueError, match=f"Text at index 0 exceeds maximum length of {EMBEDDING_MAX_TEXT_LENGTH} characters"):
+    with pytest.raises(
+        ValueError,
+        match=f"Text at index 0 exceeds maximum length of {EMBEDDING_MAX_TEXT_LENGTH} characters",
+    ):
         EmbeddingRequest(texts=texts)
 
 

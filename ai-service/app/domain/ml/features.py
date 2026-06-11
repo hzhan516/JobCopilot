@@ -1,4 +1,4 @@
-from typing import Any
+import re
 
 from app.schemas import JobDetail, BaselineFeature
 
@@ -13,11 +13,13 @@ FEATURE_COLUMNS = [
     "salary_range_overlap",
 ]
 
+
 def tokenize_text(text: str) -> set[str]:
     if not text:
         return set()
     tokens = re.findall(r"[a-zA-Z]+", str(text).lower())
     return {token for token in tokens if len(token) >= 3}
+
 
 def normalize_items(items: list[str]) -> set[str]:
     normalized: set[str] = set()
@@ -27,10 +29,15 @@ def normalize_items(items: list[str]) -> set[str]:
             normalized.add(cleaned)
     return normalized
 
-def extract_features(job: JobDetail | BaselineFeature, query: str, resume_text: str) -> dict[str, float]:
+
+def extract_features(
+    job: JobDetail | BaselineFeature, query: str, resume_text: str
+) -> dict[str, float]:
     title = (job.title or "").strip()
     description = (job.description or "").strip()
-    semantic_match = float(job.semantic_match if isinstance(job, BaselineFeature) else 0.0)
+    semantic_match = float(
+        job.semantic_match if isinstance(job, BaselineFeature) else 0.0
+    )
 
     query_text = " ".join(part for part in [query, resume_text] if part).strip()
     query_tokens = tokenize_text(query_text)
@@ -39,7 +46,9 @@ def extract_features(job: JobDetail | BaselineFeature, query: str, resume_text: 
 
     if query_tokens:
         skill_overlap_ratio = len(query_tokens & title_tokens) / len(query_tokens)
-        experience_overlap_ratio = len(query_tokens & description_tokens) / len(query_tokens)
+        experience_overlap_ratio = len(query_tokens & description_tokens) / len(
+            query_tokens
+        )
     else:
         skill_overlap_ratio = 0.0
         experience_overlap_ratio = 0.0

@@ -3,19 +3,25 @@ import logging
 from typing import Any
 import boto3
 from botocore.client import Config
-from app.config import MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY, MINIO_MODEL_BUCKET
+from app.config import (
+    MINIO_ENDPOINT,
+    MINIO_ACCESS_KEY,
+    MINIO_SECRET_KEY,
+    MINIO_MODEL_BUCKET,
+)
 
 logger = logging.getLogger(__name__)
+
 
 class MinioModelRegistry:
     def __init__(self):
         self.s3 = boto3.client(
-            's3',
+            "s3",
             endpoint_url=MINIO_ENDPOINT,
             aws_access_key_id=MINIO_ACCESS_KEY,
             aws_secret_access_key=MINIO_SECRET_KEY,
-            config=Config(signature_version='s3v4'),
-            region_name='us-east-1'
+            config=Config(signature_version="s3v4"),
+            region_name="us-east-1",
         )
         self._ensure_bucket_exists()
 
@@ -39,13 +45,15 @@ class MinioModelRegistry:
         self.s3.put_object(
             Bucket=MINIO_MODEL_BUCKET,
             Key="latest_meta.json",
-            Body=json.dumps(meta, ensure_ascii=False).encode('utf-8')
+            Body=json.dumps(meta, ensure_ascii=False).encode("utf-8"),
         )
 
     def get_latest_meta(self) -> dict[str, Any] | None:
         try:
-            response = self.s3.get_object(Bucket=MINIO_MODEL_BUCKET, Key="latest_meta.json")
-            return json.loads(response['Body'].read().decode('utf-8'))
+            response = self.s3.get_object(
+                Bucket=MINIO_MODEL_BUCKET, Key="latest_meta.json"
+            )
+            return json.loads(response["Body"].read().decode("utf-8"))
         except Exception as e:
             logger.warning(f"Could not load latest meta: {e}")
             return None
@@ -56,8 +64,12 @@ class MinioModelRegistry:
     def list_models(self) -> list[str]:
         try:
             response = self.s3.list_objects_v2(Bucket=MINIO_MODEL_BUCKET)
-            if 'Contents' in response:
-                return [obj['Key'] for obj in response['Contents'] if obj['Key'].startswith('ranker_model_')]
+            if "Contents" in response:
+                return [
+                    obj["Key"]
+                    for obj in response["Contents"]
+                    if obj["Key"].startswith("ranker_model_")
+                ]
             return []
         except Exception as e:
             logger.error(f"Failed to list models: {e}")

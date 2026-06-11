@@ -22,7 +22,7 @@ def test_truncate_description():
     assert _truncate_description("Short description") == "Short description"
     assert _truncate_description("   Padded description   ") == "Padded description"
     assert _truncate_description("Line 1\nLine 2") == "Line 1 Line 2"
-    
+
     long_desc = "A" * 300
     truncated = _truncate_description(long_desc)
     assert len(truncated) == 283  # 280 + 3 for "..."
@@ -53,7 +53,9 @@ def test_to_float():
 
 @patch("app.services.job_matching_service.requests.post")
 @patch("app.services.job_matching_service.generate_embedding")
-def test_find_job_matches_calls_backend_vector_search(mock_generate_embedding, mock_post):
+def test_find_job_matches_calls_backend_vector_search(
+    mock_generate_embedding, mock_post
+):
     mock_generate_embedding.return_value = [0.1, 0.2, 0.3]
 
     mock_response = MagicMock()
@@ -137,7 +139,9 @@ def test_find_job_matches_handles_backend_failure(mock_generate_embedding, mock_
 
 @patch("app.services.job_matching_service.requests.post")
 @patch("app.services.job_matching_service.generate_embedding")
-def test_find_job_matches_data_assembly_and_clipping(mock_generate_embedding, mock_post):
+def test_find_job_matches_data_assembly_and_clipping(
+    mock_generate_embedding, mock_post
+):
     mock_generate_embedding.return_value = [0.1, 0.2]
 
     mock_response = MagicMock()
@@ -158,7 +162,7 @@ def test_find_job_matches_data_assembly_and_clipping(mock_generate_embedding, mo
         {
             # Missing fields
             "jobId": "job-2",
-        }
+        },
     ]
     mock_post.return_value = mock_response
 

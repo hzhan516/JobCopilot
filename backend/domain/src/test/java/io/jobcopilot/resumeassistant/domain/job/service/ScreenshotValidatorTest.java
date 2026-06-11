@@ -48,7 +48,7 @@ class ScreenshotValidatorTest {
     @Test
     @DisplayName("Should accept screenshot at exact raw size boundary")
     void shouldAcceptScreenshotAtExactRawSizeBoundary() {
-        // Base64 length that estimates to exactly the 5MB raw boundary
+        // Base64 length whose estimated raw size is exactly at 5MB boundary
         StringBuilder sb = new StringBuilder();
         int targetLen = (int) (MAX_RAW_BYTES * 4 / 3);
         while (sb.length() < targetLen) {

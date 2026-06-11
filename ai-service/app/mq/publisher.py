@@ -108,9 +108,13 @@ def publish_job_rank_result(
         data=JobRankResultData(
             rankTimeMs=rank_time_ms,
             rankedResults=[
-                item.model_dump(by_alias=True)
-                if isinstance(item, JobRankResultItem)
-                else JobRankResultItem.model_validate(item).model_dump(by_alias=True)
+                (
+                    item.model_dump(by_alias=True)
+                    if isinstance(item, JobRankResultItem)
+                    else JobRankResultItem.model_validate(item).model_dump(
+                        by_alias=True
+                    )
+                )
                 for item in ranked_results
             ],
         ),

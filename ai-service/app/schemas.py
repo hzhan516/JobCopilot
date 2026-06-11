@@ -203,7 +203,9 @@ class ConversationRequestCommand(AppBaseModel):
 
     conversation_id: str = Field(alias="conversationId")
     user_id: str = Field(alias="userId")
-    message_history: list[ConversationMessage] = Field(default_factory=list, alias="messageHistory")
+    message_history: list[ConversationMessage] = Field(
+        default_factory=list, alias="messageHistory"
+    )
     current_message: str = Field(alias="currentMessage")
     file_urls: list[str] = Field(default_factory=list, alias="fileUrls")
     resume_version_id: str | None = Field(default=None, alias="resumeVersionId")
@@ -241,7 +243,9 @@ class JobRankResultData(AppBaseModel):
     JOB_RANK 结果事件中的 data 负载，对齐后端 AiResultMessageListener 对 event.data() 的读取方式。"""
 
     rank_time_ms: int = Field(alias="rankTimeMs")
-    ranked_results: list[dict[str, Any]] = Field(default_factory=list, alias="rankedResults")
+    ranked_results: list[dict[str, Any]] = Field(
+        default_factory=list, alias="rankedResults"
+    )
 
 
 class AiResultEvent(AppBaseModel):
@@ -251,7 +255,14 @@ class AiResultEvent(AppBaseModel):
     reference_id: str = Field(alias="referenceId")
     type: str
     status: str
-    data: dict[str, Any] | ParsedJobContent | ResumeParseData | ConversationData | JobRankResultData | None = None
+    data: (
+        dict[str, Any]
+        | ParsedJobContent
+        | ResumeParseData
+        | ConversationData
+        | JobRankResultData
+        | None
+    ) = None
     error_message: str | None = Field(default=None, alias="errorMessage")
     event_type: str | None = Field(default=None, alias="eventType")
 
@@ -269,11 +280,16 @@ class EmbeddingRequest(AppBaseModel):
         """Enforce batch size and per-text length limits to prevent OOM and credit drain.
         强制 batch 大小和单条文本长度限制，防止 OOM 与 LLM 额度耗尽。"""
         from app.config import EMBEDDING_MAX_BATCH_SIZE, EMBEDDING_MAX_TEXT_LENGTH
+
         if len(v) > EMBEDDING_MAX_BATCH_SIZE:
-            raise ValueError(f"Batch size exceeds maximum of {EMBEDDING_MAX_BATCH_SIZE}")
+            raise ValueError(
+                f"Batch size exceeds maximum of {EMBEDDING_MAX_BATCH_SIZE}"
+            )
         for i, text in enumerate(v):
             if len(text) > EMBEDDING_MAX_TEXT_LENGTH:
-                raise ValueError(f"Text at index {i} exceeds maximum length of {EMBEDDING_MAX_TEXT_LENGTH} characters")
+                raise ValueError(
+                    f"Text at index {i} exceeds maximum length of {EMBEDDING_MAX_TEXT_LENGTH} characters"
+                )
         return v
 
 
@@ -349,7 +365,9 @@ class VectorSearchResult(AppBaseModel):
     company: str = ""
     description: str = ""
     similarity: float = 0.0
-    match_factors: MatchFactors = Field(default_factory=MatchFactors, alias="matchFactors")
+    match_factors: MatchFactors = Field(
+        default_factory=MatchFactors, alias="matchFactors"
+    )
 
 
 class MatchItem(AppBaseModel):
@@ -394,5 +412,7 @@ class JobRankResultPayload(AppBaseModel):
     match_id: str = Field(alias="matchId")
     status: str
     rank_time_ms: int = Field(alias="rankTimeMs")
-    ranked_results: list[JobRankResultItem] = Field(default_factory=list, alias="rankedResults")
+    ranked_results: list[JobRankResultItem] = Field(
+        default_factory=list, alias="rankedResults"
+    )
     error_message: str | None = Field(default=None, alias="errorMessage")

@@ -1,6 +1,10 @@
 from unittest.mock import MagicMock, patch
 
-from app.worker.consumers.rabbitmq_setup import QUEUE_ARGUMENTS, create_worker_connection, setup_feedback_queue
+from app.worker.consumers.rabbitmq_setup import (
+    QUEUE_ARGUMENTS,
+    create_worker_connection,
+    setup_feedback_queue,
+)
 from app.config import (
     AI_DIRECT_EXCHANGE,
     AI_DLX_EXCHANGE,

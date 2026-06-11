@@ -1,0 +1,78 @@
+# -----------------------------------------------------------------------------
+# Block Dependabot major-version upgrade PRs
+# -----------------------------------------------------------------------------
+# Constraint: this project does NOT accept major version bumps from Dependabot
+# to avoid unpredictable breaking changes and integration risk.
+# Only patch and minor updates are allowed via automated PRs.
+# If a major upgrade is truly required, open a regular PR with a compatibility
+# assessment and go through normal 2-person review.
+# -----------------------------------------------------------------------------
+
+name: Block Major Dependabot Upgrades
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  block-major:
+    runs-on: ubuntu-latest
+    # Only intercept Dependabot PRs
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - name: Detect and close major version upgrades
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const title = pr.title || '';
+            const body = pr.body || '';
+
+            // Match common Dependabot bump patterns, e.g.:
+            // "bump lucide-react from 0.562.0 to 1.17.0"
+            // "Bump io.minio:minio from 8.5.17 to 9.0.1"
+            const bumpRegex = /bump\s+\S+\s+from\s+(\d+)\.(\d+)(?:\.(\d+))?\s+to\s+(\d+)\.(\d+)(?:\.(\d+))?/gi;
+
+            let isMajor = false;
+            let match;
+            while ((match = bumpRegex.exec(title + ' ' + body)) !== null) {
+              const oldMajor = parseInt(match[1], 10);
+              const newMajor = parseInt(match[4], 10);
+              if (newMajor > oldMajor) {
+                isMajor = true;
+                break;
+              }
+            }
+
+            if (!isMajor) {
+              core.info('No major version bump detected; allowing PR to remain open.');
+              return;
+            }
+
+            core.info('Major version bump detected. Posting comment and closing PR.');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: [
+                '👋 Hi @dependabot[bot],',
+                '',
+                'This PR proposes a **major version upgrade**. Per project policy, we do **not** accept major version bumps from Dependabot automatically, because they may introduce unpredictable breaking changes and integration risk.',
+                '',
+                'If this major upgrade is required (for example, to address a CVE), please open a regular pull request with a compatibility assessment and go through the standard two-person review process.',
+                '',
+                'Closing this automated PR. Thank you!'
+              ].join('\n')
+            });
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              state: 'closed'
+            });

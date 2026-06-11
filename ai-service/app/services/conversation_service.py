@@ -4,10 +4,17 @@ import re
 from pathlib import Path
 from urllib.parse import urlparse
 
-from app.schemas import AiResultEvent, ConversationRequestCommand, ConversationData, ResumeModification
+from app.schemas import (
+    AiResultEvent,
+    ConversationRequestCommand,
+    ConversationData,
+    ResumeModification,
+)
 from app.services.file_parser import download_file_bytes, extract_resume_text
-from app.services.llm_client import LlmJsonParseError, generate_json_from_text_prompt_with_repair
-
+from app.services.llm_client import (
+    LlmJsonParseError,
+    generate_json_from_text_prompt_with_repair,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +45,9 @@ def _infer_file_format(file_url: str) -> str | None:
     return None
 
 
-def _load_attachment_context(command: ConversationRequestCommand) -> tuple[list[dict[str, str]], list[str]]:
+def _load_attachment_context(
+    command: ConversationRequestCommand,
+) -> tuple[list[dict[str, str]], list[str]]:
     """Download and extract text snippets from up to 3 attachments for prompt enrichment.
     下载并提取最多 3 个附件的文本片段：限制数量与单片段长度（4000 字符），
     防止超长附件撑爆 prompt token 上限，同时收集告警用于模型自检。"""
@@ -78,10 +87,7 @@ def _build_conversation_prompt(command: ConversationRequestCommand) -> str:
     """Compose a structured LLM prompt that grounds the reply in resume, job, and attachment context.
     构建结构化对话 prompt：将简历、职位、附件及历史消息组织为统一上下文，
     通过严格的 JSON 输出格式约束，保证下游可直接解析而不需额外的后处理清洗。"""
-    history = [
-        message.model_dump(by_alias=True)
-        for message in command.message_history
-    ]
+    history = [message.model_dump(by_alias=True) for message in command.message_history]
     attachments, warnings = _load_attachment_context(command)
 
     return f"""
@@ -192,7 +198,7 @@ def _extract_jsonish_string_field(text: str, field_name: str) -> str | None:
             continue
 
         if char == '"':
-            lookahead = text[i + 1:].lstrip()
+            lookahead = text[i + 1 :].lstrip()
             if lookahead.startswith(",") or lookahead.startswith("}"):
                 break
             value_chars.append(char)
@@ -229,7 +235,9 @@ def _normalize_conversation_result(result: dict) -> tuple[str, str | None, dict]
     file_url = result.get("fileUrl")
 
     if not content:
-        content = "I received your message, but I could not generate a detailed response."
+        content = (
+            "I received your message, but I could not generate a detailed response."
+        )
 
     if file_url is not None:
         file_url = str(file_url).strip() or None

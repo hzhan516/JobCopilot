@@ -13,6 +13,7 @@ public final class ScreenshotValidator {
     private ScreenshotValidator() {
         throw new AssertionError("No instances");
         // Utility class — prevent instantiation
+        throw new AssertionError("Utility class");
     }
 
     /**

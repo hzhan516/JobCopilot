@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 
-
 ENV = os.getenv("ENV", "dev")
 
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
@@ -100,14 +99,20 @@ MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
 MINIO_MODEL_BUCKET = os.getenv("MINIO_MODEL_BUCKET", "ai-models")
 
-if ENV != "dev" and (not MINIO_ENDPOINT or not MINIO_ACCESS_KEY or not MINIO_SECRET_KEY):
-    raise RuntimeError("MINIO_ENDPOINT, MINIO_ACCESS_KEY and MINIO_SECRET_KEY are required in non-dev environments")
+if ENV != "dev" and (
+    not MINIO_ENDPOINT or not MINIO_ACCESS_KEY or not MINIO_SECRET_KEY
+):
+    raise RuntimeError(
+        "MINIO_ENDPOINT, MINIO_ACCESS_KEY and MINIO_SECRET_KEY are required in non-dev environments"
+    )
 
 # Internal API Auth — mandatory in non-dev environments
 # 内部 API Key：开发环境可省略，生产环境强制要求，防止 AI 服务端点被外部直接访问。
 INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY")
 if ENV != "dev" and not INTERNAL_API_KEY:
-    raise RuntimeError("INTERNAL_API_KEY environment variable is required in non-dev environments")
+    raise RuntimeError(
+        "INTERNAL_API_KEY environment variable is required in non-dev environments"
+    )
 
 # Embedding rate limits
 # Embedding 限流配置：防止单请求耗尽 LLM 额度或导致 OOM。
