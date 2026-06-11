@@ -62,7 +62,13 @@ def _is_dangerous_url(url: str) -> bool:
         return True
     try:
         addr = ipaddress.ip_address(hostname)
-        if addr.is_private or addr.is_loopback or addr.is_reserved or addr.is_link_local or addr.is_multicast:
+        if (
+            addr.is_private
+            or addr.is_loopback
+            or addr.is_reserved
+            or addr.is_link_local
+            or addr.is_multicast
+        ):
             return True
     except ValueError:
         pass
@@ -77,11 +83,15 @@ def download_file_bytes(file_url: str) -> bytes:
 
     if stripped.startswith(("http://", "https://")):
         if _is_dangerous_url(stripped):
-            raise ValueError(f"URL resolves to internal address and is not allowed: {stripped}")
+            raise ValueError(
+                f"URL resolves to internal address and is not allowed: {stripped}"
+            )
         logger.debug("Downloading file via HTTP: %s", stripped)
         response = httpx.get(stripped, timeout=30.0, follow_redirects=True)
         response_url_str = str(response.url)
-        if response_url_str.startswith(("http://", "https://")) and _is_dangerous_url(response_url_str):
+        if response_url_str.startswith(("http://", "https://")) and _is_dangerous_url(
+            response_url_str
+        ):
             raise ValueError(f"Redirected to disallowed URL: {response.url}")
         response.raise_for_status()
         return response.content
@@ -93,7 +103,9 @@ def download_file_bytes(file_url: str) -> bytes:
             object_key = keys[0]
             local_path = _resolve_local_path(object_key)
             if local_path:
-                logger.info("Reading file from shared storage (by URL key): %s", local_path)
+                logger.info(
+                    "Reading file from shared storage (by URL key): %s", local_path
+                )
                 return local_path.read_bytes()
         raise FileNotFoundError(
             f"Could not resolve local file for storage URL: {stripped}"
@@ -104,9 +116,7 @@ def download_file_bytes(file_url: str) -> bytes:
         logger.info("Reading file from shared storage (by object key): %s", local_path)
         return local_path.read_bytes()
 
-    raise ValueError(
-        f"Unsupported file_url (not HTTP, not local path): {stripped}"
-    )
+    raise ValueError(f"Unsupported file_url (not HTTP, not local path): {stripped}")
 
 
 def _extract_text_from_pdf(file_bytes: bytes) -> str:

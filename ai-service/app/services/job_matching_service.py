@@ -5,7 +5,13 @@ from typing import Any
 import requests
 
 from app.config import BACKEND_QUERY_TIMEOUT, BACKEND_SERVICE_URL, INTERNAL_API_KEY
-from app.schemas import JobMatchRequest, JobMatchResponse, MatchFactors, MatchItem, VectorSearchResult
+from app.schemas import (
+    JobMatchRequest,
+    JobMatchResponse,
+    MatchFactors,
+    MatchItem,
+    VectorSearchResult,
+)
 from app.services.vector_service import generate_embedding
 
 logger = logging.getLogger(__name__)
@@ -24,10 +30,18 @@ def _truncate_description(description: str) -> str:
 
 def _extract_search_results(payload: Any) -> list[VectorSearchResult]:
     if isinstance(payload, list):
-        return [VectorSearchResult.model_validate(item) for item in payload if isinstance(item, dict)]
+        return [
+            VectorSearchResult.model_validate(item)
+            for item in payload
+            if isinstance(item, dict)
+        ]
 
     if isinstance(payload, dict) and isinstance(payload.get("data"), list):
-        return [VectorSearchResult.model_validate(item) for item in payload["data"] if isinstance(item, dict)]
+        return [
+            VectorSearchResult.model_validate(item)
+            for item in payload["data"]
+            if isinstance(item, dict)
+        ]
 
     return []
 
@@ -85,8 +99,12 @@ def find_job_matches(request: JobMatchRequest) -> JobMatchResponse:
                 matchScore=round(_clip_score(result.similarity), 4),
                 matchFactors=MatchFactors(
                     skillMatch=round(_clip_score(result.match_factors.skill_match), 4),
-                    experienceMatch=round(_clip_score(result.match_factors.experience_match), 4),
-                    locationMatch=round(_clip_score(result.match_factors.location_match), 4),
+                    experienceMatch=round(
+                        _clip_score(result.match_factors.experience_match), 4
+                    ),
+                    locationMatch=round(
+                        _clip_score(result.match_factors.location_match), 4
+                    ),
                 ),
                 description=_truncate_description(result.description),
             )

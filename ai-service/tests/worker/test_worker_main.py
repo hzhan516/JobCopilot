@@ -58,7 +58,9 @@ def test_start_mq_consumer_retries_on_failure(mock_setup, mock_create_conn, mock
 @patch("app.worker_main.start_mq_consumer")
 @patch("app.worker_main.AsyncIOScheduler")
 @patch("app.worker_main.IncrementalTrainer")
-async def test_run_worker_starts_scheduler_and_trains(mock_trainer_cls, mock_scheduler_cls, mock_start_mq):
+async def test_run_worker_starts_scheduler_and_trains(
+    mock_trainer_cls, mock_scheduler_cls, mock_start_mq
+):
     """Should start MQ thread, scheduler and run initial training / 应启动 MQ 线程、调度器和首次训练"""
     mock_trainer = MagicMock()
     mock_trainer.try_retrain = AsyncMock()

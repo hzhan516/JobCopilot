@@ -29,9 +29,9 @@ def test_extract_json_text_success():
 
 def test_extract_json_text_nested_resume_payload():
     raw_text = (
-        '```json\n'
+        "```json\n"
         '{"name": "Alice", "experience": [{"company": "Acme", "title": "Engineer"}]}\n'
-        '```'
+        "```"
     )
 
     assert _extract_json_text(raw_text) == (
@@ -48,7 +48,7 @@ def test_extract_json_text_ignores_braces_inside_strings():
 
 
 def test_extract_json_text_failure():
-    raw_text = 'No json here'
+    raw_text = "No json here"
     with pytest.raises(ValueError, match="LLM response did not contain a JSON object"):
         _extract_json_text(raw_text)
 
@@ -57,7 +57,9 @@ def test_extract_json_text_incomplete_json():
     # Missing closing brace for the outer object — braces mismatch triggers early rejection.
     # 外层对象的闭合大括号缺失，导致大括号数量不匹配，应被提前拦截。
     raw_text = '{"content": "test", "nested": {"key": "val"}'
-    with pytest.raises(ValueError, match="Extracted JSON is incomplete: braces mismatch"):
+    with pytest.raises(
+        ValueError, match="Extracted JSON is incomplete: braces mismatch"
+    ):
         _extract_json_text(raw_text)
 
 
@@ -199,7 +201,15 @@ def test_safe_json_loads_literal_cr():
 
 
 def test_safe_json_loads_multiple_control_chars():
-    text = '{"content": "Line1' + chr(10) + 'Line2' + chr(9) + 'Tab' + chr(13) + 'Carriage"}'
+    text = (
+        '{"content": "Line1'
+        + chr(10)
+        + "Line2"
+        + chr(9)
+        + "Tab"
+        + chr(13)
+        + 'Carriage"}'
+    )
     result = _safe_json_loads(text)
     assert result == {"content": "Line1\nLine2\tTab\rCarriage"}
 
@@ -217,10 +227,7 @@ def test_safe_json_loads_complex_nested():
     )
     result = _safe_json_loads(text)
     assert result == {
-        "data": {
-            "content": "Hello\nWorld",
-            "nested": {"text": "Tab\there"}
-        },
+        "data": {"content": "Hello\nWorld", "nested": {"text": "Tab\there"}},
         "ok": True,
     }
 

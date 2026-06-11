@@ -183,7 +183,9 @@ _storage_store: dict[str, bytes] = {}
 
 
 def _storage_put(bucket: str, key: str, body: bytes) -> None:
-    _storage_store[f"{bucket}/{key}"] = body if isinstance(body, bytes) else body.encode("utf-8")
+    _storage_store[f"{bucket}/{key}"] = (
+        body if isinstance(body, bytes) else body.encode("utf-8")
+    )
 
 
 def _storage_get(bucket: str, key: str) -> bytes | None:
@@ -199,10 +201,10 @@ try:
     boto3_patcher = patch("boto3.client")
     boto3_patcher.start()
 except ImportError:
-    pass # If boto3 is not installed, we can't patch it, but import app.main will fail anyway
+    pass  # If boto3 is not installed, we can't patch it, but import app.main will fail anyway
 
 # Now safe to import app.main
-import app.main as main_module
+import app.main as main_module  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -275,8 +277,12 @@ def mock_httpx(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock, MagicMock]:
     async_client.get.return_value = response
     async_client.post.return_value = response
 
-    monkeypatch.setattr("httpx.Client", MagicMock(return_value=sync_client), raising=False)
-    monkeypatch.setattr("httpx.AsyncClient", MagicMock(return_value=async_client), raising=False)
+    monkeypatch.setattr(
+        "httpx.Client", MagicMock(return_value=sync_client), raising=False
+    )
+    monkeypatch.setattr(
+        "httpx.AsyncClient", MagicMock(return_value=async_client), raising=False
+    )
     return sync_client, async_client
 
 
@@ -288,12 +294,20 @@ def mock_rabbitmq(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock, MagicMock
     connection = MagicMock()
     connection.channel.return_value = channel
 
-    monkeypatch.setattr("app.main.create_connection", MagicMock(return_value=connection), raising=False)
+    monkeypatch.setattr(
+        "app.main.create_connection", MagicMock(return_value=connection), raising=False
+    )
     monkeypatch.setattr("app.main.setup_all_queues", MagicMock(), raising=False)
     monkeypatch.setattr("app.main.start_all_consumers", MagicMock(), raising=False)
-    monkeypatch.setattr("app.mq.consumer.create_connection", MagicMock(return_value=connection), raising=False)
+    monkeypatch.setattr(
+        "app.mq.consumer.create_connection",
+        MagicMock(return_value=connection),
+        raising=False,
+    )
     monkeypatch.setattr("app.mq.consumer.setup_all_queues", MagicMock(), raising=False)
-    monkeypatch.setattr("app.mq.consumer.start_all_consumers", MagicMock(), raising=False)
+    monkeypatch.setattr(
+        "app.mq.consumer.start_all_consumers", MagicMock(), raising=False
+    )
 
     return connection, channel
 
@@ -317,7 +331,11 @@ def mock_object_storage(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 
 
 @pytest.fixture
-def mock_dependencies(mock_litellm: MagicMock, mock_httpx: tuple[MagicMock, MagicMock], mock_rabbitmq: tuple[MagicMock, MagicMock]) -> dict[str, object]:
+def mock_dependencies(
+    mock_litellm: MagicMock,
+    mock_httpx: tuple[MagicMock, MagicMock],
+    mock_rabbitmq: tuple[MagicMock, MagicMock],
+) -> dict[str, object]:
     return {
         "litellm": mock_litellm,
         "httpx_sync": mock_httpx[0],
@@ -326,18 +344,26 @@ def mock_dependencies(mock_litellm: MagicMock, mock_httpx: tuple[MagicMock, Magi
         "rabbitmq_channel": mock_rabbitmq[1],
     }
 
+
 # New Infrastructure Mocks for Refactored AI Service
+
 
 @pytest.fixture
 def mock_minio_registry(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     registry_mock = MagicMock()
     registry_mock.get_latest_meta.return_value = None
     registry_mock.upload_model.return_value = "fake_key.txt"
-    monkeypatch.setattr("app.api.model_manager.MinioModelRegistry", lambda: registry_mock)
-    monkeypatch.setattr("app.worker.scheduler.trainer.MinioModelRegistry", lambda: registry_mock)
+    monkeypatch.setattr(
+        "app.api.model_manager.MinioModelRegistry", lambda: registry_mock
+    )
+    monkeypatch.setattr(
+        "app.worker.scheduler.trainer.MinioModelRegistry", lambda: registry_mock
+    )
     return registry_mock
 
-from unittest.mock import MagicMock, AsyncMock
+
+from unittest.mock import MagicMock, AsyncMock  # noqa: E402
+
 
 @pytest.fixture
 def mock_redis_buffer(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
@@ -348,12 +374,17 @@ def mock_redis_buffer(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     buffer_mock.broadcast_reload = AsyncMock(return_value=None)
     buffer_mock.release_lock = AsyncMock(return_value=None)
     monkeypatch.setattr("app.worker.scheduler.trainer.RedisBuffer", lambda: buffer_mock)
-    monkeypatch.setattr("app.worker.consumers.feedback.RedisBuffer", lambda: buffer_mock)
+    monkeypatch.setattr(
+        "app.worker.consumers.feedback.RedisBuffer", lambda: buffer_mock
+    )
     return buffer_mock
+
 
 @pytest.fixture
 def mock_internal_api(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     api_mock = MagicMock()
     api_mock.get_baseline_features_async = AsyncMock(return_value=[])
-    monkeypatch.setattr("app.worker.scheduler.trainer.InternalApiClient", lambda: api_mock)
+    monkeypatch.setattr(
+        "app.worker.scheduler.trainer.InternalApiClient", lambda: api_mock
+    )
     return api_mock

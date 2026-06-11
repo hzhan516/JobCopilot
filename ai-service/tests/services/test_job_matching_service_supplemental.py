@@ -1,23 +1,26 @@
 """Test job matching service (supplemental).
 职位匹配补充测试：覆盖空查询、大结果集、并发调用等场景。
 """
+
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from app.schemas import JobMatchRequest
 from app.services.job_matching_service import find_job_matches
 
-
 # ── Empty query ────────────────────────────────────────────
+
 
 def test_find_job_matches_empty_query():
     """Empty query should return empty results without calling backend.
     空查询应返回空结果且不调用后端。"""
     request = JobMatchRequest(userId="user1", query="", topK=5)
 
-    with patch("app.services.job_matching_service.generate_embedding") as mock_embed, \
-         patch("app.services.job_matching_service.requests.post") as mock_post:
+    with patch(
+        "app.services.job_matching_service.generate_embedding"
+    ) as mock_embed, patch(
+        "app.services.job_matching_service.requests.post"
+    ) as mock_post:
         response = find_job_matches(request)
 
         assert response.total == 0
@@ -27,6 +30,7 @@ def test_find_job_matches_empty_query():
 
 
 # ── Large result set ───────────────────────────────────────
+
 
 @patch("app.services.job_matching_service.requests.post")
 @patch("app.services.job_matching_service.generate_embedding")
@@ -59,6 +63,7 @@ def test_find_job_matches_large_result_set(mock_generate_embedding, mock_post):
 
 # ── Backend returns non-list ───────────────────────────────
 
+
 @patch("app.services.job_matching_service.requests.post")
 @patch("app.services.job_matching_service.generate_embedding")
 def test_find_job_matches_backend_returns_string(mock_generate_embedding, mock_post):
@@ -80,6 +85,7 @@ def test_find_job_matches_backend_returns_string(mock_generate_embedding, mock_p
 
 # ── Backend returns None ───────────────────────────────────
 
+
 @patch("app.services.job_matching_service.requests.post")
 @patch("app.services.job_matching_service.generate_embedding")
 def test_find_job_matches_backend_returns_none(mock_generate_embedding, mock_post):
@@ -100,6 +106,7 @@ def test_find_job_matches_backend_returns_none(mock_generate_embedding, mock_pos
 
 # ── Concurrent calls safety ────────────────────────────────
 
+
 @patch("app.services.job_matching_service.requests.post")
 @patch("app.services.job_matching_service.generate_embedding")
 def test_find_job_matches_thread_safety(mock_generate_embedding, mock_post):
@@ -109,7 +116,15 @@ def test_find_job_matches_thread_safety(mock_generate_embedding, mock_post):
 
     mock_response = MagicMock()
     mock_response.raise_for_status.return_value = None
-    mock_response.json.return_value = [{"jobId": "job-1", "title": "Dev", "company": "Acme", "similarity": 0.8, "matchFactors": {}}]
+    mock_response.json.return_value = [
+        {
+            "jobId": "job-1",
+            "title": "Dev",
+            "company": "Acme",
+            "similarity": 0.8,
+            "matchFactors": {},
+        }
+    ]
     mock_post.return_value = mock_response
 
     # Simulate two simultaneous requests

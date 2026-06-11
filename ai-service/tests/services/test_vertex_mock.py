@@ -1,6 +1,8 @@
 """Test vertex connectivity — Mock version.
 Vertex AI 连接测试（Mock 版本）：验证 prompt 构造与参数传递，不调用真实 API。
 """
+
+import pytest
 from unittest.mock import MagicMock, patch
 
 from app.services.llm_client import _generate_text
@@ -19,7 +21,12 @@ def test_vertex_prompt_construction(mock_completion):
     mock_response.choices = [mock_choice]
     mock_completion.return_value = mock_response
 
-    messages = [{"role": "user", "content": "Please reply with EXACTLY this text: 'Vertex Connection Successful!'"}]
+    messages = [
+        {
+            "role": "user",
+            "content": "Please reply with EXACTLY this text: 'Vertex Connection Successful!'",
+        }
+    ]
     result = _generate_text(model="gemini/gemini-1.5-flash", messages=messages)
 
     assert result == "Vertex Connection Successful!"
@@ -43,7 +50,10 @@ def test_vertex_empty_response(mock_completion):
     mock_completion.return_value = mock_response
 
     with pytest.raises(ValueError, match="empty response"):
-        _generate_text(model="gemini/gemini-1.5-flash", messages=[{"role": "user", "content": "test"}])
+        _generate_text(
+            model="gemini/gemini-1.5-flash",
+            messages=[{"role": "user", "content": "test"}],
+        )
 
 
 @patch("app.services.llm_client.completion")
@@ -60,7 +70,10 @@ def test_vertex_truncated_response(mock_completion):
     mock_completion.return_value = mock_response
 
     with pytest.raises(ValueError, match="truncated"):
-        _generate_text(model="gemini/gemini-1.5-flash", messages=[{"role": "user", "content": "test"}])
+        _generate_text(
+            model="gemini/gemini-1.5-flash",
+            messages=[{"role": "user", "content": "test"}],
+        )
 
 
 @patch("app.services.llm_client.completion")
@@ -70,4 +83,7 @@ def test_vertex_api_error(mock_completion):
     mock_completion.side_effect = Exception("API key invalid")
 
     with pytest.raises(Exception, match="API key invalid"):
-        _generate_text(model="gemini/gemini-1.5-flash", messages=[{"role": "user", "content": "test"}])
+        _generate_text(
+            model="gemini/gemini-1.5-flash",
+            messages=[{"role": "user", "content": "test"}],
+        )

@@ -1,6 +1,5 @@
 import os
 import sys
-import importlib
 from unittest.mock import patch
 
 import pytest
@@ -22,9 +21,12 @@ def test_config_raises_when_minio_missing_in_non_dev():
         with patch.dict(sys.modules, {}):
             with patch.object(sys, "path", sys.path):
                 try:
-                    import app.config
+                    pass
                 except RuntimeError as e:
-                    assert "MINIO_ENDPOINT, MINIO_ACCESS_KEY and MINIO_SECRET_KEY are required" in str(e)
+                    assert (
+                        "MINIO_ENDPOINT, MINIO_ACCESS_KEY and MINIO_SECRET_KEY are required"
+                        in str(e)
+                    )
                     return
     pytest.fail("Expected RuntimeError was not raised")
 
@@ -42,7 +44,7 @@ def test_config_raises_when_internal_api_key_missing_in_non_dev():
         if "app.config" in sys.modules:
             del sys.modules["app.config"]
         try:
-            import app.config
+            pass
         except RuntimeError as e:
             assert "INTERNAL_API_KEY environment variable is required" in str(e)
             return
@@ -60,4 +62,5 @@ def test_config_accepts_dev_without_minio():
             del sys.modules["app.config"]
         # Should not raise
         import app.config
+
         assert app.config.ENV == "dev"

@@ -1,6 +1,7 @@
 """Test file parser module (supplemental).
 文件解析补充测试：覆盖空文件、损坏文件、超大文件等边界场景。
 """
+
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
@@ -12,8 +13,8 @@ from app.services.file_parser import (
     extract_resume_text,
 )
 
-
 # ── Empty file scenarios ───────────────────────────────────
+
 
 @patch("app.services.file_parser.PdfReader")
 def test_extract_text_from_pdf_empty(mock_reader_class):
@@ -31,6 +32,7 @@ def test_extract_text_from_docx_empty():
     """Empty DOCX (no paragraphs) should return empty string.
     空 DOCX（无段落）应返回空字符串。"""
     from zipfile import ZipFile
+
     xml = '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body></w:body></w:document>'
     buf = BytesIO()
     with ZipFile(buf, "w") as zf:
@@ -41,6 +43,7 @@ def test_extract_text_from_docx_empty():
 
 
 # ── Corrupted file scenarios ─────────────────────────────
+
 
 @patch("app.services.file_parser.PdfReader")
 def test_extract_text_from_pdf_corrupted(mock_reader_class):
@@ -60,6 +63,7 @@ def test_extract_text_from_docx_corrupted():
 
 
 # ── Large file scenarios ───────────────────────────────────
+
 
 @patch("app.services.file_parser.PdfReader")
 def test_extract_text_from_pdf_large(mock_reader_class):
@@ -81,6 +85,7 @@ def test_extract_text_from_pdf_large(mock_reader_class):
 
 # ── extract_resume_text edge cases ─────────────────────────
 
+
 @patch("app.services.file_parser._extract_text_from_pdf")
 def test_extract_resume_text_empty_pdf(mock_extract):
     """Empty PDF content should be returned as-is.
@@ -98,6 +103,7 @@ def test_extract_resume_text_whitespace_only(mock_extract):
 
 
 # ── Unsupported format scenarios ─────────────────────────
+
 
 def test_extract_resume_text_unsupported_format():
     """Unsupported format should raise ValueError with clear message.

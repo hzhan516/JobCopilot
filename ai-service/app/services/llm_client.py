@@ -8,7 +8,12 @@ from typing import Any
 
 import litellm
 from litellm import completion
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
 
 from app.config import (
     LLM_TEXT_MODEL,
@@ -52,6 +57,7 @@ class JsonGenerationResult:
     repaired: bool = False
     repair_raw_text: str | None = None
 
+
 # 全局并发锁：防止 FastAPI 的 I/O 并发瞬间打爆 Vertex AI 导致 429
 # Global Semaphore: Threading bounded semaphore to cap concurrent LLM requests
 MAX_CONCURRENT_LLM_REQUESTS = 5
@@ -62,11 +68,13 @@ _llm_semaphore = threading.BoundedSemaphore(MAX_CONCURRENT_LLM_REQUESTS)
 RETRY_STRATEGY = retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type((
-        litellm.exceptions.RateLimitError,
-        litellm.exceptions.APIConnectionError,
-        litellm.exceptions.Timeout
-    ))
+    retry=retry_if_exception_type(
+        (
+            litellm.exceptions.RateLimitError,
+            litellm.exceptions.APIConnectionError,
+            litellm.exceptions.Timeout,
+        )
+    ),
 )
 
 
@@ -110,12 +118,17 @@ def _extract_json_text(raw_text: str) -> str:
         elif char == "}":
             depth -= 1
             if depth == 0:
-                return cleaned[start:index + 1]
+                return cleaned[start : index + 1]
             if depth < 0:
-                raise ValueError(f"LLM response contained invalid JSON braces: {cleaned[start:index + 1]}")
+                raise ValueError(
+                    f"LLM response contained invalid JSON braces: {cleaned[start:index + 1]}"
+                )
 
     extracted = cleaned[start:]
-    raise ValueError(f"Extracted JSON is incomplete: braces mismatch in {extracted[:200]}")
+    raise ValueError(
+        f"Extracted JSON is incomplete: braces mismatch in {extracted[:200]}"
+    )
+
 
 def _safe_json_loads(text: str) -> dict[str, Any]:
     """Safely parse JSON, handling illegal control characters that may appear inside string values in LLM output.
@@ -170,7 +183,9 @@ def _parse_json_object_from_text(raw_text: str) -> tuple[dict[str, Any], str]:
     json_text = _extract_json_text(raw_text)
     parsed = _safe_json_loads(json_text)
     if not isinstance(parsed, dict):
-        raise ValueError(f"LLM JSON response must be an object, got {type(parsed).__name__}")
+        raise ValueError(
+            f"LLM JSON response must be an object, got {type(parsed).__name__}"
+        )
     return parsed, json_text
 
 
@@ -222,9 +237,15 @@ def generate_json_from_text_prompt(prompt: str) -> dict[str, Any]:
     return parsed
 
 
-def _build_json_repair_prompt(raw_text: str, parse_error: Exception, context: str | None = None) -> str:
+def _build_json_repair_prompt(
+    raw_text: str, parse_error: Exception, context: str | None = None
+) -> str:
     """Build a constrained prompt that converts malformed model output into valid JSON only."""
-    context_section = f"\nExpected JSON contract:\n{context.strip()}\n" if context and context.strip() else ""
+    context_section = (
+        f"\nExpected JSON contract:\n{context.strip()}\n"
+        if context and context.strip()
+        else ""
+    )
     return f"""
 Convert the malformed model output below into one valid JSON object.
 Return JSON only. Do not add markdown fences or explanatory text.
@@ -320,11 +341,8 @@ def generate_json_from_image_prompt(
             "role": "user",
             "content": [
                 {"type": "text", "text": prompt},
-                {
-                    "type": "image_url",
-                    "image_url": {"url": image_url}
-                }
-            ]
+                {"type": "image_url", "image_url": {"url": image_url}},
+            ],
         }
     ]
 
@@ -335,5 +353,7 @@ def generate_json_from_image_prompt(
     json_text = _extract_json_text(raw_text)
     parsed = _safe_json_loads(json_text)
     if not isinstance(parsed, dict):
-        raise ValueError(f"LLM JSON response must be an object, got {type(parsed).__name__}")
+        raise ValueError(
+            f"LLM JSON response must be an object, got {type(parsed).__name__}"
+        )
     return parsed

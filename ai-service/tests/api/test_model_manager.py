@@ -1,14 +1,15 @@
 """Test ModelManager module.
 模型管理器测试：覆盖加载、预测、热重载等核心路径。
 """
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from app.api.model_manager import ModelManager
 
-
 # ── load_latest ────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_load_latest_with_valid_meta():
@@ -92,6 +93,7 @@ async def test_load_latest_missing_model_filename():
 
 # ── predict ────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_predict_with_loaded_model():
     """When model is loaded, predict should return scores.
@@ -124,6 +126,7 @@ async def test_predict_without_model():
 
 # ── watch_for_reloads ────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_watch_for_reloads_loads_on_message():
     """When reload message received, should call load_latest.
@@ -136,15 +139,20 @@ async def test_watch_for_reloads_loads_on_message():
         manager = ModelManager()
         mock_pubsub = AsyncMock()
         mock_pubsub.subscribe = AsyncMock()
-        mock_pubsub.listen = MagicMock(return_value=async_iter([
-            {"type": "subscribe", "channel": "ai.model.reload"},
-            {"type": "message", "data": '{"version": "v2.0"}'},
-        ]))
+        mock_pubsub.listen = MagicMock(
+            return_value=async_iter(
+                [
+                    {"type": "subscribe", "channel": "ai.model.reload"},
+                    {"type": "message", "data": '{"version": "v2.0"}'},
+                ]
+            )
+        )
         manager.redis.pubsub = MagicMock(return_value=mock_pubsub)
 
         with patch.object(manager, "load_latest", AsyncMock()) as mock_load:
             # Run watch_for_reloads for a short time then cancel
             import asyncio
+
             task = asyncio.create_task(manager.watch_for_reloads())
             await asyncio.sleep(0.1)
             task.cancel()

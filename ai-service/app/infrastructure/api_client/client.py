@@ -1,15 +1,17 @@
 import logging
-from typing import Any
 import httpx
 from app.config import BACKEND_SERVICE_URL, INTERNAL_API_KEY, BACKEND_QUERY_TIMEOUT
 from app.schemas import BaselineFeature
 
 logger = logging.getLogger(__name__)
 
+
 class InternalApiClient:
     def __init__(self):
         self.base_url = BACKEND_SERVICE_URL
-        self.headers = {"X-Internal-API-Key": INTERNAL_API_KEY} if INTERNAL_API_KEY else {}
+        self.headers = (
+            {"X-Internal-API-Key": INTERNAL_API_KEY} if INTERNAL_API_KEY else {}
+        )
 
     def get_baseline_features(self) -> list[BaselineFeature]:
         try:

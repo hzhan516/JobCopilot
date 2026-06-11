@@ -19,23 +19,27 @@ def _normalize_experience(value: Any) -> list[ExperienceItem]:
         normalized: list[ExperienceItem] = []
         for item in value:
             if isinstance(item, dict):
-                normalized.append(ExperienceItem(
-                    company=str(item.get("company", "")).strip() or None,
-                    title=str(item.get("title", "")).strip() or None,
-                    duration=str(item.get("duration", "")).strip() or None,
-                    summary=str(item.get("summary", "")).strip() or None,
-                ))
+                normalized.append(
+                    ExperienceItem(
+                        company=str(item.get("company", "")).strip() or None,
+                        title=str(item.get("title", "")).strip() or None,
+                        duration=str(item.get("duration", "")).strip() or None,
+                        summary=str(item.get("summary", "")).strip() or None,
+                    )
+                )
             elif item is not None:
                 normalized.append(ExperienceItem(summary=str(item)))
         return normalized
 
     if isinstance(value, dict):
-        return [ExperienceItem(
-            company=str(value.get("company", "")).strip() or None,
-            title=str(value.get("title", "")).strip() or None,
-            duration=str(value.get("duration", "")).strip() or None,
-            summary=str(value.get("summary", "")).strip() or None,
-        )]
+        return [
+            ExperienceItem(
+                company=str(value.get("company", "")).strip() or None,
+                title=str(value.get("title", "")).strip() or None,
+                duration=str(value.get("duration", "")).strip() or None,
+                summary=str(value.get("summary", "")).strip() or None,
+            )
+        ]
 
     if isinstance(value, str) and value.strip():
         return [ExperienceItem(summary=value.strip())]

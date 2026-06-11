@@ -118,7 +118,10 @@ def test_process_conversation_falls_back_when_content_is_none(mock_generate):
 
     result = process_conversation(command)
 
-    assert result.data.content == "I received your message, but I could not generate a detailed response."
+    assert (
+        result.data.content
+        == "I received your message, but I could not generate a detailed response."
+    )
 
 
 @patch("app.services.conversation_service.generate_json_from_text_prompt_with_repair")

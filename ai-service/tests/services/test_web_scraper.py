@@ -1,6 +1,7 @@
 """Test web scraper module.
 网页抓取模块测试：覆盖正常抓取、文本提取、截图生成、异常降级等路径。
 """
+
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -8,18 +9,19 @@ import pytest
 
 from app.services.web_scraper import (
     _html_to_text,
-    _capture_screenshot,
     scrape_job_page,
 )
 from app.schemas import ScrapeResult
 
-
 # ── _html_to_text ──────────────────────────────────────────
+
 
 def test_html_to_text_basic():
     """Should strip tags and extract readable text.
     应移除标签并提取可读文本。"""
-    html = "<html><body><h1>Title</h1><p>Paragraph 1.</p><p>Paragraph 2.</p></body></html>"
+    html = (
+        "<html><body><h1>Title</h1><p>Paragraph 1.</p><p>Paragraph 2.</p></body></html>"
+    )
     result = _html_to_text(html)
     assert "Title" in result
     assert "Paragraph 1." in result
@@ -53,12 +55,15 @@ def test_html_to_text_entities():
 
 # ── scrape_job_page ────────────────────────────────────────
 
+
 @patch("app.services.web_scraper.httpx.get")
 def test_scrape_success_no_screenshot(mock_get):
     """Successful scrape without screenshot should return ScrapeResult.
     成功抓取且不截图时应返回 ScrapeResult。"""
     mock_response = MagicMock()
-    mock_response.text = "<html><body><h1>Job Title</h1><p>Description here.</p></body></html>"
+    mock_response.text = (
+        "<html><body><h1>Job Title</h1><p>Description here.</p></body></html>"
+    )
     mock_response.raise_for_status.return_value = None
     mock_get.return_value = mock_response
 

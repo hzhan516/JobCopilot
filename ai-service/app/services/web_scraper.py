@@ -8,7 +8,6 @@ from playwright.sync_api import sync_playwright
 
 from app.schemas import ScrapeResult
 
-
 # Standard browser headers to reduce the chance of bot detection on job boards.
 # 使用标准桌面浏览器 UA，降低被招聘网站反爬拦截的概率。
 DEFAULT_HEADERS = {
@@ -26,7 +25,9 @@ def _html_to_text(html: str) -> str:
     保留页面正文供 LLM 提取职位信息。"""
     text = re.sub(r"<script.*?>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"<style.*?>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
-    text = re.sub(r"<noscript.*?>.*?</noscript>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(
+        r"<noscript.*?>.*?</noscript>", "", text, flags=re.DOTALL | re.IGNORECASE
+    )
     text = re.sub(r"<[^>]+>", " ", text)
     text = re.sub(r"&nbsp;", " ", text, flags=re.IGNORECASE)
     text = re.sub(r"&amp;", "&", text, flags=re.IGNORECASE)
@@ -73,7 +74,6 @@ def scrape_job_page(url: str, capture_screenshot: bool) -> ScrapeResult:
     screenshot_url = None
     if capture_screenshot:
         screenshot_url = _capture_screenshot(url)
-
 
     return ScrapeResult(
         markdown_text=markdown_text,

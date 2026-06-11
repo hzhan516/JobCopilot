@@ -1,5 +1,10 @@
 import litellm
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
 
 from app.config import (
     LLM_EMBEDDING_MODEL,
@@ -20,11 +25,13 @@ EMBEDDING_MODEL_CAPABILITIES = {
 RETRY_STRATEGY = retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type((
-        litellm.exceptions.RateLimitError,
-        litellm.exceptions.APIConnectionError,
-        litellm.exceptions.Timeout
-    ))
+    retry=retry_if_exception_type(
+        (
+            litellm.exceptions.RateLimitError,
+            litellm.exceptions.APIConnectionError,
+            litellm.exceptions.Timeout,
+        )
+    ),
 )
 
 
@@ -55,7 +62,7 @@ def generate_embedding(text: str) -> list[float]:
     # dimensions=LLM_EMBEDDING_MODEL_DIMENSION,  # Remove this for gemini-embedding-001/textembedding-gecko compatibility
     # https://docs.litellm.ai/docs/providers/vertex_embedding
     # LiteLLM supports 'dimensions' for Vertex models that support the `output_dimensionality` parameter.
-    # Google's `text-embedding-004` and `text-multilingual-embedding-002` support this, as does the latest 
+    # Google's `text-embedding-004` and `text-multilingual-embedding-002` support this, as does the latest
     # `gemini-embedding-001` (from the gemini SDK, replacing the older text-embedding-gecko models).
     # OpenAI's `text-embedding-3-*` models also support the `dimensions` parameter.
     kwargs = {
@@ -63,7 +70,7 @@ def generate_embedding(text: str) -> list[float]:
         "input": [cleaned_text],
         "timeout": LLM_REQUEST_TIMEOUT_SECONDS,
     }
-    
+
     if _model_supports_dimensions(LLM_EMBEDDING_MODEL):
         kwargs["dimensions"] = LLM_EMBEDDING_MODEL_DIMENSION
 

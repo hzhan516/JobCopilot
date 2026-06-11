@@ -1,14 +1,15 @@
 """Test LLM client module (supplemental).
 LLM 客户端补充测试：拆分原子性用例、补充异常场景。
 """
-from unittest.mock import MagicMock, patch
+
+from unittest.mock import patch
 
 import pytest
 
 from app.services.llm_client import _extract_json_text
 
-
 # ── _extract_json_text — 拆分后的原子用例 ─────────────────
+
 
 def test_extract_json_text_json_codeblock():
     """Should extract JSON from ```json ... ``` block.
@@ -55,6 +56,7 @@ def test_extract_json_text_incomplete_braces():
 
 # ── generate_json_from_text_prompt — 补充异常场景 ────────
 
+
 @patch("app.services.llm_client._generate_text")
 def test_generate_json_returns_non_dict(mock_generate):
     """When LLM returns non-dict (e.g., list), should wrap or raise.
@@ -62,6 +64,7 @@ def test_generate_json_returns_non_dict(mock_generate):
     mock_generate.return_value = "[1, 2, 3]"
 
     from app.services.llm_client import generate_json_from_text_prompt
+
     with pytest.raises((ValueError, TypeError)):
         generate_json_from_text_prompt("prompt")
 
@@ -73,5 +76,6 @@ def test_generate_json_returns_null(mock_generate):
     mock_generate.return_value = "null"
 
     from app.services.llm_client import generate_json_from_text_prompt
+
     with pytest.raises((ValueError, TypeError)):
         generate_json_from_text_prompt("prompt")

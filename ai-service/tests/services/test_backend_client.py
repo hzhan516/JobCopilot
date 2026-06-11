@@ -1,10 +1,10 @@
 """Test backend client module.
 后端客户端测试：覆盖向量 upsert、批量操作及异常降级。
 """
+
 from unittest.mock import MagicMock, patch
 
 import httpx
-import pytest
 
 from app.services.backend_client import (
     _build_job_vector_item,
@@ -12,10 +12,10 @@ from app.services.backend_client import (
     batch_upsert_job_vectors,
     batch_upsert_resume_vectors,
 )
-from app.schemas import JobVectorItem, ResumeVectorItem, BatchVectorUpsertResponse
-
+from app.schemas import JobVectorItem, ResumeVectorItem
 
 # ── _build_job_vector_item ─────────────────────────────────
+
 
 def test_build_job_vector_item():
     """Should construct a JobVectorItem with provided fields.
@@ -35,6 +35,7 @@ def test_build_job_vector_item():
 
 # ── _build_resume_vector_item ──────────────────────────────
 
+
 def test_build_resume_vector_item():
     """Should construct a ResumeVectorItem with minimal fields.
     应构造 ResumeVectorItem 并仅填充最小必要字段。"""
@@ -48,6 +49,7 @@ def test_build_resume_vector_item():
 
 # ── batch_upsert_job_vectors ───────────────────────────────
 
+
 @patch("app.services.backend_client.requests.post")
 def test_batch_upsert_job_vectors_success(mock_post):
     """Successful batch upsert should return parsed response.
@@ -58,8 +60,26 @@ def test_batch_upsert_job_vectors_success(mock_post):
     mock_post.return_value = mock_response
 
     items = [
-        JobVectorItem(job_id="job-1", embedding=[0.1] * 768, title="Dev", description="Build", requirements=["Python"], raw_content="", source_file="", model_version=""),
-        JobVectorItem(job_id="job-2", embedding=[0.2] * 768, title="Dev", description="Build", requirements=["Java"], raw_content="", source_file="", model_version=""),
+        JobVectorItem(
+            job_id="job-1",
+            embedding=[0.1] * 768,
+            title="Dev",
+            description="Build",
+            requirements=["Python"],
+            raw_content="",
+            source_file="",
+            model_version="",
+        ),
+        JobVectorItem(
+            job_id="job-2",
+            embedding=[0.2] * 768,
+            title="Dev",
+            description="Build",
+            requirements=["Java"],
+            raw_content="",
+            source_file="",
+            model_version="",
+        ),
     ]
     result = batch_upsert_job_vectors(items)
 
@@ -79,7 +99,16 @@ def test_batch_upsert_job_vectors_http_error(mock_post):
     )
 
     items = [
-        JobVectorItem(job_id="job-1", embedding=[0.1] * 768, title="Dev", description="Build", requirements=["Python"], raw_content="", source_file="", model_version=""),
+        JobVectorItem(
+            job_id="job-1",
+            embedding=[0.1] * 768,
+            title="Dev",
+            description="Build",
+            requirements=["Python"],
+            raw_content="",
+            source_file="",
+            model_version="",
+        ),
     ]
     result = batch_upsert_job_vectors(items)
 
@@ -100,6 +129,7 @@ def test_batch_upsert_job_vectors_empty_list(mock_post):
 
 
 # ── batch_upsert_resume_vectors ────────────────────────────
+
 
 @patch("app.services.backend_client.requests.post")
 def test_batch_upsert_resume_vectors_success(mock_post):

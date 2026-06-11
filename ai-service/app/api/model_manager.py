@@ -8,6 +8,7 @@ import json
 
 logger = logging.getLogger(__name__)
 
+
 class ModelManager:
     def __init__(self):
         self._model: lgb.Booster | None = None
@@ -61,5 +62,6 @@ class ModelManager:
                 await self.load_latest()
             except Exception as e:
                 logger.error(f"Reload failed: {e}")
+
 
 model_manager = ModelManager()

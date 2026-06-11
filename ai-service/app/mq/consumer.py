@@ -51,10 +51,16 @@ from app.services.resume_orchestrator import process_resume
 logger = logging.getLogger(__name__)
 
 MQ_WORKER_THREADS = int(os.getenv("MQ_WORKER_THREADS", "4"))
-_executor = concurrent.futures.ThreadPoolExecutor(max_workers=MQ_WORKER_THREADS, thread_name_prefix="MqWorker")
+_executor = concurrent.futures.ThreadPoolExecutor(
+    max_workers=MQ_WORKER_THREADS, thread_name_prefix="MqWorker"
+)
 
-JOB_PARSE_FAILED_MESSAGE = "AI service failed while parsing the job posting. Please try again."
-RESUME_PARSE_FAILED_MESSAGE = "AI service failed while parsing the resume. Please try again."
+JOB_PARSE_FAILED_MESSAGE = (
+    "AI service failed while parsing the job posting. Please try again."
+)
+RESUME_PARSE_FAILED_MESSAGE = (
+    "AI service failed while parsing the resume. Please try again."
+)
 JOB_RANK_FAILED_MESSAGE = "AI service failed while ranking jobs. Please try again."
 ERROR_RATE_LIMITED = "RATE_LIMITED"
 ERROR_UPSTREAM_TIMEOUT = "UPSTREAM_TIMEOUT"
@@ -86,12 +92,14 @@ def create_connection() -> pika.BlockingConnection:
         port=RABBITMQ_PORT,
         credentials=credentials,
         heartbeat=60,
-        blocked_connection_timeout=300
+        blocked_connection_timeout=300,
     )
     return pika.BlockingConnection(parameters)
 
 
-def setup_all_queues(channel: pika.adapters.blocking_connection.BlockingChannel) -> None:
+def setup_all_queues(
+    channel: pika.adapters.blocking_connection.BlockingChannel,
+) -> None:
     """Declare exchanges, queues, and bindings for all AI workflow routes.
     声明全部交换器、队列及绑定关系：保证 MQ 拓扑在启动时即就绪，避免运行时动态创建导致的消息丢失。"""
     channel.exchange_declare(
@@ -205,13 +213,27 @@ def classify_ai_error(exc: Exception) -> str:
     while cursor is not None:
         name = cursor.__class__.__name__.lower()
         message = str(cursor).lower()
-        if "ratelimit" in name or "rate limit" in message or "429" in message or "resource_exhausted" in message:
+        if (
+            "ratelimit" in name
+            or "rate limit" in message
+            or "429" in message
+            or "resource_exhausted" in message
+        ):
             return ERROR_RATE_LIMITED
         if "timeout" in name or "timeout" in message or "timed out" in message:
             return ERROR_UPSTREAM_TIMEOUT
-        if "json" in name or "invalid_model_response" in message or "must be an object" in message:
+        if (
+            "json" in name
+            or "invalid_model_response" in message
+            or "must be an object" in message
+        ):
             return ERROR_INVALID_MODEL_RESPONSE
-        if "503" in message or "502" in message or "500" in message or "unavailable" in message:
+        if (
+            "503" in message
+            or "502" in message
+            or "500" in message
+            or "unavailable" in message
+        ):
             return ERROR_UPSTREAM_UNAVAILABLE
         cursor = cursor.__cause__ or cursor.__context__
     return ERROR_UNKNOWN
@@ -224,7 +246,7 @@ def handle_job_message(
 
     try:
         result = process_job(command)
-    except Exception as exc:
+    except Exception:
         logger.exception("Job processing failed: job_id=%s", command.job_id)
         result = build_failed_event(
             reference_id=command.job_id,
@@ -242,7 +264,7 @@ def handle_resume_message(
     command = parse_resume_command(body)
     try:
         result = process_resume(command)
-    except Exception as exc:
+    except Exception:
         logger.exception("Resume processing failed: resume_id=%s", command.resume_id)
         result = build_failed_event(
             reference_id=command.resume_id,
@@ -261,7 +283,10 @@ def handle_conversation_message(
     try:
         result = process_conversation(command)
     except Exception as exc:
-        logger.exception("Conversation processing failed: conversation_id=%s", command.conversation_id)
+        logger.exception(
+            "Conversation processing failed: conversation_id=%s",
+            command.conversation_id,
+        )
         error_code = classify_ai_error(exc)
         result = AiResultEvent(
             referenceId=command.conversation_id,
@@ -278,6 +303,7 @@ def handle_conversation_message(
 
     return result
 
+
 def handle_job_rank_message(
     body: bytes,
 ) -> AiResultEvent:
@@ -291,12 +317,14 @@ def handle_job_rank_message(
             status="COMPLETED",
             data=JobRankResultData(
                 rankTimeMs=result.rank_time_ms,
-                rankedResults=[item.model_dump(by_alias=True) for item in result.ranked_results],
+                rankedResults=[
+                    item.model_dump(by_alias=True) for item in result.ranked_results
+                ],
             ),
             errorMessage=None,
             eventType=None,
         )
-    except Exception as exc:
+    except Exception:
         logger.exception("Job rank processing failed: match_id=%s", command.match_id)
         return AiResultEvent(
             referenceId=command.match_id,
@@ -311,13 +339,11 @@ def handle_job_rank_message(
         )
 
 
-
-
-
 def _async_handler(wrapped_handler, log_message_metadata: bool = False):
     """Wrap MQ message handlers with ACK/NACK logic via thread-safe RabbitMQ callbacks.
     包装 MQ 消息处理器：业务逻辑在当前线程池执行，ACK/NACK 和 publish 通过 thread-safe 回调提交，
     避免在消费者线程中直接操作 channel 引发并发冲突。"""
+
     def wrapper(ch, method, properties, body) -> None:
         delivery_tag = method.delivery_tag
 
@@ -331,11 +357,11 @@ def _async_handler(wrapped_handler, log_message_metadata: bool = False):
         def worker_task():
             try:
                 result = wrapped_handler(body)
-                
+
                 def safe_publish_and_ack():
                     publish_ai_result(ch, result)
                     ch.basic_ack(delivery_tag=delivery_tag)
-                    
+
                 ch.connection.add_callback_threadsafe(safe_publish_and_ack)
             except Exception:
                 logger.exception("Handler failed, tag=%s", delivery_tag)
@@ -348,7 +374,9 @@ def _async_handler(wrapped_handler, log_message_metadata: bool = False):
     return wrapper
 
 
-def start_all_consumers(channel: pika.adapters.blocking_connection.BlockingChannel) -> None:
+def start_all_consumers(
+    channel: pika.adapters.blocking_connection.BlockingChannel,
+) -> None:
     """Start consuming from all AI workflow queues with prefetch=1 for fair distribution.
     启动所有消费者：prefetch_count=1 保证消息在多个 worker 间公平分发，防止单个任务阻塞后续消息。"""
     channel.basic_qos(prefetch_count=MQ_WORKER_THREADS)
@@ -365,7 +393,9 @@ def start_all_consumers(channel: pika.adapters.blocking_connection.BlockingChann
     )
     channel.basic_consume(
         queue=CONVERSATION_REQUEST_QUEUE,
-        on_message_callback=_async_handler(handle_conversation_message, log_message_metadata=True),
+        on_message_callback=_async_handler(
+            handle_conversation_message, log_message_metadata=True
+        ),
         auto_ack=False,
     )
     channel.basic_consume(

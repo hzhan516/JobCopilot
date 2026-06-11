@@ -7,7 +7,6 @@ from app.services.job_parser import (
 )
 from app.services.web_scraper import scrape_job_page
 
-
 # Minimum text length to trust scraped content before falling back to vision.
 # 抓取文本可信度阈值：低于此长度时优先使用截图解析，避免脏数据进入下游。
 MIN_SCRAPED_TEXT_LENGTH = 200
@@ -63,7 +62,9 @@ def process_job(command: JobParseCommand) -> AiResultEvent:
     else:
         if scrape_error:
             raise scrape_error
-        raise ValueError("Unable to parse job posting from URL and no screenshotUrl was provided.")
+        raise ValueError(
+            "Unable to parse job posting from URL and no screenshotUrl was provided."
+        )
 
     return AiResultEvent(
         referenceId=command.job_id,

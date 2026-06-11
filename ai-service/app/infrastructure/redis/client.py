@@ -6,13 +6,15 @@ from app.config import REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_KEY_PREFIX
 
 logger = logging.getLogger(__name__)
 
+
 def get_redis_client() -> redis.Redis:
     return redis.Redis(
         host=REDIS_HOST,
         port=REDIS_PORT,
         password=REDIS_PASSWORD or None,
-        decode_responses=True
+        decode_responses=True,
     )
+
 
 class RedisBuffer:
     def __init__(self):
@@ -28,7 +30,7 @@ class RedisBuffer:
         pipe.lrange(self.buffer_key, 0, -1)
         pipe.delete(self.buffer_key)
         results, _ = await pipe.execute()
-        
+
         samples = []
         for raw in results:
             try:

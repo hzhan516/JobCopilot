@@ -1,27 +1,26 @@
-import json
 import logging
 
 import requests
 from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
 
 from app.config import (
-    BACKEND_QUERY_TIMEOUT,
     BACKEND_SERVICE_URL,
     INTERNAL_API_KEY,
     LLM_EMBEDDING_MODEL,
     BACKEND_BATCH_UPSERT_TIMEOUT,
 )
-
-logger = logging.getLogger(__name__)
-
 from app.schemas import (
     BatchVectorUpsertResponse,
     JobVectorItem,
     ResumeVectorItem,
 )
 
+logger = logging.getLogger(__name__)
+
 JOB_VECTOR_BATCH_URL = f"{BACKEND_SERVICE_URL.rstrip('/')}/api/v1/job-vectors/batch"
-RESUME_VECTOR_BATCH_URL = f"{BACKEND_SERVICE_URL.rstrip('/')}/api/v1/resume-vectors/batch"
+RESUME_VECTOR_BATCH_URL = (
+    f"{BACKEND_SERVICE_URL.rstrip('/')}/api/v1/resume-vectors/batch"
+)
 
 # Exponential backoff with jitter for transient backend failures (network blips, short outages).
 # Prevents thundering herd when multiple AI workers retry simultaneously.
@@ -54,7 +53,10 @@ def batch_upsert_job_vectors(items: list[JobVectorItem]) -> BatchVectorUpsertRes
             body = body["data"]
         return BatchVectorUpsertResponse.model_validate(body)
     except requests.exceptions.RequestException:
-        logger.exception("Backend network error during job vector upsert, url=%s", JOB_VECTOR_BATCH_URL)
+        logger.exception(
+            "Backend network error during job vector upsert, url=%s",
+            JOB_VECTOR_BATCH_URL,
+        )
         return BatchVectorUpsertResponse(
             total=len(items),
             failed=len(items),
@@ -63,7 +65,9 @@ def batch_upsert_job_vectors(items: list[JobVectorItem]) -> BatchVectorUpsertRes
 
 
 @RETRY_STRATEGY
-def batch_upsert_resume_vectors(items: list[ResumeVectorItem]) -> BatchVectorUpsertResponse:
+def batch_upsert_resume_vectors(
+    items: list[ResumeVectorItem],
+) -> BatchVectorUpsertResponse:
     """Batch upsert resume embeddings to the backend vector store.
     批量写入简历向量：与职位向量使用相同的重试策略，保证双写一致性。"""
     if not items:
@@ -84,7 +88,10 @@ def batch_upsert_resume_vectors(items: list[ResumeVectorItem]) -> BatchVectorUps
             body = body["data"]
         return BatchVectorUpsertResponse.model_validate(body)
     except requests.exceptions.RequestException:
-        logger.exception("Backend network error during resume vector upsert, url=%s", RESUME_VECTOR_BATCH_URL)
+        logger.exception(
+            "Backend network error during resume vector upsert, url=%s",
+            RESUME_VECTOR_BATCH_URL,
+        )
         return BatchVectorUpsertResponse(
             total=len(items),
             failed=len(items),
@@ -122,5 +129,3 @@ def _build_resume_vector_item(
         resume_version_id=reference_id,
         embedding=embedding,
     )
-
-
