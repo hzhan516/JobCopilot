@@ -1,21 +1,21 @@
 # Default owners for everything in the repo — require 2-person review
-*                      @hzhan516 @guixingj
+*                      @hzhan516 @GuixingJia
 
 # ───────────────────────────────────────────────
 # Backend (Hexagonal Architecture)
 # ───────────────────────────────────────────────
-/backend/api/          @hzhan516 @guixingj
-/backend/app/          @hzhan516 @guixingj
-/backend/domain/       @hzhan516 @guixingj
-/backend/infrastructure/ @hzhan516 @guixingj
-/backend/trigger/      @hzhan516 @guixingj
-/backend/types/        @hzhan516 @guixingj
-/backend/pom.xml       @hzhan516 @guixingj
+/backend/api/          @hzhan516 @GuixingJia
+/backend/app/          @hzhan516 @GuixingJia
+/backend/domain/       @hzhan516 @GuixingJia
+/backend/infrastructure/ @hzhan516 @GuixingJia
+/backend/trigger/      @hzhan516 @GuixingJia
+/backend/types/        @hzhan516 @GuixingJia
+/backend/pom.xml       @hzhan516 @GuixingJia
 
 # ───────────────────────────────────────────────
 # Frontend
 # ───────────────────────────────────────────────
-/frontend/             @guixingj @mhsiy
+/frontend/             @GuixingJia @mhsiy
 
 # ───────────────────────────────────────────────
 # AI Service
@@ -39,17 +39,17 @@
 # ───────────────────────────────────────────────
 # CI/CD & GitHub
 # ───────────────────────────────────────────────
-/.github/              @hzhan516 @guixingj
+/.github/              @hzhan516 @GuixingJia
 
 # ───────────────────────────────────────────────
 # Documentation (All i18n variants)
 # ───────────────────────────────────────────────
-/docs/                 @guixingj @mhsiy
-*.md                   @guixingj @mhsiy
+/docs/                 @GuixingJia @mhsiy
+*.md                   @GuixingJia @mhsiy
 
 # ───────────────────────────────────────────────
 # Security-sensitive areas — require extra review
 # ───────────────────────────────────────────────
-/backend/domain/auth/   @hzhan516 @guixingj
-/backend/infrastructure/security/ @hzhan516 @guixingj
-/frontend/src/auth/     @guixingj @mhsiy
+/backend/domain/auth/   @hzhan516 @GuixingJia
+/backend/infrastructure/security/ @hzhan516 @GuixingJia
+/frontend/src/auth/     @GuixingJia @mhsiy
