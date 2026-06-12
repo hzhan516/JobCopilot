@@ -7,6 +7,7 @@ import io.jobcopilot.resumeassistant.api.conversation.dto.SendMessageRequest;
 import io.jobcopilot.resumeassistant.api.conversation.facade.ConversationFacade;
 import io.jobcopilot.resumeassistant.domain.conversation.exception.ConversationException;
 import io.jobcopilot.resumeassistant.infrastructure.messaging.stream.ConversationStreamService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -192,8 +193,9 @@ class ConversationControllerTest {
         when(streamService.awaitReply(CONVERSATION_ID.toString())).thenReturn(expectedReply);
 
         // 执行 / When
+        HttpServletResponse mockResponse = mock(HttpServletResponse.class);
         ResponseEntity<StreamingResponseBody> response = conversationController.streamAiReply(
-                CONVERSATION_ID.toString(), USER_ID);
+                CONVERSATION_ID.toString(), USER_ID, mockResponse);
 
         // 验证 / Then
         assertThat(response.getStatusCode().value()).isEqualTo(200);
@@ -204,6 +206,8 @@ class ConversationControllerTest {
         String actualContent = baos.toString(StandardCharsets.UTF_8);
         assertThat(actualContent).isEqualTo(expectedReply);
 
+        verify(mockResponse).setHeader("X-Content-Type-Options", "nosniff");
+        verify(mockResponse).setHeader("X-XSS-Protection", "1; mode=block");
         verify(conversationFacade).getConversation(CONVERSATION_ID.toString(), USER_ID, null, null);
         verify(streamService).awaitReply(CONVERSATION_ID.toString());
     }
@@ -217,8 +221,9 @@ class ConversationControllerTest {
                 .thenThrow(new ConversationException("access.denied"));
 
         // 执行 & 验证 / When & Then
+        HttpServletResponse mockResponse = mock(HttpServletResponse.class);
         try {
-            conversationController.streamAiReply(CONVERSATION_ID.toString(), otherUserId);
+            conversationController.streamAiReply(CONVERSATION_ID.toString(), otherUserId, mockResponse);
         } catch (ConversationException e) {
             assertThat(e.getMessage()).contains("access.denied");
         }
@@ -235,13 +240,41 @@ class ConversationControllerTest {
         when(streamService.awaitReply(CONVERSATION_ID.toString())).thenReturn(null);
 
         // 执行 / When
+        HttpServletResponse mockResponse = mock(HttpServletResponse.class);
         ResponseEntity<StreamingResponseBody> response = conversationController.streamAiReply(
-                CONVERSATION_ID.toString(), USER_ID);
+                CONVERSATION_ID.toString(), USER_ID, mockResponse);
 
         // 验证 / Then
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         response.getBody().writeTo(baos);
         String actualContent = baos.toString(StandardCharsets.UTF_8);
         assertThat(actualContent).contains("timed out").contains("超时");
+
+        verify(mockResponse).setHeader("X-Content-Type-Options", "nosniff");
+        verify(mockResponse).setHeader("X-XSS-Protection", "1; mode=block");
+    }
+
+    @Test
+    @DisplayName("Should strip HTML tags from streamed AI reply")
+    void shouldStripHtmlTagsFromStreamedReply() throws Exception {
+        // 准备 / Given
+        when(conversationFacade.getConversation(CONVERSATION_ID.toString(), USER_ID, null, null))
+                .thenReturn(testConversationResponse);
+        when(streamService.awaitReply(CONVERSATION_ID.toString()))
+                .thenReturn("<script>alert('xss')</script><b>Hello</b> World");
+
+        // 执行 / When
+        HttpServletResponse mockResponse = mock(HttpServletResponse.class);
+        ResponseEntity<StreamingResponseBody> response = conversationController.streamAiReply(
+                CONVERSATION_ID.toString(), USER_ID, mockResponse);
+
+        // 验证 / Then
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        response.getBody().writeTo(baos);
+        String actualContent = baos.toString(StandardCharsets.UTF_8);
+        assertThat(actualContent).doesNotContain("<script>");
+        assertThat(actualContent).doesNotContain("<b>");
+        assertThat(actualContent).contains("Hello");
+        assertThat(actualContent).contains("World");
     }
 }
