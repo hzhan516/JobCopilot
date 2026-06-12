@@ -82,6 +82,10 @@ storage:
     date-subdirectory: ${LOCAL_STORAGE_DATE_SUBDIR:true}
     url-prefix: ${LOCAL_STORAGE_URL_PREFIX:}
 
+  # Presigned URL expiry for conversation attachments and other time-limited storage access.
+  # Presigned URL 过期时间，用于对话附件及其他限时存储访问。
+  presigned-url-expiration-hours: ${STORAGE_PRESIGNED_EXPIRY_HOURS:7}
+
 # 应用级配置 / Application-level configuration
 app:
   embedding:
