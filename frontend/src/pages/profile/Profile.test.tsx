@@ -108,7 +108,7 @@ vi.mock('@/components/ui/select', () => ({
 }))
 
 vi.mock('@/components/ui/form', () => ({
-  Form: ({ children }: any) => <form>{children}</form>,
+  Form: ({ children }: any) => <div>{children}</div>,
   FormControl: ({ children }: any) => <div>{children}</div>,
   FormField: ({ render, name }: any) => render({ field: { value: '', onChange: vi.fn(), name } }),
   FormItem: ({ children }: any) => <div>{children}</div>,

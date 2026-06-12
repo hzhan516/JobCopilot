@@ -58,7 +58,7 @@ vi.mock('sonner', () => ({
 // Mock UI components
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, disabled, variant, size, className, asChild }: any) => {
-    if (asChild) return <a className={className}>{children}</a>
+    if (asChild) return <>{children}</>
     return <button onClick={onClick} disabled={disabled} className={className}>{children}</button>
   },
 }))
@@ -344,8 +344,6 @@ describe('JobDetail page', () => {
     mockGetResumeGroups.mockResolvedValue([])
     mockGetScoreHistory.mockResolvedValue([])
     mockTrackAction.mockResolvedValue({})
-
-    const { toast } = await import('sonner')
 
     renderJobDetail()
 
