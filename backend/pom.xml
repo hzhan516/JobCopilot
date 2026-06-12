@@ -62,8 +62,8 @@
         <jjwt.version>0.12.6</jjwt.version>
 
         <!-- Testing -->
-        <archunit.version>1.2.1</archunit.version>
-        <assertj.version>3.25.3</assertj.version>
+        <archunit.version>1.4.2</archunit.version>
+        <assertj.version>3.27.7</assertj.version>
     </properties>
 
     <dependencyManagement>
