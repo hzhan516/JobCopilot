@@ -165,15 +165,17 @@ jobs:
       # dependency update PRs with transient false-positives.
 
   # ───────────────────────────────────────────────
-  # Docker Build Test
+  # Docker Build & Push
   # ───────────────────────────────────────────────
   docker-build-test:
-    name: Docker Build Test
+    name: Docker Build & Push
     runs-on: ubuntu-latest
-    # Skip Docker build for Dependabot PRs to save CI minutes. Dependency manifest
-    # changes do not affect Docker image build logic, and the regular CI already
-    # validates that each service builds correctly.
-    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+    # Build on non-Dependabot PRs to validate Dockerfiles. Also build and push
+    # images to GHCR when changes land on main or develop so that deployable
+    # artifacts are always available from GitHub.
+    if: |
+      (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]') ||
+      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'))
     strategy:
       fail-fast: false
       matrix:
@@ -184,11 +186,33 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Login to GitHub Container Registry
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/jobcopilot-${{ matrix.service }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
+
       - name: Build Docker image (${{ matrix.service }})
         uses: docker/build-push-action@v6
         with:
           context: ./${{ matrix.service }}
-          push: false
-          tags: jobcopilot/${{ matrix.service }}:ci-test
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL || '' }}
+            VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID || '' }}
