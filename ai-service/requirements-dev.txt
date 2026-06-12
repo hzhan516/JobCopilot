@@ -1,0 +1,9 @@
+# AI 服务开发/CI 专用依赖
+# 这些工具不进入生产 Docker 镜像，仅在本地开发和 GitHub Actions 中使用
+
+# Linter / Formatter
+ruff==0.8.4
+black==24.10.0
+
+# pytest 插件
+pytest-timeout==2.3.1
