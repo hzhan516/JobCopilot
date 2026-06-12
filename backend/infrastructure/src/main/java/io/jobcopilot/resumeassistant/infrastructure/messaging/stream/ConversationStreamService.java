@@ -46,7 +46,6 @@ public class ConversationStreamService implements ConversationStreamPort, Messag
 
     // 本地快速路径 / Local fast path
     private final ConcurrentHashMap<String, CompletableFuture<String>> localPending = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, String> localEarly = new ConcurrentHashMap<>();
 
     public ConversationStreamService(StringRedisTemplate redisTemplate,
                                      @Autowired(required = false) RedisMessageListenerContainer redisContainer) {
@@ -69,14 +68,7 @@ public class ConversationStreamService implements ConversationStreamPort, Messag
     }
 
     public String awaitReply(String conversationId, long timeout, TimeUnit unit) {
-        // 1. 检查本地 early reply / Check local early reply
-        String early = localEarly.remove(conversationId);
-        if (early != null) {
-            log.info("Found local early reply for conversation: {}, returning immediately", conversationId);
-            return early;
-        }
-
-        // 2. 检查 Redis early reply（其他实例提前到达）/ Check Redis early reply (arrived on another instance)
+        // 1. 检查 Redis early reply（其他实例提前到达）/ Check Redis early reply (arrived on another instance)
         String redisEarly = redisTemplate.opsForValue().get(EARLY_PREFIX + conversationId);
         if (redisEarly != null) {
             redisTemplate.delete(EARLY_PREFIX + conversationId);
@@ -84,7 +76,7 @@ public class ConversationStreamService implements ConversationStreamPort, Messag
             return redisEarly;
         }
 
-        // 3. 注册本地 pending future，并设置 Redis 心跳标记 / Register local pending future and Redis heartbeat
+        // 2. 注册本地 pending future，并设置 Redis 心跳标记 / Register local pending future and Redis heartbeat
         CompletableFuture<String> future = new CompletableFuture<>();
         CompletableFuture<String> existing = localPending.putIfAbsent(conversationId, future);
         if (existing != null) {
