@@ -3,7 +3,6 @@
 # -----------------------------------------------------------------------------
 # Automatically enables auto-merge for Dependabot PRs that:
 #   - are opened by dependabot[bot]
-#   - carry the "dependencies" label
 #   - are patch-level updates only (semver-patch)
 #   - have passed required status checks
 #
@@ -33,9 +32,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable auto-merge for patch updates
-        if: |
-          contains(github.event.pull_request.labels.*.name, 'dependencies') &&
-          steps.metadata.outputs.update-type == 'version-update:semver-patch'
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch'
         run: |
           gh pr merge --auto --squash "$PR_URL"
         env:
@@ -43,22 +40,17 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Comment on minor updates
-        if: |
-          contains(github.event.pull_request.labels.*.name, 'dependencies') &&
-          steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        if: steps.metadata.outputs.update-type == 'version-update:semver-minor'
         uses: actions/github-script@v7
         with:
           script: |
-            const labels = context.payload.pull_request.labels.map(l => l.name);
-            if (labels.includes('dependencies')) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: [
-                  '🤖 This is a **minor** Dependabot update.',
-                  '',
-                  'It requires **one human review** before merging. Please verify release notes for any behavior changes and approve when ready.'
-                ].join('\n')
-              });
-            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: [
+                '🤖 This is a **minor** Dependabot update.',
+                '',
+                'It requires **one human review** before merging. Please verify release notes for any behavior changes and approve when ready.'
+              ].join('\n')
+            });
