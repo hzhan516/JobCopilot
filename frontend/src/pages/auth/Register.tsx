@@ -108,20 +108,6 @@ export default function Register() {
   const passwordValue = useWatch({ control: form.control, name: 'password' });
   const strength = useMemo(() => getPasswordStrength(passwordValue || ''), [passwordValue]);
 
-  // 恢复倒计时状态（页面刷新后） / Restore countdown state after page refresh
-  useEffect(() => {
-    const sentAt = sessionStorage.getItem(STORAGE_KEY);
-    if (sentAt) {
-      const elapsed = Math.floor((Date.now() - parseInt(sentAt, 10)) / 1000);
-      const remaining = COOLDOWN_SECONDS - elapsed;
-      if (remaining > 0) {
-        setCountdown(remaining);
-      } else {
-        sessionStorage.removeItem(STORAGE_KEY);
-      }
-    }
-  }, []);
-
   // 倒计时逻辑 / Countdown logic
   const isCountingDown = countdown > 0;
   useEffect(() => {

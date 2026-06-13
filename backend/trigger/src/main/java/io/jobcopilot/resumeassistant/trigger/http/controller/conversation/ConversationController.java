@@ -7,6 +7,7 @@ import io.jobcopilot.resumeassistant.api.conversation.dto.SendMessageRequest;
 import io.jobcopilot.resumeassistant.api.conversation.facade.ConversationFacade;
 import io.jobcopilot.resumeassistant.infrastructure.messaging.stream.ConversationStreamService;
 import io.jobcopilot.resumeassistant.trigger.http.security.CurrentUser;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -104,11 +105,16 @@ public class ConversationController {
     @GetMapping(value = "/{conversationId}/stream", produces = MediaType.TEXT_PLAIN_VALUE)
     public ResponseEntity<StreamingResponseBody> streamAiReply(
             @PathVariable String conversationId,
-            @CurrentUser UUID userId) {
+            @CurrentUser UUID userId,
+            HttpServletResponse response) {
         log.info("REST stream request for conversation: {}", conversationId);
 
         // verify ownership before blocking on the stream | 在阻塞等待流之前先校验所有权，防止跨用户流劫持
         conversationFacade.getConversation(conversationId, userId, null, null);
+
+        // defense-in-depth security headers | 纵深防御安全头
+        response.setHeader("X-Content-Type-Options", "nosniff");
+        response.setHeader("X-XSS-Protection", "1; mode=block");
 
         return ResponseEntity.ok()
                 .contentType(MediaType.TEXT_PLAIN)
@@ -116,6 +122,8 @@ public class ConversationController {
                     try {
                         String reply = streamService.awaitReply(conversationId);
                         if (reply != null) {
+                            // Strip HTML tags as defense-in-depth; Content-Type is text/plain
+                            reply = reply.replaceAll("<[^>]*>", "");
                             outputStream.write(reply.getBytes(StandardCharsets.UTF_8));
                         } else {
                             String timeoutMsg = "AI reply timed out. Please try again later.\n" +

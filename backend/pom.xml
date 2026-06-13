@@ -31,14 +31,12 @@
         <jdk.min.version>21</jdk.min.version>
 
         <!-- 框架版本 -->
-        <spring-boot.version>3.5.7</spring-boot.version>
+        <spring-boot.version>3.5.15</spring-boot.version>
         <postgresql.version>42.7.4</postgresql.version>
         <hibernate.version>6.6.33.Final</hibernate.version>
         <pgvector.version>0.1.6</pgvector.version>
         <lombok.version>1.18.36</lombok.version>
         <mapstruct.version>1.6.3</mapstruct.version>
-        <jackson.version>2.18.2</jackson.version>
-        <validation-api.version>3.1.0</validation-api.version>
         <minio.version>8.5.17</minio.version>
         <shedlock.version>6.3.1</shedlock.version>
 
@@ -49,7 +47,6 @@
         <itextpdf.version>5.5.13.3</itextpdf.version>
         <openpdf.version>2.0.3</openpdf.version>
         <pdfbox.version>3.0.2</pdfbox.version>
-        <poi-ooxml.version>5.2.5</poi-ooxml.version>
         <documents4j-local.version>1.1.12</documents4j-local.version>
         <flexmark.version>0.64.8</flexmark.version>
         <jodconverter-local.version>4.4.7</jodconverter-local.version>
@@ -166,11 +163,6 @@
                 <groupId>org.apache.pdfbox</groupId>
                 <artifactId>pdfbox</artifactId>
                 <version>${pdfbox.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.poi</groupId>
-                <artifactId>poi-ooxml</artifactId>
-                <version>${poi-ooxml.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.documents4j</groupId>

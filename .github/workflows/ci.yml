@@ -170,6 +170,9 @@ jobs:
   docker-build-test:
     name: Docker Build & Push
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     # Build on non-Dependabot PRs to validate Dockerfiles. Also build and push
     # images to GHCR when changes land on main or develop so that deployable
     # artifacts are always available from GitHub.

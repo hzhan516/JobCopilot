@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { authService } from '@/services/api';
 import { Check, X, Loader2 } from 'lucide-react';
@@ -35,20 +35,18 @@ export default function SliderCaptcha({
   const handleWidth = 40;
   const maxOffset = trackWidth - handleWidth;
 
-  const loadChallenge = useCallback(async () => {
-    try {
-      const result = await authService.getCaptchaChallenge();
-      setChallenge(result);
-      setOffsetX(0);
-      setStatus('idle');
-    } catch {
-      onError?.();
-    }
-  }, [onError]);
-
   useEffect(() => {
-    loadChallenge();
-  }, [loadChallenge]);
+    authService.getCaptchaChallenge()
+      .then((result) => {
+        setChallenge(result);
+        setOffsetX(0);
+        setStatus('idle');
+      })
+      .catch(() => {
+        onError?.();
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (isVerifying || status === 'success') return;
@@ -91,7 +89,16 @@ export default function SliderCaptcha({
       // 短暂显示错误状态后重新加载挑战
       // Reload challenge after briefly showing error state
       setTimeout(() => {
-        loadChallenge();
+        authService
+          .getCaptchaChallenge()
+          .then((result) => {
+            setChallenge(result);
+            setOffsetX(0);
+            setStatus('idle');
+          })
+          .catch(() => {
+            onError?.();
+          });
       }, 800);
       onError?.();
     } finally {
