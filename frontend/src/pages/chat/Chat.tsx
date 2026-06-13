@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import type { Conversation, Message, ResumeGroup, Job } from '@/types';
 import { useTranslation } from 'react-i18next';
 import { formatTime } from '@/utils/i18n';
@@ -81,6 +81,15 @@ export default function Chat() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const handleNewDialogOpenChange = (open: boolean) => {
+    setNewDialogOpen(open);
+    if (!open) {
+      setNewChatTitle('');
+      setSelectedResumeVersionId('');
+      setSelectedJobId('');
+    }
+  };
+
   const syncConversation = (conversation: Conversation) => {
     setActiveConversation(conversation);
     setMessages(normalizeMessages(conversation));
@@ -95,61 +104,54 @@ export default function Chat() {
     });
   };
 
-  const loadConversations = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await chatService.getConversations();
-      setConversations(data);
-      if (data.length > 0) {
-        syncConversation(data[0]);
-      } else {
-        setActiveConversation(null);
-        setMessages([]);
-      }
-    } catch {
-      toast.error(t('chat.loadError'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [t]);
-
-  const loadResumes = useCallback(async () => {
-    try {
-      const data = await resumeService.getResumeGroups();
-      setResumes(data);
-    } catch {
-      // Silently degrade — resume loading failure shouldn't block chat functionality
-      // 静默降级，简历加载失败不应阻塞聊天功能
-    }
-  }, []);
-
-  const loadJobs = useCallback(async () => {
-    try {
-      const data = await jobService.getJobs();
-      setJobs(data);
-    } catch {
-      // Silently degrade — job loading failure shouldn't block chat functionality
-      // 静默降级，职位加载失败不应阻塞聊天功能
-    }
-  }, []);
-
   useEffect(() => {
-    loadConversations();
-    loadResumes();
-    loadJobs();
-  }, [loadConversations, loadResumes, loadJobs]);
+    let ignored = false;
+
+    void (async () => {
+      try {
+        setIsLoading(true);
+        const data = await chatService.getConversations();
+        if (ignored) return;
+        setConversations(data);
+        if (data.length > 0) {
+          syncConversation(data[0]);
+        } else {
+          setActiveConversation(null);
+          setMessages([]);
+        }
+      } catch {
+        if (!ignored) toast.error(t('chat.loadError'));
+      } finally {
+        if (!ignored) setIsLoading(false);
+      }
+
+      try {
+        const data = await resumeService.getResumeGroups();
+        if (ignored) return;
+        setResumes(data);
+      } catch {
+        // Silently degrade — resume loading failure shouldn't block chat functionality
+        // 静默降级，简历加载失败不应阻塞聊天功能
+      }
+
+      try {
+        const data = await jobService.getJobs();
+        if (ignored) return;
+        setJobs(data);
+      } catch {
+        // Silently degrade — job loading failure shouldn't block chat functionality
+        // 静默降级，职位加载失败不应阻塞聊天功能
+      }
+    })();
+
+    return () => {
+      ignored = true;
+    };
+  }, [t]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  useEffect(() => {
-    if (!newDialogOpen) {
-      setNewChatTitle('');
-      setSelectedResumeVersionId('');
-      setSelectedJobId('');
-    }
-  }, [newDialogOpen]);
 
   const activeResumeName = useMemo(() => {
     const resumeVersionId = activeConversation?.resumeVersionId;
@@ -403,7 +405,7 @@ export default function Chat() {
     <div className="h-[calc(100vh-8rem)] flex gap-6">
       <div className="w-64 hidden lg:flex flex-col bg-white rounded-xl border shadow-sm">
         <div className="p-4 border-b">
-          <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
+          <Dialog open={newDialogOpen} onOpenChange={handleNewDialogOpenChange}>
             <DialogTrigger asChild>
               <Button className="w-full">
                 <Plus className="w-4 h-4 mr-2" />
