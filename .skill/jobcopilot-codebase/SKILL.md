@@ -13,7 +13,7 @@ JobCopilot is an AI-powered job search platform with three main services:
 |-------|------|-------------|-----------------|
 | **Frontend** | React 19 + Vite 7 + TypeScript 5.9 | `frontend/src/App.tsx` → `main.tsx` | 5173 (dev) |
 | **Backend** | Java 21 + Spring Boot 3.5 + Maven | `backend/app/.../Application.java` | 8080 |
-| **AI Service** | Python 3.11 + FastAPI + LiteLLM | `ai-service/app/main.py` | 8000 |
+| **AI Service** | Python 3.11+ + FastAPI + LiteLLM | `ai-service/app/main.py` | 8000 |
 
 **Quick start**: `docker compose --env-file .env up -d --build`
 **Root env file**: `.env.example` → copy to `.env` and fill secrets.
@@ -128,6 +128,46 @@ Maven modules in dependency order (top→bottom = caller→callee):
 
 ---
 
+## Agent Architecture
+
+The project uses a subagent architecture with 9 specialized agents. Each agent owns a specific business domain end-to-end across frontend/backend/ai-service. Agent definitions live in `.qoder/agents/`.
+
+| Agent | Layer Coverage | Domain | Use When |
+|-------|---------------|--------|----------|
+| **architect-agent** | Cross-layer (design) | Architecture decisions, task decomposition | Cross-module changes, implementation path decisions, plan reviews |
+| **auth-profile-agent** | Frontend + Backend | Auth (JWT/OAuth/CAPTCHA) + user profile | Login, register, OAuth, JWT refresh, CAPTCHA, profile, permissions |
+| **resume-agent** | Frontend + Backend + AI | Resume upload → parse → versions → edit → download | Resume CRUD, PDF/DOCX parsing, versions, parse status |
+| **job-matching-agent** | Frontend + Backend + AI | Job CRUD → pgvector recall → ranking → suitability → display | Job matching, match scores, pgvector search, suitability |
+| **conversation-agent** | Frontend + Backend + AI | Chat lifecycle → context assembly → AI reply → WebSocket push | Chat page, conversation API, context references, AI replies |
+| **tracking-agent** | Frontend + Backend | Application status flow → kanban → stats → follow-up notes | Applications, status transitions, statistics, follow-up records |
+| **ai-pipeline-agent** | AI Service only | LiteLLM gateway → embedding → worker → training → model mgmt → eval | LLM providers, embedding dims, workers, LightGBM, MinIO, Redis pipeline |
+| **platform-agent** | Infrastructure | Docker, MQ, Outbox, pgvector, Redis, MinIO, env vars, CI/CD | docker-compose, networking, queues, DB, deployment, CI workflows |
+| **qa-review-agent** | Cross-layer (quality) | Code review, test strategy, architecture rules, regression risk, security scan | Feature review, test failures, CI failures, coverage gaps, pre-release gate |
+
+**Agent interaction flow**:
+```
+architect-agent (planning & delegation)
+  ├── auth-profile-agent (auth + profile, security-critical)
+  ├── resume-agent (business implementation)
+  ├── job-matching-agent (business implementation)
+  ├── conversation-agent (business implementation)
+  ├── tracking-agent (business implementation, no AI dependency)
+  ├── ai-pipeline-agent (AI infrastructure, called by business agents)
+  ├── platform-agent (infrastructure foundation, used by all)
+  └── qa-review-agent (quality gatekeeper, reviews all agents' output)
+```
+
+**Key rules**:
+- architect-agent designs and delegates, does NOT implement
+- Business agents (resume/job-matching/conversation) call ai-pipeline-agent for LLM/embedding/model needs
+- ai-pipeline-agent is the ONLY entry point for LLM calls (via LiteLLM)
+- platform-agent owns Docker, MQ, Outbox, DB, env vars — all other agents depend on it
+- auth-profile-agent owns the security perimeter — all other agents respect its token/cookie boundaries
+- qa-review-agent is the final gatekeeper — must pass review before any feature is considered complete
+- Each agent has explicit MUST DO / MUST NOT DO constraints in its definition file
+
+---
+
 ## Key Data Flows
 
 ### Resume Upload → Parse
@@ -143,6 +183,15 @@ User upload → Backend saves file + metadata
 Frontend request → Backend pgvector cosine similarity search
   → AI Service / RabbitMQ for ranking → LiteLLM rank/explain
   → Return scored jobs to frontend
+```
+
+### Conversation / Chat
+```
+User message → Backend saves + assembles context (resume/job data)
+  → Outbox → RabbitMQ ai.queue.conversation
+  → AI Service conversation_service → LiteLLM generate reply
+  → Backend AiResultMessageListener → WebSocket push to frontend
+  → Frontend renders AI reply (with Markdown, context labels)
 ```
 
 ### Feedback → Incremental Training
@@ -180,6 +229,8 @@ This skill is a **living document**. When you make significant code changes, upd
 3. **After adding new data flows**: Add to "Key Data Flows"
 4. **After changing technology versions**: Update the Quick Reference
 5. **After adding new bounded contexts**: Update domain sub-packages list
+6. **After adding/removing agents**: Update the Agent Architecture section
+7. **After changing agent responsibilities**: Update the agent table and interaction flow
 
 ### Update Procedure
 1. Read the relevant section of this SKILL.md
@@ -203,10 +254,22 @@ This skill is a **living document**. When you make significant code changes, upd
 - [data-flows.md](data-flows.md) — Detailed sequence diagrams for all primary flows
 - [conventions.md](conventions.md) — Coding conventions, naming, code review standards
 
+## Agent Definitions
+
+- [architect-agent](../../agents/architect-agent.md) — Architecture decisions, task decomposition, delegation
+- [auth-profile-agent](../../agents/auth-profile-agent.md) — Auth (JWT/OAuth/CAPTCHA) + user profile
+- [resume-agent](../../agents/resume-agent.md) — Resume upload/parse/versions/edit/download
+- [job-matching-agent](../../agents/job-matching-agent.md) — Job CRUD, pgvector recall, ranking, suitability
+- [conversation-agent](../../agents/conversation-agent.md) — Chat lifecycle, context assembly, AI reply, WebSocket
+- [tracking-agent](../../agents/tracking-agent.md) — Application status flow, kanban, statistics, follow-up notes
+- [ai-pipeline-agent](../../agents/ai-pipeline-agent.md) — LiteLLM gateway, embedding, worker, training, model mgmt
+- [platform-agent](../../agents/platform-agent.md) — Docker, MQ, Outbox, pgvector, Redis, MinIO, env vars, CI/CD
+- [qa-review-agent](../../agents/qa-review-agent.md) — Code review, test strategy, architecture rules, security scan, pre-release gate
+
 ## External Documentation
 
-- [Architecture overview](file:///home/doyle/Codes/JobCopilot/docs/architecture/Architecture.md)
-- [ADRs](file:///home/doyle/Codes/JobCopilot/docs/adr/)
-- [API docs](file:///home/doyle/Codes/JobCopilot/docs/api/backend/)
-- [Docker deployment](file:///home/doyle/Codes/JobCopilot/docs/deployment/DOCKER_DEPLOY.md)
-- [Environment variables](file:///home/doyle/Codes/JobCopilot/docs/deployment/environment-variables.md)
+- [Architecture overview](../../../docs/architecture/Architecture.md)
+- [ADRs](../../../docs/adr/)
+- [API docs](../../../docs/api/backend/)
+- [Docker deployment](../../../docs/deployment/DOCKER_DEPLOY.md)
+- [Environment variables](../../../docs/deployment/environment-variables.md)
