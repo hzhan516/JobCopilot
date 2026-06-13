@@ -50,8 +50,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   // Debounce 自动保存到后端；冲突时自动禁用，防止覆盖循环
   useEffect(() => {
     if (!onAutoSave || readOnly || !autoSaveEnabledRef.current) return;
-    
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAutoSaveStatus('idle');
     const timer = setTimeout(async () => {
       if (!content.trim()) return;
