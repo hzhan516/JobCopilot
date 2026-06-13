@@ -9,9 +9,7 @@ from dotenv import load_dotenv
 
 # Load the .env file from the upper directory
 # 从上级目录加载 .env 文件，确保本地测试时能读取 Vertex AI 配置。
-env_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "../../", ".env"
-)
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../", ".env")
 if os.path.exists(env_path):
     load_dotenv(env_path)
     print(f"Successfully loaded environment variable file: {env_path}")

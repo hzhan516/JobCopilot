@@ -47,7 +47,11 @@ def test_find_job_matches_large_result_set(mock_generate_embedding, mock_post):
             "title": f"Job {i}",
             "company": "Corp",
             "similarity": 0.9 - i * 0.01,
-            "matchFactors": {"skillMatch": 0.5, "experienceMatch": 0.5, "locationMatch": 0.5},
+            "matchFactors": {
+                "skillMatch": 0.5,
+                "experienceMatch": 0.5,
+                "locationMatch": 0.5,
+            },
         }
         for i in range(100)
     ]
@@ -124,7 +128,11 @@ def test_find_job_matches_thread_safety(mock_generate_embedding, mock_post):
             "title": "Dev",
             "company": "Acme",
             "similarity": 0.8,
-            "matchFactors": {"skillMatch": 0.5, "experienceMatch": 0.5, "locationMatch": 0.5},
+            "matchFactors": {
+                "skillMatch": 0.5,
+                "experienceMatch": 0.5,
+                "locationMatch": 0.5,
+            },
         }
     ]
     mock_post.return_value = mock_response

@@ -36,7 +36,11 @@ def test_extract_search_results():
     # Valid items with required matchFactors fields
     valid_item = {
         "jobId": "test-1",
-        "matchFactors": {"skillMatch": 0.0, "experienceMatch": 0.0, "locationMatch": 0.0},
+        "matchFactors": {
+            "skillMatch": 0.0,
+            "experienceMatch": 0.0,
+            "locationMatch": 0.0,
+        },
     }
     assert len(_extract_search_results([valid_item, valid_item])) == 2
     # Dict payload with data
@@ -170,7 +174,11 @@ def test_find_job_matches_data_assembly_and_clipping(
         },
         {
             "jobId": "job-2",
-            "matchFactors": {"skillMatch": 0.0, "experienceMatch": 0.0, "locationMatch": 0.0},
+            "matchFactors": {
+                "skillMatch": 0.0,
+                "experienceMatch": 0.0,
+                "locationMatch": 0.0,
+            },
         },
     ]
     mock_post.return_value = mock_response

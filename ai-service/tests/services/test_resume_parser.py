@@ -17,8 +17,6 @@ def test_normalize_experience():
     assert _normalize_experience({"title": "Engineer"}) == [
         ExperienceItem(title="Engineer")
     ]
-    assert _normalize_experience("Wrote code") == [
-        ExperienceItem(summary="Wrote code")
-    ]
+    assert _normalize_experience("Wrote code") == [ExperienceItem(summary="Wrote code")]
     assert _normalize_experience("  ") == []
     assert _normalize_experience(None) == []

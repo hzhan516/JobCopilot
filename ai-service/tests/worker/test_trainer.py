@@ -211,9 +211,7 @@ async def test_trainer_handles_meta_update_failure(
             for i in range(5)
         ]
     )
-    mock_minio_registry.update_latest_meta.side_effect = Exception(
-        "Meta write failed"
-    )
+    mock_minio_registry.update_latest_meta.side_effect = Exception("Meta write failed")
 
     trainer = IncrementalTrainer()
     try:

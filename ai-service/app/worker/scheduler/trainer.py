@@ -48,9 +48,7 @@ class IncrementalTrainer:
             raw_baseline = await self.api_client.get_baseline_features_async()
             baseline_samples = []
             for item in raw_baseline:
-                features = extract_features(
-                    item, query="", resume_text=""
-                )
+                features = extract_features(item, query="", resume_text="")
                 baseline_samples.append({"label": 1, "features": features})
 
             all_samples = baseline_samples + new_samples
