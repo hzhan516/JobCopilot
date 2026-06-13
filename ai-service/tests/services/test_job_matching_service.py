@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from app.schemas import JobMatchRequest
 from app.services.job_matching_service import (
     _clip_score,

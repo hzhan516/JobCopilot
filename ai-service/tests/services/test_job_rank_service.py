@@ -4,7 +4,7 @@ import litellm
 import pytest
 from tenacity import RetryError
 
-from app.schemas import JobRankCommand
+from app.schemas import JobDetail, JobRankCommand
 from app.services.job_rank_service import (
     _clip_score,
     _safe_llm_call,
@@ -142,29 +142,6 @@ async def test_generate_match_reason_fallback_on_error(mock_safe_call):
 @patch("app.services.job_rank_service.extract_features")
 @patch("app.services.job_rank_service.model_manager")
 async def test_rank_jobs(mock_model_manager, mock_extract_features, mock_generate):
-    job_details = {
-        "job1": {
-            "title": "Junior Java",
-            "description": "Needs basic java",
-            "semanticMatch": 0.4,
-        },
-        "job2": {
-            "title": "Senior Java",
-            "description": "Needs expert java",
-            "semanticMatch": 0.9,
-        },
-        "job3": {
-            "title": "Python Dev",
-            "description": "Needs python",
-            "semanticMatch": 0.1,
-        },
-        "job4": {
-            "title": "Mid Java",
-            "description": "Needs some java",
-            "semanticMatch": 0.7,
-        },
-    }
-
     command = JobRankCommand(
         matchId="123",
         userId="user",
@@ -172,7 +149,12 @@ async def test_rank_jobs(mock_model_manager, mock_extract_features, mock_generat
         resumeText="Java developer with spring boot experience",
         query="Java",
         recalledJobIds=["job1", "job2", "job3", "job4"],
-        jobDetails=job_details,
+        jobDetails={
+            "job1": JobDetail(title="Junior Java", description="Needs basic java"),
+            "job2": JobDetail(title="Senior Java", description="Needs expert java"),
+            "job3": JobDetail(title="Python Dev", description="Needs python"),
+            "job4": JobDetail(title="Mid Java", description="Needs some java"),
+        },
     )
 
     async def mock_reason_generator(cmd, job):
@@ -181,8 +163,10 @@ async def test_rank_jobs(mock_model_manager, mock_extract_features, mock_generat
     mock_generate.side_effect = mock_reason_generator
 
     def mock_extract(details, query, resume_text):
+        # details is now a JobDetail (Pydantic model), not a dict
+        # jobDetails no longer carries semanticMatch; use 0.0 default
         return {
-            "semantic_match": details.get("semanticMatch", 0.0),
+            "semantic_match": 0.0,
             "skill_overlap_ratio": 0.5,
             "experience_overlap_ratio": 0.5,
             "title_keyword_overlap": 1.0,

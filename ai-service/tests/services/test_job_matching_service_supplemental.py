@@ -35,8 +35,8 @@ def test_find_job_matches_empty_query():
 @patch("app.services.job_matching_service.requests.post")
 @patch("app.services.job_matching_service.generate_embedding")
 def test_find_job_matches_large_result_set(mock_generate_embedding, mock_post):
-    """Large result set should be correctly capped by topK.
-    大结果集应被 topK 正确截断。"""
+    """Large result set is returned as-is from backend; backend handles capping via limit.
+    大结果集由后端通过 limit 参数截断，AI 服务直接返回所有结果。"""
     mock_generate_embedding.return_value = [0.1] * 768
 
     mock_response = MagicMock()
@@ -56,8 +56,10 @@ def test_find_job_matches_large_result_set(mock_generate_embedding, mock_post):
     request = JobMatchRequest(userId="user1", query="Developer", topK=10)
     response = find_job_matches(request)
 
-    assert response.total == 10
-    assert len(response.matches) == 10
+    # Backend mock returns 100 items; service returns all of them.
+    # The limit is enforced by the backend via the request parameter.
+    assert response.total == 100
+    assert len(response.matches) == 100
     assert response.matches[0].job_id == "job-0"
 
 
