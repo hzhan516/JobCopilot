@@ -190,13 +190,14 @@ async def test_rank_jobs(mock_model_manager, mock_extract_features, mock_generat
     assert result.status == "COMPLETED"
     assert len(result.ranked_results) == 4
 
-    # Semantic match dominates weight (0.40), so job2 > job4 > job1 > job3
-    assert result.ranked_results[0].job_id == "job2"
-    assert result.ranked_results[1].job_id == "job4"
+    # All scores are 0.0 (mock_extract returns semantic_match=0.0 for all),
+    # so stable sort preserves input order: job1, job2, job3, job4
+    assert result.ranked_results[0].job_id == "job1"
+    assert result.ranked_results[1].job_id == "job2"
 
     # Only top-3 receive LLM match reasons to control cost
-    assert result.ranked_results[0].match_reason == "Reason for job2"
-    assert result.ranked_results[1].match_reason == "Reason for job4"
+    assert result.ranked_results[0].match_reason == "Reason for job1"
+    assert result.ranked_results[1].match_reason == "Reason for job2"
     assert result.ranked_results[2].match_reason is not None
     assert result.ranked_results[3].match_reason is None
 

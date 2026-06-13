@@ -49,7 +49,7 @@ class IncrementalTrainer:
             baseline_samples = []
             for item in raw_baseline:
                 features = extract_features(
-                    item, query="", resume_text=item.get("requirements", "")
+                    item, query="", resume_text=""
                 )
                 baseline_samples.append({"label": 1, "features": features})
 
