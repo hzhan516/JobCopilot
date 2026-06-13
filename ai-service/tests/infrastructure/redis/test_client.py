@@ -100,7 +100,15 @@ async def test_redis_buffer_close(mock_redis):
 
 
 def test_get_redis_client():
-    with patch("app.infrastructure.redis.client.redis.Redis") as mock_redis_class:
-        client = get_redis_client()
-        mock_redis_class.assert_called_once()
-        assert client == mock_redis_class.return_value
+    # The conftest patches get_redis_client globally. Stop that patch
+    # temporarily so the real function body (which calls redis.Redis) executes.
+    from tests.conftest import redis_client_patcher
+
+    redis_client_patcher.stop()
+    try:
+        with patch("app.infrastructure.redis.client.redis.Redis") as mock_redis_class:
+            client = get_redis_client()
+            mock_redis_class.assert_called_once()
+            assert client == mock_redis_class.return_value
+    finally:
+        redis_client_patcher.start()

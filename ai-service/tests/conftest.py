@@ -205,17 +205,16 @@ except ImportError:
 
 # Patch get_redis_client to prevent Redis connection during model_manager singleton init
 # 在 model_manager 单例初始化时屏蔽 Redis 真实连接
-redis_client_patcher = patch(
-    "app.infrastructure.redis.client.get_redis_client", return_value=_redis_mock
+# Force-load the redis client module first (namespace package needs explicit import)
+import app.infrastructure.redis.client  # noqa: E402
+
+redis_client_patcher = patch.object(
+    app.infrastructure.redis.client, "get_redis_client", return_value=_redis_mock
 )
 redis_client_patcher.start()
 
-# Patch MinioModelRegistry to prevent MinIO connection during model_manager singleton init
-# 在 model_manager 单例初始化时屏蔽 MinIO 真实连接
-minio_registry_patcher = patch(
-    "app.api.model_manager.MinioModelRegistry", return_value=MagicMock()
-)
-minio_registry_patcher.start()
+# MinioModelRegistry is covered by the boto3.client patch above — its __init__
+# will use the mocked boto3 client. No additional patch needed.
 
 # Now safe to import app.main
 import app.main as main_module  # noqa: E402
