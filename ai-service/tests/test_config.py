@@ -1,8 +1,16 @@
+import importlib
 import os
 import sys
 from unittest.mock import patch
 
 import pytest
+
+
+def _reload_config():
+    """Remove app.config from sys.modules so it can be freshly imported.
+    从 sys.modules 移除 app.config 以触发重新导入和顶层校验。"""
+    if "app.config" in sys.modules:
+        del sys.modules["app.config"]
 
 
 def test_config_raises_when_minio_missing_in_non_dev():
@@ -15,20 +23,13 @@ def test_config_raises_when_minio_missing_in_non_dev():
         "INTERNAL_API_KEY": "secret",
     }
     with patch.dict(os.environ, env, clear=True):
-        # Force reload of config module so the top-level checks re-run
-        if "app.config" in sys.modules:
-            del sys.modules["app.config"]
-        with patch.dict(sys.modules, {}):
-            with patch.object(sys, "path", sys.path):
-                try:
-                    pass
-                except RuntimeError as e:
-                    assert (
-                        "MINIO_ENDPOINT, MINIO_ACCESS_KEY and MINIO_SECRET_KEY are required"
-                        in str(e)
-                    )
-                    return
-    pytest.fail("Expected RuntimeError was not raised")
+        _reload_config()
+        with pytest.raises(RuntimeError) as exc_info:
+            importlib.import_module("app.config")
+        assert (
+            "MINIO_ENDPOINT, MINIO_ACCESS_KEY and MINIO_SECRET_KEY are required"
+            in str(exc_info.value)
+        )
 
 
 def test_config_raises_when_internal_api_key_missing_in_non_dev():
@@ -41,26 +42,25 @@ def test_config_raises_when_internal_api_key_missing_in_non_dev():
         "INTERNAL_API_KEY": "",
     }
     with patch.dict(os.environ, env, clear=True):
-        if "app.config" in sys.modules:
-            del sys.modules["app.config"]
-        try:
-            pass
-        except RuntimeError as e:
-            assert "INTERNAL_API_KEY environment variable is required" in str(e)
-            return
-    pytest.fail("Expected RuntimeError was not raised")
+        _reload_config()
+        with pytest.raises(RuntimeError) as exc_info:
+            importlib.import_module("app.config")
+        assert "INTERNAL_API_KEY environment variable is required" in str(
+            exc_info.value
+        )
 
 
 def test_config_accepts_dev_without_minio():
     """Should not raise in dev when MINIO vars missing / dev 环境缺少 MINIO 变量时不应抛出"""
     env = {
         "ENV": "dev",
+        "MINIO_ENDPOINT": "",
+        "MINIO_ACCESS_KEY": "",
+        "MINIO_SECRET_KEY": "",
         "INTERNAL_API_KEY": "",
     }
     with patch.dict(os.environ, env, clear=True):
-        if "app.config" in sys.modules:
-            del sys.modules["app.config"]
+        _reload_config()
         # Should not raise
-        import app.config
-
-        assert app.config.ENV == "dev"
+        app_config = importlib.import_module("app.config")
+        assert app_config.ENV == "dev"
