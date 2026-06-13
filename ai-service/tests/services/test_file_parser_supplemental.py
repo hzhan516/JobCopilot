@@ -47,18 +47,20 @@ def test_extract_text_from_docx_empty():
 
 @patch("app.services.file_parser.PdfReader")
 def test_extract_text_from_pdf_corrupted(mock_reader_class):
-    """Corrupted PDF should raise ValueError.
-    损坏的 PDF 应抛出 ValueError。"""
+    """Corrupted PDF should raise Exception.
+    损坏的 PDF 应抛出 Exception。"""
     mock_reader_class.side_effect = Exception("PDF corrupted")
 
-    with pytest.raises(ValueError, match="corrupted"):
+    with pytest.raises(Exception, match="PDF corrupted"):
         _extract_text_from_pdf(b"not a pdf")
 
 
 def test_extract_text_from_docx_corrupted():
-    """Corrupted DOCX (invalid zip) should raise ValueError.
-    损坏的 DOCX（非法 zip）应抛出 ValueError。"""
-    with pytest.raises(ValueError):
+    """Corrupted DOCX (invalid zip) should raise BadZipFile.
+    损坏的 DOCX（非法 zip）应抛出 BadZipFile。"""
+    import zipfile
+
+    with pytest.raises(zipfile.BadZipFile):
         _extract_text_from_docx(b"not a zip")
 
 

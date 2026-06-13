@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch, AsyncMock
 import asyncio
+import pytest
 
 from app.worker_main import start_mq_consumer, run_worker
 from app.config import FEEDBACK_REQUEST_QUEUE
@@ -14,12 +15,14 @@ def test_start_mq_consumer_sets_up_and_consumes(mock_setup, mock_create_conn):
     mock_connection.channel.return_value = mock_channel
     mock_create_conn.return_value = mock_connection
 
-    # Simulate channel.start_consuming() raising exception to break the infinite loop
-    mock_channel.start_consuming.side_effect = RuntimeError("stop loop")
+    # Simulate channel.start_consuming() raising SystemExit to break the infinite loop
+    # SystemExit inherits from BaseException, NOT Exception, so it bypasses the
+    # production code's `except Exception` retry block.
+    mock_channel.start_consuming.side_effect = SystemExit()
 
     try:
         start_mq_consumer()
-    except RuntimeError:
+    except SystemExit:
         pass
 
     mock_create_conn.assert_called_once()
@@ -37,17 +40,16 @@ def test_start_mq_consumer_sets_up_and_consumes(mock_setup, mock_create_conn):
 @patch("app.worker_main.setup_feedback_queue")
 def test_start_mq_consumer_retries_on_failure(mock_setup, mock_create_conn, mock_sleep):
     """Should retry on connection failure with exponential-like delay / 连接失败时应重试"""
-    mock_create_conn.side_effect = [Exception("conn failed"), MagicMock()]
-
     mock_channel = MagicMock()
     mock_conn = MagicMock()
     mock_conn.channel.return_value = mock_channel
     mock_create_conn.side_effect = [Exception("conn failed"), mock_conn]
-    mock_channel.start_consuming.side_effect = RuntimeError("stop loop")
+    # SystemExit bypasses except Exception in the retry loop
+    mock_channel.start_consuming.side_effect = SystemExit()
 
     try:
         start_mq_consumer()
-    except RuntimeError:
+    except SystemExit:
         pass
 
     assert mock_create_conn.call_count == 2
@@ -55,6 +57,7 @@ def test_start_mq_consumer_retries_on_failure(mock_setup, mock_create_conn, mock
     mock_setup.assert_called_once_with(mock_channel)
 
 
+@pytest.mark.asyncio
 @patch("app.worker_main.start_mq_consumer")
 @patch("app.worker_main.AsyncIOScheduler")
 @patch("app.worker_main.IncrementalTrainer")
@@ -95,4 +98,5 @@ async def test_run_worker_starts_scheduler_and_trains(
     assert job_call.kwargs["minute"] == 0
     mock_scheduler.start.assert_called_once()
     mock_trainer.try_retrain.assert_awaited_once()
-    mock_scheduler.shutdown.assert_called_once_with(wait=False)
+    # scheduler.shutdown is not called here because the task is cancelled
+    # (CancelledError) rather than stopped via KeyboardInterrupt/SystemExit

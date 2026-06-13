@@ -56,6 +56,13 @@ jobs:
           path: backend/**/target/site/jacoco/
           retention-days: 7
 
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: backend
+          fail_ci_if_error: false
+
       - name: Architecture Tests (ArchUnit)
         # Exclude AppLayerArchitectureTest temporarily until application-layer
         # infrastructure dependencies are refactored.
@@ -93,7 +100,14 @@ jobs:
         run: npm run build
 
       - name: Test
-        run: npm run test:run
+        run: npm run test:coverage
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: frontend
+          fail_ci_if_error: false
 
   # ───────────────────────────────────────────────
   # AI Service (Python / FastAPI)
@@ -101,6 +115,7 @@ jobs:
   ai-service-build:
     name: AI Service Build & Test
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: ai-service
@@ -112,7 +127,9 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
-          cache-dependency-path: ai-service/requirements.txt
+          cache-dependency-path: |
+            ai-service/requirements.txt
+            ai-service/requirements-dev.txt
 
       - name: Install Dependencies
         run: |
@@ -127,9 +144,16 @@ jobs:
         run: black --check .
 
       - name: Test with pytest
-        # Skip full test execution temporarily; 30 pre-existing test failures need
-        # to be fixed separately. Collect-only validates imports.
-        run: pytest --collect-only -q
+        timeout-minutes: 20
+        run: pytest --timeout=60 --cov=app --cov-report=xml --cov-report=term -q
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ai-service/coverage.xml
+          flags: ai-service
+          fail_ci_if_error: false
 
   # ───────────────────────────────────────────────
   # Security Scan
@@ -170,6 +194,9 @@ jobs:
   docker-build-test:
     name: Docker Build & Push
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     # Build on non-Dependabot PRs to validate Dockerfiles. Also build and push
     # images to GHCR when changes land on main or develop so that deployable
     # artifacts are always available from GitHub.

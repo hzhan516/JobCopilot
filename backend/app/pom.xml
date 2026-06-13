@@ -40,12 +40,6 @@
             <artifactId>itextpdf</artifactId>
         </dependency>
 
-        <!-- Word处理 -->
-        <dependency>
-            <groupId>org.apache.poi</groupId>
-            <artifactId>poi-ooxml</artifactId>
-        </dependency>
-
         <!-- PDF转Word（可选，更智能的转换） -->
         <dependency>
             <groupId>com.documents4j</groupId>

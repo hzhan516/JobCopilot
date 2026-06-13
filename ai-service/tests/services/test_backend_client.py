@@ -4,8 +4,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import httpx
-
 from app.services.backend_client import (
     _build_job_vector_item,
     _build_resume_vector_item,
@@ -92,10 +90,12 @@ def test_batch_upsert_job_vectors_success(mock_post):
 def test_batch_upsert_job_vectors_http_error(mock_post):
     """HTTP error should return all items as failed.
     HTTP 错误应返回所有项为失败。"""
-    mock_post.side_effect = httpx.HTTPStatusError(
-        "500 Server Error",
-        request=httpx.Request("POST", "http://test"),
-        response=httpx.Response(500),
+    import requests as req
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 500
+    mock_post.side_effect = req.exceptions.HTTPError(
+        "500 Server Error", response=mock_resp
     )
 
     items = [

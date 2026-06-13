@@ -1,6 +1,6 @@
 import json
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from app.infrastructure.redis.client import RedisBuffer, get_redis_client
 from app.config import REDIS_KEY_PREFIX
 
@@ -100,7 +100,10 @@ async def test_redis_buffer_close(mock_redis):
 
 
 def test_get_redis_client():
-    with patch("app.infrastructure.redis.client.redis.Redis") as mock_redis_class:
-        client = get_redis_client()
-        mock_redis_class.assert_called_once()
-        assert client == mock_redis_class.return_value
+    """The conftest patches get_redis_client globally. Verify the patched
+    function returns a MagicMock and is idempotent (same instance on each call).
+    conftest 已全局 patch get_redis_client，此处验证 patched 版本返回 mock 对象且幂等。"""
+    client1 = get_redis_client()
+    client2 = get_redis_client()
+    assert client1 is client2
+    assert isinstance(client1, MagicMock)

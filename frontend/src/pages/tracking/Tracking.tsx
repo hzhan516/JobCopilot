@@ -102,33 +102,34 @@ export default function TrackingPage() {
     []
   );
 
-  const loadTrackings = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await trackingService.getTrackings();
-      setTrackings(data);
-    } catch {
-      toast.error(t('tracking.loadError'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [t]);
-
-  // Silently degrade to local counts when the stats API is unavailable
-  // 统计 API 不可用时静默降级，回退到前端本地统计
-  const loadStats = useCallback(async () => {
-    try {
-      const data = await trackingService.getTrackingStats();
-      setStats(data);
-    } catch {
-      setStats(null);
-    }
-  }, []);
-
   useEffect(() => {
-    loadTrackings();
-    loadStats();
-  }, [loadTrackings, loadStats]);
+    let ignored = false;
+
+    void (async () => {
+      try {
+        setIsLoading(true);
+        const data = await trackingService.getTrackings();
+        if (ignored) return;
+        setTrackings(data);
+      } catch {
+        if (!ignored) toast.error(t('tracking.loadError'));
+      } finally {
+        if (!ignored) setIsLoading(false);
+      }
+
+      try {
+        const data = await trackingService.getTrackingStats();
+        if (ignored) return;
+        setStats(data);
+      } catch {
+        if (!ignored) setStats(null);
+      }
+    })();
+
+    return () => {
+      ignored = true;
+    };
+  }, [t]);
 
   const updateEditSearchParam = useCallback((trackingId: string) => {
     dismissedEditTrackingIdRef.current = null;
@@ -167,7 +168,10 @@ export default function TrackingPage() {
         appliedAt: getAppliedDateForStatus(newTracking.status, newTracking.appliedAt) || undefined,
         notes: newTracking.notes || undefined,
       });
-      await Promise.all([loadTrackings(), loadStats()]);
+      await Promise.all([
+        trackingService.getTrackings().then(setTrackings),
+        trackingService.getTrackingStats().then(setStats).catch(() => setStats(null)),
+      ]);
       setNewTracking({ jobTitle: '', companyName: '', status: 'APPLIED', appliedAt: getTodayDateInputValue(), notes: '' });
       setAddDialogOpen(false);
       toast.success(t('tracking.addSuccess'));
@@ -207,7 +211,10 @@ export default function TrackingPage() {
         appliedAt: getAppliedDateForStatus(editTracking.status, editTracking.appliedAt) || undefined,
         notes: editTracking.notes,
       });
-      await Promise.all([loadTrackings(), loadStats()]);
+      await Promise.all([
+        trackingService.getTrackings().then(setTrackings),
+        trackingService.getTrackingStats().then(setStats).catch(() => setStats(null)),
+      ]);
       closeEditDialog();
       toast.success(t('tracking.editSuccess'));
     } catch {
@@ -222,7 +229,10 @@ export default function TrackingPage() {
         status,
         appliedAt: getAppliedDateForStatus(status, tracking?.appliedAt ?? '') || undefined,
       });
-      await Promise.all([loadTrackings(), loadStats()]);
+      await Promise.all([
+        trackingService.getTrackings().then(setTrackings),
+        trackingService.getTrackingStats().then(setStats).catch(() => setStats(null)),
+      ]);
       toast.success(t('tracking.updateSuccess'));
     } catch {
       toast.error(t('tracking.updateFailed'));
@@ -232,7 +242,10 @@ export default function TrackingPage() {
   const handleDeleteTracking = async (trackingId: string) => {
     try {
       await trackingService.deleteTracking(trackingId);
-      await Promise.all([loadTrackings(), loadStats()]);
+      await Promise.all([
+        trackingService.getTrackings().then(setTrackings),
+        trackingService.getTrackingStats().then(setStats).catch(() => setStats(null)),
+      ]);
       toast.success(t('tracking.deleteSuccess'));
     } catch {
       toast.error(t('tracking.deleteFailed'));
@@ -249,7 +262,7 @@ export default function TrackingPage() {
 
     const tracking = trackings.find((item) => item.trackingId === editTrackingId);
     if (tracking) {
-      openEditDialog(tracking);
+      requestAnimationFrame(() => openEditDialog(tracking));
     }
   }, [editDialogOpen, isLoading, openEditDialog, searchParams, trackings]);
 

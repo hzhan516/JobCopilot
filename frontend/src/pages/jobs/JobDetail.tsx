@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { jobService } from '@/services/jobService';
@@ -52,93 +52,94 @@ export default function JobDetail() {
   const [isScoring, setIsScoring] = useState(false);
   const [scoreResult, setScoreResult] = useState<JobScoreResponse | null>(null);
 
-  const loadJob = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await jobService.getJob(jobId!);
-      setJob(data);
-      if (data.parsedContent) {
-        setEditForm({
-          title: data.parsedContent.title || '',
-          company: data.parsedContent.company || '',
-          salary: data.parsedContent.salary || '',
-          location: data.parsedContent.location || '',
-          description: data.parsedContent.description || '',
-          requirements: data.parsedContent.requirements || [],
-        });
-      }
-    } catch {
-      toast.error(t('jobDetail.loadError'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [jobId, t]);
-
-  const loadResumes = useCallback(async () => {
-    try {
-      const data = await resumeService.getResumeGroups();
-      setResumes(data);
-      // Prefer converted over aiOptimized for scoring; original version is fallback-only
-      // 默认选择第一个可用的非原版简历（优先 converted，其次 aiOptimized）
-      setSelectedResumeVersionId((prev) => {
-        if (prev) return prev;
-        if (data.length > 0) {
-          const firstAvailable =
-            data[0].convertedVersion ?? data[0].aiOptimizedVersion ?? null;
-          if (firstAvailable) {
-            return firstAvailable.versionId;
-          }
-        }
-        return prev;
-      });
-    } catch {
-      // Silently degrade
-      // 静默降级
-    }
-  }, []);
-
-  const loadScoreHistory = useCallback(async () => {
-    if (!jobId) return;
-    try {
-      const history = await jobService.getScoreHistory();
-      // History is sorted by createdAt desc; take the first match for this job
-      // 过滤当前职位的评分记录，取最新的一条（history 已按 createdAt 降序）
-      const jobScores = history.filter((r) => r.jobId === jobId);
-      if (jobScores.length > 0) {
-        const latest = jobScores[0];
-        setScoreResult({
-          suitable: latest.suitable,
-          summary: latest.summary,
-          finalScore: latest.finalScore,
-          breakdown: {
-            skillScore: latest.skillScore,
-            experienceScore: latest.experienceScore,
-            overallScore: latest.overallScore,
-          },
-        });
-        setSelectedResumeVersionId(latest.resumeVersionId);
-      }
-    } catch {
-      // Silently degrade
-      // 静默降级
-    }
-  }, [jobId]);
-
   useEffect(() => {
-    if (jobId) {
-      loadJob();
-      loadResumes();
-      loadScoreHistory();
-      // Track view action securely (Strict Mode safe)
-      // 安全记录职位浏览行为，并兼容 React Strict Mode 的重复执行
-      if (!hasTrackedClick.current) {
-        hasTrackedClick.current = true;
-        jobService.trackAction(jobId, 'CLICK').catch(err => {
-          console.warn('Failed to track job click', err);
-        });
+    if (!jobId) return;
+
+    let ignored = false;
+
+    void (async () => {
+      try {
+        setIsLoading(true);
+        const jobData = await jobService.getJob(jobId);
+        if (ignored) return;
+        setJob(jobData);
+        if (jobData.parsedContent) {
+          setEditForm({
+            title: jobData.parsedContent.title || '',
+            company: jobData.parsedContent.company || '',
+            salary: jobData.parsedContent.salary || '',
+            location: jobData.parsedContent.location || '',
+            description: jobData.parsedContent.description || '',
+            requirements: jobData.parsedContent.requirements || [],
+          });
+        }
+      } catch {
+        if (!ignored) toast.error(t('jobDetail.loadError'));
+      } finally {
+        if (!ignored) setIsLoading(false);
       }
+
+      try {
+        const resumeData = await resumeService.getResumeGroups();
+        if (ignored) return;
+        setResumes(resumeData);
+        // Prefer converted over aiOptimized for scoring; original version is fallback-only
+        // 默认选择第一个可用的非原版简历（优先 converted，其次 aiOptimized）
+        setSelectedResumeVersionId((prev) => {
+          if (prev) return prev;
+          if (resumeData.length > 0) {
+            const firstAvailable =
+              resumeData[0].convertedVersion ?? resumeData[0].aiOptimizedVersion ?? null;
+            if (firstAvailable) {
+              return firstAvailable.versionId;
+            }
+          }
+          return prev;
+        });
+      } catch {
+        // Silently degrade
+        // 静默降级
+      }
+
+      try {
+        const history = await jobService.getScoreHistory();
+        if (ignored) return;
+        // History is sorted by createdAt desc; take the first match for this job
+        // 过滤当前职位的评分记录，取最新的一条（history 已按 createdAt 降序）
+        const jobScores = history.filter((r) => r.jobId === jobId);
+        if (jobScores.length > 0) {
+          const latest = jobScores[0];
+          setScoreResult({
+            suitable: latest.suitable,
+            summary: latest.summary,
+            finalScore: latest.finalScore,
+            breakdown: {
+              skillScore: latest.skillScore,
+              experienceScore: latest.experienceScore,
+              overallScore: latest.overallScore,
+            },
+          });
+          setSelectedResumeVersionId(latest.resumeVersionId);
+        }
+      } catch {
+        // Silently degrade
+        // 静默降级
+      }
+    })();
+
+    // Track view action securely (Strict Mode safe)
+    // 安全记录职位浏览行为，并兼容 React Strict Mode 的重复执行
+    if (!hasTrackedClick.current) {
+      hasTrackedClick.current = true;
+      jobService.trackAction(jobId, 'CLICK').catch(err => {
+        console.warn('Failed to track job click', err);
+      });
     }
-  }, [jobId, loadJob, loadResumes, loadScoreHistory]);
+
+    return () => {
+      ignored = true;
+    };
+  }, [jobId, t]);
 
   // Poll resume parse status every 3s when any resume is pending
   // 有简历正在解析时，每 3 秒刷新一次简历列表
@@ -152,11 +153,16 @@ export default function JobDetail() {
     if (!hasPendingResume) return;
 
     const interval = setInterval(() => {
-      loadResumes();
+      resumeService
+        .getResumeGroups()
+        .then(setResumes)
+        .catch(() => {
+          // Silently degrade — poll should be transparent
+        });
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [hasPendingResume, loadResumes]);
+  }, [hasPendingResume]);
 
   const handleSave = async () => {
     try {
@@ -170,7 +176,21 @@ export default function JobDetail() {
       });
       toast.success(t('jobDetail.saveSuccess'));
       setIsEditing(false);
-      loadJob();
+      jobService.getJob(jobId!).then((data) => {
+        setJob(data);
+        if (data.parsedContent) {
+          setEditForm({
+            title: data.parsedContent.title || '',
+            company: data.parsedContent.company || '',
+            salary: data.parsedContent.salary || '',
+            location: data.parsedContent.location || '',
+            description: data.parsedContent.description || '',
+            requirements: data.parsedContent.requirements || [],
+          });
+        }
+      }).catch(() => {
+        toast.error(t('jobDetail.loadError'));
+      });
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || t('jobDetail.saveError'));
@@ -201,7 +221,25 @@ export default function JobDetail() {
       const result = await jobService.scoreJob(jobId!, { resumeVersionId: selectedResumeVersionId });
       setScoreResult(result);
       toast.success(t('jobDetail.scoreSuccess'));
-      loadScoreHistory(); // 刷新评分历史
+      jobService.getScoreHistory().then((history) => {
+        const jobScores = history.filter((r) => r.jobId === jobId);
+        if (jobScores.length > 0) {
+          const latest = jobScores[0];
+          setScoreResult({
+            suitable: latest.suitable,
+            summary: latest.summary,
+            finalScore: latest.finalScore,
+            breakdown: {
+              skillScore: latest.skillScore,
+              experienceScore: latest.experienceScore,
+              overallScore: latest.overallScore,
+            },
+          });
+          setSelectedResumeVersionId(latest.resumeVersionId);
+        }
+      }).catch(() => {
+        // Silently degrade
+      }); // 刷新评分历史
     } catch (error: unknown) {
       const err = error as { response?: { status?: number; data?: { message?: string } } };
       if (err.response?.status === 503) {

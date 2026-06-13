@@ -163,7 +163,7 @@ describe('Tracking page', () => {
     })
   })
 
-  it('fetches trackings and stats on mount', () => {
+  it('fetches trackings and stats on mount', async () => {
     mockGetTrackings.mockResolvedValue([])
     mockGetTrackingStats.mockResolvedValue(null)
 
@@ -173,8 +173,10 @@ describe('Tracking page', () => {
       </MemoryRouter>
     )
 
-    expect(mockGetTrackings).toHaveBeenCalled()
-    expect(mockGetTrackingStats).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(mockGetTrackings).toHaveBeenCalled()
+      expect(mockGetTrackingStats).toHaveBeenCalled()
+    })
   })
 
   it('renders tracking records with status badges', async () => {
