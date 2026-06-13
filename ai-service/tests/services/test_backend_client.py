@@ -4,8 +4,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import httpx
-
 from app.services.backend_client import (
     _build_job_vector_item,
     _build_resume_vector_item,

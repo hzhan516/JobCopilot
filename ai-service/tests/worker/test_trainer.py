@@ -2,7 +2,7 @@
 增量训练器测试：覆盖锁竞争、样本不足、训练失败、MinIO 失败、API 失败等场景。
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
