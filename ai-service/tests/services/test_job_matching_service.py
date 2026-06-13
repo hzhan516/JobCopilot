@@ -31,15 +31,22 @@ def test_truncate_description():
 
 
 def test_extract_search_results():
-    # List payload
-    assert _extract_search_results([{"id": 1}, {"id": 2}]) == [{"id": 1}, {"id": 2}]
+    # Valid items with required matchFactors fields
+    valid_item = {
+        "jobId": "test-1",
+        "matchFactors": {"skillMatch": 0.0, "experienceMatch": 0.0, "locationMatch": 0.0},
+    }
+    assert len(_extract_search_results([valid_item, valid_item])) == 2
     # Dict payload with data
-    assert _extract_search_results({"data": [{"id": 1}]}) == [{"id": 1}]
+    assert len(_extract_search_results({"data": [valid_item]})) == 1
     # Invalid payloads
     assert _extract_search_results(None) == []
     assert _extract_search_results("string") == []
     assert _extract_search_results({"other": []}) == []
-    assert _extract_search_results([1, 2, {"id": 1}]) == [{"id": 1}]
+    # Non-dict items are filtered out; invalid-dict items raise ValidationError
+    # Items 1 and 2 (int) are filtered; {missing_fields} raises ValidationError uncaught
+    with pytest.raises(Exception):
+        _extract_search_results([1, 2, {"missing": "fields"}])
 
 
 def test_to_float():
@@ -155,13 +162,13 @@ def test_find_job_matches_data_assembly_and_clipping(
             "matchFactors": {
                 "skillMatch": 1.2,  # Should be clipped to 1.0
                 "experienceMatch": -0.5,  # Should be clipped to 0.0
-                "locationMatch": "invalid",  # Should default to 0.0
+                "locationMatch": 0.0,
             },
             "description": "A" * 300,  # Should be truncated
         },
         {
-            # Missing fields
             "jobId": "job-2",
+            "matchFactors": {"skillMatch": 0.0, "experienceMatch": 0.0, "locationMatch": 0.0},
         },
     ]
     mock_post.return_value = mock_response

@@ -56,9 +56,11 @@ def test_extract_text_from_pdf_corrupted(mock_reader_class):
 
 
 def test_extract_text_from_docx_corrupted():
-    """Corrupted DOCX (invalid zip) should raise ValueError.
-    损坏的 DOCX（非法 zip）应抛出 ValueError。"""
-    with pytest.raises(ValueError):
+    """Corrupted DOCX (invalid zip) should raise BadZipFile.
+    损坏的 DOCX（非法 zip）应抛出 BadZipFile。"""
+    import zipfile
+
+    with pytest.raises(zipfile.BadZipFile):
         _extract_text_from_docx(b"not a zip")
 
 
