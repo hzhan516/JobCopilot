@@ -1,3 +1,4 @@
+from app.schemas import ExperienceItem
 from app.services.resume_parser import _normalize_skills, _normalize_experience
 
 
@@ -10,10 +11,12 @@ def test_normalize_skills():
 
 def test_normalize_experience():
     assert _normalize_experience([{"title": "Engineer"}, "Wrote code", None]) == [
-        {"title": "Engineer"},
-        {"summary": "Wrote code"},
+        ExperienceItem(title="Engineer"),
+        ExperienceItem(summary="Wrote code"),
     ]
-    assert _normalize_experience({"title": "Engineer"}) == [{"title": "Engineer"}]
-    assert _normalize_experience("Wrote code") == [{"summary": "Wrote code"}]
+    assert _normalize_experience({"title": "Engineer"}) == [
+        ExperienceItem(title="Engineer")
+    ]
+    assert _normalize_experience("Wrote code") == [ExperienceItem(summary="Wrote code")]
     assert _normalize_experience("  ") == []
     assert _normalize_experience(None) == []

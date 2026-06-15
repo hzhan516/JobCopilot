@@ -2,7 +2,7 @@
 Redis 客户端补充测试：覆盖连接中断降级、pipeline 错误、超时场景。
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -35,9 +35,9 @@ async def test_redis_buffer_drain_empty():
     Buffer 为空时 drain 应返回空列表。"""
     with patch("app.infrastructure.redis.client.get_redis_client") as mock_get:
         mock_client = AsyncMock()
-        mock_pipe = AsyncMock()
-        mock_client.pipeline.return_value = mock_pipe
-        mock_pipe.execute.return_value = ([], None)
+        mock_pipe = MagicMock()
+        mock_pipe.execute = AsyncMock(return_value=([], None))
+        mock_client.pipeline = MagicMock(return_value=mock_pipe)
         mock_get.return_value = mock_client
 
         buffer = RedisBuffer()
@@ -59,9 +59,9 @@ async def test_redis_buffer_drain_pipeline_failure():
     Pipeline 执行失败时应传播异常。"""
     with patch("app.infrastructure.redis.client.get_redis_client") as mock_get:
         mock_client = AsyncMock()
-        mock_pipe = AsyncMock()
-        mock_client.pipeline.return_value = mock_pipe
-        mock_pipe.execute.side_effect = Exception("Pipeline broken")
+        mock_pipe = MagicMock()
+        mock_pipe.execute = AsyncMock(side_effect=Exception("Pipeline broken"))
+        mock_client.pipeline = MagicMock(return_value=mock_pipe)
         mock_get.return_value = mock_client
 
         buffer = RedisBuffer()

@@ -1,6 +1,6 @@
 import json
 from collections.abc import Iterator
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -203,6 +203,19 @@ try:
 except ImportError:
     pass  # If boto3 is not installed, we can't patch it, but import app.main will fail anyway
 
+# Patch get_redis_client to prevent Redis connection during model_manager singleton init
+# 在 model_manager 单例初始化时屏蔽 Redis 真实连接
+# Force-load the redis client module first (namespace package needs explicit import)
+import app.infrastructure.redis.client  # noqa: E402
+
+redis_client_patcher = patch.object(
+    app.infrastructure.redis.client, "get_redis_client", return_value=_redis_mock
+)
+redis_client_patcher.start()
+
+# MinioModelRegistry is covered by the boto3.client patch above — its __init__
+# will use the mocked boto3 client. No additional patch needed.
+
 # Now safe to import app.main
 import app.main as main_module  # noqa: E402
 
@@ -227,6 +240,11 @@ def configure_test_environment(monkeypatch: pytest.MonkeyPatch) -> Iterator[None
     monkeypatch.setattr(main_module, "_mq_is_connected", True)
     monkeypatch.setattr(main_module, "_start_mq_consumer_once", lambda: None)
     monkeypatch.setattr(main_module, "initialize_mq", lambda: None)
+
+    # Suppress model_manager external calls during lifespan / outside of specific model tests
+    # 屏蔽 model_manager 对 Redis/MinIO 的外部调用，避免 lifespan 触发真实连接
+    monkeypatch.setattr(main_module.model_manager, "load_latest", AsyncMock())
+    monkeypatch.setattr(main_module.model_manager, "watch_for_reloads", AsyncMock())
     yield
 
 
@@ -360,9 +378,6 @@ def mock_minio_registry(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
         "app.worker.scheduler.trainer.MinioModelRegistry", lambda: registry_mock
     )
     return registry_mock
-
-
-from unittest.mock import MagicMock, AsyncMock  # noqa: E402
 
 
 @pytest.fixture

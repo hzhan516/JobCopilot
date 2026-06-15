@@ -1,10 +1,10 @@
-from typing import Any
 from app.domain.ml.features import (
     tokenize_text,
     normalize_items,
     extract_features,
     FEATURE_COLUMNS,
 )
+from app.schemas import JobDetail
 
 
 def test_feature_columns():
@@ -58,7 +58,7 @@ def test_normalize_items_empty_strings():
 
 
 def test_extract_features_empty():
-    job_details: dict[str, Any] = {}
+    job_details = JobDetail()
     query = ""
     resume_text = ""
     features = extract_features(job_details, query, resume_text)
@@ -74,17 +74,16 @@ def test_extract_features_empty():
 
 
 def test_extract_features_basic():
-    job_details: dict[str, Any] = {
-        "title": "Software Engineer",
-        "description": "Looking for a software engineer with Python experience.",
-        "semanticMatch": 0.85,
-    }
+    job_details = JobDetail(
+        title="Software Engineer",
+        description="Looking for a software engineer with Python experience.",
+    )
     query = "software engineer"
     resume_text = "I am a software engineer with Python skills."
 
     features = extract_features(job_details, query, resume_text)
 
-    assert features["semantic_match"] == 0.85
+    assert features["semantic_match"] == 0.0
 
     # query_text = "software engineer I am a software engineer with Python skills."
     # query_tokens = {"software", "engineer", "with", "python", "skills"} (len 5)
@@ -100,17 +99,16 @@ def test_extract_features_basic():
 
 
 def test_extract_features_no_query_tokens():
-    job_details: dict[str, Any] = {
-        "title": "Software Engineer",
-        "description": "Looking for a software engineer with Python experience.",
-        "semanticMatch": 0.85,
-    }
+    job_details = JobDetail(
+        title="Software Engineer",
+        description="Looking for a software engineer with Python experience.",
+    )
     query = "a"
     resume_text = "an"
 
     features = extract_features(job_details, query, resume_text)
 
-    assert features["semantic_match"] == 0.85
+    assert features["semantic_match"] == 0.0
     assert features["skill_overlap_ratio"] == 0.0
     assert features["experience_overlap_ratio"] == 0.0
     assert features["title_keyword_overlap"] == 0.0

@@ -105,7 +105,9 @@ async def test_predict_with_loaded_model():
 
         manager = ModelManager()
         mock_model = MagicMock()
-        mock_model.predict.return_value = [0.8, 0.3]
+        mock_result = MagicMock()
+        mock_result.tolist.return_value = [0.8, 0.3]
+        mock_model.predict.return_value = mock_result
         manager._model = mock_model
 
         result = await manager.predict([[0.1] * 8, [0.2] * 8])

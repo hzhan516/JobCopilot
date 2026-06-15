@@ -195,7 +195,7 @@ def test_batch_embeddings_keeps_partial_successes(mock_generate_embedding):
 @patch("app.main._start_mq_consumer_once")
 def test_startup_event(mock_start):
     import asyncio
-    from app.main import lifespan, app
+    from app.main import lifespan, app, model_manager
 
     async def run_lifespan():
         async with lifespan(app):
@@ -203,3 +203,5 @@ def test_startup_event(mock_start):
 
     asyncio.run(run_lifespan())
     mock_start.assert_called_once()
+    model_manager.load_latest.assert_called_once()
+    model_manager.watch_for_reloads.assert_called_once()
