@@ -45,7 +45,7 @@ tenacity==8.4.1
 google-auth==2.53.0
 
 # 模型与定时任务 / Machine Learning & Scheduling
-lightgbm==4.5.0
+lightgbm==4.6.0
 scikit-learn==1.9.0
 APScheduler==3.10.4
 respx
