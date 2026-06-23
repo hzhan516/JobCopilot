@@ -56,7 +56,7 @@
         <commons-exec.version>1.4.0</commons-exec.version>
 
         <!-- Security -->
-        <jjwt.version>0.12.6</jjwt.version>
+        <jjwt.version>0.13.0</jjwt.version>
 
         <!-- Testing -->
         <archunit.version>1.4.2</archunit.version>
