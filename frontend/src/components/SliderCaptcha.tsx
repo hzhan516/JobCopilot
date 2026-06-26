@@ -35,7 +35,7 @@ export default function SliderCaptcha({
   const handleWidth = 40;
   const maxOffset = trackWidth - handleWidth;
 
-  useEffect(() => {
+  const loadChallenge = () => {
     authService.getCaptchaChallenge()
       .then((result) => {
         setChallenge(result);
@@ -45,6 +45,10 @@ export default function SliderCaptcha({
       .catch(() => {
         onError?.();
       });
+  };
+
+  useEffect(() => {
+    loadChallenge();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -89,16 +93,7 @@ export default function SliderCaptcha({
       // 短暂显示错误状态后重新加载挑战
       // Reload challenge after briefly showing error state
       setTimeout(() => {
-        authService
-          .getCaptchaChallenge()
-          .then((result) => {
-            setChallenge(result);
-            setOffsetX(0);
-            setStatus('idle');
-          })
-          .catch(() => {
-            onError?.();
-          });
+        loadChallenge();
       }, 800);
       onError?.();
     } finally {
