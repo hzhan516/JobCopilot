@@ -110,37 +110,27 @@ export default function Chat() {
     void (async () => {
       try {
         setIsLoading(true);
-        const data = await chatService.getConversations();
+        const [conversations, resumeData, jobData] = await Promise.all([
+          chatService.getConversations(),
+          Promise.resolve(resumeService.getResumeGroups()).catch(() => null),
+          Promise.resolve(jobService.getJobs()).catch(() => null),
+        ]);
         if (ignored) return;
-        setConversations(data);
-        if (data.length > 0) {
-          syncConversation(data[0]);
+
+        setConversations(conversations);
+        if (conversations.length > 0) {
+          syncConversation(conversations[0]);
         } else {
           setActiveConversation(null);
           setMessages([]);
         }
+
+        if (resumeData !== null) setResumes(resumeData);
+        if (jobData !== null) setJobs(jobData);
       } catch {
         if (!ignored) toast.error(t('chat.loadError'));
       } finally {
         if (!ignored) setIsLoading(false);
-      }
-
-      try {
-        const data = await resumeService.getResumeGroups();
-        if (ignored) return;
-        setResumes(data);
-      } catch {
-        // Silently degrade — resume loading failure shouldn't block chat functionality
-        // 静默降级，简历加载失败不应阻塞聊天功能
-      }
-
-      try {
-        const data = await jobService.getJobs();
-        if (ignored) return;
-        setJobs(data);
-      } catch {
-        // Silently degrade — job loading failure shouldn't block chat functionality
-        // 静默降级，职位加载失败不应阻塞聊天功能
       }
     })();
 
