@@ -125,9 +125,6 @@ jwt:
   access-token-expiration: ${JWT_ACCESS_EXPIRATION:3600000}       # 1小时 / 1 hour
   refresh-token-expiration: ${JWT_REFRESH_EXPIRATION:604800000}    # 7天 / 7 days
 
-  # Presigned URL expiry for conversation attachments and other time-limited storage access.
-  # Presigned URL 过期时间，用于对话附件及其他限时存储访问。
-  presigned-url-expiration-hours: ${STORAGE_PRESIGNED_EXPIRY_HOURS:7}
 logging:
   level:
     root: INFO
