@@ -92,39 +92,3 @@ def test_download_model(mock_boto3_client):
     mock_boto3_client.download_file.assert_called_once_with(
         MINIO_MODEL_BUCKET, object_key, dest_path
     )
-
-
-def test_list_models_success(mock_boto3_client):
-    registry = MinioModelRegistry()
-    mock_boto3_client.list_objects_v2.return_value = {
-        "Contents": [
-            {"Key": "ranker_model_v1.0.txt"},
-            {"Key": "ranker_model_v2.0.txt"},
-            {"Key": "latest_meta.json"},
-        ]
-    }
-
-    models = registry.list_models()
-
-    assert models == ["ranker_model_v1.0.txt", "ranker_model_v2.0.txt"]
-    mock_boto3_client.list_objects_v2.assert_called_once_with(Bucket=MINIO_MODEL_BUCKET)
-
-
-def test_list_models_empty(mock_boto3_client):
-    registry = MinioModelRegistry()
-    mock_boto3_client.list_objects_v2.return_value = {}
-
-    models = registry.list_models()
-
-    assert models == []
-    mock_boto3_client.list_objects_v2.assert_called_once_with(Bucket=MINIO_MODEL_BUCKET)
-
-
-def test_list_models_failure(mock_boto3_client):
-    registry = MinioModelRegistry()
-    mock_boto3_client.list_objects_v2.side_effect = Exception("S3 error")
-
-    models = registry.list_models()
-
-    assert models == []
-    mock_boto3_client.list_objects_v2.assert_called_once_with(Bucket=MINIO_MODEL_BUCKET)

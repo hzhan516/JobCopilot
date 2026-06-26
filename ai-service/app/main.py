@@ -8,7 +8,7 @@ import logging
 import os
 import threading
 
-from fastapi import APIRouter, FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
@@ -79,15 +79,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-admin_router = APIRouter(prefix="/admin", tags=["admin"])
-
-
-@admin_router.post("/recompute-model")
-def recompute_model():
-    raise HTTPException(status_code=410, detail="Deprecated. Use ai-worker scheduling.")
-
-
-app.include_router(admin_router, prefix="/api/v1")
 
 # ---------------------------------------------------------------------------
 # Internal API Key Middleware (Defense in Depth)

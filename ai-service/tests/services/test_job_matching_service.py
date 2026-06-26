@@ -6,7 +6,6 @@ from app.schemas import JobMatchRequest
 from app.services.job_matching_service import (
     _clip_score,
     _extract_search_results,
-    _to_float,
     _truncate_description,
     find_job_matches,
 )
@@ -53,15 +52,6 @@ def test_extract_search_results():
     # Items 1 and 2 (int) are filtered; {missing_fields} raises ValidationError uncaught
     with pytest.raises(Exception):
         _extract_search_results([1, 2, {"missing": "fields"}])
-
-
-def test_to_float():
-    assert _to_float(1.5) == 1.5
-    assert _to_float("2.5") == 2.5
-    assert _to_float(1) == 1.0
-    assert _to_float("invalid") == 0.0
-    assert _to_float(None) == 0.0
-    assert _to_float("invalid", default=1.0) == 1.0
 
 
 @patch("app.services.job_matching_service.requests.post")
