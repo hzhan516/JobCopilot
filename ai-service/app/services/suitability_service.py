@@ -4,19 +4,9 @@ import logging
 from app.schemas import SuitabilityBreakdown, SuitabilityRequest, SuitabilityResponse
 from app.config import LLM_TEXT_MODEL
 from app.services.llm_client import generate_json_from_text_prompt
+from app.domain.ml.features import normalize_items
 
 logger = logging.getLogger(__name__)
-
-
-def _normalize_items(items: list[str]) -> set[str]:
-    normalized: set[str] = set()
-
-    for item in items:
-        cleaned = item.strip().lower()
-        if cleaned:
-            normalized.add(cleaned)
-
-    return normalized
 
 
 def _calculate_experience_score(experience_items: list[dict]) -> float:
@@ -41,8 +31,8 @@ def evaluate_suitability_baseline(request: SuitabilityRequest) -> SuitabilityRes
     """Compute a heuristic suitability score without any LLM call.
     基线规则评分：无需 LLM，仅通过技能集合交集与经验条目数快速估算匹配度，
     作为 LLM 失败或超时的兜底策略，保证服务可用性。"""
-    resume_skills = _normalize_items(request.resume.skills)
-    job_requirements = _normalize_items(request.job.requirements)
+    resume_skills = normalize_items(request.resume.skills)
+    job_requirements = normalize_items(request.job.requirements)
 
     if not job_requirements:
         matched = set()
