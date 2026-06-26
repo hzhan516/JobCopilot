@@ -257,22 +257,4 @@ export const useJobStore = create<JobStore>((set, get) => ({
   resetError: () => set({ error: null }),
 }));
 
-// ===== Selector helpers to prevent re-renders from non-targeted state changes =====
-// ===== 选择器辅助函数，避免非相关状态变更触发组件重渲染 =====
-
-export const selectJobs = (state: JobStore): Job[] => state.filteredJobs;
-
-export const selectLoading = (state: JobStore): boolean => state.loading;
-
-export const selectError = (state: JobStore): string | null => state.error;
-
-export const selectFilters = (state: JobStore): JobFilters => state.filters;
-
-export const selectScoreResults = (state: JobStore): Record<string, JobScoreResponse> =>
-  state.scoreResults;
-
-export const selectScoringState = (state: JobStore): Record<string, boolean> =>
-  state.scoringState;
-
-export const selectSelectedResumes = (state: JobStore): Record<string, string> =>
-  state.selectedResumes;
+// ponytail: inline selectors used directly; no selector exports needed
