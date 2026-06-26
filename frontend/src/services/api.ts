@@ -157,45 +157,7 @@ apiClient.interceptors.response.use(
   }
 );
 
-/**
- * Creates an abortable request wrapper that superseds previous pending requests.
- * Useful when rapid user interactions (e.g., typing, switching tabs) may trigger
- * overlapping API calls.
- *
- * 创建可取消请求包装器，新请求自动取消前一个_pending_请求。
- * 适用于用户高频操作（如输入、切换标签）可能产生重叠请求的场景。
- *
- * @example
- * const { execute, abort } = createAbortableRequest();
- *
- * execute(async (signal) => {
- *   const jobs = await jobService.getJobs(signal);
- *   return jobs;
- * });
- *
- * abort();
- */
-export function createAbortableRequest() {
-  let controller: AbortController | null = null;
-
-  const execute = <T>(fn: (signal: AbortSignal) => Promise<T>): Promise<T> => {
-    controller?.abort();
-    controller = new AbortController();
-
-    return fn(controller.signal).finally(() => {
-      if (controller?.signal.aborted === false) {
-        controller = null;
-      }
-    });
-  };
-
-  const abort = (reason?: string): void => {
-    controller?.abort(reason);
-    controller = null;
-  };
-
-  return { execute, abort };
-}
+export default apiClient;
 
 export const authService = {
   getCaptchaChallenge: async (): Promise<CaptchaChallengeResponse> => {
@@ -282,5 +244,3 @@ export const authService = {
     return tokenStorage.isTokenExpired();
   },
 };
-
-export default apiClient;

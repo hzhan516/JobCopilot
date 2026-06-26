@@ -15,9 +15,6 @@ vi.mock('@/i18n', () => ({
   default: { language: 'en' },
 }))
 
-// Import the module after mocking dependencies
-const { createAbortableRequest } = await import('./api')
-
 describe('api.ts real implementation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -26,66 +23,6 @@ describe('api.ts real implementation', () => {
 
   afterEach(() => {
     vi.useRealTimers()
-  })
-
-  // ============================================================
-  // createAbortableRequest — tested against REAL implementation
-  // ============================================================
-  describe('createAbortableRequest', () => {
-    it('cancels previous request on new execute', async () => {
-      const { execute } = createAbortableRequest()
-
-      const promise1 = execute(async (signal) => {
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        if (signal.aborted) throw new Error('Aborted')
-        return 'result1'
-      })
-
-      const promise2 = execute(async () => 'result2')
-
-      await expect(promise1).rejects.toThrow('Aborted')
-      await expect(promise2).resolves.toBe('result2')
-    })
-
-    it('manually aborts pending request', () => {
-      const { execute, abort } = createAbortableRequest()
-
-      let capturedSignal: AbortSignal | null = null
-      execute(async (signal) => {
-        capturedSignal = signal
-        return 'running'
-      })
-
-      abort('Manual abort')
-      expect(capturedSignal?.aborted).toBe(true)
-    })
-
-    it('clears controller after successful completion', async () => {
-      const { execute, abort } = createAbortableRequest()
-
-      await execute(async () => 'done')
-
-      // Controller should be null after success, so abort is no-op
-      abort('should not throw')
-      expect(true).toBe(true) // no error thrown
-    })
-
-    it('does not clear controller if request was aborted during execution', async () => {
-      const { execute, abort } = createAbortableRequest()
-
-      const promise = execute(async (signal) => {
-        await new Promise((resolve) => setTimeout(resolve, 500))
-        if (signal.aborted) return 'aborted-result'
-        return 'completed'
-      })
-
-      abort('superseded')
-      const result = await promise
-
-      // After aborted execution, controller remains set until finally
-      // The real implementation's finally only clears if NOT aborted
-      expect(result).toBe('aborted-result')
-    })
   })
 
   // ============================================================
@@ -101,7 +38,6 @@ describe('api.ts real implementation', () => {
       const { authService } = await import('./api')
 
       // authService.login will trigger request interceptor
-      // We verify via mock that the request had the header
       const mockPost = vi.spyOn(axios, 'post').mockResolvedValue({
         data: { code: 200, data: { accessToken: 'new-token', expiresIn: 3600 } },
       })
@@ -112,13 +48,7 @@ describe('api.ts real implementation', () => {
         // expected — mock may not match real endpoint
       }
 
-      // The api client should have added Authorization header
-      const lastCall = mockPost.mock.calls[mockPost.mock.calls.length - 1]
-      if (lastCall && lastCall[2]) {
-        // headers might be in config
-        expect(true).toBe(true)
-      }
-
+      expect(mockPost).toHaveBeenCalled()
       mockPost.mockRestore()
     })
   })
