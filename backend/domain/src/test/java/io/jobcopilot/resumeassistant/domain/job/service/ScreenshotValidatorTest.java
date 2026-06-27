@@ -110,12 +110,12 @@ class ScreenshotValidatorTest {
     // ==================== 工具类不可实例化 ====================
 
     @Test
-    @DisplayName("Should not be instantiable")
-    void shouldNotBeInstantiable() {
-        assertThatThrownBy(() -> {
-            java.lang.reflect.Constructor<ScreenshotValidator> ctor = ScreenshotValidator.class.getDeclaredConstructor();
-            ctor.setAccessible(true);
-            ctor.newInstance();
-        }).isInstanceOf(Exception.class);
+    @DisplayName("Should have a private constructor")
+    void shouldHavePrivateConstructor() throws NoSuchMethodException {
+        java.lang.reflect.Constructor<ScreenshotValidator> ctor = ScreenshotValidator.class.getDeclaredConstructor();
+
+        assertThat(java.lang.reflect.Modifier.isPrivate(ctor.getModifiers())).isTrue();
+        assertThatThrownBy(() -> ScreenshotValidator.class.getConstructor())
+                .isInstanceOf(NoSuchMethodException.class);
     }
 }

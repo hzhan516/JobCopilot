@@ -7,6 +7,7 @@ vi.mock('./tokenStorage', () => ({
     getAccessToken: vi.fn(),
     clear: vi.fn(),
     setTokens: vi.fn(),
+    setUser: vi.fn(),
     getRememberMe: vi.fn(),
   },
 }))
@@ -30,26 +31,32 @@ describe('api.ts real implementation', () => {
   // ============================================================
   describe('request interceptor', () => {
     it('attaches Authorization header when token exists', async () => {
+      // Re-import to get fresh instance with mocked dependencies
+      vi.resetModules()
+      const { default: apiClient, authService } = await import('./api')
       const { default: tokenStorage } = await import('./tokenStorage')
       vi.mocked(tokenStorage.getAccessToken).mockReturnValue('test-token-123')
 
-      // Re-import to get fresh instance with mocked dependencies
-      vi.resetModules()
-      const { authService } = await import('./api')
-
-      // authService.login will trigger request interceptor
-      const mockPost = vi.spyOn(axios, 'post').mockResolvedValue({
+      // authService.login uses the apiClient instance, not the global axios.post.
+      // Mock the transport layer so the request interceptor runs without hitting the real backend.
+      const postSpy = vi.spyOn(apiClient, 'post')
+      const adapterMock = vi.fn().mockResolvedValue({
         data: { code: 200, data: { accessToken: 'new-token', expiresIn: 3600 } },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {},
       })
+      apiClient.defaults.adapter = adapterMock as any
 
-      try {
-        await authService.login({ email: 'test@test.com', password: 'pass' })
-      } catch {
-        // expected — mock may not match real endpoint
-      }
+      await authService.login({ email: 'test@test.com', password: 'pass' })
 
-      expect(mockPost).toHaveBeenCalled()
-      mockPost.mockRestore()
+      expect(postSpy).toHaveBeenCalled()
+      expect(adapterMock).toHaveBeenCalled()
+      const requestConfig = adapterMock.mock.calls[0][0]
+      expect(requestConfig.headers.Authorization).toBe('Bearer test-token-123')
+
+      postSpy.mockRestore()
     })
   })
 
