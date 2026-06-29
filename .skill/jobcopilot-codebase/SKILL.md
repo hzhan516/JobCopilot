@@ -5,15 +5,17 @@ description: Comprehensive knowledge of the JobCopilot codebase architecture, mo
 
 # JobCopilot Codebase Guide
 
+> Last synced with origin/main on 2026-06-29.
+
 ## Quick Reference
 
 JobCopilot is an AI-powered job search platform with three main services:
 
 | Layer | Tech | Entry Point | Port (internal) |
 |-------|------|-------------|-----------------|
-| **Frontend** | React 19 + Vite 7 + TypeScript 5.9 | `frontend/src/App.tsx` → `main.tsx` | 5173 (dev) |
-| **Backend** | Java 21 + Spring Boot 3.5 + Maven | `backend/app/.../Application.java` | 8080 |
-| **AI Service** | Python 3.11+ + FastAPI + LiteLLM | `ai-service/app/main.py` | 8000 |
+| **Frontend** | React 19.2.7 + Vite 7.2.4 + TypeScript 5.9 | `frontend/src/App.tsx` → `main.tsx` | 5173 (dev) |
+| **Backend** | Java 21 + Spring Boot 3.5.16 + Maven | `backend/app/.../Application.java` | 8080 |
+| **AI Service** | Python 3.11+ + FastAPI 0.138.0 + LiteLLM | `ai-service/app/main.py` | 8000 |
 
 **Quick start**: `docker compose --env-file .env up -d --build`
 **Root env file**: `.env.example` → copy to `.env` and fill secrets.
@@ -30,7 +32,9 @@ Browser → Nginx (frontend) → Backend (Spring Boot)
                                 └── MinIO (model artifacts)
 ```
 
-**Three Docker networks**: `public-network` (frontend+backend), `internal-network` (backend+ai+redis+mq+minio), `db-network` (backend+postgres). Only frontend port 80 is exposed.
+**Docker Compose services**: `frontend`, `backend`, `ai-service`, `ai-worker`, `rabbitmq`, `redis`, `minio`, `postgres`.
+
+**Three Docker networks**: `public-network` (frontend + backend), `internal-network` (backend + ai-service + ai-worker + rabbitmq + redis + minio), `db-network` (backend + postgres). Only frontend port 80 is exposed to the host.
 
 ---
 
@@ -52,10 +56,12 @@ Maven modules in dependency order (top→bottom = caller→callee):
 ### Domain Sub-packages (Bounded Contexts)
 
 - `domain/resume/` — Resume entities, versions, parsing ports
-- `domain/job/` — Job descriptions, matching ports
-- `domain/user/` — User, profile, OAuth binding
+- `domain/job/` — Job descriptions, scoring, matching ports
+- `domain/embedding/` — `JobVector`, `ResumeVector`, embedding/generation ports
+- `domain/matching/` — `JobMatchResult`, `MatchingModel`, recall/rank ports
 - `domain/conversation/` — Chat messages, context
 - `domain/tracking/` — Job application tracking
+- `domain/user/` — User, profile, OAuth binding
 - `domain/shared/` — Outbox message, file storage port, exceptions
 
 ---
@@ -66,15 +72,16 @@ Maven modules in dependency order (top→bottom = caller→callee):
 |------|------|----------------|
 | API endpoints | `ai-service/app/main.py`, `app/api/` | FastAPI routes, health, embedding, matching, suitability |
 | Config | `ai-service/app/config.py` | All env vars, queue names, model names |
-| Services | `ai-service/app/services/` | LLM calls (`llm_client.py`), resume/job parsing, matching, ranking, embeddings |
+| Services | `ai-service/app/services/` | LLM calls (`llm_client.py`), resume/job parsing, matching, ranking, embeddings, orchestrators |
 | MQ Consumers | `ai-service/app/mq/consumer.py` | RabbitMQ consumer setup |
-| Worker Consumers | `ai-service/app/worker/consumers/` | `parse_consumer.py`, `rank_consumer.py`, etc. |
+| Worker Consumers | `ai-service/app/worker/consumers/` | `feedback.py`, `rabbitmq_setup.py` |
 | Worker Main | `ai-service/app/worker_main.py` | Worker entry point (separate container) |
+| Model Manager | `ai-service/app/api/model_manager.py` | Loads LightGBM model from MinIO, watches `ai.model.reload` |
 | Infrastructure | `ai-service/app/infrastructure/` | Backend API client, Redis client, MinIO client |
 | Schemas | `ai-service/app/schemas.py` | Pydantic models for all requests/responses |
 
 **AI Service and AI Worker share the same Docker image** but run different commands:
-- `ai-service`: `uvicorn app.main:app` — serves REST API + runs MQ consumers
+- `ai-service`: `uvicorn app.main:app` — serves REST API + runs workflow MQ consumers
 - `ai-worker`: `python -m app.worker_main` — feedback processing + LightGBM retraining
 
 ---
@@ -88,8 +95,8 @@ Maven modules in dependency order (top→bottom = caller→callee):
 | Components | `frontend/src/components/` | `layout/` (MainLayout, ErrorBoundary), `resume/`, `ui/` (shadcn/ui) |
 | Services | `frontend/src/services/` | API client (`api.ts`), `resumeService`, `jobService`, `chatService`, `trackingService`, `profileService` |
 | Store (Zustand) | `frontend/src/store/` | `resume.store.ts`, `job.store.ts`, `profile.store.ts`, `language.store.ts` |
-| Hooks | `frontend/src/hooks/` | `useAuth`, `useAbortableRequest`, `useMobile`, `useTimeZone` |
-| i18n | `frontend/src/i18n/`, `src/locales/` | en, zh-Hans, zh-Hant |
+| Hooks | `frontend/src/hooks/` | `useAuth`, `use-mobile` (`useIsMobile`), `useTimeZone` |
+| i18n | `frontend/src/i18n/`, `src/locales/` | `en`, `zh-CN`, `zh-TW` |
 | Types | `frontend/src/types/` | TypeScript type definitions |
 | Utils | `frontend/src/utils/` | Helper functions |
 
@@ -105,13 +112,15 @@ Maven modules in dependency order (top→bottom = caller→callee):
 
 ### Outbox Pattern (Reliable Messaging)
 - All async messages go through `outbox_messages` table in the same DB transaction
-- `OutboxRelayScheduler` polls PENDING messages and delivers to RabbitMQ
-- Uses ShedLock (Redis-backed) to prevent duplicate relay across instances
+- `OutboxRelayScheduler` polls every 2 seconds for `PENDING` messages and delivers to RabbitMQ via `OutboxRelayTransactionService` (per-message `REQUIRES_NEW` transaction)
+- `OutboxCleanupScheduler` deletes `SENT` records older than 7 days daily at 03:00
+- Uses ShedLock (Redis-backed) to prevent duplicate relay/retrain across instances
 - **NEVER** call `rabbitTemplate.convertAndSend()` directly inside `@Transactional`
 
 ### RabbitMQ Queue Pairs
-- Request queues: `ai.queue.{job.parse, resume.parse, conversation, job.rank, feedback}`
-- Response queues: `backend.queue.{job.parse, resume.parse, conversation, job.rank}`
+- Request queues: `ai.queue.job.parse`, `ai.queue.resume.parse`, `ai.queue.conversation`, `ai.queue.job.rank`, `ai.queue.feedback`
+- Response queues: `backend.queue.job.parse`, `backend.queue.resume.parse`, `backend.queue.conversation`, `backend.queue.job.rank`
+- Exchange: `ai.direct.exchange`
 - DLQ: `ai.dlq.queue` via `ai.dlx.exchange`
 
 ### LiteLLM Provider Abstraction
@@ -122,9 +131,10 @@ Maven modules in dependency order (top→bottom = caller→callee):
 ### Frontend Patterns
 - **Zustand** for state management (not Redux)
 - **shadcn/ui** component library (Radix primitives + Tailwind)
-- **i18next** for internationalization (en, zh-Hans, zh-Hant)
-- **Axios interceptors** handle JWT refresh automatically
-- **Abortable requests** pattern for canceling in-flight API calls on rapid user actions
+- **i18next** for internationalization (`en`, `zh-CN`, `zh-TW`)
+- **Axios interceptors** attach JWT, auto-refresh on 401, retry transient GET errors, and send `Accept-Language`
+- API client timeout is 30 seconds; services are plain exported functions/objects, not classes
+- **AbortSignal** support in services (e.g., `jobService.getJobs`) and stores (e.g., `resumeStore.pollParseStatus`) for canceling in-flight requests and polling
 
 ---
 
@@ -172,34 +182,51 @@ architect-agent (planning & delegation)
 
 ### Resume Upload → Parse
 ```
-User upload → Backend saves file + metadata
+User upload → Backend ResumeController → ResumeApplicationService.handleUpload
+  → saves file via FileStorageService, creates resume group + original/converted versions
+  → vector generation → resume_vectors (pgvector)
   → Outbox → RabbitMQ ai.queue.resume.parse
-  → AI worker consumer → LiteLLM parse → Backend callback
+  → AI Service process_resume() → file_parser.extract_resume_text() → resume_parser.parse_resume_text()
+  → backend.queue.resume.parse
+  → Backend AiResultMessageListener → ResumeParseResultHandler
   → PostgreSQL (structured data) + pgvector (embedding)
 ```
+Frontend polls `GET /v1/resumes/groups` to observe `parseStatus` on each version.
 
 ### Job Matching
 ```
-Frontend request → Backend pgvector cosine similarity search
-  → AI Service / RabbitMQ for ranking → LiteLLM rank/explain
-  → Return scored jobs to frontend
+Frontend POST /v1/jobs/match → Backend MatchingApplicationService.startJobMatch
+  → selects active recall model, regenerates missing resume vector via VectorEmbeddingPort if needed
+  → VectorSearchPort.findSimilarJobs (pgvector Euclidean-distance recall against job_vectors)
+  → Outbox → RabbitMQ ai.queue.job.rank
+  → AI Service rank_jobs() → LightGBM ModelManager.predict() or heuristic fallback
+  → backend.queue.job.rank
+  → Backend AiResultMessageListener → MatchingApplicationService.saveMatchResult
+  → Frontend polls GET /v1/jobs/match/{matchId}
 ```
 
 ### Conversation / Chat
 ```
-User message → Backend saves + assembles context (resume/job data)
+User message → Backend ConversationController → ConversationMessageService.sendMessage
+  → saves USER message, auto-generates title
+  → ConversationContextService loads resume + primary job + up to 5 related jobs
   → Outbox → RabbitMQ ai.queue.conversation
-  → AI Service conversation_service → LiteLLM generate reply
-  → Backend AiResultMessageListener → WebSocket push to frontend
+  → AI Service conversation_service.process_conversation() → LiteLLM generate reply
+  → backend.queue.conversation
+  → Backend AiResultMessageListener.onConversationReply → ConversationFacadeImpl.saveAiReply
+  → ConversationStreamService bridges async MQ reply with HTTP stream via Redis Pub/Sub channel `ra:conv:reply`
   → Frontend renders AI reply (with Markdown, context labels)
 ```
 
 ### Feedback → Incremental Training
 ```
-User scoring → Backend → RabbitMQ ai.queue.feedback
-  → AI Worker buffers in Redis → fetches baseline features from backend
-  → LightGBM train (when samples ≥ threshold) → MinIO artifact
-  → Redis Pub/Sub reload event → AI Service loads new model
+User action (CLICK/APPLY/REJECT) → Backend JobApplicationService.trackUserAction
+  → Outbox → RabbitMQ ai.queue.feedback
+  → AI Worker feedback consumer → Redis list ai:feedback:buffer
+  → IncrementalTrainer.try_retrain() daily at 02:00 UTC (lock: ai:model:retrain:lock)
+  → fetches baseline features via InternalApiClient GET /api/internal/ai/baseline-features
+  → LightGBM train (when samples ≥ MIN_SAMPLES_FOR_RETRAIN) → MinIO bucket ai-models
+  → Redis Pub/Sub ai.model.reload → AI Service ModelManager loads new model
 ```
 
 ---
@@ -256,20 +283,20 @@ This skill is a **living document**. When you make significant code changes, upd
 
 ## Agent Definitions
 
-- [architect-agent](../../agents/architect-agent.md) — Architecture decisions, task decomposition, delegation
-- [auth-profile-agent](../../agents/auth-profile-agent.md) — Auth (JWT/OAuth/CAPTCHA) + user profile
-- [resume-agent](../../agents/resume-agent.md) — Resume upload/parse/versions/edit/download
-- [job-matching-agent](../../agents/job-matching-agent.md) — Job CRUD, pgvector recall, ranking, suitability
-- [conversation-agent](../../agents/conversation-agent.md) — Chat lifecycle, context assembly, AI reply, WebSocket
-- [tracking-agent](../../agents/tracking-agent.md) — Application status flow, kanban, statistics, follow-up notes
-- [ai-pipeline-agent](../../agents/ai-pipeline-agent.md) — LiteLLM gateway, embedding, worker, training, model mgmt
-- [platform-agent](../../agents/platform-agent.md) — Docker, MQ, Outbox, pgvector, Redis, MinIO, env vars, CI/CD
-- [qa-review-agent](../../agents/qa-review-agent.md) — Code review, test strategy, architecture rules, security scan, pre-release gate
+- [architect-agent](../../.qoder/agents/architect-agent.md) — Architecture decisions, task decomposition, delegation
+- [auth-profile-agent](../../.qoder/agents/auth-profile-agent.md) — Auth (JWT/OAuth/CAPTCHA) + user profile
+- [resume-agent](../../.qoder/agents/resume-agent.md) — Resume upload/parse/versions/edit/download
+- [job-matching-agent](../../.qoder/agents/job-matching-agent.md) — Job CRUD, pgvector recall, ranking, suitability
+- [conversation-agent](../../.qoder/agents/conversation-agent.md) — Chat lifecycle, context assembly, AI reply, WebSocket
+- [tracking-agent](../../.qoder/agents/tracking-agent.md) — Application status flow, kanban, statistics, follow-up notes
+- [ai-pipeline-agent](../../.qoder/agents/ai-pipeline-agent.md) — LiteLLM gateway, embedding, worker, training, model mgmt
+- [platform-agent](../../.qoder/agents/platform-agent.md) — Docker, MQ, Outbox, pgvector, Redis, MinIO, env vars, CI/CD
+- [qa-review-agent](../../.qoder/agents/qa-review-agent.md) — Code review, test strategy, architecture rules, security scan, pre-release gate
 
 ## External Documentation
 
-- [Architecture overview](../../../docs/architecture/Architecture.md)
-- [ADRs](../../../docs/adr/)
-- [API docs](../../../docs/api/backend/)
-- [Docker deployment](../../../docs/deployment/DOCKER_DEPLOY.md)
-- [Environment variables](../../../docs/deployment/environment-variables.md)
+- [Architecture overview](../../docs/architecture/Architecture.md)
+- [ADRs](../../docs/adr/)
+- [API docs](../../docs/api/backend/)
+- [Docker deployment](../../docs/deployment/DOCKER_DEPLOY.md)
+- [Environment variables](../../docs/deployment/environment-variables.md)
