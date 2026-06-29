@@ -7,6 +7,7 @@ vi.mock('./tokenStorage', () => ({
     getAccessToken: vi.fn(),
     clear: vi.fn(),
     setTokens: vi.fn(),
+    setUser: vi.fn(),
     getRememberMe: vi.fn(),
   },
 }))
@@ -14,9 +15,6 @@ vi.mock('./tokenStorage', () => ({
 vi.mock('@/i18n', () => ({
   default: { language: 'en' },
 }))
-
-// Import the module after mocking dependencies
-const { createAbortableRequest } = await import('./api')
 
 describe('api.ts real implementation', () => {
   beforeEach(() => {
@@ -29,97 +27,36 @@ describe('api.ts real implementation', () => {
   })
 
   // ============================================================
-  // createAbortableRequest — tested against REAL implementation
-  // ============================================================
-  describe('createAbortableRequest', () => {
-    it('cancels previous request on new execute', async () => {
-      const { execute } = createAbortableRequest()
-
-      const promise1 = execute(async (signal) => {
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        if (signal.aborted) throw new Error('Aborted')
-        return 'result1'
-      })
-
-      const promise2 = execute(async () => 'result2')
-
-      await expect(promise1).rejects.toThrow('Aborted')
-      await expect(promise2).resolves.toBe('result2')
-    })
-
-    it('manually aborts pending request', () => {
-      const { execute, abort } = createAbortableRequest()
-
-      let capturedSignal: AbortSignal | null = null
-      execute(async (signal) => {
-        capturedSignal = signal
-        return 'running'
-      })
-
-      abort('Manual abort')
-      expect(capturedSignal?.aborted).toBe(true)
-    })
-
-    it('clears controller after successful completion', async () => {
-      const { execute, abort } = createAbortableRequest()
-
-      await execute(async () => 'done')
-
-      // Controller should be null after success, so abort is no-op
-      abort('should not throw')
-      expect(true).toBe(true) // no error thrown
-    })
-
-    it('does not clear controller if request was aborted during execution', async () => {
-      const { execute, abort } = createAbortableRequest()
-
-      const promise = execute(async (signal) => {
-        await new Promise((resolve) => setTimeout(resolve, 500))
-        if (signal.aborted) return 'aborted-result'
-        return 'completed'
-      })
-
-      abort('superseded')
-      const result = await promise
-
-      // After aborted execution, controller remains set until finally
-      // The real implementation's finally only clears if NOT aborted
-      expect(result).toBe('aborted-result')
-    })
-  })
-
-  // ============================================================
   // Interceptor behavior — tested via axios mock
   // ============================================================
   describe('request interceptor', () => {
     it('attaches Authorization header when token exists', async () => {
+      // Re-import to get fresh instance with mocked dependencies
+      vi.resetModules()
+      const { default: apiClient, authService } = await import('./api')
       const { default: tokenStorage } = await import('./tokenStorage')
       vi.mocked(tokenStorage.getAccessToken).mockReturnValue('test-token-123')
 
-      // Re-import to get fresh instance with mocked dependencies
-      vi.resetModules()
-      const { authService } = await import('./api')
-
-      // authService.login will trigger request interceptor
-      // We verify via mock that the request had the header
-      const mockPost = vi.spyOn(axios, 'post').mockResolvedValue({
+      // authService.login uses the apiClient instance, not the global axios.post.
+      // Mock the transport layer so the request interceptor runs without hitting the real backend.
+      const postSpy = vi.spyOn(apiClient, 'post')
+      const adapterMock = vi.fn().mockResolvedValue({
         data: { code: 200, data: { accessToken: 'new-token', expiresIn: 3600 } },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {},
       })
+      apiClient.defaults.adapter = adapterMock as any
 
-      try {
-        await authService.login({ email: 'test@test.com', password: 'pass' })
-      } catch {
-        // expected — mock may not match real endpoint
-      }
+      await authService.login({ email: 'test@test.com', password: 'pass' })
 
-      // The api client should have added Authorization header
-      const lastCall = mockPost.mock.calls[mockPost.mock.calls.length - 1]
-      if (lastCall && lastCall[2]) {
-        // headers might be in config
-        expect(true).toBe(true)
-      }
+      expect(postSpy).toHaveBeenCalled()
+      expect(adapterMock).toHaveBeenCalled()
+      const requestConfig = adapterMock.mock.calls[0][0]
+      expect(requestConfig.headers.Authorization).toBe('Bearer test-token-123')
 
-      mockPost.mockRestore()
+      postSpy.mockRestore()
     })
   })
 

@@ -12,12 +12,12 @@ from app.schemas import (
     ExperienceItem,
 )
 from app.services.suitability_service import (
-    _normalize_items,
     _calculate_experience_score,
     _clamp_score,
     evaluate_suitability_baseline,
     evaluate_suitability_with_vertex,
 )
+from app.domain.ml.features import normalize_items
 
 # ── Tool function tests ────────────────────────────────────
 
@@ -26,7 +26,7 @@ def test_normalize_items():
     """Should normalize and deduplicate skill items.
     应规范化并去重技能项。"""
     items = [" Python ", "JAVA", "", "  ", "python"]
-    normalized = _normalize_items(items)
+    normalized = normalize_items(items)
     assert normalized == {"python", "java"}
 
 

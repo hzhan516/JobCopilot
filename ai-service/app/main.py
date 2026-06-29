@@ -3,11 +3,12 @@ JobCopilot - Python AI service entry point.
 JobCopilot AI service entry point, responsible for task scheduling, HTTP APIs, and MQ consumer lifecycle management.
 """
 
+import asyncio
 import logging
 import os
 import threading
 
-from fastapi import APIRouter, FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
@@ -16,6 +17,8 @@ from app.config import (
     LLM_EMBEDDING_MODEL,
     INTERNAL_API_KEY,
     ENV,
+    EMBEDDING_MAX_BATCH_SIZE,
+    EMBEDDING_MAX_TEXT_LENGTH,
 )
 from app.mq.consumer import create_connection, setup_all_queues, start_all_consumers
 
@@ -43,7 +46,6 @@ logger = logging.getLogger(__name__)
 _mq_connection = None
 _mq_channel = None
 
-import asyncio  # noqa: E402
 from app.api.model_manager import model_manager  # noqa: E402
 
 
@@ -77,15 +79,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-admin_router = APIRouter(prefix="/admin", tags=["admin"])
-
-
-@admin_router.post("/recompute-model")
-def recompute_model():
-    raise HTTPException(status_code=410, detail="Deprecated. Use ai-worker scheduling.")
-
-
-app.include_router(admin_router, prefix="/api/v1")
 
 # ---------------------------------------------------------------------------
 # Internal API Key Middleware (Defense in Depth)
@@ -243,7 +236,6 @@ def match_jobs(request: JobMatchRequest) -> JobMatchResponse:
 def batch_embeddings(request: EmbeddingRequest) -> EmbeddingResponse:
     # Runtime guard — schema validation already enforces limits, but defense in depth.
     # 运行时守卫：schema 校验已生效，此处为纵深防御。
-    from app.config import EMBEDDING_MAX_BATCH_SIZE, EMBEDDING_MAX_TEXT_LENGTH
 
     if len(request.texts) > EMBEDDING_MAX_BATCH_SIZE:
         raise HTTPException(

@@ -108,21 +108,18 @@ export default function TrackingPage() {
     void (async () => {
       try {
         setIsLoading(true);
-        const data = await trackingService.getTrackings();
+        const [trackings, statsData] = await Promise.all([
+          trackingService.getTrackings(),
+          Promise.resolve(trackingService.getTrackingStats()).catch(() => null),
+        ]);
         if (ignored) return;
-        setTrackings(data);
+        setTrackings(trackings);
+        if (statsData !== null) setStats(statsData);
+        else setStats(null);
       } catch {
         if (!ignored) toast.error(t('tracking.loadError'));
       } finally {
         if (!ignored) setIsLoading(false);
-      }
-
-      try {
-        const data = await trackingService.getTrackingStats();
-        if (ignored) return;
-        setStats(data);
-      } catch {
-        if (!ignored) setStats(null);
       }
     })();
 
@@ -130,6 +127,12 @@ export default function TrackingPage() {
       ignored = true;
     };
   }, [t]);
+
+  const refreshData = () =>
+    Promise.all([
+      trackingService.getTrackings().then(setTrackings),
+      trackingService.getTrackingStats().then(setStats).catch(() => setStats(null)),
+    ]);
 
   const updateEditSearchParam = useCallback((trackingId: string) => {
     dismissedEditTrackingIdRef.current = null;
@@ -168,10 +171,7 @@ export default function TrackingPage() {
         appliedAt: getAppliedDateForStatus(newTracking.status, newTracking.appliedAt) || undefined,
         notes: newTracking.notes || undefined,
       });
-      await Promise.all([
-        trackingService.getTrackings().then(setTrackings),
-        trackingService.getTrackingStats().then(setStats).catch(() => setStats(null)),
-      ]);
+      await refreshData();
       setNewTracking({ jobTitle: '', companyName: '', status: 'APPLIED', appliedAt: getTodayDateInputValue(), notes: '' });
       setAddDialogOpen(false);
       toast.success(t('tracking.addSuccess'));
@@ -211,10 +211,7 @@ export default function TrackingPage() {
         appliedAt: getAppliedDateForStatus(editTracking.status, editTracking.appliedAt) || undefined,
         notes: editTracking.notes,
       });
-      await Promise.all([
-        trackingService.getTrackings().then(setTrackings),
-        trackingService.getTrackingStats().then(setStats).catch(() => setStats(null)),
-      ]);
+      await refreshData();
       closeEditDialog();
       toast.success(t('tracking.editSuccess'));
     } catch {
@@ -229,10 +226,7 @@ export default function TrackingPage() {
         status,
         appliedAt: getAppliedDateForStatus(status, tracking?.appliedAt ?? '') || undefined,
       });
-      await Promise.all([
-        trackingService.getTrackings().then(setTrackings),
-        trackingService.getTrackingStats().then(setStats).catch(() => setStats(null)),
-      ]);
+      await refreshData();
       toast.success(t('tracking.updateSuccess'));
     } catch {
       toast.error(t('tracking.updateFailed'));
@@ -242,10 +236,7 @@ export default function TrackingPage() {
   const handleDeleteTracking = async (trackingId: string) => {
     try {
       await trackingService.deleteTracking(trackingId);
-      await Promise.all([
-        trackingService.getTrackings().then(setTrackings),
-        trackingService.getTrackingStats().then(setStats).catch(() => setStats(null)),
-      ]);
+      await refreshData();
       toast.success(t('tracking.deleteSuccess'));
     } catch {
       toast.error(t('tracking.deleteFailed'));

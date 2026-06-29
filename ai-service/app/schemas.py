@@ -179,15 +179,6 @@ class ResumeParseCommand(AppBaseModel):
     file_type: str = Field(alias="format")
 
 
-class VectorGenCommand(AppBaseModel):
-    """Command to generate an embedding vector for a text entity (job or resume).
-    触发向量生成的命令：为职位或简历文本生成语义嵌入，用于后续相似度检索。"""
-
-    reference_id: str = Field(alias="referenceId")
-    entity_type: str = Field(alias="entityType")
-    text: str
-
-
 class ConversationMessage(AppBaseModel):
     """Single message within a conversation history, supporting optional file attachments.
     单条对话消息模型，支持附带文件 URL，用于构建多轮上下文。"""

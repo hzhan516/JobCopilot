@@ -13,11 +13,10 @@ export function useIsMobile() {
     const onChange = () => {
       setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     }
+    // ponytail: matchMedia change fires on breakpoint crossings; no need for resize listener
     mql.addEventListener("change", onChange)
-    window.addEventListener("resize", onChange)
     return () => {
       mql.removeEventListener("change", onChange)
-      window.removeEventListener("resize", onChange)
     }
   }, [])
 

@@ -33,9 +33,6 @@ JOB_RANK_RESULT_QUEUE = "backend.queue.job.rank"
 JOB_RANK_REQUEST_ROUTING_KEY = "ai.req.job.rank"
 JOB_RANK_RESULT_ROUTING_KEY = "backend.res.job.rank"
 
-MODEL_INCREMENTAL_QUEUE = "ai.queue.model.incremental"
-MODEL_INCREMENTAL_ROUTING_KEY = "ai.req.model.incremental"
-
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 VERTEX_PROJECT_ID = os.getenv("VERTEX_PROJECT_ID", "jobcopilot-ai-service")
@@ -85,7 +82,6 @@ LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "8192"))
 BACKEND_SERVICE_URL = os.getenv("BACKEND_SERVICE_URL", "http://backend:8080")
 BACKEND_QUERY_TIMEOUT = float(os.getenv("BACKEND_QUERY_TIMEOUT", "5"))
 BACKEND_BATCH_UPSERT_TIMEOUT = float(os.getenv("BACKEND_BATCH_UPSERT_TIMEOUT", "30"))
-BACKEND_BATCH_SIZE = int(os.getenv("BACKEND_BATCH_SIZE", "100"))
 
 # Redis
 REDIS_HOST = os.getenv("REDIS_HOST", "redis")

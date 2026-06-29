@@ -37,7 +37,27 @@ describe('useIsMobile', () => {
     expect(result.current).toBe(false)
   })
 
-  it('updates when window resizes', () => {
+  it('updates when matchMedia change event fires', () => {
+    const listeners: Record<string, EventListener[]> = {}
+    const mockMql = {
+      matches: false,
+      addEventListener: vi.fn((event: string, callback: EventListener) => {
+        listeners[event] = listeners[event] || []
+        listeners[event].push(callback)
+      }),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn((event: Event) => {
+        listeners[event.type]?.forEach((cb) => cb(event))
+        return true
+      }),
+    }
+
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      configurable: true,
+      value: vi.fn().mockReturnValue(mockMql),
+    })
+
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
       configurable: true,
@@ -48,7 +68,7 @@ describe('useIsMobile', () => {
 
     expect(result.current).toBe(false)
 
-    // Simulate resize to mobile
+    // Simulate crossing the mobile breakpoint via matchMedia change
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
       configurable: true,
@@ -56,11 +76,9 @@ describe('useIsMobile', () => {
     })
 
     act(() => {
-      window.dispatchEvent(new Event('resize'))
+      mockMql.dispatchEvent(new Event('change'))
     })
 
-    // The hook uses matchMedia, not resize event directly
-    // This test validates the matchMedia listener is set up
     expect(result.current).toBe(true)
   })
 

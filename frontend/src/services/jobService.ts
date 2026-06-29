@@ -2,9 +2,6 @@ import apiClient from './api';
 import type {
   ApiResponse,
   Job,
-  JobMatchRequest,
-  JobMatchResponse,
-  JobMatchHistoryResponse,
   JobScoreRequest,
   JobScoreResponse,
   JobScoreHistoryResponse,
@@ -83,37 +80,6 @@ export const jobService = {
     const response = await apiClient.post<ApiResponse<null>>(url);
     if (response.data.code === 200) {
       return;
-    }
-    throw new Error(response.data.message);
-  },
-
-  startMatch: async (request: JobMatchRequest): Promise<JobMatchResponse> => {
-    const response = await apiClient.post<ApiResponse<JobMatchResponse>>(
-      '/v1/jobs/match',
-      request
-    );
-    if (response.data.code === 200) {
-      return response.data.data;
-    }
-    throw new Error(response.data.message);
-  },
-
-  getMatchResult: async (matchId: string): Promise<JobMatchResponse> => {
-    const response = await apiClient.get<ApiResponse<JobMatchResponse>>(
-      `/v1/jobs/match/${matchId}`
-    );
-    if (response.data.code === 200) {
-      return response.data.data;
-    }
-    throw new Error(response.data.message);
-  },
-
-  getMatchHistory: async (): Promise<JobMatchHistoryResponse[]> => {
-    const response = await apiClient.get<ApiResponse<JobMatchHistoryResponse[]>>(
-      '/v1/jobs/match/history'
-    );
-    if (response.data.code === 200) {
-      return response.data.data;
     }
     throw new Error(response.data.message);
   },

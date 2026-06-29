@@ -46,13 +46,6 @@ def _extract_search_results(payload: Any) -> list[VectorSearchResult]:
     return []
 
 
-def _to_float(value: Any, default: float = 0.0) -> float:
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
-
-
 def find_job_matches(request: JobMatchRequest) -> JobMatchResponse:
     """Embed the user query and delegate vector search to the backend to avoid in-memory caches.
     生成查询向量后调用后端向量检索：避免 AI 服务常驻缓存导致内存膨胀，同时利用后端 pgvector 的索引加速。"""

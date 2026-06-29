@@ -7,7 +7,6 @@ import io.jobcopilot.resumeassistant.api.conversation.dto.SendMessageRequest;
 import io.jobcopilot.resumeassistant.api.conversation.facade.ConversationFacade;
 import io.jobcopilot.resumeassistant.domain.conversation.exception.ConversationException;
 import io.jobcopilot.resumeassistant.infrastructure.messaging.stream.ConversationStreamService;
-import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -193,9 +192,8 @@ class ConversationControllerTest {
         when(streamService.awaitReply(CONVERSATION_ID.toString())).thenReturn(expectedReply);
 
         // 执行 / When
-        HttpServletResponse mockResponse = mock(HttpServletResponse.class);
         ResponseEntity<StreamingResponseBody> response = conversationController.streamAiReply(
-                CONVERSATION_ID.toString(), USER_ID, mockResponse);
+                CONVERSATION_ID.toString(), USER_ID);
 
         // 验证 / Then
         assertThat(response.getStatusCode().value()).isEqualTo(200);
@@ -206,8 +204,6 @@ class ConversationControllerTest {
         String actualContent = baos.toString(StandardCharsets.UTF_8);
         assertThat(actualContent).isEqualTo(expectedReply);
 
-        verify(mockResponse).setHeader("X-Content-Type-Options", "nosniff");
-        verify(mockResponse).setHeader("X-XSS-Protection", "1; mode=block");
         verify(conversationFacade).getConversation(CONVERSATION_ID.toString(), USER_ID, null, null);
         verify(streamService).awaitReply(CONVERSATION_ID.toString());
     }
@@ -221,9 +217,8 @@ class ConversationControllerTest {
                 .thenThrow(new ConversationException("access.denied"));
 
         // 执行 & 验证 / When & Then
-        HttpServletResponse mockResponse = mock(HttpServletResponse.class);
         try {
-            conversationController.streamAiReply(CONVERSATION_ID.toString(), otherUserId, mockResponse);
+            conversationController.streamAiReply(CONVERSATION_ID.toString(), otherUserId);
         } catch (ConversationException e) {
             assertThat(e.getMessage()).contains("access.denied");
         }
@@ -240,9 +235,8 @@ class ConversationControllerTest {
         when(streamService.awaitReply(CONVERSATION_ID.toString())).thenReturn(null);
 
         // 执行 / When
-        HttpServletResponse mockResponse = mock(HttpServletResponse.class);
         ResponseEntity<StreamingResponseBody> response = conversationController.streamAiReply(
-                CONVERSATION_ID.toString(), USER_ID, mockResponse);
+                CONVERSATION_ID.toString(), USER_ID);
 
         // 验证 / Then
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -250,8 +244,6 @@ class ConversationControllerTest {
         String actualContent = baos.toString(StandardCharsets.UTF_8);
         assertThat(actualContent).contains("timed out").contains("超时");
 
-        verify(mockResponse).setHeader("X-Content-Type-Options", "nosniff");
-        verify(mockResponse).setHeader("X-XSS-Protection", "1; mode=block");
     }
 
     @Test
@@ -264,9 +256,8 @@ class ConversationControllerTest {
                 .thenReturn("<script>alert('xss')</script><b>Hello</b> World");
 
         // 执行 / When
-        HttpServletResponse mockResponse = mock(HttpServletResponse.class);
         ResponseEntity<StreamingResponseBody> response = conversationController.streamAiReply(
-                CONVERSATION_ID.toString(), USER_ID, mockResponse);
+                CONVERSATION_ID.toString(), USER_ID);
 
         // 验证 / Then
         ByteArrayOutputStream baos = new ByteArrayOutputStream();

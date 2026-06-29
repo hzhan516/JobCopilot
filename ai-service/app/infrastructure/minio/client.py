@@ -60,17 +60,3 @@ class MinioModelRegistry:
 
     def download_model(self, object_key: str, dest_path: str):
         self.s3.download_file(MINIO_MODEL_BUCKET, object_key, dest_path)
-
-    def list_models(self) -> list[str]:
-        try:
-            response = self.s3.list_objects_v2(Bucket=MINIO_MODEL_BUCKET)
-            if "Contents" in response:
-                return [
-                    obj["Key"]
-                    for obj in response["Contents"]
-                    if obj["Key"].startswith("ranker_model_")
-                ]
-            return []
-        except Exception as e:
-            logger.error(f"Failed to list models: {e}")
-            return []

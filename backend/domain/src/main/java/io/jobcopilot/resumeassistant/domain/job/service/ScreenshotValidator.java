@@ -12,7 +12,6 @@ public final class ScreenshotValidator {
 
     private ScreenshotValidator() {
         // Utility class — prevent instantiation
-        throw new AssertionError("Utility class");
     }
 
     /**

@@ -29,6 +29,33 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+// ponytail: pure helpers to avoid copy-pasting editForm + score mapping
+function editFormFromParsedContent(pc: NonNullable<Job['parsedContent']>) {
+  return {
+    title: pc.title || '',
+    company: pc.company || '',
+    salary: pc.salary || '',
+    location: pc.location || '',
+    description: pc.description || '',
+    requirements: pc.requirements || [],
+  };
+}
+
+function scoreResultFromHistoryEntry(
+  entry: { suitable: boolean; summary: string; finalScore: number; skillScore: number; experienceScore: number; overallScore: number }
+): JobScoreResponse {
+  return {
+    suitable: entry.suitable,
+    summary: entry.summary,
+    finalScore: entry.finalScore,
+    breakdown: {
+      skillScore: entry.skillScore,
+      experienceScore: entry.experienceScore,
+      overallScore: entry.overallScore,
+    },
+  };
+}
+
 export default function JobDetail() {
   const { t } = useTranslation();
   const { jobId } = useParams<{ jobId: string }>();
@@ -60,70 +87,48 @@ export default function JobDetail() {
     void (async () => {
       try {
         setIsLoading(true);
-        const jobData = await jobService.getJob(jobId);
+        const [jobData, resumeData, history] = await Promise.all([
+          jobService.getJob(jobId),
+          Promise.resolve(resumeService.getResumeGroups()).catch(() => null),
+          Promise.resolve(jobService.getScoreHistory()).catch(() => null),
+        ]);
         if (ignored) return;
+
         setJob(jobData);
         if (jobData.parsedContent) {
-          setEditForm({
-            title: jobData.parsedContent.title || '',
-            company: jobData.parsedContent.company || '',
-            salary: jobData.parsedContent.salary || '',
-            location: jobData.parsedContent.location || '',
-            description: jobData.parsedContent.description || '',
-            requirements: jobData.parsedContent.requirements || [],
+          setEditForm(editFormFromParsedContent(jobData.parsedContent));
+        }
+
+        if (resumeData !== null) {
+          setResumes(resumeData);
+          // Prefer converted over aiOptimized for scoring; original version is fallback-only
+          // 默认选择第一个可用的非原版简历（优先 converted，其次 aiOptimized）
+          setSelectedResumeVersionId((prev) => {
+            if (prev) return prev;
+            if (resumeData.length > 0) {
+              const firstAvailable =
+                resumeData[0].convertedVersion ?? resumeData[0].aiOptimizedVersion ?? null;
+              if (firstAvailable) {
+                return firstAvailable.versionId;
+              }
+            }
+            return prev;
           });
+        }
+
+        if (history !== null) {
+          // History is sorted by createdAt desc; take the first match for this job
+          // 过滤当前职位的评分记录，取最新的一条（history 已按 createdAt 降序）
+          const jobScores = history.filter((r) => r.jobId === jobId);
+          if (jobScores.length > 0) {
+            setScoreResult(scoreResultFromHistoryEntry(jobScores[0]));
+            setSelectedResumeVersionId(jobScores[0].resumeVersionId);
+          }
         }
       } catch {
         if (!ignored) toast.error(t('jobDetail.loadError'));
       } finally {
         if (!ignored) setIsLoading(false);
-      }
-
-      try {
-        const resumeData = await resumeService.getResumeGroups();
-        if (ignored) return;
-        setResumes(resumeData);
-        // Prefer converted over aiOptimized for scoring; original version is fallback-only
-        // 默认选择第一个可用的非原版简历（优先 converted，其次 aiOptimized）
-        setSelectedResumeVersionId((prev) => {
-          if (prev) return prev;
-          if (resumeData.length > 0) {
-            const firstAvailable =
-              resumeData[0].convertedVersion ?? resumeData[0].aiOptimizedVersion ?? null;
-            if (firstAvailable) {
-              return firstAvailable.versionId;
-            }
-          }
-          return prev;
-        });
-      } catch {
-        // Silently degrade
-        // 静默降级
-      }
-
-      try {
-        const history = await jobService.getScoreHistory();
-        if (ignored) return;
-        // History is sorted by createdAt desc; take the first match for this job
-        // 过滤当前职位的评分记录，取最新的一条（history 已按 createdAt 降序）
-        const jobScores = history.filter((r) => r.jobId === jobId);
-        if (jobScores.length > 0) {
-          const latest = jobScores[0];
-          setScoreResult({
-            suitable: latest.suitable,
-            summary: latest.summary,
-            finalScore: latest.finalScore,
-            breakdown: {
-              skillScore: latest.skillScore,
-              experienceScore: latest.experienceScore,
-              overallScore: latest.overallScore,
-            },
-          });
-          setSelectedResumeVersionId(latest.resumeVersionId);
-        }
-      } catch {
-        // Silently degrade
-        // 静默降级
       }
     })();
 
@@ -179,14 +184,7 @@ export default function JobDetail() {
       jobService.getJob(jobId!).then((data) => {
         setJob(data);
         if (data.parsedContent) {
-          setEditForm({
-            title: data.parsedContent.title || '',
-            company: data.parsedContent.company || '',
-            salary: data.parsedContent.salary || '',
-            location: data.parsedContent.location || '',
-            description: data.parsedContent.description || '',
-            requirements: data.parsedContent.requirements || [],
-          });
+          setEditForm(editFormFromParsedContent(data.parsedContent));
         }
       }).catch(() => {
         toast.error(t('jobDetail.loadError'));
@@ -199,14 +197,7 @@ export default function JobDetail() {
 
   const handleCancelEdit = () => {
     if (job?.parsedContent) {
-      setEditForm({
-        title: job.parsedContent.title || '',
-        company: job.parsedContent.company || '',
-        salary: job.parsedContent.salary || '',
-        location: job.parsedContent.location || '',
-        description: job.parsedContent.description || '',
-        requirements: job.parsedContent.requirements || [],
-      });
+      setEditForm(editFormFromParsedContent(job.parsedContent));
     }
     setIsEditing(false);
   };
@@ -221,25 +212,6 @@ export default function JobDetail() {
       const result = await jobService.scoreJob(jobId!, { resumeVersionId: selectedResumeVersionId });
       setScoreResult(result);
       toast.success(t('jobDetail.scoreSuccess'));
-      jobService.getScoreHistory().then((history) => {
-        const jobScores = history.filter((r) => r.jobId === jobId);
-        if (jobScores.length > 0) {
-          const latest = jobScores[0];
-          setScoreResult({
-            suitable: latest.suitable,
-            summary: latest.summary,
-            finalScore: latest.finalScore,
-            breakdown: {
-              skillScore: latest.skillScore,
-              experienceScore: latest.experienceScore,
-              overallScore: latest.overallScore,
-            },
-          });
-          setSelectedResumeVersionId(latest.resumeVersionId);
-        }
-      }).catch(() => {
-        // Silently degrade
-      }); // 刷新评分历史
     } catch (error: unknown) {
       const err = error as { response?: { status?: number; data?: { message?: string } } };
       if (err.response?.status === 503) {

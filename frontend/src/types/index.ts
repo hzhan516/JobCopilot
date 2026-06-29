@@ -12,11 +12,6 @@ export interface PaginatedResponse<T> {
   totalPages: number;
 }
 
-export interface User {
-  userId: string;
-  email: string;
-}
-
 export interface AuthResponse {
   userId: string;
   email: string;
@@ -131,7 +126,6 @@ export interface Job {
   originalUrl: string;
   status: 'PENDING' | 'SCRAPING' | 'PARSING' | 'COMPLETED' | 'FAILED';
   parsedContent: ParsedJobContent | null;
-  imageCheckEnabled: boolean;
   errorMessage: string | null;
   createdAt?: string;
 }
@@ -303,14 +297,3 @@ export interface UpdateJobRequest {
   requirements: string[];
 }
 
-// Kept for backward compatibility during gradual migration
-// 保留旧名称以兼容现有代码（将被逐步替换）
-export interface JobApplication {
-  applicationId: string;
-  jobId: string;
-  jobTitle: string;
-  company: string;
-  status: 'APPLIED' | 'SCREENING' | 'INTERVIEW' | 'OFFER' | 'REJECTED' | 'WITHDRAWN';
-  appliedAt: string;
-  notes?: string;
-}
