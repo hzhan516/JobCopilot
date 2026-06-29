@@ -31,7 +31,7 @@
         <jdk.min.version>21</jdk.min.version>
 
         <!-- 框架版本 -->
-        <spring-boot.version>3.5.15</spring-boot.version>
+        <spring-boot.version>3.5.16</spring-boot.version>
         <postgresql.version>42.7.4</postgresql.version>
         <hibernate.version>6.6.53.Final</hibernate.version>
         <pgvector.version>0.1.6</pgvector.version>
