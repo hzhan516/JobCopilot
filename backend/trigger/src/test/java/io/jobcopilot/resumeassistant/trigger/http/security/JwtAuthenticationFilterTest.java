@@ -15,11 +15,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -284,6 +286,77 @@ class JwtAuthenticationFilterTest {
         verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         assertThat(stringWriter.toString()).contains("Token expired");
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should set ADMIN role authority when JWT contains ADMIN role claim")
+    void shouldSetAdminRoleAuthority() throws ServletException, IOException {
+        // 给定
+        // Given
+        when(request.getRequestURI()).thenReturn("/api/admin/v1/users");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + VALID_TOKEN);
+        when(tokenService.validateTokenDetailed(VALID_TOKEN)).thenReturn(TokenValidationResult.VALID);
+        when(tokenService.getUserIdFromToken(VALID_TOKEN)).thenReturn(TEST_USER_ID);
+        when(tokenService.getRoleFromToken(VALID_TOKEN)).thenReturn("ADMIN");
+
+        // 当
+        // When
+        jwtFilter.doFilterInternal(request, response, filterChain);
+
+        // 那么
+        // Then
+        verify(filterChain).doFilter(request, response);
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        assertThat(auth).isNotNull();
+        assertThat(auth.getAuthorities().stream().map(Object::toString).toList())
+                .containsExactly("ROLE_ADMIN");
+    }
+
+    @Test
+    @DisplayName("Should set empty authorities when no role claim in JWT")
+    void shouldSetEmptyAuthoritiesWhenNoRoleClaim() throws ServletException, IOException {
+        // 给定
+        // Given
+        when(request.getRequestURI()).thenReturn("/v1/resumes");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + VALID_TOKEN);
+        when(tokenService.validateTokenDetailed(VALID_TOKEN)).thenReturn(TokenValidationResult.VALID);
+        when(tokenService.getUserIdFromToken(VALID_TOKEN)).thenReturn(TEST_USER_ID);
+        when(tokenService.getRoleFromToken(VALID_TOKEN)).thenReturn(null);
+
+        // 当
+        // When
+        jwtFilter.doFilterInternal(request, response, filterChain);
+
+        // 那么
+        // Then
+        verify(filterChain).doFilter(request, response);
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        assertThat(auth).isNotNull();
+        assertThat(auth.getAuthorities()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should set JOB_SEEKER role authority for non-admin users")
+    void shouldSetJobSeekerRoleAuthority() throws ServletException, IOException {
+        // 给定
+        // Given
+        when(request.getRequestURI()).thenReturn("/v1/resumes");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + VALID_TOKEN);
+        when(tokenService.validateTokenDetailed(VALID_TOKEN)).thenReturn(TokenValidationResult.VALID);
+        when(tokenService.getUserIdFromToken(VALID_TOKEN)).thenReturn(TEST_USER_ID);
+        when(tokenService.getRoleFromToken(VALID_TOKEN)).thenReturn("JOB_SEEKER");
+
+        // 当
+        // When
+        jwtFilter.doFilterInternal(request, response, filterChain);
+
+        // 那么
+        // Then
+        verify(filterChain).doFilter(request, response);
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        assertThat(auth).isNotNull();
+        assertThat(auth.getAuthorities().stream().map(Object::toString).toList())
+                .containsExactly("ROLE_JOB_SEEKER");
     }
 
     @Test
