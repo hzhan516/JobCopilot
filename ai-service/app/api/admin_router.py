@@ -1,4 +1,5 @@
 """AI service admin endpoints — basic monitoring + advanced model/queue management."""
+
 import time
 import logging
 from fastapi import APIRouter, HTTPException
@@ -12,6 +13,7 @@ class ConfigReloadRequest(BaseModel):
     key: str
     value: str
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -19,6 +21,7 @@ START_TIME = time.time()
 
 
 # ─── Basic (read-only) ───
+
 
 @router.get("/status")
 async def admin_status():
@@ -68,10 +71,14 @@ async def model_history():
 
 # ─── Advanced (write, require confirmation) ───
 
+
 @router.post("/model/retrain")
 async def trigger_retrain():
     # ponytail: scheduled retraining handled by worker; manual trigger deferred
-    return {"status": "not_implemented", "message": "Manual retraining deferred — use scheduled worker"}
+    return {
+        "status": "not_implemented",
+        "message": "Manual retraining deferred — use scheduled worker",
+    }
 
 
 @router.post("/model/rollback")
@@ -95,6 +102,7 @@ async def flush_cache():
 
 
 # ─── Config hot-reload ───
+
 
 @router.post("/config/reload")
 async def reload_config(req: ConfigReloadRequest):

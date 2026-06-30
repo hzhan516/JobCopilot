@@ -88,6 +88,7 @@ app = FastAPI(
 
 # Register admin router / 注册管理路由
 from app.api.admin_router import router as admin_router  # noqa: E402
+
 app.include_router(admin_router)
 
 

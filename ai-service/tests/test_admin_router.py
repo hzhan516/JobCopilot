@@ -1,4 +1,5 @@
 """Tests for AI service admin router endpoints."""
+
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
@@ -7,9 +8,11 @@ from unittest.mock import patch, MagicMock
 @pytest.fixture
 def client():
     """Create test client with mocked model_manager to avoid MinIO/Redis deps."""
-    with patch("app.api.model_manager.ModelManager.load_latest", MagicMock()), \
-         patch("app.api.model_manager.ModelManager.watch_for_reloads", MagicMock()):
+    with patch("app.api.model_manager.ModelManager.load_latest", MagicMock()), patch(
+        "app.api.model_manager.ModelManager.watch_for_reloads", MagicMock()
+    ):
         from app.main import app
+
         with TestClient(app) as c:
             yield c
 
@@ -47,13 +50,17 @@ def test_model_history_returns_empty_list(client):
 
 
 def test_config_reload_log_key(client):
-    response = client.post("/admin/config/reload", json={"key": "log.aiServiceLevel", "value": "DEBUG"})
+    response = client.post(
+        "/admin/config/reload", json={"key": "log.aiServiceLevel", "value": "DEBUG"}
+    )
     assert response.status_code == 200
     assert response.json()["status"] == "reloaded"
 
 
 def test_config_reload_ignores_unknown(client):
-    response = client.post("/admin/config/reload", json={"key": "unknown.setting", "value": "x"})
+    response = client.post(
+        "/admin/config/reload", json={"key": "unknown.setting", "value": "x"}
+    )
     assert response.status_code == 200
     assert response.json()["status"] == "ignored"
 
