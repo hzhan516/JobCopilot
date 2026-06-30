@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type { ApiResponse, AuthResponse, LoginRequest, RegisterRequest, SendVerificationCodeRequest, LoginByGoogleRequest, CaptchaChallengeResponse, CaptchaVerifyRequest } from '@/types';
-import tokenStorage, { type StoredUser } from './tokenStorage';
+import tokenStorage from './tokenStorage';
 import i18n from '@/i18n';
 
 /** 从 JWT payload 中解析角色 / Parse role from JWT payload (no verification) */

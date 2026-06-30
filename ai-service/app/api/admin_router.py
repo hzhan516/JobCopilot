@@ -1,5 +1,4 @@
 """AI service admin endpoints — basic monitoring + advanced model/queue management."""
-import os
 import time
 import logging
 from fastapi import APIRouter, HTTPException

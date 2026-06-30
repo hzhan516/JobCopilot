@@ -7,15 +7,10 @@ import asyncio
 import logging
 import os
 import threading
-
-try:
-    from app.__version__ import __version__
-except ImportError:
-    __version__ = "dev"
-
-APP_VERSION = os.getenv("APP_VERSION", __version__)
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 
 from app.config import (
     LOG_LEVEL,
@@ -39,6 +34,13 @@ from app.schemas import (
 from app.services.job_matching_service import find_job_matches
 from app.services.suitability_service import evaluate_suitability_with_vertex
 from app.services.vector_service import generate_embedding
+
+try:
+    from app.__version__ import __version__
+except ImportError:
+    __version__ = "dev"
+
+APP_VERSION = os.getenv("APP_VERSION", __version__)
 
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),

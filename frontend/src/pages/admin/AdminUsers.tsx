@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useAdminStore } from '@/store/admin.store';
 
 export default function AdminUsers() {
-  const { users, userPage, userFilters, loading, fetchUsers, setUserFilters, updateUserRole, updateUserStatus, deleteUser } = useAdminStore();
+  const { users, userPage, userFilters, loading, fetchUsers, setUserFilters, updateUserRole, deleteUser } = useAdminStore();
 
   useEffect(() => { fetchUsers(); }, [userFilters.page, userFilters.size]); // eslint-disable-line react-hooks/exhaustive-deps
 
