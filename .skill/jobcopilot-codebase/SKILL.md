@@ -5,7 +5,51 @@ description: Comprehensive knowledge of the JobCopilot codebase architecture, mo
 
 # JobCopilot Codebase Guide
 
-> Last synced with origin/main on 2026-06-29.
+> Last synced with origin/main on 2026-06-30. Phases 0–2, 5, 3 implemented (46 files).
+
+## Management Plane — Implementation Status
+
+| Phase | Status | Description |
+|-------|--------|-------------|
+| **Phase 0** | ✅ | Version control: VERSION, CHANGELOG, bump-version.sh, release CI, APP_VERSION everywhere |
+| **Phase 1** | ✅ | RBAC: JWT role claim, SecurityConfig admin routes, AdminUserInitializer, V11 migration |
+| **Phase 2** | ✅ | Admin API: `/api/admin/v1/users/**`, `/api/admin/v1/system/**`, `/api/admin/v1/audit-logs` |
+| **Phase 5** | ✅ | Admin UI: AdminLayout, AdminRoute, Dashboard/Users/AuditLogs pages, adminService, Zustand store |
+| **Phase 3** | ✅ | Monitoring: Prometheus metrics, BusinessMetricsService, AI service admin router (`/admin/*`) |
+| **Phase 4** | ✅ | Dynamic config: DB table, CRUD API, AI hot-reload endpoint, audit trail |
+
+### Key new files (back-end)
+- `VERSION`, `CHANGELOG.md`, `scripts/bump-version.sh`, `.github/workflows/release.yml`
+- `api/admin/dto/*`, `api/admin/facade/*`, `api/version/dto/VersionResponse`
+- `domain/admin/entity/AuditLog`, `domain/admin/repository/AuditLogRepository`
+- `infrastructure/.../admin/AuditLogJpaEntity`, `AuditLogJpaRepository`
+- `app/.../admin/AdminUserFacadeImpl`, `AdminSystemFacadeImpl`, `AdminAuditFacadeImpl`, `AdminUserInitializer`, `BusinessMetricsService`
+- `trigger/.../admin/AdminUserController`, `AdminSystemController`, `AdminAuditController`, `AdminMonitoringController`
+- `trigger/.../version/VersionController`
+- `types/common/PageResult`
+- `V11__admin_infrastructure.sql`
+- `ai-service/app/api/admin_router.py`, `ai-service/app/__version__.py`
+
+### Key new files (front-end)
+- `components/AdminRoute.tsx`, `components/admin/AdminLayout.tsx`, `StatCard.tsx`, `VersionBanner.tsx`
+- `pages/admin/AdminDashboard.tsx`, `AdminUsers.tsx`, `AdminAuditLogs.tsx`, `AdminMonitoring.tsx`, `AdminConfig.tsx`, `AdminAIService.tsx`
+- `services/adminService.ts`, `store/admin.store.ts`, `utils/version.ts`, `global.d.ts`
+
+This project uses **Semantic Versioning 2.0** (`MAJOR.MINOR.PATCH`):
+- **MAJOR**: Incompatible API changes (e.g., DB schema breaking change)
+- **MINOR**: Backward-compatible new features (e.g., new management plane)
+- **PATCH**: Backward-compatible bug fixes
+
+**Single source of truth**: `VERSION` file at project root. All components (backend `pom.xml`, frontend `package.json`, AI service `__version__.py`) read from this file via `scripts/bump-version.sh`.
+
+**Current version**: `0.1.0` (pre-1.0 development)
+
+**Release process**: Push a `v*.*.*` tag → `.github/workflows/release.yml` builds Docker images with version tags, creates GitHub Release with CHANGELOG entries.
+
+**Runtime version exposure**:
+- Backend: `/v1/version` (public), `/actuator/info` (admin), `VersionController`
+- Frontend: `__APP_VERSION__` global (injected via Vite `define`)
+- AI Service: `/` root endpoint returns version
 
 ## Quick Reference
 

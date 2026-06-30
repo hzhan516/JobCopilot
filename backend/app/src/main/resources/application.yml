@@ -19,3 +19,18 @@ spring:
 server:
   servlet:
     context-path: /api
+
+# 应用版本信息 / Application version info
+app:
+  version: ${APP_VERSION:dev}
+
+info:
+  app:
+    name: JobCopilot
+    version: ${APP_VERSION:dev}
+    description: AI-powered resume assistant
+
+management:
+  info:
+    env:
+      enabled: true

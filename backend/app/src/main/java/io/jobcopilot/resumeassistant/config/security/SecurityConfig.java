@@ -34,8 +34,10 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers("/v1/auth/**").permitAll()
+                            .requestMatchers("/v1/version").permitAll()
                             .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                            .requestMatchers("/actuator/**").denyAll()
+                            .requestMatchers("/actuator/**").hasRole("ADMIN")
+                            .requestMatchers("/api/admin/**").hasRole("ADMIN")
                             .requestMatchers("/api/v1/job-dataset").permitAll();
                     // Only permit H2 console in non-production environments
                     // 仅在非生产环境允许 H2 控制台访问

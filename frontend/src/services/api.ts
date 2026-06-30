@@ -1,7 +1,18 @@
 import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type { ApiResponse, AuthResponse, LoginRequest, RegisterRequest, SendVerificationCodeRequest, LoginByGoogleRequest, CaptchaChallengeResponse, CaptchaVerifyRequest } from '@/types';
-import tokenStorage from './tokenStorage';
+import tokenStorage, { type StoredUser } from './tokenStorage';
 import i18n from '@/i18n';
+
+/** 从 JWT payload 中解析角色 / Parse role from JWT payload (no verification) */
+function parseJwtRole(token: string): 'ADMIN' | 'JOB_SEEKER' {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.role || 'JOB_SEEKER';
+  } catch {
+    return 'JOB_SEEKER';
+  }
+}
+
 
 // Maximum retry attempts for transient network failures
 // 网络抖动时的最大重试次数
@@ -181,7 +192,7 @@ export const authService = {
     if (response.data.code === 200) {
       const { accessToken, expiresIn, ...user } = response.data.data;
       tokenStorage.setTokens(accessToken, expiresIn, rememberMe);
-      tokenStorage.setUser({ userId: user.userId, email: user.email }, rememberMe);
+      tokenStorage.setUser({ userId: user.userId, email: user.email, role: parseJwtRole(accessToken) }, rememberMe);
       return response.data.data;
     }
     throw new Error(response.data.message);
@@ -204,7 +215,7 @@ export const authService = {
     if (response.data.code === 200) {
       const { accessToken, expiresIn, ...user } = response.data.data;
       tokenStorage.setTokens(accessToken, expiresIn, rememberMe);
-      tokenStorage.setUser({ userId: user.userId, email: user.email }, rememberMe);
+      tokenStorage.setUser({ userId: user.userId, email: user.email, role: parseJwtRole(accessToken) }, rememberMe);
       return response.data.data;
     }
     throw new Error(response.data.message);
@@ -215,7 +226,7 @@ export const authService = {
     if (response.data.code === 200) {
       const { accessToken, expiresIn, ...user } = response.data.data;
       tokenStorage.setTokens(accessToken, expiresIn, rememberMe);
-      tokenStorage.setUser({ userId: user.userId, email: user.email }, rememberMe);
+      tokenStorage.setUser({ userId: user.userId, email: user.email, role: parseJwtRole(accessToken) }, rememberMe);
       return response.data.data;
     }
     throw new Error(response.data.message);
@@ -232,7 +243,7 @@ export const authService = {
     tokenStorage.clear();
   },
 
-  getCurrentUser: (): { userId: string; email: string } | null => {
+  getCurrentUser: (): { userId: string; email: string; role: 'ADMIN' | 'JOB_SEEKER' } | null => {
     return tokenStorage.getUser();
   },
 

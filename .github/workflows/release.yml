@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          sed -n "/^## \[${VERSION}\]/,/^## \[/p" CHANGELOG.md | head -n -1 > release_notes.md
+          # fallback if no matching section found
+          if [ ! -s release_notes.md ]; then
+            echo "No changelog section found for ${VERSION}" > release_notes.md
+          fi
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push Docker images
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          for service in backend frontend ai-service; do
+            docker build \
+              --build-arg APP_VERSION=${VERSION} \
+              --label "org.opencontainers.image.version=${VERSION}" \
+              -t ghcr.io/${{ github.repository_owner }}/jobcopilot-${service}:${VERSION} \
+              -t ghcr.io/${{ github.repository_owner }}/jobcopilot-${service}:latest \
+              ./${service}
+            docker push ghcr.io/${{ github.repository_owner }}/jobcopilot-${service}:${VERSION}
+            docker push ghcr.io/${{ github.repository_owner }}/jobcopilot-${service}:latest
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "v${{ steps.version.outputs.VERSION }}"
+          body_path: release_notes.md
+          generate_release_notes: true

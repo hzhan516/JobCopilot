@@ -3,7 +3,7 @@ import { authService } from '@/services/api';
 import type { LoginRequest, RegisterRequest, LoginByGoogleRequest } from '@/types';
 
 interface AuthContextType {
-  user: { userId: string; email: string } | null;
+  user: { userId: string; email: string; role: 'ADMIN' | 'JOB_SEEKER' } | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (data: LoginRequest, rememberMe?: boolean) => Promise<void>;
@@ -17,8 +17,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   // Rehydrate user from storage on mount to preserve auth state across page refreshes
   // 从存储中恢复用户状态，确保页面刷新后认证信息不丢失
-  const [user, setUser] = useState<{ userId: string; email: string } | null>(() => {
-    return authService.getCurrentUser();
+  const [user, setUser] = useState<{ userId: string; email: string; role: 'ADMIN' | 'JOB_SEEKER' } | null>(() => {
+    const stored = authService.getCurrentUser();
+    return stored ? { userId: stored.userId, email: stored.email, role: stored.role } : null;
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -26,7 +27,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       const response = await authService.login(data, rememberMe);
-      setUser({ userId: response.userId, email: response.email });
+      const stored = authService.getCurrentUser()!;
+      setUser({ userId: response.userId, email: response.email, role: stored.role });
     } finally {
       setIsLoading(false);
     }
@@ -36,7 +38,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       const response = await authService.loginByGoogle(data, rememberMe);
-      setUser({ userId: response.userId, email: response.email });
+      const stored = authService.getCurrentUser()!;
+      setUser({ userId: response.userId, email: response.email, role: stored.role });
     } finally {
       setIsLoading(false);
     }
@@ -46,7 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       const response = await authService.register(data, rememberMe);
-      setUser({ userId: response.userId, email: response.email });
+      const stored = authService.getCurrentUser()!;
+      setUser({ userId: response.userId, email: response.email, role: stored.role });
     } finally {
       setIsLoading(false);
     }

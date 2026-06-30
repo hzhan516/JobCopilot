@@ -3,6 +3,7 @@ package io.jobcopilot.resumeassistant.infrastructure.security;
 import io.jobcopilot.resumeassistant.api.user.dto.TokenPair;
 import io.jobcopilot.resumeassistant.api.user.dto.TokenValidationResult;
 import io.jobcopilot.resumeassistant.api.user.service.TokenService;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -52,8 +53,13 @@ public class JwtTokenServiceImpl implements TokenService {
 
     @Override
     public TokenPair generateTokenPair(String userId) {
-        String accessToken = generateToken(userId, accessTokenExpiration);
-        String refreshToken = generateToken(userId, refreshTokenExpiration);
+        return generateTokenPair(userId, null);
+    }
+
+    /** 生成含角色声明的令牌对 / Generate token pair with role claim */
+    public TokenPair generateTokenPair(String userId, String role) {
+        String accessToken = generateToken(userId, role, accessTokenExpiration);
+        String refreshToken = generateToken(userId, role, refreshTokenExpiration);
 
         return TokenPair.builder()
                 .accessToken(accessToken)
@@ -62,26 +68,36 @@ public class JwtTokenServiceImpl implements TokenService {
                 .build();
     }
 
-    private String generateToken(String userId, long expiration) {
+    private String generateToken(String userId, String role, long expiration) {
         final Date now = new Date();
         final Date expiry = new Date(now.getTime() + expiration);
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(userId)
                 .issuedAt(now)
-                .expiration(expiry)
-                .signWith(secretKey)
-                .compact();
+                .expiration(expiry);
+        if (role != null) {
+            builder.claim("role", role);
+        }
+        return builder.signWith(secretKey).compact();
     }
 
     @Override
     public String getUserIdFromToken(String token) {
+        return parseClaims(token).getSubject();
+    }
+
+    @Override
+    public String getRoleFromToken(String token) {
+        return parseClaims(token).get("role", String.class);
+    }
+
+    private Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
-                .getPayload()
-                .getSubject();
+                .getPayload();
     }
 
     @Override

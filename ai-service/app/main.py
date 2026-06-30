@@ -8,9 +8,14 @@ import logging
 import os
 import threading
 
+try:
+    from app.__version__ import __version__
+except ImportError:
+    __version__ = "dev"
+
+APP_VERSION = os.getenv("APP_VERSION", __version__)
+
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
 
 from app.config import (
     LOG_LEVEL,
@@ -75,9 +80,13 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="JobCopilot AI Service",
     description="AI service for scraping, parsing, and job processing.",
-    version="1.0.0",
+    version=APP_VERSION,
     lifespan=lifespan,
 )
+
+# Register admin router / 注册管理路由
+from app.api.admin_router import router as admin_router  # noqa: E402
+app.include_router(admin_router)
 
 
 # ---------------------------------------------------------------------------
@@ -120,8 +129,8 @@ _mq_lock = threading.Lock()
 @app.get("/")
 async def root():
     return {
-        "service": "JobCopilot AI",
-        "version": "1.0.0",
+        "service": "jobcopilot-ai-service",
+        "version": APP_VERSION,
         "status": "running",
     }
 

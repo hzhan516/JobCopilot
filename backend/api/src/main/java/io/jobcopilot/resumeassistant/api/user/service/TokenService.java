@@ -19,6 +19,16 @@ public interface TokenService {
     TokenPair generateTokenPair(String userId);
 
     /**
+     * Generates a token pair with a role claim embedded for RBAC authorization.
+     * 生成含角色声明的令牌对，用于 RBAC 鉴权
+     *
+     * @param userId the subject identifier / 主体标识
+     * @param role   the user role to embed / 需要嵌入的角色
+     * @return access and refresh token pair / 访问令牌与刷新令牌对
+     */
+    TokenPair generateTokenPair(String userId, String role);
+
+    /**
      * Parses the subject claim without validating signature or expiration; useful only after prior validation.
      * 解析主题声明而不校验签名或过期时间；仅应在已通过前置校验后使用，避免重复计算
      *
@@ -45,4 +55,13 @@ public interface TokenService {
      * @return detailed validation result / 详细校验结果
      */
     TokenValidationResult validateTokenDetailed(String token);
+
+    /**
+     * Parses the role claim from a validated token for authorization decisions.
+     * 从已验证的令牌中解析角色声明，用于鉴权决策
+     *
+     * @param token the JWT string / JWT 字符串
+     * @return the embedded role / 嵌入的角色
+     */
+    String getRoleFromToken(String token);
 }

@@ -65,6 +65,8 @@ services:
         # Google OAuth 2.0 Client ID. Required for Google Sign-In.
         # Obtain from https://console.cloud.google.com/apis/credentials
         - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+        # Application version passed to Vite at build time.
+        - VITE_APP_VERSION=${APP_VERSION:-dev}
     image: jobcopilot-frontend
     container_name: jobcopilot-frontend
     ports:
@@ -125,6 +127,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
     image: jobcopilot-backend
     container_name: jobcopilot-backend
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
@@ -213,6 +217,8 @@ services:
       # verification is disabled, so do not let MailHealthIndicator block
       # backend/frontend startup.
       - MANAGEMENT_HEALTH_MAIL_ENABLED=${MANAGEMENT_HEALTH_MAIL_ENABLED:-false}
+      # Application version passed at build time.
+      - APP_VERSION=${APP_VERSION:-dev}
     volumes:
       # Named volume shared with ai-service. Backend writes uploaded resumes
       # here; ai-service reads them (read-only mount on its side).
@@ -270,6 +276,8 @@ services:
     build:
       context: ./ai-service
       dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
     image: jobcopilot-ai-service
     container_name: jobcopilot-ai
     # --- DEVELOPMENT ONLY — REMOVE IN PRODUCTION ---
@@ -339,6 +347,8 @@ services:
       # Must match the INTERNAL_API_KEY set in the backend environment.
       # If empty, the middleware skips validation (dev convenience).
       - INTERNAL_API_KEY=${INTERNAL_API_KEY:-}
+      # Application version passed at build time.
+      - APP_VERSION=${APP_VERSION:-dev}
     volumes:
       # Read-only access to resume files uploaded by the backend.
       - shared-storage:/app/uploads:ro
@@ -500,6 +510,8 @@ services:
     build:
       context: ./ai-service
       dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
     image: jobcopilot-ai-service
     container_name: jobcopilot-ai-worker
     command: ["python", "-m", "app.worker_main"]
@@ -519,6 +531,7 @@ services:
       - MINIO_MODEL_BUCKET=${MINIO_MODEL_BUCKET:?MinIO model bucket is required}
       - BACKEND_SERVICE_URL=${BACKEND_SERVICE_URL:-http://backend:8080}
       - INTERNAL_API_KEY=${INTERNAL_API_KEY:-}
+      - APP_VERSION=${APP_VERSION:-dev}
       - RETRAIN_INTERVAL_HOURS=${RETRAIN_INTERVAL_HOURS:-24}
       - MIN_SAMPLES_FOR_RETRAIN=${MIN_SAMPLES_FOR_RETRAIN:-10}
     networks:

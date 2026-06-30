@@ -17,6 +17,7 @@ RUN npm ci
 # Accept build-time environment variables
 ARG VITE_GOOGLE_CLIENT_ID
 ARG VITE_API_BASE_URL
+ARG VITE_APP_VERSION=dev
 
 # Build frontend
 COPY . .
@@ -27,8 +28,10 @@ RUN npm run build
 # -----------------------------------------------------------------------------
 FROM docker.io/library/nginx:1.27-alpine
 
+ARG APP_VERSION=dev
 LABEL maintainer="JobCopilot Labs"
 LABEL description="JobCopilot Frontend"
+LABEL org.opencontainers.image.version="${APP_VERSION}"
 
 # Install curl for Docker healthcheck (nginx:alpine does not include wget or curl by default)
 RUN apk add --no-cache curl
