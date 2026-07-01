@@ -48,7 +48,7 @@ describe('useAuth', () => {
   })
 
   it('initializes with user when already logged in', () => {
-    const user = { userId: 'u1', email: 'test@example.com' }
+    const user = { userId: 'u1', email: 'test@example.com', role: 'JOB_SEEKER' }
     mockGetCurrentUser.mockReturnValue(user)
 
     const { result } = renderHook(() => useAuth(), { wrapper })
@@ -65,6 +65,7 @@ describe('useAuth', () => {
       expiresIn: 3600,
     }
     mockLogin.mockResolvedValue(authResponse)
+    mockGetCurrentUser.mockReturnValue({ userId: 'u1', email: 'test@example.com', role: 'JOB_SEEKER' })
 
     const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -75,7 +76,7 @@ describe('useAuth', () => {
     })
 
     expect(mockLogin).toHaveBeenCalledWith(loginData, false)
-    expect(result.current.user).toEqual({ userId: 'u1', email: 'test@example.com' })
+    expect(result.current.user).toEqual({ userId: 'u1', email: 'test@example.com', role: 'JOB_SEEKER' })
     expect(result.current.isAuthenticated).toBe(true)
     expect(result.current.isLoading).toBe(false)
   })
@@ -89,6 +90,7 @@ describe('useAuth', () => {
       expiresIn: 3600,
     }
     mockLoginByGoogle.mockResolvedValue(authResponse)
+    mockGetCurrentUser.mockReturnValue({ userId: 'u2', email: 'google@example.com', role: 'JOB_SEEKER' })
 
     const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -97,7 +99,7 @@ describe('useAuth', () => {
     })
 
     expect(mockLoginByGoogle).toHaveBeenCalledWith({ idToken: 'id-token-string' }, true)
-    expect(result.current.user).toEqual({ userId: 'u2', email: 'google@example.com' })
+    expect(result.current.user).toEqual({ userId: 'u2', email: 'google@example.com', role: 'JOB_SEEKER' })
   })
 
   it('handles register', async () => {
@@ -109,6 +111,7 @@ describe('useAuth', () => {
       expiresIn: 3600,
     }
     mockRegister.mockResolvedValue(authResponse)
+    mockGetCurrentUser.mockReturnValue({ userId: 'u3', email: 'new@example.com', role: 'JOB_SEEKER' })
 
     const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -119,7 +122,7 @@ describe('useAuth', () => {
     })
 
     expect(mockRegister).toHaveBeenCalledWith(registerData, false)
-    expect(result.current.user).toEqual({ userId: 'u3', email: 'new@example.com' })
+    expect(result.current.user).toEqual({ userId: 'u3', email: 'new@example.com', role: 'JOB_SEEKER' })
   })
 
   it('sets isLoading during async operations', async () => {
@@ -128,6 +131,7 @@ describe('useAuth', () => {
       resolveLogin = resolve
     })
     mockLogin.mockReturnValue(loginPromise)
+    mockGetCurrentUser.mockReturnValue({ userId: 'u1', email: 't@test.com', role: 'JOB_SEEKER' })
 
     const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -152,7 +156,7 @@ describe('useAuth', () => {
   })
 
   it('handles logout', () => {
-    mockGetCurrentUser.mockReturnValue({ userId: 'u1', email: 'test@example.com' })
+    mockGetCurrentUser.mockReturnValue({ userId: 'u1', email: 'test@example.com', role: 'JOB_SEEKER' })
     const { result } = renderHook(() => useAuth(), { wrapper })
 
     expect(result.current.isAuthenticated).toBe(true)

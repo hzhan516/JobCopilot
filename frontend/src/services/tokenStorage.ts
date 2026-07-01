@@ -16,6 +16,7 @@ const REMEMBER_ME_KEY = 'rememberMe';
 export interface StoredUser {
   userId: string;
   email: string;
+  role: 'ADMIN' | 'JOB_SEEKER';
 }
 
 function getStorage(persistent: boolean): Storage {

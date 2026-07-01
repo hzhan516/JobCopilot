@@ -46,9 +46,12 @@ RUN --mount=type=cache,target=/root/.m2 \
 # -----------------------------------------------------------------------------
 FROM docker.io/eclipse-temurin:21-jre-alpine
 
-# 标签信息
+# 版本构建参数 / Version build argument
+ARG APP_VERSION=dev
 LABEL maintainer="JobCopilot Labs"
 LABEL description="智能求职助手 - Java后端服务"
+LABEL org.opencontainers.image.version="${APP_VERSION}"
+ENV APP_VERSION=${APP_VERSION}
 
 # 安装必要的工具
 # curl 用于健康检查 / curl for health checks

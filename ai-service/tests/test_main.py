@@ -11,8 +11,8 @@ def test_root():
     response = client.get("/")
     assert response.status_code == 200
     assert response.json() == {
-        "service": "JobCopilot AI",
-        "version": "1.0.0",
+        "service": "jobcopilot-ai-service",
+        "version": "0.1.0",
         "status": "running",
     }
 

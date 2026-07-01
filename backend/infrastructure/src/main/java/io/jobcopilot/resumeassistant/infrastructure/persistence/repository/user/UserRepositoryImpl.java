@@ -4,7 +4,9 @@ import io.jobcopilot.resumeassistant.domain.user.entity.User;
 import io.jobcopilot.resumeassistant.domain.user.repository.UserRepository;
 import io.jobcopilot.resumeassistant.infrastructure.persistence.entity.user.UserJpaEntity;
 import io.jobcopilot.resumeassistant.infrastructure.persistence.mapper.UserPersistenceMapper;
+import io.jobcopilot.resumeassistant.types.common.PageResult;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -54,5 +56,18 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public boolean existsByEmail(String email) {
         return jpaRepository.existsByEmail(email);
+    }
+
+    @Override
+    public PageResult<User> findAll(int page, int size) {
+        var springPage = jpaRepository.findAll(PageRequest.of(page, size));
+        return PageResult.of(
+                springPage.map(mapper::toDomain).getContent(),
+                page, size, springPage.getTotalElements());
+    }
+
+    @Override
+    public long count() {
+        return jpaRepository.count();
     }
 }

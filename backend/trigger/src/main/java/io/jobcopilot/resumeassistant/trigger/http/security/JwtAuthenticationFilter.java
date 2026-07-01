@@ -9,12 +9,13 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.List;
 
 /**
  * Stateless JWT filter that extracts bearer tokens and establishes the Spring Security context
@@ -46,16 +47,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         switch (result) {
             case VALID -> {
                 String userId = tokenService.getUserIdFromToken(token);
+                String role = tokenService.getRoleFromToken(token);
 
                 // propagate user identity to downstream resolvers via request attributes | 通过请求属性将用户身份传递给下游解析器
                 request.setAttribute("userId", userId);
 
-                // bridge JWT to Spring Security context so downstream authorization checks work | 将 JWT 桥接到 Spring Security 上下文，使下游鉴权检查生效
+                // bridge JWT to Spring Security context with role-based authority for RBAC
+                // 将 JWT 桥接到 Spring Security 上下文，附带角色权限以支持 RBAC
+                var authorities = role != null
+                        ? List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                        : List.<SimpleGrantedAuthority>of();
                 UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
+                        new UsernamePasswordAuthenticationToken(userId, null, authorities);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                log.debug("JWT authentication successful for user: {}", userId);
+                log.debug("JWT authentication successful for user: {}, role: {}", userId, role);
                 filterChain.doFilter(request, response);
             }
             case EXPIRED -> {

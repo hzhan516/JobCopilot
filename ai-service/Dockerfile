@@ -31,9 +31,12 @@ RUN pip install --no-cache-dir --upgrade pip wheel setuptools && \
 # -----------------------------------------------------------------------------
 FROM docker.io/library/python:3.11-slim
 
-# 标签信息
+# 版本构建参数 / Version build argument
+ARG APP_VERSION=dev
 LABEL maintainer="JobCopilot Labs"
 LABEL description="JobCopilot Python AI Service"
+LABEL org.opencontainers.image.version="${APP_VERSION}"
+ENV APP_VERSION=${APP_VERSION}
 
 # 环境变量设置
 ENV PYTHONDONTWRITEBYTECODE=1 \

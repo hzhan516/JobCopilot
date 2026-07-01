@@ -157,7 +157,7 @@ public class AuthApplicationService {
     }
 
     public TokenPair generateTokenPair(User user) {
-        return tokenService.generateTokenPair(user.getId().toString());
+        return tokenService.generateTokenPair(user.getId().toString(), user.getRole().name());
     }
 
     /**
@@ -184,7 +184,7 @@ public class AuthApplicationService {
             throw new AuthException(AuthException.ErrorType.INVALID_CREDENTIALS);
         }
 
-        TokenPair tokens = tokenService.generateTokenPair(userId);
+        TokenPair tokens = tokenService.generateTokenPair(userId, user.getRole().name());
         return new AuthTokenResult(user, tokens);
     }
 
