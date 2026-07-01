@@ -148,7 +148,8 @@ def test_config_reload_ai_vision_model(client):
 
 def test_config_reload_ai_embedding_model(client):
     response = client.post(
-        "/admin/config/reload", json={"key": "ai.embeddingModel", "value": "text-embedding-3"}
+        "/admin/config/reload",
+        json={"key": "ai.embeddingModel", "value": "text-embedding-3"},
     )
     assert response.status_code == 200
     data = response.json()
@@ -195,7 +196,9 @@ def test_rollback_not_found(client, mock_admin_minio):
     assert response.status_code == 404
 
 
-def test_rollback_success(client, mock_admin_minio, mock_admin_redis, mock_admin_model_manager):
+def test_rollback_success(
+    client, mock_admin_minio, mock_admin_redis, mock_admin_model_manager
+):
     mock_admin_minio.object_exists.return_value = True
     response = client.post(
         "/admin/model/rollback",

@@ -163,7 +163,9 @@ async def model_history(_=Depends(verify_internal_key)):
                 {
                     "key": key,
                     "size": obj.get("Size"),
-                    "last_modified": last_modified.isoformat() if last_modified else None,
+                    "last_modified": (
+                        last_modified.isoformat() if last_modified else None
+                    ),
                     "version": key.replace("ranker_model_", "").replace(".txt", ""),
                 }
             )
@@ -246,9 +248,7 @@ async def rollback_model(request: ModelRollbackRequest, _=Depends(verify_interna
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(
-            status_code=500, detail=f"Rollback failed: {exc}"
-        ) from exc
+        raise HTTPException(status_code=500, detail=f"Rollback failed: {exc}") from exc
 
 
 @router.post("/queue/purge/{queue_name}")
@@ -357,7 +357,9 @@ async def flush_cache(_=Depends(verify_internal_key)):
 
         return {"status": "flushed", "keys_deleted": deleted}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Cache flush failed: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Cache flush failed: {exc}"
+        ) from exc
 
 
 # ─── Config hot-reload ───
@@ -367,7 +369,11 @@ async def flush_cache(_=Depends(verify_internal_key)):
 async def reload_config(req: ConfigReloadRequest):
     """Receive config change from backend, hot-reload if applicable."""
     logger.info("Config reload: %s = %s", req.key, req.value)
-    if req.key.startswith("llm.") or req.key.startswith("log.") or req.key.startswith("ai."):
+    if (
+        req.key.startswith("llm.")
+        or req.key.startswith("log.")
+        or req.key.startswith("ai.")
+    ):
         if req.key == "log.aiServiceLevel":
             logging.getLogger().setLevel(req.value.upper())
         elif req.key == "ai.textModel":

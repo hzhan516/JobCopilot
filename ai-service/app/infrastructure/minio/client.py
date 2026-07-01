@@ -64,9 +64,7 @@ class MinioModelRegistry:
     def list_objects(self, prefix: str = "") -> list[dict]:
         """列出 bucket 中指定前缀的对象（返回 boto3 Contents 列表）。"""
         self._ensure_bucket_exists()
-        response = self.s3.list_objects_v2(
-            Bucket=MINIO_MODEL_BUCKET, Prefix=prefix
-        )
+        response = self.s3.list_objects_v2(Bucket=MINIO_MODEL_BUCKET, Prefix=prefix)
         return response.get("Contents") or []
 
     def object_exists(self, key: str) -> bool:
