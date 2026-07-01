@@ -74,7 +74,17 @@ export default function AdminAIService() {
   };
 
   useEffect(() => {
-    refresh();
+    const init = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([fetchAIStatus(), fetchModelInfo(), fetchModelHistory()]);
+      } catch {
+        toast.error(t('admin.ai.loadError'));
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRetrain = async () => {

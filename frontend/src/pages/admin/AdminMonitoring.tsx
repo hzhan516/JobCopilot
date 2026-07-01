@@ -65,7 +65,17 @@ export default function AdminMonitoring() {
   };
 
   useEffect(() => {
-    refresh();
+    const init = async () => {
+      setRefreshing(true);
+      try {
+        await Promise.all([fetchStats(), fetchQueueStats()]);
+      } catch {
+        toast.error(t('admin.monitoring.loadError'));
+      } finally {
+        setRefreshing(false);
+      }
+    };
+    init();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
