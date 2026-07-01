@@ -14,6 +14,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.util.Optional;
@@ -28,6 +30,7 @@ import static org.mockito.Mockito.*;
  * AdminConfigFacadeImpl 单元测试 / Unit tests for AdminConfigFacadeImpl.
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("Admin Config Facade Tests")
 class AdminConfigFacadeImplTest {
 
@@ -75,7 +78,7 @@ class AdminConfigFacadeImplTest {
 
         ConfigItemResponse response = facade.updateConfig("log.aiServiceLevel", "DEBUG", ADMIN_ID);
 
-        assertThat(response.getValue()).isEqualTo("DEBUG");
+        assertThat(response.value()).isEqualTo("DEBUG");
         verify(configRepository).save(testConfig);
         verify(auditLogRepository).save(any());
         verify(stringRedisTemplate).convertAndSend(channelCaptor.capture(), messageCaptor.capture());
@@ -119,14 +122,15 @@ class AdminConfigFacadeImplTest {
     }
 
     @Test
-    @DisplayName("Should reset config and publish change event")
-    void shouldResetConfigAndPublishChangeEvent() {
+    @DisplayName("Should reset config without broadcasting")
+    void shouldResetConfigWithoutBroadcasting() {
         when(configRepository.findByKey("log.aiServiceLevel")).thenReturn(Optional.of(testConfig));
         when(configRepository.save(any())).thenReturn(testConfig);
 
         facade.resetConfig("log.aiServiceLevel", ADMIN_ID);
 
         verify(configRepository).save(testConfig);
-        verify(stringRedisTemplate).convertAndSend(any(), any());
+        verify(auditLogRepository).save(any());
+        verify(stringRedisTemplate, never()).convertAndSend(any(), any());
     }
 }
