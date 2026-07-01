@@ -37,5 +37,22 @@ public interface JobRepository {
      * @return 职位实体列表 / List of job entities
      */
     List<Job> findAllByUserId(UUID userId);
+
+    /**
+     * 统计用户的职位数量
+     * Count jobs for user
+     *
+     * @param userId 用户 ID / User ID
+     * @return 职位数量 / Number of jobs
+     */
+    long countByUserId(UUID userId);
+
+    /**
+     * 统计所有职位数量
+     * Count all jobs
+     *
+     * @return 职位数量 / Number of jobs
+     */
+    long count();
 }
 

@@ -44,4 +44,9 @@ public class AuditLogJpaRepository implements AuditLogRepository {
         var p = springRepo.findByAction(action, PageRequest.of(page, size));
         return PageResult.of(p.map(AuditLogJpaEntity::toDomain).getContent(), page, size, p.getTotalElements());
     }
+
+    @Override
+    public long countByActionContaining(String actionSubstring) {
+        return springRepo.countByActionContaining(actionSubstring);
+    }
 }

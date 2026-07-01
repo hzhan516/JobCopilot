@@ -67,4 +67,12 @@ public interface ApplicationTrackingRepository {
      * @param id 跟踪ID / Tracking ID
      */
     void deleteById(String id);
+
+    /**
+     * 统计所有求职申请跟踪记录数量
+     * Count all application tracking records
+     *
+     * @return 跟踪记录数量 / Number of tracking records
+     */
+    long count();
 }

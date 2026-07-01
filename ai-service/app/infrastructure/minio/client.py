@@ -60,3 +60,22 @@ class MinioModelRegistry:
 
     def download_model(self, object_key: str, dest_path: str):
         self.s3.download_file(MINIO_MODEL_BUCKET, object_key, dest_path)
+
+    def list_objects(self, prefix: str = "") -> list[dict]:
+        """列出 bucket 中指定前缀的对象（返回 boto3 Contents 列表）。"""
+        self._ensure_bucket_exists()
+        response = self.s3.list_objects_v2(Bucket=MINIO_MODEL_BUCKET, Prefix=prefix)
+        return response.get("Contents") or []
+
+    def object_exists(self, key: str) -> bool:
+        """检查对象是否存在。"""
+        try:
+            self.s3.head_object(Bucket=MINIO_MODEL_BUCKET, Key=key)
+            return True
+        except self.s3.exceptions.ClientError:
+            return False
+
+
+def get_minio_client() -> MinioModelRegistry:
+    """Factory for the MinIO model registry client."""
+    return MinioModelRegistry()

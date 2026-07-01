@@ -43,6 +43,16 @@ public class ConversationRepositoryImpl implements ConversationRepository {
     }
 
     @Override
+    public long countByUserId(UUID userId) {
+        return jpaRepository.countByUserId(userId.toString());
+    }
+
+    @Override
+    public long count() {
+        return jpaRepository.count();
+    }
+
+    @Override
     public void deleteById(UUID id) {
         jpaRepository.deleteById(id.toString());
     }

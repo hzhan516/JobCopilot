@@ -37,6 +37,18 @@ public interface ResumeGroupRepository {
     List<ResumeGroup> findAllByUserId(UUID userId);
 
     /**
+     * 统计用户的简历组数量
+     * Count resume groups for user
+     */
+    long countByUserId(UUID userId);
+
+    /**
+     * 统计所有简历组数量
+     * Count all resume groups
+     */
+    long count();
+
+    /**
      * 查找用户的默认简历组
      * Find default resume group for user
      */
