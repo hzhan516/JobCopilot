@@ -31,7 +31,7 @@ class IncrementalTrainer:
     async def try_retrain(self):
         if not await self.redis_buffer.acquire_lock(self.instance_id):
             logger.info("Retrain lock not acquired. Skipping.")
-            return
+            return None
 
         try:
             logger.info("Acquired retrain lock. Starting batch retraining...")
@@ -43,7 +43,7 @@ class IncrementalTrainer:
                 )
                 for sample in new_samples:
                     await self.redis_buffer.append(sample)
-                return
+                return None
 
             raw_baseline = await self.api_client.get_baseline_features_async()
             baseline_samples = []
@@ -55,7 +55,7 @@ class IncrementalTrainer:
 
             X, y = self._build_matrix(all_samples)
             if len(X) == 0:
-                return
+                return None
 
             model, metrics = self._train_model(X, y)
 
@@ -78,6 +78,13 @@ class IncrementalTrainer:
 
             await self.redis_buffer.broadcast_reload(version, object_key)
             logger.info(f"Model saved and broadcasted: version={version}")
+
+            return {
+                "version": version,
+                "object_key": object_key,
+                "sample_count": len(all_samples),
+                "metrics": metrics,
+            }
 
         finally:
             await self.redis_buffer.release_lock(self.instance_id)
@@ -127,3 +134,14 @@ class IncrementalTrainer:
                 metrics["auc"] = round(float(roc_auc_score(y_val, preds)), 4)
 
         return model, metrics
+
+
+_trainer: IncrementalTrainer | None = None
+
+
+def get_trainer() -> IncrementalTrainer:
+    """Return the singleton IncrementalTrainer instance."""
+    global _trainer
+    if _trainer is None:
+        _trainer = IncrementalTrainer()
+    return _trainer

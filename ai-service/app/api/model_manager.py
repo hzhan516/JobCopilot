@@ -65,3 +65,8 @@ class ModelManager:
 
 
 model_manager = ModelManager()
+
+
+def get_model_manager() -> ModelManager:
+    """Return the singleton ModelManager instance."""
+    return model_manager
