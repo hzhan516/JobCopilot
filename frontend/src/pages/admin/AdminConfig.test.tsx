@@ -4,9 +4,9 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 const mockStore = vi.hoisted(() => ({
   configs: [],
   configsLoading: false,
-  fetchConfigs: vi.fn(),
-  updateConfig: vi.fn(),
-  resetConfig: vi.fn(),
+  fetchConfigs: vi.fn().mockResolvedValue(undefined),
+  updateConfig: vi.fn().mockResolvedValue(undefined),
+  resetConfig: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/store/admin.store', () => ({

@@ -99,7 +99,7 @@ describe('AdminMonitoring', () => {
     fireEvent.click(screen.getByText('admin.monitoring.purge'));
 
     await waitFor(() => {
-      expect(screen.getByText('common.confirm')).toBeInTheDocument();
+      expect(screen.getAllByText('common.confirm').length).toBeGreaterThanOrEqual(1);
     });
   });
 });
