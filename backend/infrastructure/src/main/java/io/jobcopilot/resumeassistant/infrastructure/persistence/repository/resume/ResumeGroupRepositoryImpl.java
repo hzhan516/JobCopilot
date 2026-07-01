@@ -102,6 +102,11 @@ public class ResumeGroupRepositoryImpl implements ResumeGroupRepository {
     }
 
     @Override
+    public long count() {
+        return jpaGroupRepo.count();
+    }
+
+    @Override
     public Optional<ResumeGroup> findDefaultByUserId(UUID userId) {
         return jpaGroupRepo.findByUserIdAndIsDefaultTrue(userId)
                 .map(this::mapToDomainWithVersions);

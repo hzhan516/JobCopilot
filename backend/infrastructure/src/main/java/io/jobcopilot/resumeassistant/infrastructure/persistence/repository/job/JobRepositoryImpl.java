@@ -51,4 +51,12 @@ public class JobRepositoryImpl implements JobRepository {
                 .map(jobMapper::toDomain)
                 .collect(Collectors.toList());
     }
+
+    /**
+     * 统计所有职位数量 / Count all jobs
+     */
+    @Override
+    public long count() {
+        return jpaJobRepository.count();
+    }
 }

@@ -31,6 +31,12 @@ public interface ConversationRepository {
     List<Conversation> findAllByUserId(UUID userId);
 
     /**
+     * 统计所有对话数量
+     * Count all conversations
+     */
+    long count();
+
+    /**
      * 根据 ID 删除对话
      * Delete conversation by ID
      */
