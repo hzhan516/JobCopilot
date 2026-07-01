@@ -63,4 +63,9 @@ public class ApplicationTrackingRepositoryImpl implements ApplicationTrackingRep
     public void deleteById(final String id) {
         jpaRepository.deleteById(id);
     }
+
+    @Override
+    public long count() {
+        return jpaRepository.count();
+    }
 }

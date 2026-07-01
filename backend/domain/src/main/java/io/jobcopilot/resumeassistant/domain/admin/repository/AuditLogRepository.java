@@ -13,4 +13,13 @@ public interface AuditLogRepository {
     PageResult<AuditLog> findAll(int page, int size);
     PageResult<AuditLog> findByAdminUserId(UUID adminUserId, int page, int size);
     PageResult<AuditLog> findByAction(String action, int page, int size);
+
+    /**
+     * 统计 action 包含指定子串的审计日志数量
+     * Count audit logs whose action contains the given substring
+     *
+     * @param actionSubstring 子串 / Substring to match
+     * @return 数量 / Number of matching audit logs
+     */
+    long countByActionContaining(String actionSubstring);
 }
