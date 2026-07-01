@@ -1,6 +1,7 @@
 """Tests for AI service admin router endpoints."""
 
 import pytest
+import os
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock, AsyncMock
 from datetime import datetime, timezone
@@ -120,7 +121,40 @@ def test_config_reload_log_key(client):
         "/admin/config/reload", json={"key": "log.aiServiceLevel", "value": "DEBUG"}
     )
     assert response.status_code == 200
-    assert response.json()["status"] == "reloaded"
+    assert response.json()["status"] == "applied"
+
+
+def test_config_reload_ai_text_model(client):
+    response = client.post(
+        "/admin/config/reload", json={"key": "ai.textModel", "value": "gpt-4o"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "applied"
+    assert data["key"] == "ai.textModel"
+    assert os.environ["LLM_TEXT_MODEL"] == "gpt-4o"
+
+
+def test_config_reload_ai_vision_model(client):
+    response = client.post(
+        "/admin/config/reload", json={"key": "ai.visionModel", "value": "gpt-4o-vision"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "applied"
+    assert data["key"] == "ai.visionModel"
+    assert os.environ["LLM_VISION_MODEL"] == "gpt-4o-vision"
+
+
+def test_config_reload_ai_embedding_model(client):
+    response = client.post(
+        "/admin/config/reload", json={"key": "ai.embeddingModel", "value": "text-embedding-3"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "applied"
+    assert data["key"] == "ai.embeddingModel"
+    assert os.environ["LLM_EMBEDDING_MODEL"] == "text-embedding-3"
 
 
 def test_config_reload_ignores_unknown(client):
