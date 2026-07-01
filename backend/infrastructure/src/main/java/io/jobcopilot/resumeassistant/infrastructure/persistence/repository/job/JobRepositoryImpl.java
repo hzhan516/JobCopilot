@@ -53,6 +53,14 @@ public class JobRepositoryImpl implements JobRepository {
     }
 
     /**
+     * 统计用户的职位数量 / Count jobs by user ID
+     */
+    @Override
+    public long countByUserId(UUID userId) {
+        return jpaJobRepository.countByUserId(userId.toString());
+    }
+
+    /**
      * 统计所有职位数量 / Count all jobs
      */
     @Override
