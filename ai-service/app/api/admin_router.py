@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import os
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -366,9 +367,15 @@ async def flush_cache(_=Depends(verify_internal_key)):
 async def reload_config(req: ConfigReloadRequest):
     """Receive config change from backend, hot-reload if applicable."""
     logger.info("Config reload: %s = %s", req.key, req.value)
-    if req.key.startswith("llm.") or req.key.startswith("log."):
+    if req.key.startswith("llm.") or req.key.startswith("log.") or req.key.startswith("ai."):
         if req.key == "log.aiServiceLevel":
             logging.getLogger().setLevel(req.value.upper())
+        elif req.key == "ai.textModel":
+            os.environ["LLM_TEXT_MODEL"] = req.value
+        elif req.key == "ai.visionModel":
+            os.environ["LLM_VISION_MODEL"] = req.value
+        elif req.key == "ai.embeddingModel":
+            os.environ["LLM_EMBEDDING_MODEL"] = req.value
         # ponytail: LLM client reinitialization deferred
-        return {"status": "reloaded", "key": req.key}
+        return {"status": "applied", "key": req.key}
     return {"status": "ignored", "key": req.key, "reason": "not a hot-reloadable key"}
