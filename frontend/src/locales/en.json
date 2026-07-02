@@ -28,10 +28,19 @@
   },
   "layout": {
     "nav": {
+      "dashboard": "Dashboard",
       "resumes": "My Resumes",
       "jobs": "Jobs",
       "chat": "AI Chat",
       "tracking": "Applications"
+    },
+    "sidebar": {
+      "toggle": "Toggle Sidebar",
+      "collapse": "Collapse Sidebar",
+      "expand": "Expand Sidebar",
+      "copilot": {
+        "openCopilot": "Open AI Copilot"
+      }
     },
     "userMenu": {
       "profile": "Profile",
@@ -312,7 +321,8 @@
     "deleteFailed": "Failed to delete",
     "createSuccess": "Created successfully",
     "mockGreeting": "Hello! I am your AI job assistant. I can help you optimize resumes, recommend jobs, and answer job search questions. How can I help you today?",
-    "mockReply": "Thank you for your question! Regarding \"{{question}}\", I suggest you:\n\n1. First, complete your resume content, highlighting relevant skills and experience\n2. Customize resume keywords for the target position\n3. Prepare relevant project cases and work achievements\n\nIf you need more detailed advice, please tell me your specific situation."
+    "mockReply": "Thank you for your question! Regarding \"{{question}}\", I suggest you:\n\n1. First, complete your resume content, highlighting relevant skills and experience\n2. Customize resume keywords for the target position\n3. Prepare relevant project cases and work achievements\n\nIf you need more detailed advice, please tell me your specific situation.",
+    "drawerRedirect": "AI Copilot is now accessible from anywhere. Click the chat button in the sidebar or press Cmd/Ctrl+. to open it."
   },
   "tracking": {
     "title": "Applications",

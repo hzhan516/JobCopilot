@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Outlet } from 'react-router-dom'
 import App from './App'
 
 vi.mock('react-router-dom', async () => {
@@ -40,8 +40,10 @@ vi.mock('@/components/ui/sonner', () => ({
 }))
 
 vi.mock('@/components/layout/MainLayout', () => ({
-  default: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="main-layout">{children}</div>
+  default: () => (
+    <div data-testid="main-layout">
+      <Outlet />
+    </div>
   ),
 }))
 
@@ -73,32 +75,24 @@ vi.mock('@/pages/Dashboard', () => ({
   default: () => <div data-testid="dashboard-page">Dashboard</div>,
 }))
 
-vi.mock('@/pages/resumes/ResumeList', () => ({
-  default: () => <div data-testid="resume-list-page">ResumeList</div>,
-}))
-
-vi.mock('@/pages/resumes/ResumeDetail', () => ({
-  default: () => <div data-testid="resume-detail-page">ResumeDetail</div>,
+vi.mock('@/pages/resumes/ResumesPage', () => ({
+  default: () => <div data-testid="resumes-page">ResumesPage</div>,
 }))
 
 vi.mock('@/pages/resumes/ResumeEdit', () => ({
   default: () => <div data-testid="resume-edit-page">ResumeEdit</div>,
 }))
 
-vi.mock('@/pages/jobs/JobList', () => ({
-  default: () => <div data-testid="job-list-page">JobList</div>,
-}))
-
-vi.mock('@/pages/jobs/JobDetail', () => ({
-  default: () => <div data-testid="job-detail-page">JobDetail</div>,
+vi.mock('@/pages/jobs/JobsPage', () => ({
+  default: () => <div data-testid="jobs-page">JobsPage</div>,
 }))
 
 vi.mock('@/pages/chat/Chat', () => ({
   default: () => <div data-testid="chat-page">Chat</div>,
 }))
 
-vi.mock('@/pages/tracking/Tracking', () => ({
-  default: () => <div data-testid="tracking-page">Tracking</div>,
+vi.mock('@/pages/tracking/TrackingPage', () => ({
+  default: () => <div data-testid="tracking-page">TrackingPage</div>,
 }))
 
 vi.mock('@/pages/profile/Profile', () => ({
@@ -141,22 +135,22 @@ describe('App routing', () => {
     expect(screen.getByTestId('dashboard-page')).toBeInTheDocument()
   })
 
-  it('renders resume list on /resumes', () => {
+  it('renders resumes page on /resumes', () => {
     render(
       <MemoryRouter initialEntries={['/resumes']}>
         <App />
       </MemoryRouter>
     )
-    expect(screen.getByTestId('resume-list-page')).toBeInTheDocument()
+    expect(screen.getByTestId('resumes-page')).toBeInTheDocument()
   })
 
-  it('renders resume detail on /resumes/:groupId', () => {
+  it('renders resumes page on /resumes/:groupId', () => {
     render(
       <MemoryRouter initialEntries={['/resumes/group-123']}>
         <App />
       </MemoryRouter>
     )
-    expect(screen.getByTestId('resume-detail-page')).toBeInTheDocument()
+    expect(screen.getByTestId('resumes-page')).toBeInTheDocument()
   })
 
   it('renders resume edit on /resumes/:groupId/versions/:versionId/edit', () => {
@@ -168,22 +162,22 @@ describe('App routing', () => {
     expect(screen.getByTestId('resume-edit-page')).toBeInTheDocument()
   })
 
-  it('renders job list on /jobs', () => {
+  it('renders jobs page on /jobs', () => {
     render(
       <MemoryRouter initialEntries={['/jobs']}>
         <App />
       </MemoryRouter>
     )
-    expect(screen.getByTestId('job-list-page')).toBeInTheDocument()
+    expect(screen.getByTestId('jobs-page')).toBeInTheDocument()
   })
 
-  it('renders job detail on /jobs/:jobId', () => {
+  it('renders jobs page on /jobs/:jobId', () => {
     render(
       <MemoryRouter initialEntries={['/jobs/job-456']}>
         <App />
       </MemoryRouter>
     )
-    expect(screen.getByTestId('job-detail-page')).toBeInTheDocument()
+    expect(screen.getByTestId('jobs-page')).toBeInTheDocument()
   })
 
   it('renders chat on /chat', () => {
@@ -195,7 +189,7 @@ describe('App routing', () => {
     expect(screen.getByTestId('chat-page')).toBeInTheDocument()
   })
 
-  it('renders tracking on /applications', () => {
+  it('renders tracking page on /applications', () => {
     render(
       <MemoryRouter initialEntries={['/applications']}>
         <App />
@@ -242,7 +236,7 @@ describe('App routing', () => {
     const toaster = screen.getByTestId('toaster')
     expect(toaster).toHaveAttribute('data-position', 'top-center')
     expect(toaster).toHaveAttribute('data-duration', '6000')
-    expect(toaster).toHaveAttribute('data-offset', '88px')
+    expect(toaster).toHaveAttribute('data-offset', '72px')
     expect(toaster).toHaveAttribute('data-mobile-offset', '72px')
   })
 })

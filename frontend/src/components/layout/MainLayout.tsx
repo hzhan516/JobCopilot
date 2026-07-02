@@ -1,145 +1,81 @@
-import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useEffect } from 'react';
+import { Outlet } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  FileText,
-  Briefcase,
-  MessageSquare,
-  ClipboardList,
-  User,
-  LogOut,
-  Menu,
-  ChevronDown,
-} from 'lucide-react';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useSidebarStore } from '@/store/sidebar.store';
+import { useCopilotStore } from '@/store/copilot.store';
+import AppSidebar from '@/components/layout/AppSidebar';
+import MinimalHeader from '@/components/layout/MinimalHeader';
+import GlobalCopilotDrawer from '@/components/copilot/GlobalCopilotDrawer';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 
-interface NavItem {
-  path: string;
-  labelKey: string;
-  icon: React.ElementType;
-}
+export default function MainLayout() {
+  const { isAuthenticated } = useAuth();
+  const isMobile = useIsMobile();
+  const { mobileOpen, setMobileOpen, toggle } = useSidebarStore();
+  const { open: openCopilot, isOpen: copilotOpen, close: closeCopilot } = useCopilotStore();
 
-export default function MainLayout({ children }: { children: React.ReactNode }) {
-  const { t } = useTranslation();
-  const { user, logout, isAuthenticated } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
+  // 全局快捷键
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
 
-  const navItems: NavItem[] = [
-    { path: '/resumes', labelKey: 'layout.nav.resumes', icon: FileText },
-    { path: '/jobs', labelKey: 'layout.nav.jobs', icon: Briefcase },
-    { path: '/chat', labelKey: 'layout.nav.chat', icon: MessageSquare },
-    { path: '/applications', labelKey: 'layout.nav.tracking', icon: ClipboardList },
-  ];
+      // Cmd/Ctrl + . → 切换 Copilot Drawer
+      if (e.key === '.') {
+        e.preventDefault();
+        if (copilotOpen) {
+          closeCopilot();
+        } else {
+          openCopilot({ type: 'general' });
+        }
+      }
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+      // Cmd/Ctrl + B → 切换侧边栏收起/展开
+      if (e.key === 'b' || e.key === 'B') {
+        e.preventDefault();
+        toggle();
+      }
+    };
 
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [copilotOpen, openCopilot, closeCopilot, toggle]);
+
+  // 未认证时不做布局包裹（保留原行为）
   if (!isAuthenticated) {
-    return <>{children}</>;
+    return <Outlet />;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="sticky top-0 z-50 w-full border-b bg-white shadow-sm">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <FileText className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-gray-900">{t('common.appName')}</span>
-          </Link>
+    <div className="flex h-screen overflow-hidden bg-background">
+      {/* 桌面侧边栏 — 固定左侧 */}
+      {!isMobile && <AppSidebar />}
 
-          <nav className="hidden md:flex items-center space-x-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname.startsWith(item.path);
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span className="text-sm font-medium">{t(item.labelKey)}</span>
-                </Link>
-              );
-            })}
-          </nav>
+      {/* 移动端侧边栏 — Sheet 包裹 */}
+      {isMobile && (
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetContent side="left" className="w-60 p-0">
+            <AppSidebar isMobile onNavigate={() => setMobileOpen(false)} />
+          </SheetContent>
+        </Sheet>
+      )}
 
-          <div className="flex items-center space-x-2">
-            <LanguageSwitcher />
+      {/* 右侧主区域 */}
+      <div className="flex flex-col flex-1 min-w-0">
+        {/* 移动端顶部栏 */}
+        {isMobile && <MinimalHeader />}
 
-            <Sheet>
-              <SheetTrigger asChild className="md:hidden">
-                <Button variant="ghost" size="icon">
-                  <Menu className="w-5 h-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-64">
-                <div className="flex flex-col space-y-4 mt-8">
-                  {navItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        className="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100"
-                      >
-                        <Icon className="w-5 h-5 text-gray-600" />
-                        <span className="text-gray-900">{t(item.labelKey)}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <span className="hidden sm:inline text-sm font-medium text-gray-700">
-                    {user?.email}
-                  </span>
-                  <ChevronDown className="w-4 h-4 text-gray-500" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/profile')}>
-                  <User className="w-4 h-4 mr-2" />
-                  {t('layout.userMenu.profile')}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer text-red-600" onClick={handleLogout}>
-                  <LogOut className="w-4 h-4 mr-2" />
-                  {t('layout.userMenu.logout')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+        {/* 页面内容 — Outlet 渲染子路由 */}
+        <main className="flex-1 overflow-auto">
+          <div className="container mx-auto px-4 py-6">
+            <Outlet />
           </div>
-        </div>
-      </header>
+        </main>
+      </div>
 
-      <main className="container mx-auto px-4 py-6">{children}</main>
+      {/* 全局 AI Copilot Drawer — 所有页面可唤出 */}
+      <GlobalCopilotDrawer />
     </div>
   );
 }

@@ -28,10 +28,19 @@
   },
   "layout": {
     "nav": {
+      "dashboard": "仪表盘",
       "resumes": "我的简历",
       "jobs": "职位匹配",
       "chat": "AI 聊天",
       "tracking": "申请管理"
+    },
+    "sidebar": {
+      "toggle": "切换侧边栏",
+      "collapse": "收起侧边栏",
+      "expand": "展开侧边栏",
+      "copilot": {
+        "openCopilot": "打开 AI 助手"
+      }
     },
     "userMenu": {
       "profile": "个人中心",
@@ -312,7 +321,8 @@
     "deleteFailed": "删除失败",
     "createSuccess": "创建成功",
     "mockGreeting": "您好！我是您的 AI 求职助手。我可以帮您优化简历、推荐职位、解答求职问题。请问有什么可以帮您？",
-    "mockReply": "感谢您的提问！关于\"{{question}}\"，我建议您：\n\n1. 首先完善简历内容，突出相关技能和经验\n2. 针对目标职位定制简历关键词\n3. 准备相关项目案例和工作成果\n\n如需更详细的建议，请告诉我您的具体情况。"
+    "mockReply": "感谢您的提问！关于\"{{question}}\"，我建议您：\n\n1. 首先完善简历内容，突出相关技能和经验\n2. 针对目标职位定制简历关键词\n3. 准备相关项目案例和工作成果\n\n如需更详细的建议，请告诉我您的具体情况。",
+    "drawerRedirect": "AI 助手现在可以从任意页面访问。点击侧边栏的聊天按钮或按 Cmd/Ctrl+. 打开。"
   },
   "tracking": {
     "title": "申请管理",
