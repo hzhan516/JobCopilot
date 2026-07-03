@@ -35,11 +35,11 @@ export default function ContextUsageIndicator({
   const { t } = useTranslation();
 
   // ponytail: degrade silently when token data is unavailable (old conversations, no AI reply yet)
-  if (contextTokens == null || contextWindow == null || contextTokens <= 0 || contextWindow <= 0) {
+  if (!contextTokens || !contextWindow || contextTokens <= 0 || contextWindow <= 0) {
     return null;
   }
 
-  const pct = usageRatio != null ? Math.round(usageRatio * 100) : 0;
+  const pct = usageRatio !== undefined ? Math.round(usageRatio * 100) : 0;
 
   return (
     <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground px-3 py-1">

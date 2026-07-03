@@ -4,7 +4,11 @@ from app.schemas import (
     ConversationCompactCommand,
     ConversationMessage,
 )
-from app.services.compaction_service import process_compaction, summarize_history, COMPACT_PROMPT
+from app.services.compaction_service import (
+    process_compaction,
+    summarize_history,
+    COMPACT_PROMPT,
+)
 
 
 def test_process_compaction_empty_messages():

@@ -217,7 +217,9 @@ def _extract_usage(response) -> Usage | None:
 
 
 @RETRY_STRATEGY
-def _generate_text(model: str, messages: list[dict[str, Any]]) -> tuple[str, Usage | None]:
+def _generate_text(
+    model: str, messages: list[dict[str, Any]]
+) -> tuple[str, Usage | None]:
     """Execute a text-only LLM completion with retries and empty-response guard.
     执行文本补全：带重试机制与空响应兜底，防止下游因空字符串导致解析异常。"""
     logger.debug("LLM request: model=%s, messages_count=%d", model, len(messages))
@@ -249,7 +251,12 @@ def _generate_text(model: str, messages: list[dict[str, Any]]) -> tuple[str, Usa
         raise ValueError("LiteLLM returned an empty response.")
 
     usage = _extract_usage(response)
-    logger.debug("LLM response: model=%s, content_length=%d, usage=%s", model, len(content), usage)
+    logger.debug(
+        "LLM response: model=%s, content_length=%d, usage=%s",
+        model,
+        len(content),
+        usage,
+    )
     return content.strip(), usage
 
 
@@ -308,7 +315,9 @@ def generate_json_from_text_prompt_with_repair(
     parse_error: Exception | None = None
     try:
         parsed, json_text = _parse_json_object_from_text(raw_text)
-        return JsonGenerationResult(data=parsed, raw_text=raw_text, json_text=json_text, usage=usage)
+        return JsonGenerationResult(
+            data=parsed, raw_text=raw_text, json_text=json_text, usage=usage
+        )
     except Exception as first_error:
         parse_error = first_error
         logger.warning(

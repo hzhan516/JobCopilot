@@ -81,7 +81,9 @@ def process_compaction(command: ConversationCompactCommand) -> AiResultEvent:
             eventType=None,
         )
     except Exception as exc:
-        logger.exception("Compaction failed for conversation: %s", command.conversation_id)
+        logger.exception(
+            "Compaction failed for conversation: %s", command.conversation_id
+        )
         return AiResultEvent(
             referenceId=command.conversation_id,
             type="CONVERSATION_COMPACTED",
