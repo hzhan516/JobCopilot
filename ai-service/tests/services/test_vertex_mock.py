@@ -27,7 +27,7 @@ def test_vertex_prompt_construction(mock_completion):
             "content": "Please reply with EXACTLY this text: 'Vertex Connection Successful!'",
         }
     ]
-    result = _generate_text(model="gemini/gemini-1.5-flash", messages=messages)
+    result, _ = _generate_text(model="gemini/gemini-1.5-flash", messages=messages)
 
     assert result == "Vertex Connection Successful!"
     mock_completion.assert_called_once()
