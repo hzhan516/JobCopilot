@@ -276,6 +276,7 @@ class AiResultEvent(AppBaseModel):
         | ParsedJobContent
         | ResumeParseData
         | ConversationData
+        | ConversationCompactedData
         | JobRankResultData
         | None
     ) = None
