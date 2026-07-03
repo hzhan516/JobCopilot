@@ -95,6 +95,9 @@ class ConversationData(AppBaseModel):
     resume_modification: ResumeModification = Field(
         default_factory=ResumeModification, alias="resumeModification"
     )
+    prompt_tokens: int = Field(default=0, alias="promptTokens")
+    completion_tokens: int = Field(default=0, alias="completionTokens")
+    total_tokens: int = Field(default=0, alias="totalTokens")
 
 
 # ── Feedback ────────────────────────────────────────────────────────────

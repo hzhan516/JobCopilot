@@ -275,6 +275,7 @@ def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
     )
     fallback_used = False
     repaired = False
+    usage = None
     try:
         generation = generate_json_from_text_prompt_with_repair(
             prompt,
@@ -282,6 +283,7 @@ def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
         )
         result = generation.data
         repaired = generation.repaired
+        usage = generation.usage
     except LlmJsonParseError as exc:
         fallback_used = True
         result = {
@@ -321,6 +323,9 @@ def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
                 modified=resume_modification["modified"],
                 markdown=resume_modification["markdown"],
             ),
+            promptTokens=usage.prompt_tokens if usage else 0,
+            completionTokens=usage.completion_tokens if usage else 0,
+            totalTokens=usage.total_tokens if usage else 0,
         ),
         errorMessage=None,
         eventType=None,
