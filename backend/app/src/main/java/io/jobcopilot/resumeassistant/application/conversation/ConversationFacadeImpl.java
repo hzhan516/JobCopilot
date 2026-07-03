@@ -105,6 +105,13 @@ public class ConversationFacadeImpl implements ConversationFacade {
     }
 
     @Override
+    public void saveAiReply(String conversationId, String content, String fileUrl,
+                            String aiOptimizedMarkdown, int promptTokens, int completionTokens) {
+        applicationService.saveAiReply(UUID.fromString(conversationId), content, fileUrl,
+                aiOptimizedMarkdown, promptTokens, completionTokens);
+    }
+
+    @Override
     public void completeAiReply(String conversationId, String content) {
         applicationService.completeAiReply(UUID.fromString(conversationId), content);
     }

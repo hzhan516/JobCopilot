@@ -59,6 +59,13 @@ public interface ConversationFacade {
     void saveAiReply(String conversationId, String content, String fileUrl, String aiOptimizedMarkdown);
 
     /**
+     * 保存 AI 回复消息（含 token 用量）
+     * Save AI reply message with token usage
+     */
+    void saveAiReply(String conversationId, String content, String fileUrl, String aiOptimizedMarkdown,
+                     int promptTokens, int completionTokens);
+
+    /**
      * 完成 AI 流式回复并唤醒等待中的流请求
      * Complete AI stream reply and wake up pending stream request.
      *

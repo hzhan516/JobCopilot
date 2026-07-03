@@ -110,9 +110,13 @@ public class AiResultMessageListener {
             String content = extractReplyContent(event);
             String fileUrl = extractFileUrl(event);
             String aiOptimizedMarkdown = extractAiOptimizedMarkdown(event);
+            int promptTokens = extractInt(event.data(), "promptTokens");
+            int completionTokens = extractInt(event.data(), "completionTokens");
 
-            conversationFacade.saveAiReply(event.referenceId(), content, fileUrl, aiOptimizedMarkdown);
-            log.info("Saved AI reply for conversation: {}", event.referenceId());
+            conversationFacade.saveAiReply(event.referenceId(), content, fileUrl, aiOptimizedMarkdown,
+                    promptTokens, completionTokens);
+            log.info("Saved AI reply for conversation: {}, promptTokens={}, completionTokens={}",
+                    event.referenceId(), promptTokens, completionTokens);
 
             conversationFacade.completeAiReply(event.referenceId(), content);
             idempotencyService.markProcessed(key);
@@ -203,6 +207,14 @@ public class AiResultMessageListener {
         }
         Object value = data.get(key);
         return value instanceof String text ? text : null;
+    }
+
+    private static int extractInt(Map<String, Object> data, String key) {
+        if (data == null) {
+            return 0;
+        }
+        Object value = data.get(key);
+        return value instanceof Number num ? num.intValue() : 0;
     }
 
     private String extractReplyContent(AiResultEvent event) {
