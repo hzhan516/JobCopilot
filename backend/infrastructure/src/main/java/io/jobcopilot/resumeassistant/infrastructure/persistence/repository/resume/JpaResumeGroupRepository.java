@@ -19,6 +19,8 @@ public interface JpaResumeGroupRepository extends JpaRepository<ResumeGroupJpaEn
 
     List<ResumeGroupJpaEntity> findAllByUserId(UUID userId);
 
+    long countByUserId(UUID userId);
+
     Optional<ResumeGroupJpaEntity> findByIdAndUserId(UUID id, UUID userId);
 
     Optional<ResumeGroupJpaEntity> findByUserIdAndIsDefaultTrue(UUID userId);

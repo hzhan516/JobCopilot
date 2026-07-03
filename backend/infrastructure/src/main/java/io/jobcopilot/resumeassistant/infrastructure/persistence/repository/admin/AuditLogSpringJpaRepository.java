@@ -10,4 +10,5 @@ import java.util.UUID;
 interface AuditLogSpringJpaRepository extends JpaRepository<AuditLogJpaEntity, UUID> {
     Page<AuditLogJpaEntity> findByAdminUserId(UUID adminUserId, Pageable pageable);
     Page<AuditLogJpaEntity> findByAction(String action, Pageable pageable);
+    long countByActionContaining(String actionSubstring);
 }

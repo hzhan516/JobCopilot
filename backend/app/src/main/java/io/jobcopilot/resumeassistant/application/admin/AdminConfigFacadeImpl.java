@@ -1,11 +1,15 @@
 package io.jobcopilot.resumeassistant.application.admin;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jobcopilot.resumeassistant.api.admin.dto.ConfigItemResponse;
 import io.jobcopilot.resumeassistant.api.admin.facade.AdminConfigFacade;
 import io.jobcopilot.resumeassistant.domain.admin.entity.AuditLog;
 import io.jobcopilot.resumeassistant.domain.admin.repository.AuditLogRepository;
 import io.jobcopilot.resumeassistant.domain.config.repository.DynamicConfigRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,13 +17,18 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 @Transactional
 public class AdminConfigFacadeImpl implements AdminConfigFacade {
 
+    private static final String CONFIG_CHANGED_CHANNEL = "config:changed";
+
     private final DynamicConfigRepository configRepository;
     private final AuditLogRepository auditLogRepository;
+    private final StringRedisTemplate stringRedisTemplate;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -43,6 +52,7 @@ public class AdminConfigFacadeImpl implements AdminConfigFacade {
         cfg.update(value, adminUserId);
         var saved = configRepository.save(cfg);
         audit(adminUserId, "UPDATE_CONFIG", "config", key, value);
+        publishConfigChanged(key, value);
         return toResponse(saved);
     }
 
@@ -73,5 +83,21 @@ public class AdminConfigFacadeImpl implements AdminConfigFacade {
                 .id(UUID.randomUUID()).adminUserId(adminUserId)
                 .action(action).targetType(targetType).targetId(targetId)
                 .details(details).createdAt(LocalDateTime.now()).build());
+    }
+
+    private void publishConfigChanged(String key, String value) {
+        try {
+            String message = objectMapper.writeValueAsString(new ConfigChangedMessage(key, value));
+            stringRedisTemplate.convertAndSend(CONFIG_CHANGED_CHANNEL, message);
+            log.info("Published config change: {} = {}", key, value);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize config change message for key: {}", key, e);
+        }
+    }
+
+    /**
+     * 配置变更广播消息 / Config change broadcast message.
+     */
+    private record ConfigChangedMessage(String key, String value) {
     }
 }

@@ -26,4 +26,13 @@ public interface JpaJobRepository extends JpaRepository<JobJpaEntity, String> {
      * @return JPA 实体列表 / List of JPA entities
      */
     List<JobJpaEntity> findAllByUserIdAndHiddenAtIsNull(String userId);
+
+    /**
+     * 统计用户的职位数量
+     * Count jobs by user ID.
+     *
+     * @param userId 用户 ID / User ID
+     * @return 职位数量 / Number of jobs
+     */
+    long countByUserId(String userId);
 }

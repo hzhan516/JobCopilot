@@ -1,5 +1,6 @@
 import json
 import pytest
+from botocore.exceptions import ClientError
 from unittest.mock import patch, MagicMock
 from app.infrastructure.minio.client import MinioModelRegistry
 from app.config import MINIO_MODEL_BUCKET
@@ -92,3 +93,50 @@ def test_download_model(mock_boto3_client):
     mock_boto3_client.download_file.assert_called_once_with(
         MINIO_MODEL_BUCKET, object_key, dest_path
     )
+
+
+def test_list_objects_returns_contents(mock_boto3_client):
+    registry = MinioModelRegistry()
+    mock_boto3_client.list_objects_v2.return_value = {
+        "Contents": [
+            {"Key": "ranker_model_v1.0.txt", "Size": 1024, "LastModified": "now"}
+        ]
+    }
+
+    result = registry.list_objects(prefix="ranker_model_")
+
+    assert len(result) == 1
+    assert result[0]["Key"] == "ranker_model_v1.0.txt"
+    mock_boto3_client.list_objects_v2.assert_called_once_with(
+        Bucket=MINIO_MODEL_BUCKET, Prefix="ranker_model_"
+    )
+
+
+def test_list_objects_returns_empty_when_no_contents(mock_boto3_client):
+    registry = MinioModelRegistry()
+    mock_boto3_client.list_objects_v2.return_value = {}
+
+    result = registry.list_objects(prefix="ranker_model_")
+
+    assert result == []
+
+
+def test_object_exists_when_present(mock_boto3_client):
+    registry = MinioModelRegistry()
+    mock_boto3_client.head_object.return_value = {"ContentLength": 1024}
+
+    assert registry.object_exists("ranker_model_v1.0.txt") is True
+    mock_boto3_client.head_object.assert_called_once_with(
+        Bucket=MINIO_MODEL_BUCKET, Key="ranker_model_v1.0.txt"
+    )
+
+
+def test_object_exists_when_missing(mock_boto3_client):
+    registry = MinioModelRegistry()
+    mock_boto3_client.exceptions.ClientError = ClientError
+    error_response = {"Error": {"Code": "404", "Message": "Not Found"}}
+    mock_boto3_client.head_object.side_effect = ClientError(
+        error_response, "HeadObject"
+    )
+
+    assert registry.object_exists("missing.txt") is False

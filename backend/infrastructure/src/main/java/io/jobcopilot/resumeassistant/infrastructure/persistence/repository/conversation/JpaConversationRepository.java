@@ -16,4 +16,10 @@ public interface JpaConversationRepository extends JpaRepository<ConversationJpa
      * Find all conversations by user ID
      */
     List<ConversationJpaEntity> findAllByUserId(String userId);
+
+    /**
+     * 统计某用户的对话数量
+     * Count conversations by user ID
+     */
+    long countByUserId(String userId);
 }

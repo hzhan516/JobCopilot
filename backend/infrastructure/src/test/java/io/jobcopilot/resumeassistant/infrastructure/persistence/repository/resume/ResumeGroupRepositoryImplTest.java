@@ -218,6 +218,23 @@ class ResumeGroupRepositoryImplTest {
         assertThat(result).isEmpty();
     }
 
+    @Test
+    @DisplayName("Should count resume groups by user ID")
+    void shouldCountResumeGroupsByUserId() {
+        // 给定
+        // Given
+        when(jpaRepository.countByUserId(USER_ID)).thenReturn(5L);
+
+        // 当
+        // When
+        long result = groupRepository.countByUserId(USER_ID);
+
+        // 然后
+        // Then
+        assertThat(result).isEqualTo(5L);
+        verify(jpaRepository).countByUserId(USER_ID);
+    }
+
     // ==================== 删除测试 ====================
     // ==================== Delete Tests ====================
 

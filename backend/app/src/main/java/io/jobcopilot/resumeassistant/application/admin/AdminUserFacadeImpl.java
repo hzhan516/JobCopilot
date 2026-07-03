@@ -5,6 +5,9 @@ import io.jobcopilot.resumeassistant.api.admin.dto.AdminUserResponse;
 import io.jobcopilot.resumeassistant.api.admin.facade.AdminUserFacade;
 import io.jobcopilot.resumeassistant.domain.admin.entity.AuditLog;
 import io.jobcopilot.resumeassistant.domain.admin.repository.AuditLogRepository;
+import io.jobcopilot.resumeassistant.domain.conversation.repository.ConversationRepository;
+import io.jobcopilot.resumeassistant.domain.job.repository.JobRepository;
+import io.jobcopilot.resumeassistant.domain.resume.repository.ResumeGroupRepository;
 import io.jobcopilot.resumeassistant.domain.user.entity.User;
 import io.jobcopilot.resumeassistant.domain.user.repository.UserRepository;
 import io.jobcopilot.resumeassistant.types.common.PageResult;
@@ -26,13 +29,16 @@ public class AdminUserFacadeImpl implements AdminUserFacade {
 
     private final UserRepository userRepository;
     private final AuditLogRepository auditLogRepository;
+    private final ResumeGroupRepository resumeGroupRepository;
+    private final JobRepository jobRepository;
+    private final ConversationRepository conversationRepository;
 
     @Override
     @Transactional(readOnly = true)
     public PageResult<AdminUserResponse> listUsers(AdminUserListRequest req) {
         var result = userRepository.findAll(req.page(), req.size());
         return PageResult.of(
-                result.content().stream().map(this::toResponse).toList(),
+                result.content().stream().map(this::toListResponse).toList(),
                 req.page(), req.size(), result.totalElements());
     }
 
@@ -41,7 +47,7 @@ public class AdminUserFacadeImpl implements AdminUserFacade {
     public AdminUserResponse getUserDetail(UUID id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        return toResponse(user);
+        return toDetailResponse(user);
     }
 
     @Override
@@ -51,7 +57,7 @@ public class AdminUserFacadeImpl implements AdminUserFacade {
         user.updateRole(UserRole.valueOf(role));
         var saved = userRepository.save(user);
         audit(adminUserId, "UPDATE_ROLE", "user", id.toString(), "role=" + role);
-        return toResponse(saved);
+        return toListResponse(saved);
     }
 
     @Override
@@ -61,7 +67,7 @@ public class AdminUserFacadeImpl implements AdminUserFacade {
         user.updateStatus(UserStatus.valueOf(status));
         var saved = userRepository.save(user);
         audit(adminUserId, "UPDATE_STATUS", "user", id.toString(), "status=" + status);
-        return toResponse(saved);
+        return toListResponse(saved);
     }
 
     @Override
@@ -73,13 +79,28 @@ public class AdminUserFacadeImpl implements AdminUserFacade {
         audit(adminUserId, "DELETE_USER", "user", id.toString(), null);
     }
 
-    private AdminUserResponse toResponse(User u) {
+    private AdminUserResponse toListResponse(User u) {
         return AdminUserResponse.builder()
                 .id(u.getId()).email(u.getEmail())
                 .role(u.getRole().name()).status(u.getStatus().name())
                 .authProvider(u.getAuthProvider().name())
                 .emailVerified(u.isEmailVerified())
-                .resumeCount(0).jobCount(0).conversationCount(0) // ponytail: counts deferred to Phase 3 monitoring
+                .resumeCount(0).jobCount(0).conversationCount(0)
+                .createdAt(u.getCreatedAt() != null ? u.getCreatedAt().toString() : null)
+                .updatedAt(u.getUpdatedAt() != null ? u.getUpdatedAt().toString() : null)
+                .build();
+    }
+
+    private AdminUserResponse toDetailResponse(User u) {
+        UUID userId = u.getId();
+        return AdminUserResponse.builder()
+                .id(userId).email(u.getEmail())
+                .role(u.getRole().name()).status(u.getStatus().name())
+                .authProvider(u.getAuthProvider().name())
+                .emailVerified(u.isEmailVerified())
+                .resumeCount(resumeGroupRepository.countByUserId(userId))
+                .jobCount(jobRepository.countByUserId(userId))
+                .conversationCount(conversationRepository.countByUserId(userId))
                 .createdAt(u.getCreatedAt() != null ? u.getCreatedAt().toString() : null)
                 .updatedAt(u.getUpdatedAt() != null ? u.getUpdatedAt().toString() : null)
                 .build();

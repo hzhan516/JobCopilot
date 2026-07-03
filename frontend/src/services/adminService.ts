@@ -29,8 +29,75 @@ export interface PageResult<T> {
   totalElements: number; totalPages: number;
 }
 
+export interface DynamicConfig {
+  key: string;
+  value: string;
+  defaultValue: string;
+  description: string;
+  category: string;
+  valueType: 'BOOLEAN' | 'NUMBER' | 'STRING' | 'JSON';
+  sensitive: boolean;
+  readOnly: boolean;
+  updatedBy: string | null;
+  updatedAt: string | null;
+}
+
+export interface QueueStats {
+  queues: Record<string, { depth: number | string; consumers: number; error?: string }>;
+}
+
+export interface AIStatus {
+  service: string;
+  version: string;
+  uptime_seconds: number;
+  model_version?: string;
+  model_trained_at?: string;
+  mq_connected: boolean;
+}
+
+export interface ModelInfo {
+  loaded: boolean;
+  version?: string;
+  trained_at?: string;
+  metrics?: Record<string, number>;
+  filename?: string;
+  message?: string;
+}
+
+export interface ModelVersion {
+  key: string;
+  size: number;
+  last_modified: string;
+  version: string;
+}
+
+export interface RetrainResult {
+  status: string;
+  new_version?: string;
+  message?: string;
+  metrics?: Record<string, number>;
+  samples_used?: number;
+}
+
+export interface PurgeResult {
+  status: string;
+  queue: string;
+  messages_removed: number;
+}
+
+export interface RetryResult {
+  status: string;
+  queue: string;
+  messages_retried: number;
+}
+
 interface VersionInfo {
   version: string; component: string;
+}
+
+function toConfigValue(value: string | number | boolean): string {
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  return String(value);
 }
 
 export const adminService = {
@@ -73,5 +140,63 @@ export const adminService = {
   listAuditLogs: async (params: { adminUserId?: string; action?: string; page?: number; size?: number }) => {
     const res = await apiClient.get<ApiResponse<PageResult<AuditLog>>>('/api/admin/v1/audit-logs', { params });
     return res.data.data;
+  },
+
+  // ─── Config ───
+  getConfigs: async () => {
+    const res = await apiClient.get<ApiResponse<DynamicConfig[]>>('/api/admin/v1/config');
+    return res.data.data;
+  },
+  getConfig: async (key: string) => {
+    const res = await apiClient.get<ApiResponse<DynamicConfig>>(`/api/admin/v1/config/${key}`);
+    return res.data.data;
+  },
+  updateConfig: async (key: string, value: string | number | boolean) => {
+    const res = await apiClient.put<ApiResponse<DynamicConfig>>(`/api/admin/v1/config/${key}`, { value: toConfigValue(value) });
+    return res.data.data;
+  },
+  resetConfig: async (key: string) => {
+    const res = await apiClient.post<ApiResponse<DynamicConfig>>(`/api/admin/v1/config/${key}/reset`);
+    return res.data.data;
+  },
+
+  // ─── Monitoring (proxied to AI service) ───
+  getQueueStats: async () => {
+    const res = await apiClient.get<QueueStats>('/api/admin/v1/monitoring/queues');
+    return res.data;
+  },
+  purgeQueue: async (queueName: string) => {
+    const res = await apiClient.post<PurgeResult>(`/api/admin/v1/monitoring/queues/${queueName}/purge`);
+    return res.data;
+  },
+  retryDlq: async (queueName: string) => {
+    const res = await apiClient.post<RetryResult>(`/api/admin/v1/monitoring/queues/${queueName}/retry-dlq`);
+    return res.data;
+  },
+
+  // ─── AI Service (proxied to AI service) ───
+  getAIStatus: async () => {
+    const res = await apiClient.get<AIStatus>('/api/admin/v1/ai/status');
+    return res.data;
+  },
+  getModelInfo: async () => {
+    const res = await apiClient.get<ModelInfo>('/api/admin/v1/ai/model/info');
+    return res.data;
+  },
+  getModelHistory: async () => {
+    const res = await apiClient.get<{ versions: ModelVersion[] }>('/api/admin/v1/ai/model/history');
+    return res.data;
+  },
+  triggerRetrain: async () => {
+    const res = await apiClient.post<RetrainResult>('/api/admin/v1/ai/model/retrain');
+    return res.data;
+  },
+  rollbackModel: async (version: string) => {
+    const res = await apiClient.post<{ status: string; version: string; message?: string }>('/api/admin/v1/ai/model/rollback', { version });
+    return res.data;
+  },
+  flushAICache: async () => {
+    const res = await apiClient.post<{ status: string; keys_deleted: number }>('/api/admin/v1/ai/cache/flush');
+    return res.data;
   },
 };

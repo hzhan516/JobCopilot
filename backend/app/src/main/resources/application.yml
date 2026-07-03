@@ -23,6 +23,7 @@ server:
 # 应用版本信息 / Application version info
 app:
   version: ${APP_VERSION:dev}
+  internal-api-key: ${INTERNAL_API_KEY:}
 
 info:
   app:
