@@ -187,6 +187,14 @@ export interface Conversation {
   messages?: Message[];
   createdAt: string;
   updatedAt: string;
+  /** Prompt tokens from the most recent AI call (optional — absent on old conversations) */
+  contextTokens?: number;
+  /** Admin-configurable context window size */
+  contextWindow?: number;
+  /** Pre-computed usage ratio 0.0–1.0 */
+  usageRatio?: number;
+  /** Whether usage exceeds compact threshold */
+  compactAdvised?: boolean;
 }
 
 export interface Message {

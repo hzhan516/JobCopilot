@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { formatTime } from '@/utils/i18n';
 import { useChat } from '@/hooks/useChat';
 import { useCopilotStore } from '@/store/copilot.store';
+import ContextUsageIndicator from '@/components/chat/ContextUsageIndicator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -77,6 +78,8 @@ export default function CopilotChatArea() {
     handleCreateConversation,
     handleSendMessage,
     handleDeleteConversation,
+    compactConversation,
+    isCompacting,
   } = useChat();
   const { context } = useCopilotStore();
 
@@ -347,32 +350,42 @@ export default function CopilotChatArea() {
 
       {/* 输入区域 */}
       {activeConversation && (
-        <div className="border-t p-3 shrink-0">
-          <div className="flex space-x-2">
-            <Input
-              placeholder={t('chat.inputPlaceholder')}
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              disabled={isSending}
-              className="flex-1 text-sm"
-            />
-            <Button
-              size="sm"
-              onClick={handleSendMessage}
-              disabled={!inputMessage.trim() || isSending}
-            >
-              {isSending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </Button>
+        <div className="border-t shrink-0">
+          <ContextUsageIndicator
+            contextTokens={activeConversation.contextTokens}
+            contextWindow={activeConversation.contextWindow}
+            usageRatio={activeConversation.usageRatio}
+            compactAdvised={activeConversation.compactAdvised}
+            compacting={isCompacting}
+            onCompact={compactConversation}
+          />
+          <div className="px-3 pb-3">
+            <div className="flex space-x-2">
+              <Input
+                placeholder={t('chat.inputPlaceholder')}
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                disabled={isSending}
+                className="flex-1 text-sm"
+              />
+              <Button
+                size="sm"
+                onClick={handleSendMessage}
+                disabled={!inputMessage.trim() || isSending}
+              >
+                {isSending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       )}
