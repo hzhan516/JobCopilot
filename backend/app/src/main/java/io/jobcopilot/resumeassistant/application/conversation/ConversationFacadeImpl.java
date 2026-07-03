@@ -10,6 +10,7 @@ import io.jobcopilot.resumeassistant.application.conversation.command.SendMessag
 import io.jobcopilot.resumeassistant.application.conversation.query.GetConversationQuery;
 import io.jobcopilot.resumeassistant.application.conversation.query.ListConversationsQuery;
 import io.jobcopilot.resumeassistant.application.conversation.service.ConversationApplicationService;
+import io.jobcopilot.resumeassistant.application.conversation.service.ConversationCompactionService;
 import io.jobcopilot.resumeassistant.application.conversation.service.ConversationFailureMessageResolver;
 import io.jobcopilot.resumeassistant.application.conversation.service.ConversationQueryService;
 import io.jobcopilot.resumeassistant.domain.conversation.entity.Conversation;
@@ -35,6 +36,7 @@ public class ConversationFacadeImpl implements ConversationFacade {
 
     private final ConversationApplicationService applicationService;
     private final ConversationQueryService queryService;
+    private final ConversationCompactionService compactionService;
     private final ConversationFailureMessageResolver failureMessageResolver;
 
     @Override
@@ -125,6 +127,21 @@ public class ConversationFacadeImpl implements ConversationFacade {
     @Override
     public String resolveAiFailureMessage(String errorCode, String localeTag) {
         return failureMessageResolver.resolve(errorCode, localeTag);
+    }
+
+    @Override
+    public ConversationResponse compactConversation(String conversationId, UUID userId) {
+        compactionService.requestCompaction(UUID.fromString(conversationId), userId);
+        // Return current state so the frontend sees COMPACTING status immediately
+        Conversation conversation = queryService.getConversation(
+                new io.jobcopilot.resumeassistant.application.conversation.query.GetConversationQuery(
+                        UUID.fromString(conversationId), userId, null, null));
+        return mapToResponse(conversation);
+    }
+
+    @Override
+    public void applyCompactionResult(String conversationId, String summary, int throughSequence, int contextTokens) {
+        compactionService.applyCompactionResult(conversationId, summary, throughSequence, contextTokens);
     }
 
     @Override

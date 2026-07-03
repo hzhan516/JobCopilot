@@ -119,7 +119,22 @@ public class ConversationContextService {
 
     List<Map<String, Object>> buildMessageHistory(Conversation conversation) {
         List<Map<String, Object>> history = new ArrayList<>();
+
+        // Prepend summary of compacted history if available
+        String summary = conversation.getContextSummary();
+        int compactedThrough = conversation.getCompactedThroughSequence();
+        if (summary != null && !summary.isBlank() && compactedThrough > 0) {
+            Map<String, Object> summaryEntry = new LinkedHashMap<>();
+            summaryEntry.put("role", "SYSTEM");
+            summaryEntry.put("content", "[Previous conversation summary]\n" + summary);
+            history.add(summaryEntry);
+        }
+
         for (Message msg : conversation.getMessages()) {
+            // Skip messages already covered by the summary
+            if (compactedThrough > 0 && msg.getSequence() <= compactedThrough) {
+                continue;
+            }
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("role", msg.getRole().name());
             entry.put("content", msg.getContent());

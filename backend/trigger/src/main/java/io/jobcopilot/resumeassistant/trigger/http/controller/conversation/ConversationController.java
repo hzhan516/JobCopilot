@@ -90,6 +90,14 @@ public class ConversationController {
         return ApiResponse.success(null);
     }
 
+    @PostMapping("/{conversationId}/compact")
+    public ApiResponse<ConversationResponse> compactConversation(
+            @PathVariable String conversationId,
+            @CurrentUser UUID userId) {
+        log.info("REST request to compact conversation: {}", conversationId);
+        return ApiResponse.success(conversationFacade.compactConversation(conversationId, userId));
+    }
+
     @PostMapping(value = "/{conversationId}/files", consumes = "multipart/form-data")
     public ApiResponse<String> uploadAttachment(
             @PathVariable String conversationId,

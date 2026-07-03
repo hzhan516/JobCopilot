@@ -87,6 +87,7 @@ app:
         job-parse: backend.queue.job.parse
         resume-parse: backend.queue.resume.parse
         conversation: backend.queue.conversation
+        conversation-compact: backend.queue.conversation.compact
         job-rank: backend.queue.job.rank
 
 # AI 服务连接地址 / AI service connection URL

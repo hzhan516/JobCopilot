@@ -28,6 +28,11 @@ CONVERSATION_RESULT_QUEUE = "backend.queue.conversation"
 CONVERSATION_REQUEST_ROUTING_KEY = "ai.req.conversation"
 CONVERSATION_RESULT_ROUTING_KEY = "backend.res.conversation"
 
+CONVERSATION_COMPACT_REQUEST_QUEUE = "ai.queue.conversation.compact"
+CONVERSATION_COMPACT_RESULT_QUEUE = "backend.queue.conversation.compact"
+CONVERSATION_COMPACT_REQUEST_ROUTING_KEY = "ai.req.conversation.compact"
+CONVERSATION_COMPACT_RESULT_ROUTING_KEY = "backend.res.conversation.compact"
+
 JOB_RANK_REQUEST_QUEUE = "ai.queue.job.rank"
 JOB_RANK_RESULT_QUEUE = "backend.queue.job.rank"
 JOB_RANK_REQUEST_ROUTING_KEY = "ai.req.job.rank"

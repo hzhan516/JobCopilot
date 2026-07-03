@@ -96,4 +96,16 @@ public interface ConversationFacade {
      * Upload conversation attachment to MinIO
      */
     String uploadAttachment(String conversationId, MultipartFile file, UUID userId);
+
+    /**
+     * 触发对话上下文压缩（异步 MQ）
+     * Trigger conversation context compaction (async MQ)
+     */
+    ConversationResponse compactConversation(String conversationId, UUID userId);
+
+    /**
+     * 应用 AI 服务返回的压缩结果
+     * Apply compaction result from AI service
+     */
+    void applyCompactionResult(String conversationId, String summary, int throughSequence, int contextTokens);
 }
