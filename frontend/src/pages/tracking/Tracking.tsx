@@ -62,7 +62,12 @@ const getAppliedDateForStatus = (status: Tracking['status'], appliedAt: string) 
   return status === 'APPLIED' && !clampedAppliedAt ? getTodayDateInputValue() : clampedAppliedAt;
 };
 
-export default function TrackingPage() {
+interface TrackingPageProps {
+  /** Master-Detail 模式下预选中的 tracking ID */
+  selectedTrackingId?: string;
+}
+
+export default function TrackingPage({ selectedTrackingId }: TrackingPageProps = {}) {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const dismissedEditTrackingIdRef = useRef<string | null>(null);
@@ -87,6 +92,15 @@ export default function TrackingPage() {
   });
   const [stats, setStats] = useState<TrackingStatsResponse | null>(null);
   const todayDateInputValue = getTodayDateInputValue();
+
+  // Master-Detail 模式下预选中指定 tracking（props → dialog 联动）
+  useEffect(() => {
+    if (selectedTrackingId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEditingTrackingId(selectedTrackingId);
+      setEditDialogOpen(true);
+    }
+  }, [selectedTrackingId]);
 
   const statusConfig: Record<string, { labelKey: string; color: string }> = useMemo(
     () => ({

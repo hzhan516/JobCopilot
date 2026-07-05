@@ -1,16 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { MemoryRouter, Routes, Route, Outlet } from 'react-router-dom'
 import MainLayout from './MainLayout'
 
 const mockNavigate = vi.fn()
+const mockLogout = vi.fn()
+let mockAuth = {
+  user: { email: 'test@example.com', name: 'Test User' } as any,
+  logout: mockLogout,
+  isAuthenticated: true,
+}
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
   return {
     ...actual,
     useLocation: () => ({ pathname: '/resumes' }),
-    useNavigate: () => mockNavigate,
   }
 })
 
@@ -20,42 +25,50 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-const mockLogout = vi.fn()
-let mockAuth = {
-  user: { email: 'test@example.com', name: 'Test User' },
-  logout: mockLogout,
-  isAuthenticated: true,
-}
-
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => mockAuth,
 }))
 
-vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, onClick, variant, size, className, asChild }: any) => {
-    if (asChild) return <a className={className}>{children}</a>
-    return <button onClick={onClick} className={className}>{children}</button>
-  },
+vi.mock('@/hooks/use-mobile', () => ({
+  useIsMobile: () => false,
 }))
 
-vi.mock('@/components/ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: any) => <div>{children}</div>,
-  DropdownMenuTrigger: ({ children, asChild }: any) => children,
-  DropdownMenuContent: ({ children, align, className }: any) => <div className={className}>{children}</div>,
-  DropdownMenuItem: ({ children, onClick, className }: any) => (
-    <button onClick={onClick} className={className}>{children}</button>
+vi.mock('@/store/sidebar.store', () => ({
+  useSidebarStore: () => ({
+    collapsed: false,
+    mobileOpen: false,
+    toggle: vi.fn(),
+    setMobileOpen: vi.fn(),
+  }),
+}))
+
+vi.mock('@/store/copilot.store', () => ({
+  useCopilotStore: () => ({
+    isOpen: false,
+    open: vi.fn(),
+    close: vi.fn(),
+  }),
+}))
+
+vi.mock('@/components/layout/AppSidebar', () => ({
+  default: ({ isMobile, onNavigate }: any) => (
+    <div data-testid="app-sidebar" data-mobile={String(!!isMobile)}>
+      Sidebar
+    </div>
   ),
-  DropdownMenuSeparator: () => <hr />,
+}))
+
+vi.mock('@/components/layout/MinimalHeader', () => ({
+  default: () => <div data-testid="minimal-header">Header</div>,
+}))
+
+vi.mock('@/components/copilot/GlobalCopilotDrawer', () => ({
+  default: () => <div data-testid="global-copilot-drawer">Drawer</div>,
 }))
 
 vi.mock('@/components/ui/sheet', () => ({
   Sheet: ({ children }: any) => <div>{children}</div>,
-  SheetTrigger: ({ children, asChild, className }: any) => children,
-  SheetContent: ({ children, side, className }: any) => <div className={className}>{children}</div>,
-}))
-
-vi.mock('@/components/LanguageSwitcher', () => ({
-  LanguageSwitcher: () => <div data-testid="language-switcher">Lang</div>,
+  SheetContent: ({ children }: any) => <div>{children}</div>,
 }))
 
 vi.mock('lucide-react', () => ({
@@ -67,7 +80,24 @@ vi.mock('lucide-react', () => ({
   LogOut: () => <span>🚪</span>,
   Menu: () => <span>☰</span>,
   ChevronDown: () => <span>▼</span>,
+  ChevronLeft: () => <span>◀</span>,
+  ChevronRight: () => <span>▶</span>,
+  LayoutDashboard: () => <span>🏠</span>,
 }))
+
+function renderWithRoute(initialRoute = '/') {
+  return render(
+    <MemoryRouter initialEntries={[initialRoute]}>
+      <Routes>
+        <Route element={<MainLayout />}>
+          <Route index element={<div data-testid="page-content">Dashboard Page</div>} />
+          <Route path="/resumes" element={<div data-testid="page-content">Resumes Page</div>} />
+          <Route path="/profile" element={<div data-testid="page-content">Profile Page</div>} />
+        </Route>
+      </Routes>
+    </MemoryRouter>
+  )
+}
 
 describe('MainLayout', () => {
   beforeEach(() => {
@@ -79,144 +109,45 @@ describe('MainLayout', () => {
     }
   })
 
-  it('renders header with app name and navigation', () => {
-    render(
-      <MemoryRouter>
-        <MainLayout>
-          <div data-testid="page-content">Page Content</div>
-        </MainLayout>
-      </MemoryRouter>
-    )
-
-    expect(screen.getByText('common.appName')).toBeInTheDocument()
-    expect(screen.getAllByText('layout.nav.resumes').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('layout.nav.jobs').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('layout.nav.chat').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('layout.nav.tracking').length).toBeGreaterThan(0)
+  it('renders AppSidebar on desktop', () => {
+    renderWithRoute('/')
+    expect(screen.getByTestId('app-sidebar')).toBeInTheDocument()
+    // Desktop sidebar should not have mobile flag
+    expect(screen.getByTestId('app-sidebar')).toHaveAttribute('data-mobile', 'false')
   })
 
-  it('renders user email in dropdown', () => {
-    render(
-      <MemoryRouter>
-        <MainLayout>
-          <div>Content</div>
-        </MainLayout>
-      </MemoryRouter>
-    )
-
-    expect(screen.getByText('test@example.com')).toBeInTheDocument()
+  it('renders global copilot drawer', () => {
+    renderWithRoute('/')
+    expect(screen.getByTestId('global-copilot-drawer')).toBeInTheDocument()
   })
 
-  it('renders language switcher', () => {
-    render(
-      <MemoryRouter>
-        <MainLayout>
-          <div>Content</div>
-        </MainLayout>
-      </MemoryRouter>
-    )
-
-    expect(screen.getByTestId('language-switcher')).toBeInTheDocument()
+  it('renders child route content via Outlet', () => {
+    renderWithRoute('/')
+    expect(screen.getByTestId('page-content')).toBeInTheDocument()
+    expect(screen.getByText('Dashboard Page')).toBeInTheDocument()
   })
 
-  it('renders children content', () => {
+  it('renders different page content for different routes', () => {
+    renderWithRoute('/resumes')
+    expect(screen.getByTestId('page-content')).toBeInTheDocument()
+    expect(screen.getByText('Resumes Page')).toBeInTheDocument()
+  })
+
+  it('passes content through without layout when not authenticated', () => {
+    mockAuth = { user: null as any, logout: mockLogout, isAuthenticated: false }
+
     render(
-      <MemoryRouter>
-        <MainLayout>
-          <div data-testid="page-content">Page Content</div>
-        </MainLayout>
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route element={<MainLayout />}>
+            <Route index element={<div data-testid="page-content">Public Page</div>} />
+          </Route>
+        </Routes>
       </MemoryRouter>
     )
 
     expect(screen.getByTestId('page-content')).toBeInTheDocument()
-  })
-
-  it('renders mobile menu button', () => {
-    render(
-      <MemoryRouter>
-        <MainLayout>
-          <div>Content</div>
-        </MainLayout>
-      </MemoryRouter>
-    )
-
-    expect(screen.getByText('☰')).toBeInTheDocument()
-  })
-
-  it('renders profile menu item', () => {
-    render(
-      <MemoryRouter>
-        <MainLayout>
-          <div>Content</div>
-        </MainLayout>
-      </MemoryRouter>
-    )
-
-    expect(screen.getByText('layout.userMenu.profile')).toBeInTheDocument()
-  })
-
-  it('handles logout and navigates to login', () => {
-    render(
-      <MemoryRouter>
-        <MainLayout>
-          <div>Content</div>
-        </MainLayout>
-      </MemoryRouter>
-    )
-
-    fireEvent.click(screen.getByText('layout.userMenu.logout'))
-
-    expect(mockLogout).toHaveBeenCalled()
-    expect(mockNavigate).toHaveBeenCalledWith('/login')
-  })
-
-  it('renders without layout wrapper when not authenticated', () => {
-    mockAuth = { user: null, logout: mockLogout, isAuthenticated: false }
-
-    render(
-      <MemoryRouter>
-        <MainLayout>
-          <div data-testid="page-content">Public Page</div>
-        </MainLayout>
-      </MemoryRouter>
-    )
-
-    expect(screen.getByTestId('page-content')).toBeInTheDocument()
-    expect(screen.queryByText('common.appName')).not.toBeInTheDocument()
-  })
-
-  it('renders active nav item with different style', () => {
-    vi.mock('react-router-dom', async () => {
-      const actual = await vi.importActual('react-router-dom')
-      return {
-        ...actual,
-        useLocation: () => ({ pathname: '/jobs' }),
-        useNavigate: () => mockNavigate,
-      }
-    })
-
-    render(
-      <MemoryRouter>
-        <MainLayout>
-          <div>Content</div>
-        </MainLayout>
-      </MemoryRouter>
-    )
-
-    // The active item should have a different class
-    expect(screen.getAllByText('layout.nav.jobs').length).toBeGreaterThan(0)
-  })
-
-  it('navigates to profile on profile menu click', () => {
-    render(
-      <MemoryRouter>
-        <MainLayout>
-          <div>Content</div>
-        </MainLayout>
-      </MemoryRouter>
-    )
-
-    fireEvent.click(screen.getByText('layout.userMenu.profile'))
-    expect(mockNavigate).toHaveBeenCalledWith('/profile')
+    expect(screen.queryByTestId('app-sidebar')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('global-copilot-drawer')).not.toBeInTheDocument()
   })
 })

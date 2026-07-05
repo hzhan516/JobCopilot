@@ -28,10 +28,19 @@
   },
   "layout": {
     "nav": {
+      "dashboard": "儀表板",
       "resumes": "我的履歷",
       "jobs": "職位匹配",
       "chat": "AI 聊天",
       "tracking": "申請管理"
+    },
+    "sidebar": {
+      "toggle": "切換側邊欄",
+      "collapse": "收起側邊欄",
+      "expand": "展開側邊欄",
+      "copilot": {
+        "openCopilot": "打開 AI 助手"
+      }
     },
     "userMenu": {
       "profile": "個人中心",
@@ -312,7 +321,8 @@
     "deleteFailed": "刪除失敗",
     "createSuccess": "建立成功",
     "mockGreeting": "您好！我是您的 AI 求職助手。我可以幫您優化履歷、推薦職位、解答求職問題。請問有什麼可以幫您？",
-    "mockReply": "感謝您的提問！關於\"{{question}}\"，我建議您：\n\n1. 首先完善履歷內容，突出相關技能和經驗\n2. 針對目標職位定制履歷關鍵詞\n3. 準備相關專案案例和工作成果\n\n如需更詳細的建議，請告訴我您的具體情況。"
+    "mockReply": "感謝您的提問！關於\"{{question}}\"，我建議您：\n\n1. 首先完善履歷內容，突出相關技能和經驗\n2. 針對目標職位定制履歷關鍵詞\n3. 準備相關專案案例和工作成果\n\n如需更詳細的建議，請告訴我您的具體情況。",
+    "drawerRedirect": "AI 助手現在可以從任意頁面訪問。點擊側邊欄的聊天按鈕或按 Cmd/Ctrl+. 打開。"
   },
   "tracking": {
     "title": "申請管理",

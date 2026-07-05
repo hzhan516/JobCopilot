@@ -13,13 +13,11 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
 import Dashboard from '@/pages/Dashboard';
-import ResumeList from '@/pages/resumes/ResumeList';
-import ResumeDetail from '@/pages/resumes/ResumeDetail';
+import ResumesPage from '@/pages/resumes/ResumesPage';
 import ResumeEdit from '@/pages/resumes/ResumeEdit';
-import JobList from '@/pages/jobs/JobList';
-import JobDetail from '@/pages/jobs/JobDetail';
+import JobsPage from '@/pages/jobs/JobsPage';
 import Chat from '@/pages/chat/Chat';
-import Tracking from '@/pages/tracking/Tracking';
+import TrackingPage from '@/pages/tracking/TrackingPage';
 import Profile from '@/pages/profile/Profile';
 
 // Lazy-loaded admin pages
@@ -36,6 +34,7 @@ function App() {
       <Router>
         <ErrorBoundary>
           <Routes>
+            {/* Public routes — 不受 MainLayout 包裹 */}
             <Route
               path="/login"
               element={
@@ -53,98 +52,21 @@ function App() {
               }
             />
 
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Dashboard />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/resumes"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <ResumeList />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/resumes/:groupId"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <ResumeDetail />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/resumes/:groupId/versions/:versionId/edit"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <ResumeEdit />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/jobs"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <JobList />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/jobs/:jobId"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <JobDetail />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/chat"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Chat />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/applications"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Tracking />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Profile />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
+            {/* Protected routes — 统一嵌套在 MainLayout 下（Outlet 模式） */}
+            <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+              <Route index element={<Dashboard />} />
+              <Route path="/resumes" element={<ResumesPage />} />
+              <Route path="/resumes/:groupId" element={<ResumesPage />} />
+              <Route path="/resumes/:groupId/versions/:versionId/edit" element={<ResumeEdit />} />
+              <Route path="/jobs" element={<JobsPage />} />
+              <Route path="/jobs/:jobId" element={<JobsPage />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/applications" element={<TrackingPage />} />
+              <Route path="/applications/:trackingId" element={<TrackingPage />} />
+              <Route path="/profile" element={<Profile />} />
+            </Route>
 
-            {/* Admin routes — lazy loaded, ADMIN role only */}
+            {/* Admin routes — 独立 AdminLayout，不受 MainLayout 影响 */}
             <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
               <Route index element={<AdminDashboard />} />
               <Route path="users" element={<AdminUsers />} />
@@ -158,7 +80,8 @@ function App() {
           </Routes>
         </ErrorBoundary>
       </Router>
-      <Toaster position="top-center" richColors duration={6000} offset="88px" mobileOffset="72px" />
+      {/* header 高度从 4rem→3.5rem，offset 相应从 88px→72px */}
+      <Toaster position="top-center" richColors duration={6000} offset="72px" mobileOffset="72px" />
     </AuthProvider>
   );
 }
