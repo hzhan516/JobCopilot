@@ -26,6 +26,11 @@ public record ConversationResponse(
         String jobId,
         List<MessageResponse> messages,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        Integer contextTokens,
+        Integer contextWindow,
+        Double usageRatio,
+        Boolean compactAdvised
 ) {
+    // ponytail: compact canonical constructor, add builder if optional fields grow past 4
 }

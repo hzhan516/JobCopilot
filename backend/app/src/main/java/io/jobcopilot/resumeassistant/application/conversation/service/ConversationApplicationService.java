@@ -38,12 +38,18 @@ public class ConversationApplicationService {
 
     @Transactional(timeout = 30)
     public void saveAiReply(UUID conversationId, String content, String fileUrl) {
-        messageService.saveAiReply(conversationId, content, fileUrl, null);
+        messageService.saveAiReply(conversationId, content, fileUrl, null, 0, 0);
     }
 
     @Transactional(timeout = 30)
     public void saveAiReply(UUID conversationId, String content, String fileUrl, String aiOptimizedMarkdown) {
-        messageService.saveAiReply(conversationId, content, fileUrl, aiOptimizedMarkdown);
+        messageService.saveAiReply(conversationId, content, fileUrl, aiOptimizedMarkdown, 0, 0);
+    }
+
+    @Transactional(timeout = 30)
+    public void saveAiReply(UUID conversationId, String content, String fileUrl,
+                            String aiOptimizedMarkdown, int promptTokens, int completionTokens) {
+        messageService.saveAiReply(conversationId, content, fileUrl, aiOptimizedMarkdown, promptTokens, completionTokens);
     }
 
     @Transactional(timeout = 30)

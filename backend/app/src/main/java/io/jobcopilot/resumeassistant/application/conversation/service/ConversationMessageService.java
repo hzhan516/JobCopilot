@@ -48,7 +48,8 @@ public class ConversationMessageService {
     }
 
     @Transactional(timeout = 30)
-    public void saveAiReply(UUID conversationId, String content, String fileUrl, String aiOptimizedMarkdown) {
+    public void saveAiReply(UUID conversationId, String content, String fileUrl,
+                            String aiOptimizedMarkdown, int promptTokens, int completionTokens) {
         log.info("Saving AI reply for conversation: {}", conversationId);
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new ConversationException("conversation.not.found"));
@@ -62,14 +63,21 @@ public class ConversationMessageService {
         }
 
         conversation.addMessage(MessageRole.ASSISTANT, finalContent, fileUrl);
+        conversation.recordTokenUsage(promptTokens, completionTokens);
         conversationRepository.save(conversation);
 
-        log.info("AI reply saved for conversation: {}", conversationId);
+        log.info("AI reply saved for conversation: {}, promptTokens={}, completionTokens={}",
+                conversationId, promptTokens, completionTokens);
+    }
+
+    @Transactional(timeout = 30)
+    public void saveAiReply(UUID conversationId, String content, String fileUrl, String aiOptimizedMarkdown) {
+        saveAiReply(conversationId, content, fileUrl, aiOptimizedMarkdown, 0, 0);
     }
 
     @Transactional(timeout = 30)
     public void saveAiReply(UUID conversationId, String content, String fileUrl) {
-        saveAiReply(conversationId, content, fileUrl, null);
+        saveAiReply(conversationId, content, fileUrl, null, 0, 0);
     }
 
     public void completeAiReply(UUID conversationId, String content) {

@@ -73,6 +73,10 @@ public class ConversationRepositoryImpl implements ConversationRepository {
                 .createdAt(conversation.getCreatedAt())
                 .updatedAt(conversation.getUpdatedAt())
                 .version(conversation.getVersion())
+                .contextTokens(conversation.getContextTokens())
+                .totalTokensUsed(conversation.getTotalTokensUsed())
+                .contextSummary(conversation.getContextSummary())
+                .compactedThroughSequence(conversation.getCompactedThroughSequence())
                 .build();
 
         List<MessageJpaEntity> messageEntities = conversation.getMessages().stream()
@@ -120,7 +124,11 @@ public class ConversationRepositoryImpl implements ConversationRepository {
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
                 new ArrayList<>(messages),
-                entity.getVersion() != null ? entity.getVersion() : 0L
+                entity.getVersion() != null ? entity.getVersion() : 0L,
+                entity.getContextTokens() != null ? entity.getContextTokens() : 0,
+                entity.getTotalTokensUsed() != null ? entity.getTotalTokensUsed() : 0L,
+                entity.getContextSummary(),
+                entity.getCompactedThroughSequence() != null ? entity.getCompactedThroughSequence() : 0
         );
     }
 

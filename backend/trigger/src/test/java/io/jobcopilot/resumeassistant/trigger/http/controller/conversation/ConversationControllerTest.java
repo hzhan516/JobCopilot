@@ -61,7 +61,11 @@ class ConversationControllerTest {
                 null,
                 Collections.emptyList(),
                 java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC),
-                java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)
+                java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC),
+                0,      // contextTokens
+                1000000, // contextWindow
+                0.0,    // usageRatio
+                false   // compactAdvised
         );
     }
 

@@ -6,5 +6,6 @@ package io.jobcopilot.resumeassistant.domain.conversation.valueobject;
  */
 public enum ConversationStatus {
     ACTIVE,
-    CLOSED
+    CLOSED,
+    COMPACTING
 }

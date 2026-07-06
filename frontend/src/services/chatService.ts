@@ -55,6 +55,16 @@ export const chatService = {
     }
     throw new Error(response.data.message);
   },
+
+  compactConversation: async (conversationId: string): Promise<Conversation> => {
+    const response = await apiClient.post<ApiResponse<Conversation>>(
+      `/v1/conversations/${conversationId}/compact`
+    );
+    if (response.data.code === 200) {
+      return response.data.data;
+    }
+    throw new Error(response.data.message);
+  },
 };
 
 export default chatService;

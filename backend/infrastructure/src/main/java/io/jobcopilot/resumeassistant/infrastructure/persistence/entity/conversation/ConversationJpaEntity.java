@@ -53,6 +53,21 @@ public class ConversationJpaEntity {
     @Column(name = "version", nullable = false)
     private Long version;
 
+    @Column(name = "context_tokens", nullable = false)
+    @Builder.Default
+    private Integer contextTokens = 0;
+
+    @Column(name = "total_tokens_used", nullable = false)
+    @Builder.Default
+    private Long totalTokensUsed = 0L;
+
+    @Column(name = "context_summary", columnDefinition = "TEXT")
+    private String contextSummary;
+
+    @Column(name = "compacted_through_sequence", nullable = false)
+    @Builder.Default
+    private Integer compactedThroughSequence = 0;
+
     @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<MessageJpaEntity> messages = new ArrayList<>();

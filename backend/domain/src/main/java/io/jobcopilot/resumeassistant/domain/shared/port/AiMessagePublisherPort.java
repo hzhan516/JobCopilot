@@ -2,6 +2,7 @@ package io.jobcopilot.resumeassistant.domain.shared.port;
 
 import java.util.Map;
 
+import io.jobcopilot.resumeassistant.domain.shared.event.ai.ConversationCompactCommand;
 import io.jobcopilot.resumeassistant.domain.shared.event.ai.ConversationRequestCommand;
 import io.jobcopilot.resumeassistant.domain.shared.event.ai.JobParseCommand;
 import io.jobcopilot.resumeassistant.domain.shared.event.ai.JobRankCommand;
@@ -32,4 +33,10 @@ public interface AiMessagePublisherPort {
      * Send score label to AI service for incremental model training
      */
     void sendUserFeedback(UserFeedbackCommand command);
+
+    /**
+     * 发送对话压缩请求到 AI 服务
+     * Send conversation compaction request to AI service
+     */
+    void sendConversationCompact(ConversationCompactCommand command);
 }

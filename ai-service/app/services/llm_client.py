@@ -48,6 +48,15 @@ class LlmJsonParseError(ValueError):
 
 
 @dataclass(frozen=True)
+class Usage:
+    """Token usage snapshot from a LiteLLM completion response."""
+
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+
+@dataclass(frozen=True)
 class JsonGenerationResult:
     """Parsed JSON object plus telemetry about the model-output repair path."""
 
@@ -56,6 +65,7 @@ class JsonGenerationResult:
     json_text: str
     repaired: bool = False
     repair_raw_text: str | None = None
+    usage: Usage | None = None
 
 
 # 全局并发锁：防止 FastAPI 的 I/O 并发瞬间打爆 Vertex AI 导致 429
@@ -189,8 +199,27 @@ def _parse_json_object_from_text(raw_text: str) -> tuple[dict[str, Any], str]:
     return parsed, json_text
 
 
+def _extract_usage(response) -> Usage | None:
+    """Safely extract token usage from a LiteLLM response, returning None when unavailable.
+    安全提取 LiteLLM 响应的 token 用量，不可用时返回 None。"""
+    try:
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return None
+        return Usage(
+            prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+            completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+            total_tokens=getattr(usage, "total_tokens", 0) or 0,
+        )
+    except Exception:
+        logger.warning("Failed to extract token usage from response", exc_info=True)
+        return None
+
+
 @RETRY_STRATEGY
-def _generate_text(model: str, messages: list[dict[str, Any]]) -> str:
+def _generate_text(
+    model: str, messages: list[dict[str, Any]]
+) -> tuple[str, Usage | None]:
     """Execute a text-only LLM completion with retries and empty-response guard.
     执行文本补全：带重试机制与空响应兜底，防止下游因空字符串导致解析异常。"""
     logger.debug("LLM request: model=%s, messages_count=%d", model, len(messages))
@@ -221,15 +250,21 @@ def _generate_text(model: str, messages: list[dict[str, Any]]) -> str:
     if not content:
         raise ValueError("LiteLLM returned an empty response.")
 
-    logger.debug("LLM response: model=%s, content_length=%d", model, len(content))
-    return content.strip()
+    usage = _extract_usage(response)
+    logger.debug(
+        "LLM response: model=%s, content_length=%d, usage=%s",
+        model,
+        len(content),
+        usage,
+    )
+    return content.strip(), usage
 
 
 def generate_json_from_text_prompt(prompt: str) -> dict[str, Any]:
     """Generate a structured JSON dict from a text prompt through the LLM pipeline.
     从文本 prompt 生成结构化 JSON：组合文本补全、JSON 提取与容错解析，封装完整的 LLM-to-dict 链路。"""
     messages = [{"role": "user", "content": prompt}]
-    raw_text = _generate_text(
+    raw_text, _ = _generate_text(
         model=LLM_TEXT_MODEL,
         messages=messages,
     )
@@ -272,7 +307,7 @@ def generate_json_from_text_prompt_with_repair(
     using generate_json_from_text_prompt().
     """
     messages = [{"role": "user", "content": prompt}]
-    raw_text = _generate_text(
+    raw_text, usage = _generate_text(
         model=LLM_TEXT_MODEL,
         messages=messages,
     )
@@ -280,7 +315,9 @@ def generate_json_from_text_prompt_with_repair(
     parse_error: Exception | None = None
     try:
         parsed, json_text = _parse_json_object_from_text(raw_text)
-        return JsonGenerationResult(data=parsed, raw_text=raw_text, json_text=json_text)
+        return JsonGenerationResult(
+            data=parsed, raw_text=raw_text, json_text=json_text, usage=usage
+        )
     except Exception as first_error:
         parse_error = first_error
         logger.warning(
@@ -292,7 +329,7 @@ def generate_json_from_text_prompt_with_repair(
     repair_prompt = _build_json_repair_prompt(raw_text, parse_error, repair_context)
     repair_raw_text: str | None = None
     try:
-        repair_raw_text = _generate_text(
+        repair_raw_text, _ = _generate_text(
             model=LLM_TEXT_MODEL,
             messages=[{"role": "user", "content": repair_prompt}],
         )
@@ -308,6 +345,7 @@ def generate_json_from_text_prompt_with_repair(
             json_text=json_text,
             repaired=True,
             repair_raw_text=repair_raw_text,
+            usage=usage,
         )
     except Exception as repair_error:
         logger.error(
@@ -346,7 +384,7 @@ def generate_json_from_image_prompt(
         }
     ]
 
-    raw_text = _generate_text(
+    raw_text, _ = _generate_text(
         model=LLM_VISION_MODEL,
         messages=messages,
     )

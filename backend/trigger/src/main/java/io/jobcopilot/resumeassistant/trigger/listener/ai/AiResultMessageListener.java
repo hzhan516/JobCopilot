@@ -110,9 +110,13 @@ public class AiResultMessageListener {
             String content = extractReplyContent(event);
             String fileUrl = extractFileUrl(event);
             String aiOptimizedMarkdown = extractAiOptimizedMarkdown(event);
+            int promptTokens = extractInt(event.data(), "promptTokens");
+            int completionTokens = extractInt(event.data(), "completionTokens");
 
-            conversationFacade.saveAiReply(event.referenceId(), content, fileUrl, aiOptimizedMarkdown);
-            log.info("Saved AI reply for conversation: {}", event.referenceId());
+            conversationFacade.saveAiReply(event.referenceId(), content, fileUrl, aiOptimizedMarkdown,
+                    promptTokens, completionTokens);
+            log.info("Saved AI reply for conversation: {}, promptTokens={}, completionTokens={}",
+                    event.referenceId(), promptTokens, completionTokens);
 
             conversationFacade.completeAiReply(event.referenceId(), content);
             idempotencyService.markProcessed(key);
@@ -190,6 +194,43 @@ public class AiResultMessageListener {
         return new MatchFactors(0.0, 0.0, 0.0);
     }
 
+    @RabbitListener(queues = "${app.rabbitmq.queue.res.conversation-compact}")
+    public void onConversationCompacted(AiResultEvent event) {
+        String key = dedupKey(event, "conversation-compact");
+        if (idempotencyService.isProcessed(key)) {
+            log.info("Duplicate CONVERSATION_COMPACTED result skipped for referenceId: {}", event.referenceId());
+            return;
+        }
+        log.info("Received AiResultEvent for CONVERSATION_COMPACTED, referenceId: {}, status: {}",
+                event.referenceId(), event.status());
+        try {
+            if (!"COMPLETED".equals(event.status())) {
+                log.warn("Conversation compaction failed for conversation: {}, error: {}",
+                        event.referenceId(), event.errorMessage());
+                // ponytail: mark active so the user can retry; add retry-count column if needed
+                idempotencyService.markProcessed(key);
+                return;
+            }
+
+            String summary = extractString(event.data(), "summary");
+            int throughSequence = extractInt(event.data(), "throughSequence");
+            int contextTokens = extractInt(event.data(), "contextTokens");
+
+            if (summary == null || summary.isBlank()) {
+                log.warn("Compaction result missing summary for conversation: {}", event.referenceId());
+                idempotencyService.markProcessed(key);
+                return;
+            }
+
+            conversationFacade.applyCompactionResult(event.referenceId(), summary, throughSequence, contextTokens);
+            log.info("Compaction applied for conversation: {}", event.referenceId());
+            idempotencyService.markProcessed(key);
+        } catch (Exception e) {
+            log.error("Error processing AiResultEvent for CONVERSATION_COMPACTED referenceId: {}",
+                    event.referenceId(), e);
+        }
+    }
+
     private Double extractDouble(final Object value) {
         if (value instanceof Number) {
             return ((Number) value).doubleValue();
@@ -203,6 +244,14 @@ public class AiResultMessageListener {
         }
         Object value = data.get(key);
         return value instanceof String text ? text : null;
+    }
+
+    private static int extractInt(Map<String, Object> data, String key) {
+        if (data == null) {
+            return 0;
+        }
+        Object value = data.get(key);
+        return value instanceof Number num ? num.intValue() : 0;
     }
 
     private String extractReplyContent(AiResultEvent event) {

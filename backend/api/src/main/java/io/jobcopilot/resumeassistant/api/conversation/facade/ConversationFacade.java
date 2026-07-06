@@ -59,6 +59,13 @@ public interface ConversationFacade {
     void saveAiReply(String conversationId, String content, String fileUrl, String aiOptimizedMarkdown);
 
     /**
+     * 保存 AI 回复消息（含 token 用量）
+     * Save AI reply message with token usage
+     */
+    void saveAiReply(String conversationId, String content, String fileUrl, String aiOptimizedMarkdown,
+                     int promptTokens, int completionTokens);
+
+    /**
      * 完成 AI 流式回复并唤醒等待中的流请求
      * Complete AI stream reply and wake up pending stream request.
      *
@@ -89,4 +96,16 @@ public interface ConversationFacade {
      * Upload conversation attachment to MinIO
      */
     String uploadAttachment(String conversationId, MultipartFile file, UUID userId);
+
+    /**
+     * 触发对话上下文压缩（异步 MQ）
+     * Trigger conversation context compaction (async MQ)
+     */
+    ConversationResponse compactConversation(String conversationId, UUID userId);
+
+    /**
+     * 应用 AI 服务返回的压缩结果
+     * Apply compaction result from AI service
+     */
+    void applyCompactionResult(String conversationId, String summary, int throughSequence, int contextTokens);
 }

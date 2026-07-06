@@ -28,11 +28,17 @@ public class Conversation extends AggregateRoot<UUID> {
     private ConversationStatus status;
     private LocalDateTime updatedAt;
     private long version;
+    private int contextTokens;
+    private long totalTokensUsed;
+    private String contextSummary;
+    private int compactedThroughSequence;
 
     protected Conversation(UUID id, UUID userId, String title, ConversationStatus status,
                            UUID resumeVersionId, UUID jobId, UUID aiOptimizedVersionId,
                            LocalDateTime createdAt, LocalDateTime updatedAt,
-                           List<Message> messages, long version) {
+                           List<Message> messages, long version,
+                           int contextTokens, long totalTokensUsed,
+                           String contextSummary, int compactedThroughSequence) {
         this.id = id;
         this.userId = userId;
         this.title = title;
@@ -44,6 +50,10 @@ public class Conversation extends AggregateRoot<UUID> {
         this.updatedAt = updatedAt;
         this.messages = messages != null ? messages : new ArrayList<>();
         this.version = version;
+        this.contextTokens = contextTokens;
+        this.totalTokensUsed = totalTokensUsed;
+        this.contextSummary = contextSummary;
+        this.compactedThroughSequence = compactedThroughSequence;
     }
 
     public static Conversation create(UUID userId, String title, UUID resumeVersionId, UUID jobId) {
@@ -60,7 +70,11 @@ public class Conversation extends AggregateRoot<UUID> {
                 now,
                 now,
                 new ArrayList<>(),
-                0L
+                0L,
+                0,     // contextTokens
+                0L,    // totalTokensUsed
+                null,  // contextSummary
+                0      // compactedThroughSequence
         );
     }
 
@@ -71,8 +85,11 @@ public class Conversation extends AggregateRoot<UUID> {
     public static Conversation reconstruct(UUID id, UUID userId, String title, ConversationStatus status,
                                            UUID resumeVersionId, UUID jobId, UUID aiOptimizedVersionId,
                                            LocalDateTime createdAt, LocalDateTime updatedAt,
-                                           List<Message> messages, long version) {
-        return new Conversation(id, userId, title, status, resumeVersionId, jobId, aiOptimizedVersionId, createdAt, updatedAt, messages, version);
+                                           List<Message> messages, long version,
+                                           int contextTokens, long totalTokensUsed,
+                                           String contextSummary, int compactedThroughSequence) {
+        return new Conversation(id, userId, title, status, resumeVersionId, jobId, aiOptimizedVersionId, createdAt, updatedAt, messages, version,
+                contextTokens, totalTokensUsed, contextSummary, compactedThroughSequence);
     }
 
     public void addMessage(MessageRole role, String content) {
@@ -172,5 +189,63 @@ public class Conversation extends AggregateRoot<UUID> {
 
     public long getVersion() {
         return version;
+    }
+
+    public int getContextTokens() {
+        return contextTokens;
+    }
+
+    public long getTotalTokensUsed() {
+        return totalTokensUsed;
+    }
+
+    public String getContextSummary() {
+        return contextSummary;
+    }
+
+    public int getCompactedThroughSequence() {
+        return compactedThroughSequence;
+    }
+
+    /**
+     * Records token usage from an AI call, updating both the snapshot context tokens
+     * and the cumulative total.
+     * 记录 AI 调用的 token 用量，同时更新快照上下文 token 和累计总量。
+     */
+    public void recordTokenUsage(int promptTokens, int completionTokens) {
+        this.contextTokens = promptTokens;
+        this.totalTokensUsed += (promptTokens + completionTokens);
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Applies a compaction result: stores an LLM-generated summary of messages up to the
+     * given sequence number, and recalculates context tokens from the remaining messages.
+     * 应用压缩结果：存储 LLM 生成的截至指定序号的消息摘要，并重新计算剩余消息的上下文 token。
+     */
+    public void applyCompaction(String summary, int throughSequence, int newContextTokens) {
+        this.contextSummary = summary;
+        this.compactedThroughSequence = throughSequence;
+        this.contextTokens = newContextTokens;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Returns whether a compaction is currently in progress (contextSummary is set but
+     * the caller has not yet applied the final result).
+     * 返回压缩是否正在进行中。
+     */
+    public boolean isCompacting() {
+        return this.status == ConversationStatus.COMPACTING;
+    }
+
+    public void markCompacting() {
+        this.status = ConversationStatus.COMPACTING;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void markActive() {
+        this.status = ConversationStatus.ACTIVE;
+        this.updatedAt = LocalDateTime.now();
     }
 }

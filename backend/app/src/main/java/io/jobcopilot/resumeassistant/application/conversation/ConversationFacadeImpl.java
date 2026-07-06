@@ -10,11 +10,13 @@ import io.jobcopilot.resumeassistant.application.conversation.command.SendMessag
 import io.jobcopilot.resumeassistant.application.conversation.query.GetConversationQuery;
 import io.jobcopilot.resumeassistant.application.conversation.query.ListConversationsQuery;
 import io.jobcopilot.resumeassistant.application.conversation.service.ConversationApplicationService;
+import io.jobcopilot.resumeassistant.application.conversation.service.ConversationCompactionService;
 import io.jobcopilot.resumeassistant.application.conversation.service.ConversationFailureMessageResolver;
 import io.jobcopilot.resumeassistant.application.conversation.service.ConversationQueryService;
 import io.jobcopilot.resumeassistant.domain.conversation.entity.Conversation;
 import io.jobcopilot.resumeassistant.domain.conversation.entity.Message;
 import io.jobcopilot.resumeassistant.domain.conversation.valueobject.MessageRole;
+import io.jobcopilot.resumeassistant.infrastructure.cache.config.DynamicConfigCache;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -34,6 +36,7 @@ public class ConversationFacadeImpl implements ConversationFacade {
 
     private final ConversationApplicationService applicationService;
     private final ConversationQueryService queryService;
+    private final ConversationCompactionService compactionService;
     private final ConversationFailureMessageResolver failureMessageResolver;
 
     @Override
@@ -105,6 +108,13 @@ public class ConversationFacadeImpl implements ConversationFacade {
     }
 
     @Override
+    public void saveAiReply(String conversationId, String content, String fileUrl,
+                            String aiOptimizedMarkdown, int promptTokens, int completionTokens) {
+        applicationService.saveAiReply(UUID.fromString(conversationId), content, fileUrl,
+                aiOptimizedMarkdown, promptTokens, completionTokens);
+    }
+
+    @Override
     public void completeAiReply(String conversationId, String content) {
         applicationService.completeAiReply(UUID.fromString(conversationId), content);
     }
@@ -117,6 +127,21 @@ public class ConversationFacadeImpl implements ConversationFacade {
     @Override
     public String resolveAiFailureMessage(String errorCode, String localeTag) {
         return failureMessageResolver.resolve(errorCode, localeTag);
+    }
+
+    @Override
+    public ConversationResponse compactConversation(String conversationId, UUID userId) {
+        compactionService.requestCompaction(UUID.fromString(conversationId), userId);
+        // Return current state so the frontend sees COMPACTING status immediately
+        Conversation conversation = queryService.getConversation(
+                new io.jobcopilot.resumeassistant.application.conversation.query.GetConversationQuery(
+                        UUID.fromString(conversationId), userId, null, null));
+        return mapToResponse(conversation);
+    }
+
+    @Override
+    public void applyCompactionResult(String conversationId, String summary, int throughSequence, int contextTokens) {
+        compactionService.applyCompactionResult(conversationId, summary, throughSequence, contextTokens);
     }
 
     @Override
@@ -154,13 +179,59 @@ public class ConversationFacadeImpl implements ConversationFacade {
                 conversation.getJobId() != null ? conversation.getJobId().toString() : null,
                 messageResponses,
                 conversation.getCreatedAt().atOffset(ZoneOffset.UTC),
-                conversation.getUpdatedAt().atOffset(ZoneOffset.UTC)
+                conversation.getUpdatedAt().atOffset(ZoneOffset.UTC),
+                conversation.getContextTokens(),
+                readContextWindow(),
+                computeUsageRatio(conversation.getContextTokens()),
+                isCompactAdvised(conversation.getContextTokens())
         );
     }
 
 
     private ConversationResponse mapToResponse(Conversation conversation) {
         return mapToResponse(conversation, null, null);
+    }
+
+    private static int readContextWindow() {
+        String cached = DynamicConfigCache.get("chat.contextWindow");
+        if (cached != null) {
+            try {
+                return Integer.parseInt(cached);
+            } catch (NumberFormatException ignored) {
+                // fall through to default
+            }
+        }
+        return 1_000_000;
+    }
+
+    private double computeUsageRatio(int contextTokens) {
+        int window = readContextWindow();
+        if (window <= 0 || contextTokens <= 0) {
+            return 0.0;
+        }
+        return (double) contextTokens / window;
+    }
+
+    private boolean isCompactAdvised(int contextTokens) {
+        int window = readContextWindow();
+        if (window <= 0) {
+            return false;
+        }
+        int threshold = readCompactThreshold();
+        double ratio = (double) contextTokens / window;
+        return ratio * 100 >= threshold;
+    }
+
+    private static int readCompactThreshold() {
+        String cached = DynamicConfigCache.get("chat.compactThreshold");
+        if (cached != null) {
+            try {
+                return Integer.parseInt(cached);
+            } catch (NumberFormatException ignored) {
+                // fall through to default
+            }
+        }
+        return 80;
     }
 
     /**

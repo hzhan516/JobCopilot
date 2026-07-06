@@ -49,6 +49,8 @@ export interface UseChatReturn {
   handleCreateConversation: () => Promise<void>;
   handleSendMessage: () => Promise<void>;
   handleDeleteConversation: (conversationId: string) => Promise<void>;
+  compactConversation: () => Promise<void>;
+  isCompacting: boolean;
 }
 
 /**
@@ -72,6 +74,7 @@ export function useChat(): UseChatReturn {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJobId, setSelectedJobId] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isCompacting, setIsCompacting] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -330,6 +333,20 @@ export function useChat(): UseChatReturn {
     }
   }, [inputMessage, activeConversation, syncConversation, pollForAiReply, t]);
 
+  const compactConversation = useCallback(async () => {
+    if (!activeConversation) return;
+    setIsCompacting(true);
+    try {
+      const updated = await chatService.compactConversation(activeConversation.conversationId);
+      syncConversation(updated);
+      toast.success(t('chat.context.compactSuccess'));
+    } catch {
+      toast.error(t('chat.context.compactError'));
+    } finally {
+      setIsCompacting(false);
+    }
+  }, [activeConversation, syncConversation, t]);
+
   const handleDeleteConversation = useCallback(
     async (conversationId: string) => {
       try {
@@ -376,5 +393,7 @@ export function useChat(): UseChatReturn {
     handleCreateConversation,
     handleSendMessage,
     handleDeleteConversation,
+    compactConversation,
+    isCompacting,
   };
 }

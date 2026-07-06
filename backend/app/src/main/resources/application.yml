@@ -23,7 +23,7 @@ server:
 # 应用版本信息 / Application version info
 # 可通过环境变量 APP_VERSION 覆盖
 app:
-  version: ${APP_VERSION:dev}
+  version: ${APP_VERSION:1.1.0-pr1-ui-redesign}
   internal-api-key: ${INTERNAL_API_KEY:}
 
 info:

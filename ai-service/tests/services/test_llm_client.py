@@ -72,10 +72,17 @@ def test_generate_text_success(mock_completion):
     mock_choice.message = mock_message
     mock_choice.finish_reason = "stop"
     mock_response.choices = [mock_choice]
+    mock_response.usage = MagicMock()
+    mock_response.usage.prompt_tokens = 10
+    mock_response.usage.completion_tokens = 5
+    mock_response.usage.total_tokens = 15
     mock_completion.return_value = mock_response
 
-    result = _generate_text("model", [{"role": "user", "content": "prompt"}])
-    assert result == "generated text"
+    text, usage = _generate_text("model", [{"role": "user", "content": "prompt"}])
+    assert text == "generated text"
+    assert usage.prompt_tokens == 10
+    assert usage.completion_tokens == 5
+    assert usage.total_tokens == 15
     mock_completion.assert_called_once()
     call_kwargs = mock_completion.call_args.kwargs
     assert "max_tokens" in call_kwargs
@@ -113,7 +120,7 @@ def test_generate_text_truncated_response(mock_completion):
 
 @patch("app.services.llm_client._generate_text")
 def test_generate_json_from_text_prompt(mock_generate):
-    mock_generate.return_value = '{"result": "success"}'
+    mock_generate.return_value = ('{"result": "success"}', None)
 
     result = generate_json_from_text_prompt("test prompt")
 
@@ -126,8 +133,8 @@ def test_generate_json_from_text_prompt(mock_generate):
 @patch("app.services.llm_client._generate_text")
 def test_generate_json_from_text_prompt_with_repair_succeeds(mock_generate):
     mock_generate.side_effect = [
-        '{"content": "bad "quote"", "fileUrl": null}',
-        '{"content": "bad quote", "fileUrl": null}',
+        ('{"content": "bad "quote"", "fileUrl": null}', None),
+        ('{"content": "bad quote", "fileUrl": null}', None),
     ]
 
     result = generate_json_from_text_prompt_with_repair(
@@ -145,8 +152,8 @@ def test_generate_json_from_text_prompt_with_repair_succeeds(mock_generate):
 @patch("app.services.llm_client._generate_text")
 def test_generate_json_from_text_prompt_with_repair_raises_with_raw_text(mock_generate):
     mock_generate.side_effect = [
-        '{"content": "bad "quote"", "fileUrl": null}',
-        "still not json",
+        ('{"content": "bad "quote"", "fileUrl": null}', None),
+        ("still not json", None),
     ]
 
     with pytest.raises(LlmJsonParseError) as exc_info:
@@ -158,7 +165,7 @@ def test_generate_json_from_text_prompt_with_repair_raises_with_raw_text(mock_ge
 
 @patch("app.services.llm_client._generate_text")
 def test_generate_json_from_image_prompt(mock_generate):
-    mock_generate.return_value = '{"result": "success"}'
+    mock_generate.return_value = ('{"result": "success"}', None)
 
     image_bytes = b"fake_image_data"
     result = generate_json_from_image_prompt("test prompt", image_bytes)

@@ -11,6 +11,10 @@ from app.config import (
     AI_DLX_EXCHANGE,
     AI_DLQ_QUEUE,
     AI_DLQ_ROUTING_KEY,
+    CONVERSATION_COMPACT_REQUEST_QUEUE,
+    CONVERSATION_COMPACT_REQUEST_ROUTING_KEY,
+    CONVERSATION_COMPACT_RESULT_QUEUE,
+    CONVERSATION_COMPACT_RESULT_ROUTING_KEY,
     CONVERSATION_REQUEST_QUEUE,
     CONVERSATION_REQUEST_ROUTING_KEY,
     CONVERSATION_RESULT_QUEUE,
@@ -36,6 +40,7 @@ from app.config import (
 from app.mq.publisher import publish_ai_result
 from app.schemas import (
     AiResultEvent,
+    ConversationCompactCommand,
     ConversationRequestCommand,
     JobRankCommand,
     JobParseCommand,
@@ -43,6 +48,7 @@ from app.schemas import (
     JobRankResultData,
 )
 
+from app.services.compaction_service import process_compaction
 from app.services.conversation_service import process_conversation
 from app.services.job_rank_service import rank_jobs
 from app.services.job_orchestrator import process_job
@@ -171,6 +177,19 @@ def setup_all_queues(
         routing_key=JOB_RANK_RESULT_ROUTING_KEY,
     )
 
+    declare_queue(channel, CONVERSATION_COMPACT_REQUEST_QUEUE)
+    channel.queue_bind(
+        exchange=AI_DIRECT_EXCHANGE,
+        queue=CONVERSATION_COMPACT_REQUEST_QUEUE,
+        routing_key=CONVERSATION_COMPACT_REQUEST_ROUTING_KEY,
+    )
+    declare_queue(channel, CONVERSATION_COMPACT_RESULT_QUEUE)
+    channel.queue_bind(
+        exchange=AI_DIRECT_EXCHANGE,
+        queue=CONVERSATION_COMPACT_RESULT_QUEUE,
+        routing_key=CONVERSATION_COMPACT_RESULT_ROUTING_KEY,
+    )
+
 
 def parse_job_command(body: bytes) -> JobParseCommand:
     payload = json.loads(body.decode("utf-8"))
@@ -185,6 +204,11 @@ def parse_resume_command(body: bytes) -> ResumeParseCommand:
 def parse_conversation_command(body: bytes) -> ConversationRequestCommand:
     payload = json.loads(body.decode("utf-8"))
     return ConversationRequestCommand.model_validate(payload)
+
+
+def parse_compact_command(body: bytes) -> ConversationCompactCommand:
+    payload = json.loads(body.decode("utf-8"))
+    return ConversationCompactCommand.model_validate(payload)
 
 
 def parse_job_rank_command(body: bytes) -> JobRankCommand:
@@ -304,6 +328,28 @@ def handle_conversation_message(
     return result
 
 
+def handle_compact_message(
+    body: bytes,
+) -> AiResultEvent:
+    command = parse_compact_command(body)
+    try:
+        result = process_compaction(command)
+    except Exception:
+        logger.exception(
+            "Compaction processing failed: conversation_id=%s",
+            command.conversation_id,
+        )
+        result = AiResultEvent(
+            referenceId=command.conversation_id,
+            type="CONVERSATION_COMPACTED",
+            status="FAILED",
+            data=None,
+            errorMessage="Compaction service error",
+            eventType=None,
+        )
+    return result
+
+
 def handle_job_rank_message(
     body: bytes,
 ) -> AiResultEvent:
@@ -401,6 +447,11 @@ def start_all_consumers(
     channel.basic_consume(
         queue=JOB_RANK_REQUEST_QUEUE,
         on_message_callback=_async_handler(handle_job_rank_message),
+        auto_ack=False,
+    )
+    channel.basic_consume(
+        queue=CONVERSATION_COMPACT_REQUEST_QUEUE,
+        on_message_callback=_async_handler(handle_compact_message),
         auto_ack=False,
     )
     channel.start_consuming()

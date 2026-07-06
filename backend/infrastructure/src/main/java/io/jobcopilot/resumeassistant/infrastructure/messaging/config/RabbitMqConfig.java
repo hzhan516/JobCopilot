@@ -47,6 +47,11 @@ public class RabbitMqConfig {
     public static final String ROUTING_KEY_REQ_MODEL_INCREMENTAL = "ai.req.feedback";
     public static final String QUEUE_REQ_MODEL_INCREMENTAL = "ai.queue.feedback";
 
+    public static final String ROUTING_KEY_REQ_CONVERSATION_COMPACT = "ai.req.conversation.compact";
+    public static final String QUEUE_REQ_CONVERSATION_COMPACT = "ai.queue.conversation.compact";
+    public static final String ROUTING_KEY_RES_CONVERSATION_COMPACT = "backend.res.conversation.compact";
+    public static final String QUEUE_RES_CONVERSATION_COMPACT = "backend.queue.conversation.compact";
+
     @Bean
     public MessageConverter jackson2JsonMessageConverter() {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -206,5 +211,33 @@ public class RabbitMqConfig {
     @Bean
     public Binding reqModelIncrementalBinding(Queue reqModelIncrementalQueue, DirectExchange aiDirectExchange) {
         return BindingBuilder.bind(reqModelIncrementalQueue).to(aiDirectExchange).with(ROUTING_KEY_REQ_MODEL_INCREMENTAL);
+    }
+
+    // ========== Conversation compact queue bindings ==========
+
+    @Bean
+    public Queue reqConversationCompactQueue() {
+        return QueueBuilder.durable(QUEUE_REQ_CONVERSATION_COMPACT)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Binding reqConversationCompactBinding(Queue reqConversationCompactQueue, DirectExchange aiDirectExchange) {
+        return BindingBuilder.bind(reqConversationCompactQueue).to(aiDirectExchange).with(ROUTING_KEY_REQ_CONVERSATION_COMPACT);
+    }
+
+    @Bean
+    public Queue resConversationCompactQueue() {
+        return QueueBuilder.durable(QUEUE_RES_CONVERSATION_COMPACT)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_DLX)
+                .withArgument("x-dead-letter-routing-key", ROUTING_KEY_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Binding resConversationCompactBinding(Queue resConversationCompactQueue, DirectExchange aiDirectExchange) {
+        return BindingBuilder.bind(resConversationCompactQueue).to(aiDirectExchange).with(ROUTING_KEY_RES_CONVERSATION_COMPACT);
     }
 }

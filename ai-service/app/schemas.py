@@ -95,6 +95,9 @@ class ConversationData(AppBaseModel):
     resume_modification: ResumeModification = Field(
         default_factory=ResumeModification, alias="resumeModification"
     )
+    prompt_tokens: int = Field(default=0, alias="promptTokens")
+    completion_tokens: int = Field(default=0, alias="completionTokens")
+    total_tokens: int = Field(default=0, alias="totalTokens")
 
 
 # ── Feedback ────────────────────────────────────────────────────────────
@@ -239,6 +242,28 @@ class JobRankResultData(AppBaseModel):
     )
 
 
+# ── Compaction ──────────────────────────────────────────────────────────
+class ConversationCompactCommand(AppBaseModel):
+    """Command to trigger LLM-based conversation history summarization.
+    触发 LLM 对话历史摘要的命令。"""
+
+    conversation_id: str = Field(alias="conversationId")
+    user_id: str = Field(alias="userId")
+    message_history: list[ConversationMessage] = Field(
+        default_factory=list, alias="messageHistory"
+    )
+    compacted_through_sequence: int = Field(default=0, alias="compactedThroughSequence")
+
+
+class ConversationCompactedData(AppBaseModel):
+    """Payload for CONVERSATION_COMPACTED completion events.
+    对话压缩完成事件的 data 负载。"""
+
+    summary: str
+    through_sequence: int = Field(alias="throughSequence")
+    context_tokens: int = Field(default=0, alias="contextTokens")
+
+
 class AiResultEvent(AppBaseModel):
     """Standard event envelope for AI processing results consumed by the backend.
     AI 处理结果统一事件信封；必须保留 data 字段以匹配后端 AiResultEvent record。"""
@@ -251,6 +276,7 @@ class AiResultEvent(AppBaseModel):
         | ParsedJobContent
         | ResumeParseData
         | ConversationData
+        | ConversationCompactedData
         | JobRankResultData
         | None
     ) = None

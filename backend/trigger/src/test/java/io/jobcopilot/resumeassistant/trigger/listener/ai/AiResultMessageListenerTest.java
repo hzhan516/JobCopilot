@@ -127,7 +127,7 @@ class AiResultMessageListenerTest {
         listener.onConversationReply(event);
 
         // 验证 / Then
-        verify(conversationFacade).saveAiReply("conv-1", "Hello from AI", "http://minio/file.pdf", null);
+        verify(conversationFacade).saveAiReply("conv-1", "Hello from AI", "http://minio/file.pdf", null, 0, 0);
         verify(conversationFacade).completeAiReply("conv-1", "Hello from AI");
     }
 
@@ -151,7 +151,7 @@ class AiResultMessageListenerTest {
         listener.onConversationReply(event);
 
         // 验证 / Then
-        verify(conversationFacade).saveAiReply("conv-1", "Here is your optimized resume", null, "# Optimized Resume");
+        verify(conversationFacade).saveAiReply("conv-1", "Here is your optimized resume", null, "# Optimized Resume", 0, 0);
         verify(conversationFacade).completeAiReply("conv-1", "Here is your optimized resume");
     }
 
@@ -175,7 +175,7 @@ class AiResultMessageListenerTest {
         listener.onConversationReply(event);
 
         // 验证 / Then
-        verify(conversationFacade).saveAiReply("conv-1", "No changes needed", null, null);
+        verify(conversationFacade).saveAiReply("conv-1", "No changes needed", null, null, 0, 0);
         verify(conversationFacade).completeAiReply("conv-1", "No changes needed");
     }
 
@@ -229,8 +229,8 @@ class AiResultMessageListenerTest {
         listener.onConversationReply(second);
 
         // 楠岃瘉 / Then
-        verify(conversationFacade).saveAiReply("conv-1", "First reply", null, null);
-        verify(conversationFacade).saveAiReply("conv-1", "Second reply", null, null);
+        verify(conversationFacade).saveAiReply("conv-1", "First reply", null, null, 0, 0);
+        verify(conversationFacade).saveAiReply("conv-1", "Second reply", null, null, 0, 0);
         verify(idempotencyService).markProcessed("conversation:conv-1:req-1:COMPLETED");
         verify(idempotencyService).markProcessed("conversation:conv-1:req-2:COMPLETED");
     }

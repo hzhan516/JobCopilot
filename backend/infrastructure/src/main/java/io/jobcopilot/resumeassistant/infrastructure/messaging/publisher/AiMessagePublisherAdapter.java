@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 
 import io.jobcopilot.resumeassistant.domain.shared.entity.OutboxMessage;
+import io.jobcopilot.resumeassistant.domain.shared.event.ai.ConversationCompactCommand;
 import io.jobcopilot.resumeassistant.domain.shared.event.ai.ConversationRequestCommand;
 import io.jobcopilot.resumeassistant.domain.shared.event.ai.JobParseCommand;
 import io.jobcopilot.resumeassistant.domain.shared.event.ai.JobRankCommand;
@@ -71,6 +72,12 @@ public class AiMessagePublisherAdapter implements AiMessagePublisherPort {
     public void sendUserFeedback(UserFeedbackCommand command) {
         log.info("Saving UserFeedbackCommand to outbox for job: {}", command.jobId());
         saveToOutbox(RabbitMqConfig.ROUTING_KEY_REQ_MODEL_INCREMENTAL, command);
+    }
+
+    @Override
+    public void sendConversationCompact(ConversationCompactCommand command) {
+        log.info("Saving ConversationCompactCommand to outbox for conversation: {}", command.conversationId());
+        saveToOutbox(RabbitMqConfig.ROUTING_KEY_REQ_CONVERSATION_COMPACT, command);
     }
 
     private void saveToOutbox(String routingKey, Object command) {
