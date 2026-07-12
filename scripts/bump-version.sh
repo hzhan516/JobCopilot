@@ -6,6 +6,11 @@ set -euo pipefail
 NEW_VERSION="$1"
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
+if [[ ! "${NEW_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]; then
+  echo "Invalid semantic version: ${NEW_VERSION}" >&2
+  exit 2
+fi
+
 echo "Bumping version to ${NEW_VERSION}..."
 
 # 1. 更新 VERSION 文件
@@ -19,8 +24,22 @@ mvn versions:set -DnewVersion="${NEW_VERSION}" -DgenerateBackupPoms=false
 cd "${ROOT_DIR}/frontend"
 npm version "${NEW_VERSION}" --no-git-tag-version
 
+# Keep the backend non-container fallback aligned with VERSION.
+BACKEND_CONFIG="${ROOT_DIR}/backend/app/src/main/resources/application.yml"
+sed -i -E "s/(APP_VERSION:)[^}]*/\\1${NEW_VERSION}/g" "${BACKEND_CONFIG}"
+
 # 4. 更新 ai-service（写入 __version__.py）
 echo "__version__ = \"${NEW_VERSION}\"" > "${ROOT_DIR}/ai-service/app/__version__.py"
+
+# 5. 更新 Helm Chart 版本（chart version + appVersion）
+CHART_FILE="${ROOT_DIR}/docs/deployment/k8s/helm/jobcopilot/Chart.yaml"
+if [ -f "${CHART_FILE}" ]; then
+  sed -i -E "s/^version: .*/version: ${NEW_VERSION}/" "${CHART_FILE}"
+  sed -i -E "s/^appVersion: .*/appVersion: \"${NEW_VERSION}\"/" "${CHART_FILE}"
+fi
+
+# 6. Fail immediately if any version-bearing source drifted.
+bash "${ROOT_DIR}/scripts/check-version-sync.sh"
 
 echo "✅ Version bumped to ${NEW_VERSION} across all components"
 echo ""

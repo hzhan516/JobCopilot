@@ -40,7 +40,12 @@ try:
 except ImportError:
     __version__ = "dev"
 
-APP_VERSION = os.getenv("APP_VERSION", __version__)
+def resolve_app_version() -> str:
+    """Resolve the runtime version, preferring an explicit image/runtime override."""
+    return os.getenv("APP_VERSION", __version__)
+
+
+APP_VERSION = resolve_app_version()
 
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
