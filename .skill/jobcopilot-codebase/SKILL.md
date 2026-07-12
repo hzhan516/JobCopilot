@@ -5,7 +5,14 @@ description: Comprehensive knowledge of the JobCopilot codebase architecture, mo
 
 # JobCopilot Codebase Guide
 
-> Last synced with origin/main on 2026-06-30. Phases 0–2, 5, 3 implemented (46 files).
+> **Authoritative sources note**: This is AI-oriented *supplementary* contributor documentation.
+> When it disagrees with reality, the executable code, tests, deployment configuration
+> (`docker-compose.yml`, Helm, `.env.example`), and accepted ADRs are the source of truth.
+> Implementation-status claims below (e.g. "✅") describe intended scope, not a guarantee that
+> every item is fully hardened — verify against code before relying on them.
+
+> Last synced with origin/main on 2026-06-30 (queue/compaction contracts refreshed 2026-07-12).
+> Phases 0–2, 5, 3 implemented (46 files).
 
 ## Management Plane — Implementation Status
 
@@ -162,8 +169,8 @@ Maven modules in dependency order (top→bottom = caller→callee):
 - **NEVER** call `rabbitTemplate.convertAndSend()` directly inside `@Transactional`
 
 ### RabbitMQ Queue Pairs
-- Request queues: `ai.queue.job.parse`, `ai.queue.resume.parse`, `ai.queue.conversation`, `ai.queue.job.rank`, `ai.queue.feedback`
-- Response queues: `backend.queue.job.parse`, `backend.queue.resume.parse`, `backend.queue.conversation`, `backend.queue.job.rank`
+- Request queues: `ai.queue.job.parse`, `ai.queue.resume.parse`, `ai.queue.conversation`, `ai.queue.conversation.compact`, `ai.queue.job.rank`, `ai.queue.feedback`
+- Response queues: `backend.queue.job.parse`, `backend.queue.resume.parse`, `backend.queue.conversation`, `backend.queue.conversation.compact`, `backend.queue.job.rank`
 - Exchange: `ai.direct.exchange`
 - DLQ: `ai.dlq.queue` via `ai.dlx.exchange`
 
@@ -324,18 +331,6 @@ This skill is a **living document**. When you make significant code changes, upd
 - [ai-service-architecture.md](ai-service-architecture.md) — AI service internals, consumers, model training pipeline
 - [data-flows.md](data-flows.md) — Detailed sequence diagrams for all primary flows
 - [conventions.md](conventions.md) — Coding conventions, naming, code review standards
-
-## Agent Definitions
-
-- [architect-agent](../../.qoder/agents/architect-agent.md) — Architecture decisions, task decomposition, delegation
-- [auth-profile-agent](../../.qoder/agents/auth-profile-agent.md) — Auth (JWT/OAuth/CAPTCHA) + user profile
-- [resume-agent](../../.qoder/agents/resume-agent.md) — Resume upload/parse/versions/edit/download
-- [job-matching-agent](../../.qoder/agents/job-matching-agent.md) — Job CRUD, pgvector recall, ranking, suitability
-- [conversation-agent](../../.qoder/agents/conversation-agent.md) — Chat lifecycle, context assembly, AI reply, WebSocket
-- [tracking-agent](../../.qoder/agents/tracking-agent.md) — Application status flow, kanban, statistics, follow-up notes
-- [ai-pipeline-agent](../../.qoder/agents/ai-pipeline-agent.md) — LiteLLM gateway, embedding, worker, training, model mgmt
-- [platform-agent](../../.qoder/agents/platform-agent.md) — Docker, MQ, Outbox, pgvector, Redis, MinIO, env vars, CI/CD
-- [qa-review-agent](../../.qoder/agents/qa-review-agent.md) — Code review, test strategy, architecture rules, security scan, pre-release gate
 
 ## External Documentation
 

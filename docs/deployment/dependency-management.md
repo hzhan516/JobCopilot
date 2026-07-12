@@ -1,6 +1,6 @@
 # Dependency Management Policy
 
-> [English](dependency-management.md) | [简体中文](../i18n/zh-Hans-CN/dependency-management.md) | [繁體中文](../i18n/zh-Hant-TW/dependency-management.md)
+> [English](dependency-management.md) | [简体中文](../i18n/zh-Hans-CN/deployment/dependency-management.md) | [繁體中文](../i18n/zh-Hant-TW/deployment/dependency-management.md)
 
 This document defines how JobCopilot manages automated dependency updates from Dependabot and how the team should handle CVE fixes, major version bumps, and routine upgrades.
 

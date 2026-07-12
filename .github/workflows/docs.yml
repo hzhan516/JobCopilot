@@ -1,0 +1,24 @@
+name: Documentation and Version Checks
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  documentation-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify version sources
+        run: bash scripts/check-version-sync.sh
+      - name: Verify repository-local Markdown links
+        run: python scripts/check-markdown-links.py
