@@ -12,7 +12,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -45,8 +44,10 @@ class VectorApplicationServiceTest {
     @Mock
     private JobVectorRepository jobVectorRepository;
 
-    @Mock
-    private EmbeddingConfig embeddingConfig;
+    private final EmbeddingConfig embeddingConfig = new EmbeddingConfig() {
+        @Override public int getDimension() { return EMBEDDING_DIMENSION; }
+        @Override public String getDefaultModelVersion() { return "text-embedding-3-small"; }
+    };
 
     @Mock
     private VectorEmbeddingPort vectorEmbeddingPort;
@@ -54,15 +55,18 @@ class VectorApplicationServiceTest {
     @Mock
     private FailedVectorPersistenceService failedVectorPersistenceService;
 
-    @InjectMocks
     private VectorApplicationService service;
 
     private static final int EMBEDDING_DIMENSION = 1536;
 
     @BeforeEach
     void setUp() {
-        when(embeddingConfig.getDimension()).thenReturn(EMBEDDING_DIMENSION);
-        when(embeddingConfig.getDefaultModelVersion()).thenReturn("text-embedding-3-small");
+        service = new VectorApplicationService(
+                resumeVectorRepository,
+                jobVectorRepository,
+                embeddingConfig,
+                vectorEmbeddingPort,
+                failedVectorPersistenceService);
     }
 
     // ==================== 正常路径 ====================

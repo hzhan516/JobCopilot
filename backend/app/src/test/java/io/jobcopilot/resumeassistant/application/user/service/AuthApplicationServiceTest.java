@@ -335,7 +335,8 @@ class AuthApplicationServiceTest {
                 .expiresIn(3600L)
                 .build();
 
-        when(tokenService.generateTokenPair(testUser.getId().toString())).thenReturn(expectedTokenPair);
+        when(tokenService.generateTokenPair(testUser.getId().toString(), testUser.getRole().name()))
+                .thenReturn(expectedTokenPair);
 
         // 什么时候
         // When
@@ -347,7 +348,7 @@ class AuthApplicationServiceTest {
         assertThat(result.getAccessToken()).isEqualTo("access-token");
         assertThat(result.getRefreshToken()).isEqualTo("refresh-token");
         assertThat(result.getExpiresIn()).isEqualTo(3600L);
-        verify(tokenService).generateTokenPair(testUser.getId().toString());
+        verify(tokenService).generateTokenPair(testUser.getId().toString(), testUser.getRole().name());
     }
 
     @Test
@@ -355,7 +356,7 @@ class AuthApplicationServiceTest {
     void shouldCallTokenServiceWithCorrectUserId() {
         // 给定
         // Given
-        when(tokenService.generateTokenPair(anyString())).thenReturn(TokenPair.builder().build());
+        when(tokenService.generateTokenPair(anyString(), anyString())).thenReturn(TokenPair.builder().build());
 
         // 什么时候
         // When
@@ -363,6 +364,6 @@ class AuthApplicationServiceTest {
 
         // 然后
         // Then
-        verify(tokenService).generateTokenPair(testUser.getId().toString());
+        verify(tokenService).generateTokenPair(testUser.getId().toString(), testUser.getRole().name());
     }
 }

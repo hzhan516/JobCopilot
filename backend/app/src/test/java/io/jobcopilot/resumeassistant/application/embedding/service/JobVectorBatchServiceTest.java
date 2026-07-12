@@ -10,7 +10,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -48,15 +47,16 @@ class JobVectorBatchServiceTest {
     @Mock
     private JobVectorRepository jobVectorRepository;
 
-    @Mock
-    private EmbeddingConfig embeddingConfig;
+    private final EmbeddingConfig embeddingConfig = new EmbeddingConfig() {
+        @Override public int getDimension() { return 1536; }
+        @Override public String getDefaultModelVersion() { return "text-embedding-3-small"; }
+    };
 
-    @InjectMocks
     private JobVectorBatchService service;
 
     @BeforeEach
     void setUp() {
-        when(embeddingConfig.getDefaultModelVersion()).thenReturn("text-embedding-3-small");
+        service = new JobVectorBatchService(jobVectorRepository, embeddingConfig);
     }
 
     // ==================== 正常路径 ====================

@@ -79,7 +79,7 @@ class ResumeVersionChainManagerTest {
         converted.editContent("# Existing Content");
         group.addVersion(converted);
 
-        CreateVersionCommand command = new CreateVersionCommand(groupId, userId, null);
+        CreateVersionCommand command = new CreateVersionCommand(groupId, null, userId);
         when(groupRepository.findByIdAndUserId(groupId, userId)).thenReturn(Optional.of(group));
         doNothing().when(groupRepository).save(any(ResumeGroup.class));
 
@@ -104,7 +104,7 @@ class ResumeVersionChainManagerTest {
         converted.editContent("# Other Content");
         group.addVersion(converted);
 
-        CreateVersionCommand command = new CreateVersionCommand(groupId, userId, sourceVersionId);
+        CreateVersionCommand command = new CreateVersionCommand(groupId, sourceVersionId, userId);
         when(groupRepository.findByIdAndUserId(groupId, userId)).thenReturn(Optional.of(group));
         when(versionRepository.findById(sourceVersionId)).thenReturn(Optional.of(source));
         doNothing().when(groupRepository).save(any(ResumeGroup.class));
@@ -130,7 +130,7 @@ class ResumeVersionChainManagerTest {
         converted.editContent("# Content");
         group.addVersion(converted);
 
-        CreateVersionCommand command = new CreateVersionCommand(groupId, userId, null);
+        CreateVersionCommand command = new CreateVersionCommand(groupId, null, userId);
         when(groupRepository.findByIdAndUserId(groupId, userId)).thenReturn(Optional.of(group));
         doNothing().when(groupRepository).save(any(ResumeGroup.class));
 
@@ -150,7 +150,7 @@ class ResumeVersionChainManagerTest {
                 groupId, "resume.pdf", "application/pdf", 1024L, "storage/path");
         group.addVersion(original);
 
-        CreateVersionCommand command = new CreateVersionCommand(groupId, userId, null);
+        CreateVersionCommand command = new CreateVersionCommand(groupId, null, userId);
         when(groupRepository.findByIdAndUserId(groupId, userId)).thenReturn(Optional.of(group));
         doNothing().when(groupRepository).save(any(ResumeGroup.class));
 
@@ -167,7 +167,7 @@ class ResumeVersionChainManagerTest {
     @DisplayName("Should throw when group not found")
     void shouldThrowWhenGroupNotFound() {
         // 给定 / Given
-        CreateVersionCommand command = new CreateVersionCommand(groupId, userId, null);
+        CreateVersionCommand command = new CreateVersionCommand(groupId, null, userId);
         when(groupRepository.findByIdAndUserId(groupId, userId)).thenReturn(Optional.empty());
 
         // 当&那么 / When & Then
@@ -181,7 +181,7 @@ class ResumeVersionChainManagerTest {
     void shouldThrowWhenSourceVersionNotFound() {
         // 给定 / Given
         UUID sourceVersionId = UUID.randomUUID();
-        CreateVersionCommand command = new CreateVersionCommand(groupId, userId, sourceVersionId);
+        CreateVersionCommand command = new CreateVersionCommand(groupId, sourceVersionId, userId);
         when(groupRepository.findByIdAndUserId(groupId, userId)).thenReturn(Optional.of(group));
         when(versionRepository.findById(sourceVersionId)).thenReturn(Optional.empty());
 
@@ -199,7 +199,7 @@ class ResumeVersionChainManagerTest {
         UUID otherGroupId = UUID.randomUUID();
         ResumeVersion source = ResumeVersion.createConverted(otherGroupId);
 
-        CreateVersionCommand command = new CreateVersionCommand(groupId, userId, sourceVersionId);
+        CreateVersionCommand command = new CreateVersionCommand(groupId, sourceVersionId, userId);
         when(groupRepository.findByIdAndUserId(groupId, userId)).thenReturn(Optional.of(group));
         when(versionRepository.findById(sourceVersionId)).thenReturn(Optional.of(source));
 
@@ -226,7 +226,7 @@ class ResumeVersionChainManagerTest {
             }
         }
 
-        CreateVersionCommand command = new CreateVersionCommand(groupId, userId, null);
+        CreateVersionCommand command = new CreateVersionCommand(groupId, null, userId);
         when(groupRepository.findByIdAndUserId(groupId, userId)).thenReturn(Optional.of(group));
         when(versionRepository.findAllByGroupIdAndType(groupId, ResumeVersion.VersionType.CONVERTED))
                 .thenReturn(group.getVersions().stream()
@@ -249,7 +249,7 @@ class ResumeVersionChainManagerTest {
         converted.editContent("# Content");
         group.addVersion(converted);
 
-        CreateVersionCommand command = new CreateVersionCommand(groupId, userId, null);
+        CreateVersionCommand command = new CreateVersionCommand(groupId, null, userId);
         when(groupRepository.findByIdAndUserId(groupId, userId)).thenReturn(Optional.of(group));
         when(versionRepository.findAllByGroupIdAndType(groupId, ResumeVersion.VersionType.CONVERTED))
                 .thenReturn(List.of(converted));
@@ -266,7 +266,7 @@ class ResumeVersionChainManagerTest {
     @DisplayName("Should skip vector generation when content is empty")
     void shouldSkipVectorGenerationWhenContentIsEmpty() {
         // 给定 / Given
-        CreateVersionCommand command = new CreateVersionCommand(groupId, userId, null);
+        CreateVersionCommand command = new CreateVersionCommand(groupId, null, userId);
         when(groupRepository.findByIdAndUserId(groupId, userId)).thenReturn(Optional.of(group));
         doNothing().when(groupRepository).save(any(ResumeGroup.class));
 

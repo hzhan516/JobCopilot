@@ -5,10 +5,10 @@ import io.jobcopilot.resumeassistant.domain.shared.entity.OutboxMessage;
 import io.jobcopilot.resumeassistant.domain.shared.repository.OutboxMessageRepository;
 import io.jobcopilot.resumeassistant.types.enums.OutboxStatus;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatchers;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -38,8 +38,14 @@ class OutboxRelaySchedulerTest {
     @Mock
     private ObjectMapper objectMapper;
 
-    @InjectMocks
     private OutboxRelayScheduler scheduler;
+
+    @BeforeEach
+    void setUp() {
+        OutboxRelayTransactionService relayTransactionService =
+                new OutboxRelayTransactionService(outboxMessageRepository, rabbitTemplate, objectMapper);
+        scheduler = new OutboxRelayScheduler(outboxMessageRepository, relayTransactionService);
+    }
 
     @Test
     @DisplayName("Should relay pending messages and mark as sent")

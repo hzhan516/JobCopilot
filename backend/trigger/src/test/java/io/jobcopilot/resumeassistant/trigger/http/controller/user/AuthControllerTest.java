@@ -11,7 +11,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
@@ -51,7 +50,6 @@ class AuthControllerTest {
     @Mock
     private HttpServletRequest httpRequest;
 
-    @InjectMocks
     private AuthController authController;
 
     private AuthResponse testAuthResponse;
@@ -59,6 +57,7 @@ class AuthControllerTest {
 
     @BeforeEach
     void setUp() {
+        authController = new AuthController(authFacade, 604_800_000L);
         testAuthResponse = AuthResponse.builder()
                 .userId(USER_ID)
                 .email(TEST_EMAIL)

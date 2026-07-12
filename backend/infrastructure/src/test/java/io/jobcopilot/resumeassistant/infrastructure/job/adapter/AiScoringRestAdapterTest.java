@@ -5,10 +5,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.http.HttpEntity;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 /**
  * AiScoringRestAdapter 单元测试
@@ -44,6 +45,7 @@ class AiScoringRestAdapterTest {
     private AiScoringRestAdapter adapter;
 
     private static final String BASE_URL = "http://ai-service:8000";
+    private static final String SUITABILITY_URL = BASE_URL + "/api/v1/suitability";
 
     @BeforeEach
     void setUp() {
@@ -69,7 +71,7 @@ class AiScoringRestAdapterTest {
                 "skillScore", 0.90,
                 "experienceScore", 0.88
         );
-        when(restTemplate.postForObject(eq(BASE_URL + "/api/v1/suitability"), any(), eq(Map.class)))
+        when(restTemplate.postForObject(eq(SUITABILITY_URL), any(HttpEntity.class), eq(Map.class)))
                 .thenReturn(expectedResponse);
 
         // 当 / When
@@ -89,13 +91,15 @@ class AiScoringRestAdapterTest {
         Map<String, Object> job = Map.of("title", "Python Dev");
 
         Map<String, Object> expectedResponse = Map.of("suitable", true);
-        when(restTemplate.postForObject(any(), any(), eq(Map.class))).thenReturn(expectedResponse);
+        when(restTemplate.postForObject(eq(SUITABILITY_URL), any(HttpEntity.class), eq(Map.class))).thenReturn(expectedResponse);
 
         // 当 / When
         adapter.score("job-1", "resume-1", resume, job, 0.75f);
 
-        // 那么 / Then — verify via ArgumentCaptor would be ideal, but response body structure is verified implicitly
-        // 响应结构通过隐式验证确认，更精确验证需要 ArgumentCaptor
+        ArgumentCaptor<HttpEntity> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).postForObject(eq(SUITABILITY_URL), entityCaptor.capture(), eq(Map.class));
+        Map<String, Object> body = (Map<String, Object>) entityCaptor.getValue().getBody();
+        assertThat(body).containsEntry("semanticMatch", 0.75f);
     }
 
     @Test
@@ -106,13 +110,17 @@ class AiScoringRestAdapterTest {
         Map<String, Object> job = Map.of("title", "Go Dev");
 
         Map<String, Object> expectedResponse = Map.of("suitable", false);
-        when(restTemplate.postForObject(any(), any(), eq(Map.class))).thenReturn(expectedResponse);
+        when(restTemplate.postForObject(eq(SUITABILITY_URL), any(HttpEntity.class), eq(Map.class))).thenReturn(expectedResponse);
 
         // 当 / When
         Map<String, Object> result = adapter.score("job-1", "resume-1", resume, job, null);
 
         // 那么 / Then
         assertThat(result).isNotNull();
+        ArgumentCaptor<HttpEntity> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).postForObject(eq(SUITABILITY_URL), entityCaptor.capture(), eq(Map.class));
+        Map<String, Object> body = (Map<String, Object>) entityCaptor.getValue().getBody();
+        assertThat(body).doesNotContainKey("semanticMatch");
     }
 
     @Test
@@ -129,13 +137,19 @@ class AiScoringRestAdapterTest {
         );
 
         Map<String, Object> expectedResponse = Map.of("overallScore", 0.88);
-        when(restTemplate.postForObject(any(), any(), eq(Map.class))).thenReturn(expectedResponse);
+        when(restTemplate.postForObject(eq(SUITABILITY_URL), any(HttpEntity.class), eq(Map.class))).thenReturn(expectedResponse);
 
         // 当 / When
         Map<String, Object> result = adapter.score("job-1", "resume-1", resume, job, null);
 
         // 那么 / Then
         assertThat(result.get("overallScore")).isEqualTo(0.88);
+        ArgumentCaptor<HttpEntity> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).postForObject(eq(SUITABILITY_URL), entityCaptor.capture(), eq(Map.class));
+        Map<String, Object> body = (Map<String, Object>) entityCaptor.getValue().getBody();
+        assertThat(body)
+                .containsEntry("resume", resume)
+                .containsEntry("job", job);
     }
 
     // ==================== 异常响应 ====================
@@ -145,7 +159,7 @@ class AiScoringRestAdapterTest {
     @DisplayName("Should throw on null response body")
     void shouldThrowOnNullResponseBody() {
         // 给定 / Given
-        when(restTemplate.postForObject(any(), any(), eq(Map.class))).thenReturn(null);
+        when(restTemplate.postForObject(eq(SUITABILITY_URL), any(HttpEntity.class), eq(Map.class))).thenReturn(null);
 
         // 当&那么 / When & Then
         assertThatThrownBy(() -> adapter.score("job-1", "resume-1", Map.of(), Map.of(), null))
@@ -160,7 +174,7 @@ class AiScoringRestAdapterTest {
     @DisplayName("Should throw AiServiceUnavailableException on ResourceAccessException")
     void shouldThrowAiServiceUnavailableExceptionOnResourceAccessException() {
         // 给定 / Given
-        when(restTemplate.postForObject(any(), any(), eq(Map.class)))
+        when(restTemplate.postForObject(eq(SUITABILITY_URL), any(HttpEntity.class), eq(Map.class)))
                 .thenThrow(new ResourceAccessException("Connection refused"));
 
         // 当&那么 / When & Then
@@ -172,7 +186,7 @@ class AiScoringRestAdapterTest {
     @DisplayName("Should propagate RestClientException as RuntimeException")
     void shouldPropagateRestClientExceptionAsRuntimeException() {
         // 给定 / Given
-        when(restTemplate.postForObject(any(), any(), eq(Map.class)))
+        when(restTemplate.postForObject(eq(SUITABILITY_URL), any(HttpEntity.class), eq(Map.class)))
                 .thenThrow(new org.springframework.web.client.RestClientException("500 Internal Server Error"));
 
         // 当&那么 / When & Then

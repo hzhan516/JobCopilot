@@ -171,7 +171,7 @@ class MessageProviderImplTest {
     @DisplayName("Should handle empty args array")
     void shouldHandleEmptyArgsArray() {
         // 给定 / Given
-        when(messageSource.getMessage(eq("key"), eq(new Object[]{}), any(Locale.class)))
+        when(messageSource.getMessage(eq("key"), isNull(), any(Locale.class)))
                 .thenReturn("no args message");
 
         // 当 / When
@@ -179,6 +179,6 @@ class MessageProviderImplTest {
 
         // 那么 / Then — varargs with no args produces empty array or null, depending on implementation
         // This test verifies the contract works with zero arguments
-        assertThat(result).isNotNull();
+        assertThat(result).isEqualTo("no args message");
     }
 }

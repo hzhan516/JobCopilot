@@ -64,7 +64,6 @@ class InternalApiKeyInterceptorTest {
         ClientHttpResponse expectedResponse = mock(ClientHttpResponse.class);
         var headers = new org.springframework.http.HttpHeaders();
 
-        when(request.getHeaders()).thenReturn(headers);
         when(execution.execute(any(HttpRequest.class), any(byte[].class))).thenReturn(expectedResponse);
 
         // When
@@ -85,7 +84,6 @@ class InternalApiKeyInterceptorTest {
         ClientHttpResponse expectedResponse = mock(ClientHttpResponse.class);
         var headers = new org.springframework.http.HttpHeaders();
 
-        when(request.getHeaders()).thenReturn(headers);
         when(execution.execute(any(HttpRequest.class), any(byte[].class))).thenReturn(expectedResponse);
 
         // When

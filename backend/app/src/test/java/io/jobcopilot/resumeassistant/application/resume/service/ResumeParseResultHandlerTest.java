@@ -183,7 +183,7 @@ class ResumeParseResultHandlerTest {
 
         // 那么 / Then — original saved, but converted not saved again
         // 原始版本已保存，但转换版本未被再次保存
-        verify(versionRepository, times(2)).save(any(ResumeVersion.class));
+        verify(versionRepository).save(any(ResumeVersion.class));
     }
 
     @Test

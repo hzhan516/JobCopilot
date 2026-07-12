@@ -42,9 +42,9 @@ jobs:
       - name: Build, Test & Verify (JaCoCo)
         # Skip OWASP dependency-check here; it runs in a separate nightly workflow
         # so that dependency update PRs are not blocked by transient CVE false-positives.
-        # Limit tests to types and domain modules until infrastructure/trigger/app
-        # pre-existing test failures are resolved.
-        run: mvn test --batch-mode -pl types,domain -am -Ddependency-check.skip=true
+        # Run every non-architecture test across the complete reactor. Architecture
+        # rules run separately so the explicitly deferred AppLayer rule stays visible.
+        run: mvn test --batch-mode -Dtest="!*ArchitectureTest*" -Dsurefire.failIfNoSpecifiedTests=false -Ddependency-check.skip=true
 
       - name: JaCoCo Coverage Report
         run: mvn jacoco:report --batch-mode

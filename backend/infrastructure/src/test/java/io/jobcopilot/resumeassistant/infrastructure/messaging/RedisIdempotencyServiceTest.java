@@ -42,11 +42,6 @@ class RedisIdempotencyServiceTest {
 
     private static final String EVENT_KEY = "event-uuid-123";
 
-    @BeforeEach
-    void setUp() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-    }
-
     // ==================== 重复检测 ====================
     // ==================== Duplicate Detection ====================
 
@@ -97,6 +92,7 @@ class RedisIdempotencyServiceTest {
     void shouldMarkEventAsProcessedWithCustomTtl() {
         // 给定 / Given
         Duration ttl = Duration.ofMinutes(30);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
         // 当 / When
         idempotencyService.markProcessed(EVENT_KEY, ttl);
@@ -108,6 +104,7 @@ class RedisIdempotencyServiceTest {
     @Test
     @DisplayName("Should mark event as processed with default TTL")
     void shouldMarkEventAsProcessedWithDefaultTtl() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         // 当 / When
         idempotencyService.markProcessed(EVENT_KEY);
 
@@ -132,6 +129,7 @@ class RedisIdempotencyServiceTest {
     @Test
     @DisplayName("Should handle empty event key")
     void shouldHandleEmptyEventKey() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         // 当 / When
         idempotencyService.markProcessed("", Duration.ofSeconds(1));
 
