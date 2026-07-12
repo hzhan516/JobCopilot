@@ -9,6 +9,10 @@
 *.swo
 *~
 /.qoder/
+**/.agents/
+**/.codex/
+**/.omo/
+**/.kiro/
 
 # ── OS ─────────────────────────────────────
 .DS_Store
@@ -22,9 +26,6 @@ Thumbs.db
 **/.env.local
 **/.env.*.local
 **/local.env
-
-# window-specific docker files (necessary to avoid accidentally committing overrides, please don't remove)
-.gitattributes
 
 # Secrets manifests
 **/secrets.yaml
@@ -66,6 +67,8 @@ id_rsa.pub
 # ── Frontend (Node / Vite) ─────────────────
 /frontend/node_modules/
 /frontend/dist/
+/frontend/test-results/
+/frontend/playwright-report/
 /frontend/.vite/
 /frontend/.tmp/
 /frontend/coverage/
@@ -98,6 +101,7 @@ build/
 /notes/
 /docs/requirement/
 /ProjectFiles
+/tempReviewDocs
 
 # ── Helm / K8s local overrides ───────────────
 /docs/deployment/k8s/helm/resume-assistant/minimal.yaml
