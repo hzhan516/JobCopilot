@@ -14,7 +14,7 @@ export default function CopilotRail() {
       <aside
         data-testid="copilot-rail-region"
         data-collapsed="true"
-        className="h-full min-w-0 border-l bg-background flex flex-col items-center py-3"
+        className="h-full min-w-0 bg-background flex flex-col items-center py-3"
       >
         <Button
           variant="ghost"
@@ -34,7 +34,7 @@ export default function CopilotRail() {
     <aside
       data-testid="copilot-rail-region"
       data-collapsed="false"
-      className="h-full min-w-0 border-l bg-background flex flex-col overflow-hidden"
+      className="h-full min-w-0 bg-background flex flex-col overflow-hidden"
     >
       <div className="h-14 px-4 border-b flex items-center justify-between shrink-0">
         <div className="min-w-0 flex items-center gap-2 font-semibold">

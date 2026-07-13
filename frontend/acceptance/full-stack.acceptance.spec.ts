@@ -78,13 +78,16 @@ async function installSession(context: BrowserContext, token: string, user: Json
   }, { accessToken: token, storedUser: user })
 }
 
-async function expectThreeColumnAppShell(page: Page) {
+async function expectResizableThreeColumnAppShell(page: Page) {
   const shell = page.getByTestId('app-shell')
   const sidebar = page.getByTestId('app-sidebar-region')
   const workspace = page.getByTestId('main-workspace-region')
   const copilot = page.getByTestId('copilot-rail-region')
+  const separator = page.getByTestId('workspace-copilot-separator')
 
-  await expect(shell).toHaveAttribute('data-layout-ratio', '2:5:3')
+  await expect(shell).toHaveAttribute('data-layout-ratio', '1.5:6:2.5')
+  await expect(separator).toBeVisible()
+  await expect(separator).toHaveAttribute('aria-label', /.+/)
   const [shellBox, sidebarBox, workspaceBox, copilotBox] = await Promise.all([
     shell.boundingBox(),
     sidebar.boundingBox(),
@@ -96,9 +99,9 @@ async function expectThreeColumnAppShell(page: Page) {
   expect(workspaceBox).not.toBeNull()
   expect(copilotBox).not.toBeNull()
 
-  expect(Math.abs(sidebarBox!.width / shellBox!.width - 0.2)).toBeLessThanOrEqual(0.02)
-  expect(Math.abs(workspaceBox!.width / shellBox!.width - 0.5)).toBeLessThanOrEqual(0.02)
-  expect(Math.abs(copilotBox!.width / shellBox!.width - 0.3)).toBeLessThanOrEqual(0.02)
+  expect(Math.abs(sidebarBox!.width / shellBox!.width - 0.15)).toBeLessThanOrEqual(0.02)
+  expect(Math.abs(workspaceBox!.width / shellBox!.width - 0.6)).toBeLessThanOrEqual(0.02)
+  expect(Math.abs(copilotBox!.width / shellBox!.width - 0.25)).toBeLessThanOrEqual(0.02)
   expect(sidebarBox!.x + sidebarBox!.width).toBeLessThanOrEqual(workspaceBox!.x + 1)
   expect(workspaceBox!.x + workspaceBox!.width).toBeLessThanOrEqual(copilotBox!.x + 1)
   expect(workspaceBox!.width).toBeGreaterThanOrEqual(559)
@@ -225,8 +228,49 @@ test('real-provider full-stack acceptance', async ({ request, browser }) => {
   ] as const) {
     await userPage.goto(route)
     await expect(userPage.getByTestId(routeLayoutId)).toBeVisible()
-    await expectThreeColumnAppShell(userPage)
+    await expectResizableThreeColumnAppShell(userPage)
   }
+
+  await userPage.goto('/')
+  await expect(userPage.getByTestId('app-shell')).toHaveAttribute('data-layout', 'dashboard')
+  await expect(userPage.getByTestId('app-shell')).toHaveAttribute('data-layout-ratio', '1.5:8.5')
+  await expect(userPage.getByTestId('copilot-rail-region')).toHaveCount(0)
+  await expect(userPage.getByTestId('workspace-copilot-separator')).toHaveCount(0)
+  const [dashboardShellBox, dashboardSidebarBox, dashboardWorkspaceBox] = await Promise.all([
+    userPage.getByTestId('app-shell').boundingBox(),
+    userPage.getByTestId('app-sidebar-region').boundingBox(),
+    userPage.getByTestId('main-workspace-region').boundingBox(),
+  ])
+  expect(dashboardShellBox).not.toBeNull()
+  expect(dashboardSidebarBox).not.toBeNull()
+  expect(dashboardWorkspaceBox).not.toBeNull()
+  expect(Math.abs(dashboardSidebarBox!.width / dashboardShellBox!.width - 0.15)).toBeLessThanOrEqual(0.02)
+  expect(Math.abs(dashboardWorkspaceBox!.width / dashboardShellBox!.width - 0.85)).toBeLessThanOrEqual(0.02)
+
+  await userPage.goto('/resumes')
+  const separator = userPage.getByTestId('workspace-copilot-separator')
+  const [sidebarBefore, workspaceBefore, copilotBefore, separatorBox] = await Promise.all([
+    userPage.getByTestId('app-sidebar-region').boundingBox(),
+    userPage.getByTestId('main-workspace-region').boundingBox(),
+    userPage.getByTestId('copilot-rail-region').boundingBox(),
+    separator.boundingBox(),
+  ])
+  expect(separatorBox).not.toBeNull()
+  await userPage.mouse.move(
+    separatorBox!.x + separatorBox!.width / 2,
+    separatorBox!.y + separatorBox!.height / 2,
+  )
+  await userPage.mouse.down()
+  await userPage.mouse.move(separatorBox!.x - 80, separatorBox!.y + separatorBox!.height / 2)
+  await userPage.mouse.up()
+  const [sidebarAfter, workspaceAfter, copilotAfter] = await Promise.all([
+    userPage.getByTestId('app-sidebar-region').boundingBox(),
+    userPage.getByTestId('main-workspace-region').boundingBox(),
+    userPage.getByTestId('copilot-rail-region').boundingBox(),
+  ])
+  expect(Math.abs(sidebarAfter!.width - sidebarBefore!.width)).toBeLessThanOrEqual(1)
+  expect(workspaceAfter!.width).toBeLessThan(workspaceBefore!.width - 50)
+  expect(copilotAfter!.width).toBeGreaterThan(copilotBefore!.width + 50)
 
   await userPage.setViewportSize({ width: 1024, height: 768 })
   for (const [route, routeLayoutId] of [

@@ -96,7 +96,7 @@ export default function AppSidebar({
             }
           >
             <Icon className="w-5 h-5 shrink-0" />
-            {!isCollapsed && <span>{t(labelKey)}</span>}
+            {!isCollapsed && <span className="min-w-0 truncate">{t(labelKey)}</span>}
           </NavLink>
         ))}
       </nav>
@@ -114,25 +114,27 @@ export default function AppSidebar({
           >
             <MessageSquare className="w-5 h-5 shrink-0" />
             {!isCollapsed && (
-              <span className="ml-3">{t(chatNavItem.labelKey)}</span>
+              <span className="ml-3 min-w-0 truncate">{t(chatNavItem.labelKey)}</span>
             )}
           </Button>
         </div>
 
         {/* 语言切换 + 用户菜单 */}
         <div
-          className={`flex items-center px-3 py-2 border-t border-sidebar-border ${
+          className={`flex min-w-0 items-center px-3 py-2 border-t border-sidebar-border ${
             isCollapsed ? 'flex-col gap-2' : 'justify-between'
           }`}
         >
-          <LanguageSwitcher />
+          <div className="shrink-0">
+            <LanguageSwitcher />
+          </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className={`flex items-center text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground h-auto ${
-                  isCollapsed ? 'justify-center p-1' : 'space-x-2 px-2 py-1'
+                className={`flex min-w-0 max-w-full items-center overflow-hidden text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground h-auto ${
+                  isCollapsed ? 'justify-center p-1' : 'ml-1 flex-1 gap-2 px-2 py-1'
                 }`}
               >
                 <div className="w-7 h-7 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center shrink-0">
@@ -140,10 +142,10 @@ export default function AppSidebar({
                 </div>
                 {!isCollapsed && (
                   <>
-                    <span className="text-xs font-medium max-w-[100px] truncate">
+                    <span className="min-w-0 flex-1 truncate text-left text-xs font-medium">
                       {user?.email}
                     </span>
-                    <ChevronDown className="w-3 h-3" />
+                    <ChevronDown className="w-3 h-3 shrink-0" />
                   </>
                 )}
               </Button>

@@ -41,7 +41,8 @@
       "copilot": {
         "openCopilot": "Open AI Copilot",
         "collapse": "Collapse AI Chat",
-        "expand": "Expand AI Chat"
+        "expand": "Expand AI Chat",
+        "resize": "Resize the workspace and AI Chat panels"
       }
     },
     "userMenu": {

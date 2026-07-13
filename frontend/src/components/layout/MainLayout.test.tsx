@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { MemoryRouter, Routes, Route, Outlet } from 'react-router-dom'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import MainLayout from './MainLayout'
 
 const mockNavigate = vi.fn()
@@ -12,14 +12,8 @@ let mockAuth = {
 }
 let mockUsesSheetNavigation = false
 let mockUsesThreeColumnLayout = true
-
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom')
-  return {
-    ...actual,
-    useLocation: () => ({ pathname: '/resumes' }),
-  }
-})
+let mockRailCollapsed = false
+const mockPanelResize = vi.fn()
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -49,10 +43,37 @@ vi.mock('@/store/sidebar.store', () => ({
 vi.mock('@/store/copilot.store', () => ({
   useCopilotStore: () => ({
     isOpen: false,
-    railCollapsed: false,
+    railCollapsed: mockRailCollapsed,
     open: vi.fn(),
     close: vi.fn(),
   }),
+}))
+
+vi.mock('react-resizable-panels', () => ({
+  Group: ({ children, id, ...props }: any) => (
+    <div data-testid={props['data-testid'] ?? id}>{children}</div>
+  ),
+  Panel: ({ children, id, defaultSize, minSize, maxSize, disabled }: any) => (
+    <div
+      data-testid={id}
+      data-default-size={defaultSize}
+      data-min-size={minSize}
+      data-max-size={maxSize}
+      data-disabled={String(!!disabled)}
+    >
+      {children}
+    </div>
+  ),
+  Separator: ({ children, id, disabled, 'aria-label': ariaLabel }: any) => (
+    <div
+      data-testid={id}
+      data-disabled={String(!!disabled)}
+      aria-label={ariaLabel}
+    >
+      {children}
+    </div>
+  ),
+  usePanelRef: () => ({ current: { resize: mockPanelResize } }),
 }))
 
 vi.mock('@/components/layout/AppSidebar', () => ({
@@ -118,6 +139,7 @@ describe('MainLayout', () => {
     }
     mockUsesSheetNavigation = false
     mockUsesThreeColumnLayout = true
+    mockRailCollapsed = false
   })
 
   it('renders AppSidebar on desktop', () => {
@@ -127,20 +149,54 @@ describe('MainLayout', () => {
     expect(screen.getByTestId('app-sidebar')).toHaveAttribute('data-mobile', 'false')
   })
 
-  it('renders the 2:5:3 shell and persistent Copilot rail on wide desktop', () => {
+  it('keeps Dashboard free of the persistent Copilot rail on wide desktop', () => {
     renderWithRoute('/')
-    expect(screen.getByTestId('app-shell')).toHaveAttribute('data-layout', 'three-column')
-    expect(screen.getByTestId('app-shell')).toHaveAttribute('data-layout-ratio', '2:5:3')
+    expect(screen.getByTestId('app-shell')).toHaveAttribute('data-layout', 'dashboard')
+    expect(screen.getByTestId('app-shell')).toHaveAttribute('data-layout-ratio', '1.5:8.5')
+    expect(screen.queryByTestId('copilot-rail-region')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('workspace-copilot-separator')).not.toBeInTheDocument()
+    expect(screen.getByTestId('global-copilot-drawer')).toBeInTheDocument()
+  })
+
+  it('uses a resizable 1.5:6:2.5 layout on wide business pages', () => {
+    renderWithRoute('/resumes')
+    expect(screen.getByTestId('app-shell')).toHaveAttribute('data-layout', 'resizable-three-column')
+    expect(screen.getByTestId('app-shell')).toHaveAttribute('data-layout-ratio', '1.5:6:2.5')
     expect(screen.getByTestId('copilot-rail-region')).toBeInTheDocument()
     expect(screen.queryByTestId('global-copilot-drawer')).not.toBeInTheDocument()
+    expect(screen.getByTestId('workspace-panel')).toHaveAttribute('data-default-size', '70.5882%')
+    expect(screen.getByTestId('copilot-panel')).toHaveAttribute('data-default-size', '29.4118%')
+    expect(screen.getByTestId('workspace-copilot-separator')).toHaveAttribute('data-disabled', 'false')
+    expect(screen.getByTestId('workspace-copilot-separator')).toHaveAttribute(
+      'aria-label',
+      'layout.sidebar.copilot.resize',
+    )
+    expect(mockPanelResize).toHaveBeenCalledWith('29.4118%')
+  })
+
+  it('locks the workspace separator while the Copilot rail is collapsed', () => {
+    mockRailCollapsed = true
+    renderWithRoute('/resumes')
+    expect(screen.getByTestId('workspace-copilot-separator')).toHaveAttribute('data-disabled', 'true')
+    expect(screen.getByTestId('copilot-panel')).toHaveAttribute('data-min-size', '56px')
+    expect(screen.getByTestId('copilot-panel')).toHaveAttribute('data-max-size', '56px')
+    expect(mockPanelResize).toHaveBeenCalledWith('56px')
   })
 
   it('uses the Copilot drawer below the three-column breakpoint', () => {
     mockUsesThreeColumnLayout = false
-    renderWithRoute('/')
+    renderWithRoute('/resumes')
     expect(screen.getByTestId('app-shell')).toHaveAttribute('data-layout', 'compact')
+    expect(screen.getByTestId('app-shell')).not.toHaveAttribute('data-layout-ratio')
     expect(screen.getByTestId('global-copilot-drawer')).toBeInTheDocument()
     expect(screen.queryByTestId('copilot-rail-region')).not.toBeInTheDocument()
+  })
+
+  it('does not advertise the desktop Dashboard ratio below the wide breakpoint', () => {
+    mockUsesThreeColumnLayout = false
+    renderWithRoute('/')
+    expect(screen.getByTestId('app-shell')).toHaveAttribute('data-layout', 'compact')
+    expect(screen.getByTestId('app-shell')).not.toHaveAttribute('data-layout-ratio')
   })
 
   it('renders child route content via Outlet', () => {

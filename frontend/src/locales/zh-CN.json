@@ -41,7 +41,8 @@
       "copilot": {
         "openCopilot": "打开 AI 助手",
         "collapse": "收起 AI 聊天",
-        "expand": "展开 AI 聊天"
+        "expand": "展开 AI 聊天",
+        "resize": "调整工作区与 AI 聊天栏宽度"
       }
     },
     "userMenu": {
