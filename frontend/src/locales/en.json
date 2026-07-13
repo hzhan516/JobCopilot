@@ -39,7 +39,9 @@
       "collapse": "Collapse Sidebar",
       "expand": "Expand Sidebar",
       "copilot": {
-        "openCopilot": "Open AI Copilot"
+        "openCopilot": "Open AI Copilot",
+        "collapse": "Collapse AI Chat",
+        "expand": "Expand AI Chat"
       }
     },
     "userMenu": {

@@ -78,27 +78,30 @@ async function installSession(context: BrowserContext, token: string, user: Json
   }, { accessToken: token, storedUser: user })
 }
 
-async function expectWideMasterDetailLayout(page: Page, groupId: string) {
-  const list = page.getByTestId(`${groupId}-list`)
-  const separator = page.getByTestId(`${groupId}-separator`)
-  const detail = page.getByTestId(`${groupId}-detail`)
+async function expectThreeColumnAppShell(page: Page) {
+  const shell = page.getByTestId('app-shell')
+  const sidebar = page.getByTestId('app-sidebar-region')
+  const workspace = page.getByTestId('main-workspace-region')
+  const copilot = page.getByTestId('copilot-rail-region')
 
-  await expect(list).toBeVisible()
-  await expect(separator).toBeVisible()
-  await expect(detail).toBeVisible()
-
-  const [listBox, separatorBox, detailBox] = await Promise.all([
-    list.boundingBox(),
-    separator.boundingBox(),
-    detail.boundingBox(),
+  await expect(shell).toHaveAttribute('data-layout-ratio', '2:5:3')
+  const [shellBox, sidebarBox, workspaceBox, copilotBox] = await Promise.all([
+    shell.boundingBox(),
+    sidebar.boundingBox(),
+    workspace.boundingBox(),
+    copilot.boundingBox(),
   ])
-  expect(listBox).not.toBeNull()
-  expect(separatorBox).not.toBeNull()
-  expect(detailBox).not.toBeNull()
-  expect(listBox!.width).toBeGreaterThanOrEqual(339)
-  expect(detailBox!.width).toBeGreaterThanOrEqual(459)
-  expect(listBox!.x + listBox!.width).toBeLessThanOrEqual(separatorBox!.x + 1)
-  expect(separatorBox!.x + separatorBox!.width).toBeLessThanOrEqual(detailBox!.x + 1)
+  expect(shellBox).not.toBeNull()
+  expect(sidebarBox).not.toBeNull()
+  expect(workspaceBox).not.toBeNull()
+  expect(copilotBox).not.toBeNull()
+
+  expect(Math.abs(sidebarBox!.width / shellBox!.width - 0.2)).toBeLessThanOrEqual(0.02)
+  expect(Math.abs(workspaceBox!.width / shellBox!.width - 0.5)).toBeLessThanOrEqual(0.02)
+  expect(Math.abs(copilotBox!.width / shellBox!.width - 0.3)).toBeLessThanOrEqual(0.02)
+  expect(sidebarBox!.x + sidebarBox!.width).toBeLessThanOrEqual(workspaceBox!.x + 1)
+  expect(workspaceBox!.x + workspaceBox!.width).toBeLessThanOrEqual(copilotBox!.x + 1)
+  expect(workspaceBox!.width).toBeGreaterThanOrEqual(559)
 
   const hasPageOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
@@ -215,24 +218,26 @@ test('real-provider full-stack acceptance', async ({ request, browser }) => {
   }
 
   await userPage.setViewportSize({ width: 1440, height: 900 })
-  for (const [route, groupId] of [
-    ['/resumes', 'resumes-master-detail'],
-    ['/jobs', 'jobs-master-detail'],
-    ['/applications', 'tracking-master-detail'],
+  for (const [route, routeLayoutId] of [
+    ['/resumes', 'resumes-route-layout'],
+    ['/jobs', 'jobs-route-layout'],
+    ['/applications', 'tracking-route-layout'],
   ] as const) {
     await userPage.goto(route)
-    await expectWideMasterDetailLayout(userPage, groupId)
+    await expect(userPage.getByTestId(routeLayoutId)).toBeVisible()
+    await expectThreeColumnAppShell(userPage)
   }
 
   await userPage.setViewportSize({ width: 1024, height: 768 })
-  for (const [route, groupId] of [
-    ['/resumes', 'resumes-master-detail'],
-    ['/jobs', 'jobs-master-detail'],
-    ['/applications', 'tracking-master-detail'],
+  for (const [route, routeLayoutId] of [
+    ['/resumes', 'resumes-route-layout'],
+    ['/jobs', 'jobs-route-layout'],
+    ['/applications', 'tracking-route-layout'],
   ] as const) {
     await userPage.goto(route)
-    await expect(userPage.getByTestId(`${groupId}-container`)).toBeVisible()
-    await expect(userPage.getByTestId(groupId)).toHaveCount(0)
+    await expect(userPage.getByTestId(routeLayoutId)).toBeVisible()
+    await expect(userPage.getByTestId('copilot-rail-region')).toHaveCount(0)
+    await expect(userPage.getByTestId('app-shell')).toHaveAttribute('data-layout', 'compact')
   }
 
   await userPage.setViewportSize({ width: 390, height: 844 })

@@ -87,10 +87,6 @@ vi.mock('@/pages/jobs/JobsPage', () => ({
   default: () => <div data-testid="jobs-page">JobsPage</div>,
 }))
 
-vi.mock('@/pages/chat/Chat', () => ({
-  default: () => <div data-testid="chat-page">Chat</div>,
-}))
-
 vi.mock('@/pages/tracking/TrackingPage', () => ({
   default: () => <div data-testid="tracking-page">TrackingPage</div>,
 }))
@@ -180,13 +176,13 @@ describe('App routing', () => {
     expect(screen.getByTestId('jobs-page')).toBeInTheDocument()
   })
 
-  it('renders chat on /chat', () => {
+  it('redirects the legacy /chat route to the workspace after opening Copilot', () => {
     render(
       <MemoryRouter initialEntries={['/chat']}>
         <App />
       </MemoryRouter>
     )
-    expect(screen.getByTestId('chat-page')).toBeInTheDocument()
+    expect(screen.getByTestId('dashboard-page')).toBeInTheDocument()
   })
 
   it('renders tracking page on /applications', () => {

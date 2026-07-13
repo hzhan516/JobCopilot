@@ -16,7 +16,7 @@ import Dashboard from '@/pages/Dashboard';
 import ResumesPage from '@/pages/resumes/ResumesPage';
 import ResumeEdit from '@/pages/resumes/ResumeEdit';
 import JobsPage from '@/pages/jobs/JobsPage';
-import Chat from '@/pages/chat/Chat';
+import CopilotRouteRedirect from '@/components/copilot/CopilotRouteRedirect';
 import TrackingPage from '@/pages/tracking/TrackingPage';
 import Profile from '@/pages/profile/Profile';
 
@@ -60,7 +60,7 @@ function App() {
               <Route path="/resumes/:groupId/versions/:versionId/edit" element={<ResumeEdit />} />
               <Route path="/jobs" element={<JobsPage />} />
               <Route path="/jobs/:jobId" element={<JobsPage />} />
-              <Route path="/chat" element={<Chat />} />
+              <Route path="/chat" element={<CopilotRouteRedirect />} />
               <Route path="/applications" element={<TrackingPage />} />
               <Route path="/applications/:trackingId" element={<TrackingPage />} />
               <Route path="/profile" element={<Profile />} />

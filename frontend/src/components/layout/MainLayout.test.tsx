@@ -10,6 +10,8 @@ let mockAuth = {
   logout: mockLogout,
   isAuthenticated: true,
 }
+let mockUsesSheetNavigation = false
+let mockUsesThreeColumnLayout = true
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
@@ -29,8 +31,10 @@ vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => mockAuth,
 }))
 
-vi.mock('@/hooks/use-mobile', () => ({
-  useIsMobile: () => false,
+vi.mock('@/hooks/useMediaQuery', () => ({
+  useMediaQuery: (query: string) => query.includes('min-width')
+    ? mockUsesThreeColumnLayout
+    : mockUsesSheetNavigation,
 }))
 
 vi.mock('@/store/sidebar.store', () => ({
@@ -45,6 +49,7 @@ vi.mock('@/store/sidebar.store', () => ({
 vi.mock('@/store/copilot.store', () => ({
   useCopilotStore: () => ({
     isOpen: false,
+    railCollapsed: false,
     open: vi.fn(),
     close: vi.fn(),
   }),
@@ -64,6 +69,10 @@ vi.mock('@/components/layout/MinimalHeader', () => ({
 
 vi.mock('@/components/copilot/GlobalCopilotDrawer', () => ({
   default: () => <div data-testid="global-copilot-drawer">Drawer</div>,
+}))
+
+vi.mock('@/components/copilot/CopilotRail', () => ({
+  default: () => <div data-testid="copilot-rail-region">Rail</div>,
 }))
 
 vi.mock('@/components/ui/sheet', () => ({
@@ -107,6 +116,8 @@ describe('MainLayout', () => {
       logout: mockLogout,
       isAuthenticated: true,
     }
+    mockUsesSheetNavigation = false
+    mockUsesThreeColumnLayout = true
   })
 
   it('renders AppSidebar on desktop', () => {
@@ -116,9 +127,20 @@ describe('MainLayout', () => {
     expect(screen.getByTestId('app-sidebar')).toHaveAttribute('data-mobile', 'false')
   })
 
-  it('renders global copilot drawer', () => {
+  it('renders the 2:5:3 shell and persistent Copilot rail on wide desktop', () => {
     renderWithRoute('/')
+    expect(screen.getByTestId('app-shell')).toHaveAttribute('data-layout', 'three-column')
+    expect(screen.getByTestId('app-shell')).toHaveAttribute('data-layout-ratio', '2:5:3')
+    expect(screen.getByTestId('copilot-rail-region')).toBeInTheDocument()
+    expect(screen.queryByTestId('global-copilot-drawer')).not.toBeInTheDocument()
+  })
+
+  it('uses the Copilot drawer below the three-column breakpoint', () => {
+    mockUsesThreeColumnLayout = false
+    renderWithRoute('/')
+    expect(screen.getByTestId('app-shell')).toHaveAttribute('data-layout', 'compact')
     expect(screen.getByTestId('global-copilot-drawer')).toBeInTheDocument()
+    expect(screen.queryByTestId('copilot-rail-region')).not.toBeInTheDocument()
   })
 
   it('renders child route content via Outlet', () => {
@@ -149,5 +171,6 @@ describe('MainLayout', () => {
     expect(screen.getByTestId('page-content')).toBeInTheDocument()
     expect(screen.queryByTestId('app-sidebar')).not.toBeInTheDocument()
     expect(screen.queryByTestId('global-copilot-drawer')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('copilot-rail-region')).not.toBeInTheDocument()
   })
 })

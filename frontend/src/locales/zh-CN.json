@@ -39,7 +39,9 @@
       "collapse": "收起侧边栏",
       "expand": "展开侧边栏",
       "copilot": {
-        "openCopilot": "打开 AI 助手"
+        "openCopilot": "打开 AI 助手",
+        "collapse": "收起 AI 聊天",
+        "expand": "展开 AI 聊天"
       }
     },
     "userMenu": {
