@@ -40,6 +40,7 @@ try:
 except ImportError:
     __version__ = "dev"
 
+
 def resolve_app_version() -> str:
     """Resolve the runtime version, preferring an explicit image/runtime override."""
     return os.getenv("APP_VERSION", __version__)
