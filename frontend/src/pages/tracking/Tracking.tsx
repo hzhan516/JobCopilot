@@ -286,14 +286,14 @@ export default function TrackingPage({ selectedTrackingId }: TrackingPageProps =
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="master-detail-responsive-header flex items-center justify-between gap-4">
+          <div className="min-w-0">
             <h1 className="text-3xl font-bold text-gray-900">{t('tracking.title')}</h1>
             <p className="text-gray-500 mt-1">{t('tracking.subtitle')}</p>
           </div>
           <Skeleton className="h-10 w-32" />
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="tracking-stats-grid grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-24" />
           ))}
@@ -305,18 +305,21 @@ export default function TrackingPage({ selectedTrackingId }: TrackingPageProps =
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
+      <div className="master-detail-responsive-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold text-gray-900">{t('tracking.title')}</h1>
           <p className="text-gray-500 mt-1">{t('tracking.subtitle')}</p>
         </div>
-        <Button onClick={() => setAddDialogOpen(true)}>
+        <Button
+          onClick={() => setAddDialogOpen(true)}
+          className="master-detail-responsive-action"
+        >
           <Plus className="w-4 h-4 mr-2" />
           {t('tracking.addRecord')}
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="tracking-stats-grid grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -412,11 +415,11 @@ export default function TrackingPage({ selectedTrackingId }: TrackingPageProps =
               {trackings.map((tracking) => (
                 <div
                   key={tracking.trackingId}
-                  className="flex items-start justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                  className="tracking-record-row flex min-w-0 items-start justify-between gap-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h4 className="font-semibold text-gray-900">{tracking.jobTitle}</h4>
+                  <div className="tracking-record-content min-w-0 flex-1">
+                    <div className="tracking-record-title-row flex min-w-0 items-center gap-3 mb-2">
+                      <h4 className="min-w-0 break-words font-semibold text-gray-900">{tracking.jobTitle}</h4>
                       {(() => {
                         const config = statusConfig[tracking.status] || { labelKey: 'tracking.status.UNKNOWN', color: 'bg-gray-100 text-gray-500' };
                         return (
@@ -448,7 +451,7 @@ export default function TrackingPage({ selectedTrackingId }: TrackingPageProps =
                       <p className="text-sm text-gray-600">{tracking.notes}</p>
                     )}
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="tracking-record-actions flex shrink-0 items-center gap-2">
                     <Select
                       value={tracking.status}
                       onValueChange={(value) =>

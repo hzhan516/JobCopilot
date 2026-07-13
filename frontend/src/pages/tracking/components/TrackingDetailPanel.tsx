@@ -9,7 +9,7 @@ export default function TrackingDetailPanel() {
   const { trackingId } = useParams<{ trackingId: string }>();
 
   return (
-    <div className="h-full overflow-auto">
+    <div className="h-full min-w-0 overflow-x-hidden overflow-y-auto">
       <Tracking selectedTrackingId={trackingId} />
     </div>
   );

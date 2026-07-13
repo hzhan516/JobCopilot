@@ -99,7 +99,7 @@ export default function CopilotChatArea() {
         className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}
       >
         <div
-          className={`flex max-w-[90%] ${isUser ? 'flex-row-reverse' : 'flex-row'} items-start`}
+          className={`flex min-w-0 max-w-[90%] ${isUser ? 'flex-row-reverse' : 'flex-row'} items-start`}
         >
           <div
             className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -113,11 +113,11 @@ export default function CopilotChatArea() {
             )}
           </div>
           <div
-            className={`rounded-2xl px-3 py-2 text-sm ${
+            className={`min-w-0 rounded-2xl px-3 py-2 text-sm ${
               isUser ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'
             }`}
           >
-            <p className="whitespace-pre-wrap">{message.content}</p>
+            <p className="whitespace-pre-wrap break-words">{message.content}</p>
             <span
               className={`text-[10px] mt-1 block ${
                 isUser ? 'text-blue-200' : 'text-gray-500'
@@ -141,7 +141,7 @@ export default function CopilotChatArea() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-w-0">
       {/* 顶部：对话选择 + 新建 */}
       <div className="border-b p-3 flex items-center justify-between shrink-0">
         <div className="flex-1 min-w-0 mr-2">
@@ -206,7 +206,8 @@ export default function CopilotChatArea() {
                       [group.convertedVersion, group.aiOptimizedVersion]
                         .filter((v): v is NonNullable<typeof v> => !!v && v.exists)
                         .map((version) => {
-                          const label = `${group.title} - ${version.versionId.slice(0, 8)} (${version.status})`;
+                          const statusLabel = t(`resume.timeline.${version.status.toLowerCase()}`);
+                          const label = `${group.title} - ${version.versionId.slice(0, 8)} (${statusLabel})`;
                           return (
                             <SelectItem key={version.versionId} value={version.versionId}>
                               {label}

@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type BrowserContext } from '@playwright/test'
+import { expect, test, type APIRequestContext, type BrowserContext, type Page } from '@playwright/test'
 import { mkdirSync, writeFileSync } from 'node:fs'
 
 type JsonObject = Record<string, unknown>
@@ -76,6 +76,34 @@ async function installSession(context: BrowserContext, token: string, user: Json
     localStorage.setItem('expiresAt', String(Date.now() + 3_600_000))
     localStorage.setItem('user', JSON.stringify(storedUser))
   }, { accessToken: token, storedUser: user })
+}
+
+async function expectWideMasterDetailLayout(page: Page, groupId: string) {
+  const list = page.getByTestId(`${groupId}-list`)
+  const separator = page.getByTestId(`${groupId}-separator`)
+  const detail = page.getByTestId(`${groupId}-detail`)
+
+  await expect(list).toBeVisible()
+  await expect(separator).toBeVisible()
+  await expect(detail).toBeVisible()
+
+  const [listBox, separatorBox, detailBox] = await Promise.all([
+    list.boundingBox(),
+    separator.boundingBox(),
+    detail.boundingBox(),
+  ])
+  expect(listBox).not.toBeNull()
+  expect(separatorBox).not.toBeNull()
+  expect(detailBox).not.toBeNull()
+  expect(listBox!.width).toBeGreaterThanOrEqual(339)
+  expect(detailBox!.width).toBeGreaterThanOrEqual(459)
+  expect(listBox!.x + listBox!.width).toBeLessThanOrEqual(separatorBox!.x + 1)
+  expect(separatorBox!.x + separatorBox!.width).toBeLessThanOrEqual(detailBox!.x + 1)
+
+  const hasPageOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+  )
+  expect(hasPageOverflow).toBe(false)
 }
 
 test('real-provider full-stack acceptance', async ({ request, browser }) => {
@@ -185,6 +213,37 @@ test('real-provider full-stack acceptance', async ({ request, browser }) => {
     await userPage.goto(route)
     await expect(userPage.locator('#root')).not.toBeEmpty()
   }
+
+  await userPage.setViewportSize({ width: 1440, height: 900 })
+  for (const [route, groupId] of [
+    ['/resumes', 'resumes-master-detail'],
+    ['/jobs', 'jobs-master-detail'],
+    ['/applications', 'tracking-master-detail'],
+  ] as const) {
+    await userPage.goto(route)
+    await expectWideMasterDetailLayout(userPage, groupId)
+  }
+
+  await userPage.setViewportSize({ width: 1024, height: 768 })
+  for (const [route, groupId] of [
+    ['/resumes', 'resumes-master-detail'],
+    ['/jobs', 'jobs-master-detail'],
+    ['/applications', 'tracking-master-detail'],
+  ] as const) {
+    await userPage.goto(route)
+    await expect(userPage.getByTestId(`${groupId}-container`)).toBeVisible()
+    await expect(userPage.getByTestId(groupId)).toHaveCount(0)
+  }
+
+  await userPage.setViewportSize({ width: 390, height: 844 })
+  await userPage.goto('/chat')
+  const drawer = userPage.getByTestId('copilot-drawer-content')
+  await expect(drawer).toBeVisible()
+  const drawerBox = await drawer.boundingBox()
+  expect(drawerBox).not.toBeNull()
+  expect(drawerBox!.width).toBeLessThanOrEqual(390)
+  expect(await drawer.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true)
+
   await userContext.close()
 
   const adminContext = await browser.newContext()

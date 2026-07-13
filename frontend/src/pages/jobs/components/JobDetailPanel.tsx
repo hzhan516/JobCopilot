@@ -15,7 +15,7 @@ export default function JobDetailPanel() {
   const { open: openCopilot } = useCopilotStore();
 
   return (
-    <div className="h-full overflow-auto">
+    <div className="h-full min-w-0 overflow-x-hidden overflow-y-auto">
       {/* "Ask Copilot" 浮动按钮 */}
       {jobId && (
         <div className="sticky top-0 z-10 flex justify-end px-4 py-2 bg-background/80 backdrop-blur border-b">

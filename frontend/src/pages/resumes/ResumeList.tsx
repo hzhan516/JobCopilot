@@ -74,14 +74,17 @@ export default function ResumeList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="master-detail-responsive-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{t('resume.list.title')}</h1>
           <p className="text-muted-foreground mt-1">
             {t('resume.list.subtitle')}
           </p>
         </div>
-        <Button onClick={() => setIsUploadOpen(true)} className="w-full sm:w-auto">
+        <Button
+          onClick={() => setIsUploadOpen(true)}
+          className="master-detail-responsive-action w-full sm:w-auto"
+        >
           <Upload className="w-4 h-4 mr-2" />
           {t('resume.list.upload')}
         </Button>
@@ -102,7 +105,7 @@ export default function ResumeList() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="resume-list-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {groups.map((group) => (
             <ResumeCard
               key={group.groupId}

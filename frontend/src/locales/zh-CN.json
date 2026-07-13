@@ -47,6 +47,20 @@
       "logout": "退出登录"
     }
   },
+  "masterDetail": {
+    "resume": {
+      "emptyTitle": "选择一份简历",
+      "emptyDesc": "从左侧列表中选择一份简历以查看详情"
+    },
+    "job": {
+      "emptyTitle": "选择一个职位",
+      "emptyDesc": "从左侧列表中选择一个职位以查看详情"
+    },
+    "application": {
+      "emptyTitle": "选择一条申请记录",
+      "emptyDesc": "从左侧列表中选择一条申请记录以查看详情"
+    }
+  },
   "auth": {
     "login": {
       "title": "欢迎回来",

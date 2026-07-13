@@ -15,7 +15,8 @@ export default function GlobalCopilotDrawer() {
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) close(); }}>
       <SheetContent
         side="right"
-        className="w-[90vw] max-w-[480px] sm:max-w-[540px] p-0 flex flex-col"
+        data-testid="copilot-drawer-content"
+        className="w-[90vw] max-w-[480px] sm:max-w-[540px] p-0 flex flex-col min-w-0"
       >
         {/* 无障碍标题 */}
         <span className="sr-only">{t('layout.sidebar.copilot.openCopilot')}</span>

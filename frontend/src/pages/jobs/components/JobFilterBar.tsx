@@ -46,8 +46,8 @@ export default function JobFilterBar({
   onMatchFilterChange,
 }: JobFilterBarProps) {
   return (
-    <div className="flex flex-col lg:flex-row gap-4">
-      <div className="relative flex-1">
+    <div className="job-filter-bar flex flex-col lg:flex-row gap-4">
+      <div className="relative min-w-0 flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <Input
           placeholder={searchPlaceholder}
@@ -56,10 +56,10 @@ export default function JobFilterBar({
           className="pl-10"
         />
       </div>
-      <div className="flex gap-4">
+      <div className="job-filter-controls flex gap-4">
         {onMatchFilterChange && matchFilterOptions && (
           <Select value={matchFilter} onValueChange={onMatchFilterChange}>
-            <SelectTrigger className="w-44">
+            <SelectTrigger className="job-filter-trigger w-44">
               <Filter className="w-4 h-4 mr-2" />
               <SelectValue placeholder={matchFilterLabel} />
             </SelectTrigger>
@@ -73,7 +73,7 @@ export default function JobFilterBar({
           </Select>
         )}
         <Select value={sortBy} onValueChange={onSortChange}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="job-filter-trigger w-40">
             <Filter className="w-4 h-4 mr-2" />
             <SelectValue placeholder={sortLabel} />
           </SelectTrigger>

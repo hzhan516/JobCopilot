@@ -47,6 +47,20 @@
       "logout": "Logout"
     }
   },
+  "masterDetail": {
+    "resume": {
+      "emptyTitle": "Select a resume",
+      "emptyDesc": "Choose a resume from the list to view details"
+    },
+    "job": {
+      "emptyTitle": "Select a job",
+      "emptyDesc": "Choose a job from the list to view details"
+    },
+    "application": {
+      "emptyTitle": "Select an application",
+      "emptyDesc": "Choose an application from the list to view details"
+    }
+  },
   "auth": {
     "login": {
       "title": "Welcome Back",

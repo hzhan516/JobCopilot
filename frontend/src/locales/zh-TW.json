@@ -47,6 +47,20 @@
       "logout": "登出"
     }
   },
+  "masterDetail": {
+    "resume": {
+      "emptyTitle": "選擇一份履歷",
+      "emptyDesc": "從左側列表中選擇一份履歷以查看詳情"
+    },
+    "job": {
+      "emptyTitle": "選擇一個職位",
+      "emptyDesc": "從左側列表中選擇一個職位以查看詳情"
+    },
+    "application": {
+      "emptyTitle": "選擇一筆申請記錄",
+      "emptyDesc": "從左側列表中選擇一筆申請記錄以查看詳情"
+    }
+  },
   "auth": {
     "login": {
       "title": "歡迎回來",
