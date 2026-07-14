@@ -31,12 +31,12 @@ export function ResumeCard({ group, onView, onDelete }: ResumeCardProps) {
   return (
     <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
-        <div className="flex justify-between items-start gap-4">
-          <div className="flex items-center gap-2">
+        <div className="flex min-w-0 justify-between items-start gap-4">
+          <div className="flex min-w-0 items-center gap-2">
             <div className="p-2 bg-primary/10 rounded-md">
               <FileText className="w-5 h-5 text-primary" />
             </div>
-            <div>
+            <div className="min-w-0">
               <CardTitle className="text-lg line-clamp-1" title={group.title}>
                 {group.title}
               </CardTitle>

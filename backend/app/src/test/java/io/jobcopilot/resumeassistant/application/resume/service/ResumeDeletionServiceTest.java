@@ -63,8 +63,8 @@ class ResumeDeletionServiceTest {
         UUID convertedId = UUID.randomUUID();
         originalVersion = ResumeVersion.reconstruct(
                 originalId, groupId, ResumeVersion.VersionType.ORIGINAL,
-                "resume.pdf", "storage/resume.pdf", "application/pdf", 1024L,
-                null, null, null, null, ParseStatus.COMPLETED, null,
+                "resume.pdf", "stored-resume.pdf", "application/pdf", 1024L,
+                "storage/resume.pdf", null, null, null, ParseStatus.COMPLETED, null,
                 ResumeVersion.Status.ACTIVE, java.time.LocalDateTime.now(), java.time.LocalDateTime.now()
         );
         convertedVersion = ResumeVersion.reconstruct(

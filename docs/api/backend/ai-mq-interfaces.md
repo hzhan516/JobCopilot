@@ -56,6 +56,8 @@ The backend uses the **Transactional Outbox** pattern to guarantee atomicity bet
 | Response ← AI | Resume Parse Result | `backend.res.resume.parse` | `backend.queue.resume.parse` | Python AI | Java Backend |
 | Request → AI | Conversation | `ai.req.conversation` | `ai.queue.conversation` | Java Backend | Python AI |
 | Response ← AI | Conversation Reply | `backend.res.conversation` | `backend.queue.conversation` | Python AI | Java Backend |
+| Request → AI | Conversation Compact | `ai.req.conversation.compact` | `ai.queue.conversation.compact` | Java Backend | Python AI |
+| Response ← AI | Conversation Compact Result | `backend.res.conversation.compact` | `backend.queue.conversation.compact` | Python AI | Java Backend |
 | Request → AI | Job Rank | `ai.req.job.rank` | `ai.queue.job.rank` | Java Backend | Python AI |
 | Response ← AI | Job Rank Result | `backend.res.job.rank` | `backend.queue.job.rank` | Python AI | Java Backend |
 | Request → AI | User Feedback | `ai.req.feedback` | `ai.queue.feedback` | Java Backend | Python AI Worker |
@@ -225,7 +227,7 @@ All AI callbacks use the following unified structure, distinguished by the `type
 ```json
 {
   "referenceId": "关联实体ID",
-  "type": "JOB_PARSE | RESUME_PARSE | CONVERSATION_REPLY | JOB_RANK",
+  "type": "JOB_PARSE | RESUME_PARSE | CONVERSATION_REPLY | CONVERSATION_COMPACTED | JOB_RANK",
   "status": "COMPLETED | FAILED",
   "data": { ... },
   "errorMessage": null,
@@ -357,6 +359,35 @@ All AI callbacks use the following unified structure, distinguished by the `type
 | `rankedResults[].matchScore` | Float | Final ranking score |
 | `rankedResults[].matchFactors` | Object | Skill, experience, and location match breakdown |
 | `rankedResults[].matchReason` | String | Optional LLM-generated explanation for top-ranked jobs |
+
+---
+
+### 4.5 Conversation Compaction Result (type = CONVERSATION_COMPACTED)
+
+**Trigger**: `ConversationCompactionService` writes a compact command to the Outbox (routing key `ai.req.conversation.compact`). The AI service summarizes older messages and returns the result.
+
+**Consumer**: `AiResultMessageListener.onConversationCompacted()` → `ConversationFacade.applyCompactionResult()`
+
+```json
+{
+  "referenceId": "550e8400-e29b-41d4-a716-446655440003",
+  "type": "CONVERSATION_COMPACTED",
+  "status": "COMPLETED",
+  "data": {
+    "summary": "Summary of the earlier conversation...",
+    "throughSequence": 42,
+    "contextTokens": 1536
+  },
+  "errorMessage": null,
+  "eventType": null
+}
+```
+
+| data Sub-field | Type | Description |
+|----------------|------|-------------|
+| `summary` | String | Condensed summary of messages up to `throughSequence` |
+| `throughSequence` | Integer | Message sequence number covered by the summary |
+| `contextTokens` | Integer | Token count of the compacted context |
 
 ---
 

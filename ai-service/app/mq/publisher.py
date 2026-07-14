@@ -11,6 +11,7 @@ from app.config import (
     JOB_PARSE_RESULT_ROUTING_KEY,
     RESUME_PARSE_RESULT_ROUTING_KEY,
     CONVERSATION_RESULT_ROUTING_KEY,
+    CONVERSATION_COMPACT_RESULT_ROUTING_KEY,
 )
 
 from app.schemas import AiResultEvent, JobRankResultData, JobRankResultItem
@@ -27,6 +28,8 @@ def get_result_routing_key(event_type: str) -> str:
         return RESUME_PARSE_RESULT_ROUTING_KEY
     if event_type == "CONVERSATION_REPLY":
         return CONVERSATION_RESULT_ROUTING_KEY
+    if event_type == "CONVERSATION_COMPACTED":
+        return CONVERSATION_COMPACT_RESULT_ROUTING_KEY
     if event_type == "JOB_RANK":
         return JOB_RANK_RESULT_ROUTING_KEY
     raise ValueError(f"Unsupported event type: {event_type}")

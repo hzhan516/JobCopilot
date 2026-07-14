@@ -1,7 +1,5 @@
 package io.jobcopilot.resumeassistant.application.resume.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jobcopilot.resumeassistant.api.embedding.facade.VectorFacade;
 import io.jobcopilot.resumeassistant.application.resume.command.CreateVersionCommand;
 import io.jobcopilot.resumeassistant.application.resume.command.ResumeEditCommand;
 import io.jobcopilot.resumeassistant.application.resume.command.ResumeUploadCommand;
@@ -11,6 +9,9 @@ import io.jobcopilot.resumeassistant.domain.resume.entity.ResumeGroup;
 import io.jobcopilot.resumeassistant.domain.resume.entity.ResumeVersion;
 import io.jobcopilot.resumeassistant.domain.resume.repository.ResumeGroupRepository;
 import io.jobcopilot.resumeassistant.domain.resume.repository.ResumeVersionRepository;
+import io.jobcopilot.resumeassistant.domain.resume.service.ResumeConverterService;
+import io.jobcopilot.resumeassistant.domain.resume.service.VectorGenerationService;
+import io.jobcopilot.resumeassistant.domain.embedding.port.VectorGenerationPort;
 import io.jobcopilot.resumeassistant.domain.resume.valueobject.ParseStatus;
 import io.jobcopilot.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import io.jobcopilot.resumeassistant.domain.shared.event.ai.ResumeParseCommand;
@@ -22,7 +23,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -64,12 +64,8 @@ class ResumeApplicationServiceTest {
     private AiMessagePublisherPort aiMessagePublisherPort;
 
     @Mock
-    private VectorFacade vectorFacade;
+    private VectorGenerationPort vectorFacade;
 
-    @Mock
-    private ObjectMapper objectMapper;
-
-    @InjectMocks
     private ResumeApplicationService resumeService;
 
     private ResumeGroup testGroup;
@@ -80,6 +76,24 @@ class ResumeApplicationServiceTest {
     @BeforeEach
     void setUp() {
         testInputStream = new ByteArrayInputStream("test content".getBytes());
+        VectorGenerationService vectorGenerationService = new VectorGenerationService(vectorFacade);
+        ResumeConverterService converterService = new ResumeConverterService(
+                fileStorageService, documentFormatConverter);
+        ResumeUploadHandler uploadHandler = new ResumeUploadHandler(
+                groupRepository, versionRepository, fileStorageService, converterService,
+                vectorGenerationService, aiMessagePublisherPort);
+        ResumeParseResultHandler parseResultHandler = new ResumeParseResultHandler(
+                versionRepository, groupRepository, vectorGenerationService);
+        ResumeVersionChainManager versionChainManager = new ResumeVersionChainManager(
+                groupRepository, versionRepository, vectorGenerationService);
+        ResumeDownloadService downloadService = new ResumeDownloadService(
+                fileStorageService, documentFormatConverter);
+        ResumeDeletionService deletionService = new ResumeDeletionService(
+                groupRepository, versionRepository, fileStorageService);
+        ResumeAccessControl accessControl = new ResumeAccessControl(groupRepository, versionRepository);
+        resumeService = new ResumeApplicationService(
+                groupRepository, versionRepository, uploadHandler, vectorGenerationService,
+                parseResultHandler, versionChainManager, downloadService, deletionService, accessControl);
     }
 
     @Test
@@ -384,7 +398,7 @@ class ResumeApplicationServiceTest {
         );
 
         when(versionRepository.findById(archivedId)).thenReturn(Optional.of(archivedVersion));
-        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(testGroup));
+        when(groupRepository.findByIdAndUserId(GROUP_ID, USER_ID)).thenReturn(Optional.of(testGroup));
         doNothing().when(groupRepository).save(any(ResumeGroup.class));
 
         // 执行 / When
@@ -404,12 +418,12 @@ class ResumeApplicationServiceTest {
         testGroup = createTestGroup();
         ResumeVersion version = createTestVersion(ResumeVersion.VersionType.CONVERTED);
         when(versionRepository.findById(VERSION_ID)).thenReturn(Optional.of(version));
-        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(testGroup));
+        when(groupRepository.findByIdAndUserId(GROUP_ID, otherUserId)).thenReturn(Optional.empty());
 
         // 执行 & 验证 / When & Then
         assertThatThrownBy(() -> resumeService.handleActivateVersion(VERSION_ID, otherUserId))
                 .isInstanceOf(StorageException.class)
-                .hasMessageContaining("access.denied");
+                .hasMessageContaining("group.not.found");
     }
 
     // ==================== 下载测试 ====================

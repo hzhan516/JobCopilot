@@ -6,7 +6,7 @@ import ResumeDetail from '@/pages/resumes/ResumeDetail';
  */
 export default function ResumeDetailPanel() {
   return (
-    <div className="h-full overflow-auto">
+    <div className="h-full min-w-0 overflow-x-hidden overflow-y-auto">
       <ResumeDetail />
     </div>
   );

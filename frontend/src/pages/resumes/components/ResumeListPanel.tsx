@@ -5,7 +5,7 @@ import ResumeList from '@/pages/resumes/ResumeList';
  */
 export default function ResumeListPanel() {
   return (
-    <div className="h-full overflow-auto">
+    <div className="master-detail-list-container h-full min-w-0 overflow-x-hidden overflow-y-auto">
       <ResumeList />
     </div>
   );

@@ -8,7 +8,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -28,21 +27,17 @@ import static org.mockito.Mockito.*;
 @DisplayName("CaptchaService Tests")
 class CaptchaServiceTest {
 
-    @Mock
     private CaptchaProperties captchaProperties;
 
     @Mock
     private CaptchaStorePort captchaStorePort;
 
-    @InjectMocks
     private CaptchaService captchaService;
 
     @BeforeEach
     void setUp() {
-        when(captchaProperties.getTrackWidth()).thenReturn(300);
-        when(captchaProperties.getTolerance()).thenReturn(8);
-        when(captchaProperties.getMaxAttempts()).thenReturn(5);
-        when(captchaProperties.getTokenExpirySeconds()).thenReturn(300);
+        captchaProperties = new CaptchaProperties();
+        captchaService = new CaptchaService(captchaProperties, captchaStorePort);
     }
 
     @Test

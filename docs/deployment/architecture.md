@@ -85,7 +85,7 @@ JobCopilot is an AI-powered job-search platform deployed as a **three-tier Docke
 | **Networks** | `internal-network` |
 | **Host ports** | None by default; `8000:8000` is a commented dev-only example |
 | **Role** | LLM inference, embedding generation, resume/job parsing, job ranking, suitability scoring, and adaptive model artifact loading. |
-| **Security notes** | REST endpoint `/api/v1/ai/embeddings` is protected by `X-Internal-API-Key` middleware. MQ consumers listen on four queues: `ai.queue.job.parse`, `ai.queue.resume.parse`, `ai.queue.conversation`, and `ai.queue.job.rank`. No database access. |
+| **Security notes** | REST endpoint `/api/v1/ai/embeddings` is protected by `X-Internal-API-Key` middleware. MQ consumers listen on five queues: `ai.queue.job.parse`, `ai.queue.resume.parse`, `ai.queue.conversation`, `ai.queue.conversation.compact`, and `ai.queue.job.rank`. No database access. |
 
 ### 3.4 AI Worker (LightGBM)
 

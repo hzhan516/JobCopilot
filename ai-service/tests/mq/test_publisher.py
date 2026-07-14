@@ -15,6 +15,7 @@ from app.config import (
     JOB_PARSE_RESULT_ROUTING_KEY,
     RESUME_PARSE_RESULT_ROUTING_KEY,
     CONVERSATION_RESULT_ROUTING_KEY,
+    CONVERSATION_COMPACT_RESULT_ROUTING_KEY,
 )
 
 
@@ -23,6 +24,10 @@ def test_get_result_routing_key():
     assert get_result_routing_key("RESUME_PARSE") == RESUME_PARSE_RESULT_ROUTING_KEY
     assert (
         get_result_routing_key("CONVERSATION_REPLY") == CONVERSATION_RESULT_ROUTING_KEY
+    )
+    assert (
+        get_result_routing_key("CONVERSATION_COMPACTED")
+        == CONVERSATION_COMPACT_RESULT_ROUTING_KEY
     )
     assert get_result_routing_key("JOB_RANK") == JOB_RANK_RESULT_ROUTING_KEY
 
@@ -57,6 +62,24 @@ def test_publish_ai_result():
     props = kwargs["properties"]
     assert props.content_type == "application/json"
     assert props.delivery_mode == 2
+
+
+def test_publish_conversation_compacted_result():
+    mock_channel = MagicMock()
+    event = AiResultEvent(
+        referenceId="conversation-123",
+        type="CONVERSATION_COMPACTED",
+        status="COMPLETED",
+        data={"summary": "Earlier context", "throughSequence": 3, "contextTokens": 42},
+        errorMessage=None,
+        eventType="CONVERSATION",
+    )
+
+    publish_ai_result(mock_channel, event)
+
+    kwargs = mock_channel.basic_publish.call_args.kwargs
+    assert kwargs["exchange"] == AI_DIRECT_EXCHANGE
+    assert kwargs["routing_key"] == CONVERSATION_COMPACT_RESULT_ROUTING_KEY
 
 
 def test_publish_json_payload():

@@ -18,7 +18,6 @@ import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
@@ -45,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(JobController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import(JobControllerContractTest.TestConfig.class)
+@Import({JobController.class, JobControllerContractTest.TestConfig.class})
 @DisplayName("Job Controller Contract Tests")
 class JobControllerContractTest {
 
@@ -197,7 +196,6 @@ class JobControllerContractTest {
      * required by @ControllerAdvice.
      */
     @SpringBootConfiguration
-    @ComponentScan(basePackages = "io.jobcopilot.resumeassistant.trigger.http.controller.job")
     static class TestConfig {
 
         @Bean

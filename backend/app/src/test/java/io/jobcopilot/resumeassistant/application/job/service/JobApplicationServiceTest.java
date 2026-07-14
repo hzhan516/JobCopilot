@@ -1,29 +1,27 @@
 package io.jobcopilot.resumeassistant.application.job.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jobcopilot.resumeassistant.api.embedding.facade.VectorFacade;
 import io.jobcopilot.resumeassistant.api.job.dto.request.SubmitJobRequest;
 import io.jobcopilot.resumeassistant.api.job.dto.response.JobResponse;
-import io.jobcopilot.resumeassistant.domain.embedding.repository.JobVectorRepository;
-import io.jobcopilot.resumeassistant.domain.embedding.repository.ResumeVectorRepository;
+import io.jobcopilot.resumeassistant.domain.embedding.port.VectorGenerationPort;
+import io.jobcopilot.resumeassistant.domain.job.port.AiScoringPort;
 import io.jobcopilot.resumeassistant.domain.job.entity.Job;
 import io.jobcopilot.resumeassistant.domain.job.exception.JobException;
 import io.jobcopilot.resumeassistant.domain.job.repository.JobRepository;
 import io.jobcopilot.resumeassistant.domain.job.repository.JobScoreRepository;
+import io.jobcopilot.resumeassistant.domain.job.service.VectorSimilarityService;
 import io.jobcopilot.resumeassistant.domain.job.valueobject.ParsedJobContent;
 import io.jobcopilot.resumeassistant.domain.matching.repository.JobDatasetRepository;
 import io.jobcopilot.resumeassistant.domain.resume.repository.ResumeGroupRepository;
 import io.jobcopilot.resumeassistant.domain.resume.repository.ResumeVersionRepository;
+import io.jobcopilot.resumeassistant.domain.resume.service.VectorGenerationService;
 import io.jobcopilot.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import io.jobcopilot.resumeassistant.domain.shared.event.ai.JobParseCommand;
 import io.jobcopilot.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -56,30 +54,36 @@ class JobApplicationServiceTest {
     private JobDatasetRepository jobDatasetRepository;
 
     @Mock
-    private ResumeVectorRepository resumeVectorRepository;
-
-    @Mock
-    private JobVectorRepository jobVectorRepository;
-
-    @Mock
     private AiMessagePublisherPort aiMessagePublisherPort;
 
     @Mock
-    private VectorFacade vectorFacade;
+    private VectorGenerationPort vectorFacade;
 
     @Mock
-    private RestTemplate restTemplate;
+    private VectorSimilarityService vectorSimilarityService;
 
     @Mock
-    private ObjectMapper objectMapper;
+    private AiScoringPort aiScoringPort;
 
-    @InjectMocks
     private JobApplicationService jobApplicationService;
 
     // 准备 / Given
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+        JobDatasetSyncService datasetSyncService = new JobDatasetSyncService(jobDatasetRepository);
+        JobAccessControl accessControl = new JobAccessControl(jobRepository);
+        JobSubmissionService submissionService = new JobSubmissionService(jobRepository);
+        JobResultTransactionService resultTransactionService =
+                new JobResultTransactionService(jobRepository, datasetSyncService);
+        JobScoringContextLoader contextLoader = new JobScoringContextLoader(
+                jobRepository, resumeVersionRepository, resumeGroupRepository);
+        JobScoringResultSaver resultSaver = new JobScoringResultSaver(jobScoreRepository);
+        jobApplicationService = new JobApplicationService(
+                jobRepository, jobScoreRepository, aiMessagePublisherPort,
+                new VectorGenerationService(vectorFacade), vectorSimilarityService, aiScoringPort,
+                datasetSyncService, contextLoader, resultSaver, accessControl,
+                submissionService, resultTransactionService);
     }
 
     @Test
@@ -142,7 +146,7 @@ class JobApplicationServiceTest {
     @DisplayName("Should handlejobprocessresult success triggersvectorgen / 应handlejobprocessresult success triggersvectorgen")
     void handleJobProcessResult_Success_TriggersVectorGen() {
         // 准备 / Given
-        String jobId = "job123";
+        String jobId = UUID.randomUUID().toString();
         Job job = Job.create(UUID.randomUUID(), "http://example.com/job", false);
         job.markScraping();
         job.markParsing();
@@ -158,9 +162,6 @@ class JobApplicationServiceTest {
         );
 
         AiResultEvent event = new AiResultEvent(jobId, "JOB_PARSE", "COMPLETED", mockParsedData, null, "JOB");
-        when(objectMapper.convertValue(eq(mockParsedData), eq(ParsedJobContent.class)))
-                .thenReturn(new ParsedJobContent("Software Engineer", "Tech Corp", "100K-150K", "Remote", "A great job", List.of("Java", "Spring")));
-
         // 执行 / When
         jobApplicationService.handleJobProcessResult(event);
 

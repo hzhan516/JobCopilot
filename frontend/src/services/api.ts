@@ -42,14 +42,16 @@ apiClient.interceptors.request.use(
 );
 
 let isRefreshing = false;
-let refreshSubscribers: Array<(token: string) => void> = [];
+// A null token signals refresh failure so queued callers can reject instead of hanging forever.
+// token 为 null 表示刷新失败，让排队请求得以 reject，避免永久悬挂。
+let refreshSubscribers: Array<(token: string | null) => void> = [];
 
-function onRefreshed(token: string) {
+function onRefreshed(token: string | null) {
   refreshSubscribers.forEach((cb) => cb(token));
   refreshSubscribers = [];
 }
 
-function addRefreshSubscriber(cb: (token: string) => void) {
+function addRefreshSubscriber(cb: (token: string | null) => void) {
   refreshSubscribers.push(cb);
 }
 
@@ -143,25 +145,35 @@ apiClient.interceptors.response.use(
       if (isRefreshing) {
         // Queue subsequent requests until refresh completes
         // 刷新期间将后续请求入队，避免并发触发多次刷新
-        return new Promise((resolve) => {
-          addRefreshSubscriber((token: string) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            resolve(apiClient(originalRequest));
+        return new Promise((resolve, reject) => {
+          addRefreshSubscriber((token: string | null) => {
+            if (token) {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+              resolve(apiClient(originalRequest));
+            } else {
+              // Refresh failed: reject queued callers instead of leaving them pending forever.
+              // 刷新失败：reject 排队请求，避免其永久处于 pending。
+              reject(error);
+            }
           });
         });
       }
 
       isRefreshing = true;
-      const newToken = await doRefreshToken();
-      isRefreshing = false;
-
-      if (newToken) {
-        onRefreshed(newToken);
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        return apiClient(originalRequest);
+      try {
+        const newToken = await doRefreshToken();
+        if (newToken) {
+          onRefreshed(newToken);
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return apiClient(originalRequest);
+        }
+        // Notify queued subscribers of failure so their promises reject and clear.
+        // 通知排队订阅者刷新失败，使其 Promise 被 reject 并清空队列。
+        onRefreshed(null);
+        clearAuthAndRedirect();
+      } finally {
+        isRefreshing = false;
       }
-
-      clearAuthAndRedirect();
     }
 
     return Promise.reject(error);

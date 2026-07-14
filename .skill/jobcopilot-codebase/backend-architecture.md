@@ -153,8 +153,8 @@ Configured in `backend/infrastructure/src/main/java/.../infrastructure/messaging
 
 - Exchange: `ai.direct.exchange`
 - Dead-letter exchange: `ai.dlx.exchange`, queue: `ai.dlq.queue`
-- Request queues (to AI Service): `ai.queue.job.parse`, `ai.queue.resume.parse`, `ai.queue.conversation`, `ai.queue.job.rank`, `ai.queue.feedback`
-- Response queues (from AI Service): `backend.queue.job.parse`, `backend.queue.resume.parse`, `backend.queue.conversation`, `backend.queue.job.rank`
+- Request queues (to AI Service): `ai.queue.job.parse`, `ai.queue.resume.parse`, `ai.queue.conversation`, `ai.queue.conversation.compact`, `ai.queue.job.rank`, `ai.queue.feedback`
+- Response queues (from AI Service): `backend.queue.job.parse`, `backend.queue.resume.parse`, `backend.queue.conversation`, `backend.queue.conversation.compact`, `backend.queue.job.rank`
 
 ## API Response Format
 

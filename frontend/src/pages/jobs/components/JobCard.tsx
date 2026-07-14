@@ -42,10 +42,10 @@ export default function JobCard({
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center space-x-3 mb-2">
-              <h3 className="text-xl font-semibold text-gray-900">
+        <div className="job-card-header flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center space-x-3 mb-2">
+              <h3 className="min-w-0 break-words text-xl font-semibold text-gray-900">
                 {job.parsedContent?.title || t('jobDetail.unknownTitle')}
               </h3>
               <Badge variant={job.status === 'COMPLETED' ? 'default' : 'secondary'}>
@@ -71,7 +71,7 @@ export default function JobCard({
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="job-card-actions flex shrink-0 items-center gap-2">
             <Button variant="outline" size="sm" onClick={onViewDetail}>
               <ExternalLink className="w-4 h-4 mr-2" />
               {t('jobList.viewDetails')}

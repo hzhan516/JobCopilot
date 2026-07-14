@@ -5,8 +5,8 @@ description: |
   Supports both embedded middleware (PostgreSQL + RabbitMQ + Redis inside K8s)
   and managed middleware (cloud-managed database / MQ / cache).
 type: application
-version: 1.0.0
-appVersion: "1.0.0"
+version: 0.1.0
+appVersion: "0.1.0"
 keywords:
   - resume
   - job-search

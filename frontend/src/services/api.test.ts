@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import axios, { type AxiosError } from 'axios'
 
 // Mock dependencies to isolate api.ts internal logic
@@ -19,11 +19,6 @@ vi.mock('@/i18n', () => ({
 describe('api.ts real implementation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
   })
 
   // ============================================================
@@ -121,27 +116,69 @@ describe('api.ts real implementation', () => {
     })
   })
 
-  describe('onRefreshed / addRefreshSubscriber', () => {
-    it('queues and notifies subscribers with new token', async () => {
-      const subscribers: Array<(token: string) => void> = []
+  describe('refresh failure queue', () => {
+    it('rejects all queued requests, clears the queue, and permits a later refresh', async () => {
+      vi.resetModules()
+      const freshAxios = (await import('axios')).default
+      const { default: apiClient } = await import('./api')
+      const { default: tokenStorage } = await import('./tokenStorage')
+      const locationSpy = vi.spyOn(window.location, 'href', 'set').mockImplementation(() => {})
+      let refreshRecovered = false
 
-      const onRefreshed = (token: string) => {
-        subscribers.forEach((cb) => cb(token))
-        subscribers.length = 0
-      }
+      apiClient.defaults.adapter = vi.fn(async (config) => {
+        if (refreshRecovered && (config as typeof config & { _retry?: boolean })._retry) {
+          return {
+            data: { ok: true },
+            status: 200,
+            statusText: 'OK',
+            headers: {},
+            config,
+          }
+        }
+        throw {
+          config,
+          response: {
+            data: { code: 401, message: 'expired' },
+            status: 401,
+            statusText: 'Unauthorized',
+            headers: {},
+            config,
+          },
+        } as AxiosError
+      })
 
-      const addSubscriber = (cb: (token: string) => void) => subscribers.push(cb)
+      let rejectRefresh!: (reason?: unknown) => void
+      const refreshSpy = vi.spyOn(freshAxios, 'post').mockImplementationOnce(
+        () => new Promise((_resolve, reject) => { rejectRefresh = reject })
+      )
 
-      const cb1 = vi.fn()
-      const cb2 = vi.fn()
-      addSubscriber(cb1)
-      addSubscriber(cb2)
+      const first = apiClient.get('/protected/one')
+      const second = apiClient.get('/protected/two')
+      await vi.waitFor(() => expect(refreshSpy).toHaveBeenCalledTimes(1))
+      rejectRefresh(new Error('refresh failed'))
 
-      onRefreshed('new-token')
+      const failed = await Promise.allSettled([first, second])
+      expect(failed.map((result) => result.status)).toEqual(['rejected', 'rejected'])
+      expect(refreshSpy).toHaveBeenCalledTimes(1)
+      expect(tokenStorage.clear).toHaveBeenCalledTimes(1)
+      expect(locationSpy).toHaveBeenCalledWith('/login')
 
-      expect(cb1).toHaveBeenCalledWith('new-token')
-      expect(cb2).toHaveBeenCalledWith('new-token')
-      expect(subscribers).toHaveLength(0)
+      refreshSpy.mockImplementationOnce(async () => {
+        refreshRecovered = true
+        return {
+          data: {
+            code: 200,
+            data: { accessToken: 'recovered-token', expiresIn: 3600 },
+          },
+        }
+      })
+
+      await expect(apiClient.get('/protected/three')).resolves.toMatchObject({ status: 200 })
+      expect(refreshSpy).toHaveBeenCalledTimes(2)
+      expect(tokenStorage.setTokens).toHaveBeenCalledWith('recovered-token', 3600, undefined)
+
+      locationSpy.mockRestore()
+      refreshSpy.mockRestore()
     })
   })
 })

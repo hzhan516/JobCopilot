@@ -81,7 +81,7 @@ class JobDatasetSyncServiceTest {
     @DisplayName("Should sync job to dataset successfully")
     void shouldSyncJobToDatasetSuccessfully() {
         // 给定 / Given
-        doNothing().when(jobDatasetRepository).save(any(JobDataset.class));
+        when(jobDatasetRepository.save(any(JobDataset.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // 当 / When
         assertThatNoException().isThrownBy(() -> syncService.sync(job, event));
@@ -101,7 +101,7 @@ class JobDatasetSyncServiceTest {
     @DisplayName("Should set requirements array correctly")
     void shouldSetRequirementsArrayCorrectly() {
         // 给定 / Given
-        doNothing().when(jobDatasetRepository).save(any(JobDataset.class));
+        when(jobDatasetRepository.save(any(JobDataset.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // 当 / When
         syncService.sync(job, event);
@@ -132,7 +132,7 @@ class JobDatasetSyncServiceTest {
         );
         AiResultEvent nullReqEvent = new AiResultEvent("job456", "JOB_PARSE", "COMPLETED", data, null, "JOB");
 
-        doNothing().when(jobDatasetRepository).save(any(JobDataset.class));
+        when(jobDatasetRepository.save(any(JobDataset.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // 当 / When
         assertThatNoException().isThrownBy(() -> syncService.sync(job, nullReqEvent));

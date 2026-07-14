@@ -88,10 +88,11 @@ The AI service Docker image runs in two modes:
 | `ai.queue.job.parse` | Job parsing requests from backend |
 | `ai.queue.resume.parse` | Resume parsing requests from backend |
 | `ai.queue.conversation` | Chat requests from backend |
+| `ai.queue.conversation.compact` | Conversation compaction (summarization) requests from backend |
 | `ai.queue.job.rank` | Job ranking requests from backend |
 | `ai.queue.feedback` | User feedback events for training (worker only) |
 
-Result queues (`backend.queue.job.parse`, `backend.queue.resume.parse`, `backend.queue.conversation`, `backend.queue.job.rank`) and a shared dead-letter queue (`ai.dlq.queue`) are also declared.
+Result queues (`backend.queue.job.parse`, `backend.queue.resume.parse`, `backend.queue.conversation`, `backend.queue.conversation.compact`, `backend.queue.job.rank`) and a shared dead-letter queue (`ai.dlq.queue`) are also declared.
 
 ### Consumer Files
 

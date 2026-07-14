@@ -425,7 +425,9 @@ services:
       - internal-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      # The minio image ships `mc` but not `curl`; use `mc ready local` so the
+      # health probe reflects real readiness instead of always failing.
+      test: ["CMD", "mc", "ready", "local"]
       interval: 10s
       timeout: 5s
       retries: 5

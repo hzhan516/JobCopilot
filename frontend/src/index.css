@@ -73,3 +73,102 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  /*
+   * Master-detail list content must respond to the panel width, not the viewport.
+   * The same list components still use viewport breakpoints in their full-page mode;
+   * these container rules override them only when rendered inside a list panel.
+   */
+  .master-detail-list-container {
+    container-type: inline-size;
+  }
+
+  @container (max-width: 639px) {
+    .master-detail-responsive-header {
+      flex-direction: column !important;
+      align-items: stretch !important;
+    }
+
+    .master-detail-responsive-action {
+      width: 100% !important;
+    }
+
+    .resume-list-grid {
+      grid-template-columns: minmax(0, 1fr) !important;
+    }
+  }
+
+  @container (min-width: 640px) and (max-width: 959px) {
+    .resume-list-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+  }
+
+  @container (min-width: 960px) {
+    .resume-list-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+  }
+
+  @container (max-width: 719px) {
+    .job-filter-bar {
+      flex-direction: column !important;
+    }
+  }
+
+  @container (max-width: 419px) {
+    .job-filter-controls {
+      flex-direction: column !important;
+    }
+
+    .job-filter-trigger {
+      width: 100% !important;
+    }
+
+    .tracking-record-title-row {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+    }
+  }
+
+  @container (max-width: 559px) {
+    .job-card-header,
+    .tracking-record-row {
+      flex-direction: column !important;
+    }
+
+    .job-card-actions,
+    .tracking-record-actions,
+    .tracking-record-content {
+      width: 100% !important;
+    }
+
+    .job-card-actions,
+    .tracking-record-actions {
+      justify-content: flex-end !important;
+    }
+
+    .tracking-record-actions {
+      flex-wrap: wrap !important;
+    }
+  }
+
+  @container (max-width: 479px) {
+    .tracking-stats-grid {
+      grid-template-columns: minmax(0, 1fr) !important;
+    }
+  }
+
+  @container (min-width: 480px) and (max-width: 899px) {
+    .tracking-stats-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+  }
+
+  @container (min-width: 900px) {
+    .tracking-stats-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    }
+  }
+}

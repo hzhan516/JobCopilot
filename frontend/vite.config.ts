@@ -4,9 +4,12 @@ import { defineConfig } from "vite"
 import { inspectAttr } from 'kimi-plugin-inspect-react'
 
 // https://vite.dev/config/
-export default defineConfig({
-  base: './',
-  plugins: [inspectAttr(), react()],
+export default defineConfig(({ command }) => ({
+  // Root-absolute base so nested deep-link routes (e.g. /jobs/:id) resolve
+  // their assets correctly instead of relative to the current path.
+  base: '/',
+  // inspectAttr is a dev-only inspection helper; keep it out of production builds.
+  plugins: [...(command === 'serve' ? [inspectAttr()] : []), react()],
   define: {
     '__APP_VERSION__': JSON.stringify(process.env.VITE_APP_VERSION || 'dev'),
   },
@@ -23,4 +26,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

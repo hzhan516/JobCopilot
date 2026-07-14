@@ -56,6 +56,8 @@
 | Response ← AI | 简历解析结果 | `backend.res.resume.parse` | `backend.queue.resume.parse` | Python AI | Java Backend |
 | Request → AI | 对话请求 | `ai.req.conversation` | `ai.queue.conversation` | Java Backend | Python AI |
 | Response ← AI | 对话回复结果 | `backend.res.conversation` | `backend.queue.conversation` | Python AI | Java Backend |
+| Request → AI | 对话压缩 | `ai.req.conversation.compact` | `ai.queue.conversation.compact` | Java Backend | Python AI |
+| Response ← AI | 对话压缩结果 | `backend.res.conversation.compact` | `backend.queue.conversation.compact` | Python AI | Java Backend |
 | Request → AI | 职位精排 | `ai.req.job.rank` | `ai.queue.job.rank` | Java Backend | Python AI |
 | Response ← AI | 职位精排结果 | `backend.res.job.rank` | `backend.queue.job.rank` | Python AI | Java Backend |
 | Request → AI | 用户反馈 | `ai.req.feedback` | `ai.queue.feedback` | Java Backend | Python AI Worker |
@@ -225,7 +227,7 @@
 ```json
 {
   "referenceId": "关联实体ID",
-  "type": "JOB_PARSE | RESUME_PARSE | CONVERSATION_REPLY | JOB_RANK",
+  "type": "JOB_PARSE | RESUME_PARSE | CONVERSATION_REPLY | CONVERSATION_COMPACTED | JOB_RANK",
   "status": "COMPLETED | FAILED",
   "data": { ... },
   "errorMessage": null,
@@ -357,6 +359,35 @@
 | `rankedResults[].matchScore` | Float | 最终精排分数 |
 | `rankedResults[].matchFactors` | Object | 技能、经验和地点匹配拆分 |
 | `rankedResults[].matchReason` | String | 可选，LLM 为高排名职位生成的匹配说明 |
+
+---
+
+### 4.5 对话压缩结果（type = CONVERSATION_COMPACTED）
+
+**发送时机**：`ConversationCompactionService` 将压缩命令写入 Outbox（路由键 `ai.req.conversation.compact`）。AI 服务对较早的消息做摘要并返回结果。
+
+**消费端**：`AiResultMessageListener.onConversationCompacted()` → `ConversationFacade.applyCompactionResult()`
+
+```json
+{
+  "referenceId": "550e8400-e29b-41d4-a716-446655440003",
+  "type": "CONVERSATION_COMPACTED",
+  "status": "COMPLETED",
+  "data": {
+    "summary": "对较早对话内容的摘要...",
+    "throughSequence": 42,
+    "contextTokens": 1536
+  },
+  "errorMessage": null,
+  "eventType": null
+}
+```
+
+| data 子字段 | 类型 | 说明 |
+|-------------|------|------|
+| `summary` | String | 截至 `throughSequence` 的消息压缩摘要 |
+| `throughSequence` | Integer | 该摘要覆盖到的消息序号 |
+| `contextTokens` | Integer | 压缩后上下文的 token 数 |
 
 ---
 

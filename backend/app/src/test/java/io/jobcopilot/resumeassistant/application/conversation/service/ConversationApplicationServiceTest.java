@@ -1,12 +1,13 @@
 package io.jobcopilot.resumeassistant.application.conversation.service;
 
-import io.jobcopilot.resumeassistant.api.embedding.facade.VectorFacade;
 import io.jobcopilot.resumeassistant.application.conversation.command.CreateConversationCommand;
 import io.jobcopilot.resumeassistant.application.conversation.command.SendMessageCommand;
 import io.jobcopilot.resumeassistant.domain.conversation.entity.Conversation;
 import io.jobcopilot.resumeassistant.domain.conversation.exception.ConversationException;
 import io.jobcopilot.resumeassistant.domain.conversation.repository.ConversationRepository;
 import io.jobcopilot.resumeassistant.domain.conversation.valueobject.MessageRole;
+import io.jobcopilot.resumeassistant.api.conversation.port.ConversationStreamPort;
+import io.jobcopilot.resumeassistant.domain.embedding.port.VectorGenerationPort;
 import io.jobcopilot.resumeassistant.domain.job.entity.Job;
 import io.jobcopilot.resumeassistant.domain.job.repository.JobRepository;
 import io.jobcopilot.resumeassistant.domain.job.valueobject.ParsedJobContent;
@@ -18,12 +19,12 @@ import io.jobcopilot.resumeassistant.domain.shared.event.ai.ConversationRequestC
 import io.jobcopilot.resumeassistant.domain.shared.port.AiMessagePublisherPort;
 import io.jobcopilot.resumeassistant.domain.shared.service.FileStorageService;
 import io.jobcopilot.resumeassistant.domain.shared.service.MessageProvider;
+import io.jobcopilot.resumeassistant.infrastructure.storage.config.StorageProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -57,21 +58,37 @@ class ConversationApplicationServiceTest {
     private AiMessagePublisherPort aiMessagePublisherPort;
 
     @Mock
-    private VectorFacade vectorFacade;
+    private VectorGenerationPort vectorFacade;
+
+    @Mock
+    private ConversationStreamPort streamPort;
 
     @Mock
     private FileStorageService fileStorageService;
 
-    @Mock
-    private MessageProvider messageProvider;
+    private final MessageProvider messageProvider = new MessageProvider() {
+        @Override public String getMessage(String key) {
+            return "Compare the current job posting with my resume and tell me the match score.";
+        }
+        @Override public String getMessage(String key, Object... args) { return getMessage(key); }
+    };
 
-    @InjectMocks
     private ConversationApplicationService applicationService;
 
     // 准备 / Given
     @BeforeEach
     void setUp() {
-        when(messageProvider.getMessage(anyString())).thenReturn("Compare the current job posting with my resume and tell me the match score.");
+        ConversationContextService contextService = new ConversationContextService(
+                resumeVersionRepository, jobRepository, aiMessagePublisherPort, vectorFacade);
+        ConversationLifecycleService lifecycleService = new ConversationLifecycleService(
+                conversationRepository, jobRepository, resumeVersionRepository, messageProvider, contextService);
+        AiOptimizedResumeService aiOptimizedResumeService = new AiOptimizedResumeService(
+                conversationRepository, resumeVersionRepository, resumeGroupRepository);
+        ConversationMessageService messageService = new ConversationMessageService(
+                conversationRepository, lifecycleService, contextService, aiOptimizedResumeService, streamPort);
+        ConversationAttachmentService attachmentService = new ConversationAttachmentService(
+                conversationRepository, lifecycleService, fileStorageService, new StorageProperties());
+        applicationService = new ConversationApplicationService(lifecycleService, messageService, attachmentService);
     }
 
     @Test
@@ -179,8 +196,6 @@ class ConversationApplicationServiceTest {
                 .jobId(null)
                 .build();
 
-        when(resumeVersionRepository.findById(resumeVersionId)).thenReturn(Optional.empty());
-
         // 执行与验证 / When & Then
         assertThrows(ConversationException.class, () -> applicationService.createConversation(command));
     }
@@ -197,8 +212,6 @@ class ConversationApplicationServiceTest {
                 .resumeVersionId(null)
                 .jobId(jobId)
                 .build();
-
-        when(jobRepository.findById(jobId.toString())).thenReturn(Optional.empty());
 
         // 执行与验证 / When & Then
         assertThrows(ConversationException.class, () -> applicationService.createConversation(command));
@@ -403,7 +416,7 @@ class ConversationApplicationServiceTest {
 
         when(originalVersion.getGroupId()).thenReturn(groupId);
         when(group.getId()).thenReturn(groupId);
-        when(conversationRepository.findById(conversationId)).thenReturn(Optional.of(conversation));
+        when(conversationRepository.findById(any(UUID.class))).thenReturn(Optional.of(conversation));
         when(conversationRepository.save(any(Conversation.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(resumeVersionRepository.findById(resumeVersionId)).thenReturn(Optional.of(originalVersion));
@@ -447,7 +460,7 @@ class ConversationApplicationServiceTest {
         when(originalVersion.getGroupId()).thenReturn(groupId);
         when(workingVersion.getId()).thenReturn(workingVersionId);
         when(workingVersion.getStatus()).thenReturn(ResumeVersion.Status.ACTIVE);
-        when(conversationRepository.findById(conversationId)).thenReturn(Optional.of(conversation));
+        when(conversationRepository.findById(any(UUID.class))).thenReturn(Optional.of(conversation));
         when(conversationRepository.save(any(Conversation.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(resumeVersionRepository.findById(resumeVersionId)).thenReturn(Optional.of(originalVersion));
@@ -491,7 +504,7 @@ class ConversationApplicationServiceTest {
 
         when(originalVersion.getGroupId()).thenReturn(groupId);
         when(archivedVersion.getStatus()).thenReturn(ResumeVersion.Status.ARCHIVED);
-        when(conversationRepository.findById(conversationId)).thenReturn(Optional.of(conversation));
+        when(conversationRepository.findById(any(UUID.class))).thenReturn(Optional.of(conversation));
         when(conversationRepository.save(any(Conversation.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(resumeVersionRepository.findById(resumeVersionId)).thenReturn(Optional.of(originalVersion));

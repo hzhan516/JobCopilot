@@ -39,12 +39,29 @@
       "collapse": "收起侧边栏",
       "expand": "展开侧边栏",
       "copilot": {
-        "openCopilot": "打开 AI 助手"
+        "openCopilot": "打开 AI 助手",
+        "collapse": "收起 AI 聊天",
+        "expand": "展开 AI 聊天",
+        "resize": "调整工作区与 AI 聊天栏宽度"
       }
     },
     "userMenu": {
       "profile": "个人中心",
       "logout": "退出登录"
+    }
+  },
+  "masterDetail": {
+    "resume": {
+      "emptyTitle": "选择一份简历",
+      "emptyDesc": "从左侧列表中选择一份简历以查看详情"
+    },
+    "job": {
+      "emptyTitle": "选择一个职位",
+      "emptyDesc": "从左侧列表中选择一个职位以查看详情"
+    },
+    "application": {
+      "emptyTitle": "选择一条申请记录",
+      "emptyDesc": "从左侧列表中选择一条申请记录以查看详情"
     }
   },
   "auth": {

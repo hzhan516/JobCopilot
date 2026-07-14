@@ -5,7 +5,7 @@ import Tracking from '@/pages/tracking/Tracking';
  */
 export default function TrackingListPanel() {
   return (
-    <div className="h-full overflow-auto">
+    <div className="master-detail-list-container h-full min-w-0 overflow-x-hidden overflow-y-auto">
       <Tracking />
     </div>
   );

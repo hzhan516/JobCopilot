@@ -85,7 +85,7 @@ JobCopilot 是一个以**三层 Docker 网络架构**部署的 AI 驱动求职�
 | **网络** | `internal-network` |
 | **宿主机端口** | 默认无；`8000:8000` 是已注释的开发调试示例 |
 | **职责** | 大语言模型（LLM）推理、嵌入向量生成、简历/职位解析、职位排序、适配度评分，以及自适应模型产物加载。 |
-| **安全说明** | REST 端点 `/api/v1/ai/embeddings` 受 `X-Internal-API-Key` 中间件保护。MQ 消费者监听四个队列：`ai.queue.job.parse`、`ai.queue.resume.parse`、`ai.queue.conversation`、`ai.queue.job.rank`。不访问数据库。 |
+| **安全说明** | REST 端点 `/api/v1/ai/embeddings` 受 `X-Internal-API-Key` 中间件保护。MQ 消费者监听五个队列：`ai.queue.job.parse`、`ai.queue.resume.parse`、`ai.queue.conversation`、`ai.queue.conversation.compact`、`ai.queue.job.rank`。不访问数据库。 |
 
 ### 3.4 PostgreSQL（含 pgvector）
 

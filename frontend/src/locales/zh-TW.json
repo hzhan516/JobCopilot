@@ -39,12 +39,29 @@
       "collapse": "收起側邊欄",
       "expand": "展開側邊欄",
       "copilot": {
-        "openCopilot": "打開 AI 助手"
+        "openCopilot": "打開 AI 助手",
+        "collapse": "收起 AI 聊天",
+        "expand": "展開 AI 聊天",
+        "resize": "調整工作區與 AI 聊天欄寬度"
       }
     },
     "userMenu": {
       "profile": "個人中心",
       "logout": "登出"
+    }
+  },
+  "masterDetail": {
+    "resume": {
+      "emptyTitle": "選擇一份履歷",
+      "emptyDesc": "從左側列表中選擇一份履歷以查看詳情"
+    },
+    "job": {
+      "emptyTitle": "選擇一個職位",
+      "emptyDesc": "從左側列表中選擇一個職位以查看詳情"
+    },
+    "application": {
+      "emptyTitle": "選擇一筆申請記錄",
+      "emptyDesc": "從左側列表中選擇一筆申請記錄以查看詳情"
     }
   },
   "auth": {

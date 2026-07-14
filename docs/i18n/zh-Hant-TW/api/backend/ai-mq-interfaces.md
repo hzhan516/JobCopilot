@@ -56,6 +56,8 @@
 | Response ← AI | 履歷剖析結果 | `backend.res.resume.parse` | `backend.queue.resume.parse` | Python AI | Java Backend |
 | Request → AI | 對話請求 | `ai.req.conversation` | `ai.queue.conversation` | Java Backend | Python AI |
 | Response ← AI | 對話回覆結果 | `backend.res.conversation` | `backend.queue.conversation` | Python AI | Java Backend |
+| Request → AI | 對話壓縮 | `ai.req.conversation.compact` | `ai.queue.conversation.compact` | Java Backend | Python AI |
+| Response ← AI | 對話壓縮結果 | `backend.res.conversation.compact` | `backend.queue.conversation.compact` | Python AI | Java Backend |
 | Request → AI | 職位精排 | `ai.req.job.rank` | `ai.queue.job.rank` | Java Backend | Python AI |
 | Response ← AI | 職位精排結果 | `backend.res.job.rank` | `backend.queue.job.rank` | Python AI | Java Backend |
 | Request → AI | 使用者反饋 | `ai.req.feedback` | `ai.queue.feedback` | Java Backend | Python AI Worker |
@@ -225,7 +227,7 @@
 ```json
 {
   "referenceId": "關聯實體ID",
-  "type": "JOB_PARSE | RESUME_PARSE | CONVERSATION_REPLY | JOB_RANK",
+  "type": "JOB_PARSE | RESUME_PARSE | CONVERSATION_REPLY | CONVERSATION_COMPACTED | JOB_RANK",
   "status": "COMPLETED | FAILED",
   "data": { ... },
   "errorMessage": null,
@@ -357,6 +359,35 @@
 | `rankedResults[].matchScore` | Float | 最終精排分數 |
 | `rankedResults[].matchFactors` | Object | 技能、經驗和地點匹配拆分 |
 | `rankedResults[].matchReason` | String | 選用，LLM 為高排名職位生成的匹配說明 |
+
+---
+
+### 4.5 對話壓縮結果（type = CONVERSATION_COMPACTED）
+
+**發送時機**：`ConversationCompactionService` 將壓縮命令寫入 Outbox（路由鍵 `ai.req.conversation.compact`）。AI 服務對較早的訊息做摘要並返回結果。
+
+**消費端**：`AiResultMessageListener.onConversationCompacted()` → `ConversationFacade.applyCompactionResult()`
+
+```json
+{
+  "referenceId": "550e8400-e29b-41d4-a716-446655440003",
+  "type": "CONVERSATION_COMPACTED",
+  "status": "COMPLETED",
+  "data": {
+    "summary": "對較早對話內容的摘要...",
+    "throughSequence": 42,
+    "contextTokens": 1536
+  },
+  "errorMessage": null,
+  "eventType": null
+}
+```
+
+| data 子欄位 | 類型 | 說明 |
+|-------------|------|------|
+| `summary` | String | 截至 `throughSequence` 的訊息壓縮摘要 |
+| `throughSequence` | Integer | 該摘要涵蓋到的訊息序號 |
+| `contextTokens` | Integer | 壓縮後上下文的 token 數 |
 
 ---
 

@@ -1,20 +1,32 @@
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 
-from app.main import app, initialize_mq, _start_mq_consumer_once
+from app.main import app, initialize_mq, _start_mq_consumer_once, resolve_app_version
 import app.main as main_module
+from app.__version__ import __version__
 
 client = TestClient(app)
 
 
-def test_root():
+def test_root(monkeypatch):
+    monkeypatch.setattr(main_module, "APP_VERSION", __version__)
     response = client.get("/")
     assert response.status_code == 200
     assert response.json() == {
         "service": "jobcopilot-ai-service",
-        "version": "0.1.0",
+        "version": __version__,
         "status": "running",
     }
+
+
+def test_resolve_app_version_uses_package_version(monkeypatch):
+    monkeypatch.delenv("APP_VERSION", raising=False)
+    assert resolve_app_version() == __version__
+
+
+def test_resolve_app_version_prefers_environment(monkeypatch):
+    monkeypatch.setenv("APP_VERSION", "9.8.7")
+    assert resolve_app_version() == "9.8.7"
 
 
 def test_health_check_healthy(monkeypatch):

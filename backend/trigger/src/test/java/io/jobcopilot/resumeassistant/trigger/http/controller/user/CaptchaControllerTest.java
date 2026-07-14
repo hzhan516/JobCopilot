@@ -86,6 +86,7 @@ class CaptchaControllerTest {
     void shouldUseXForwardedForHeaderForClientIp() {
         // 给定 / Given
         CaptchaChallengeResponse challenge = new CaptchaChallengeResponse("token", 150);
+        when(request.getRemoteAddr()).thenReturn("192.168.1.1");
         when(request.getHeader("X-Forwarded-For")).thenReturn("10.0.0.1, 10.0.0.2");
         when(captchaFacade.isRateLimited("10.0.0.1")).thenReturn(false);
         when(captchaFacade.generateChallenge()).thenReturn(challenge);

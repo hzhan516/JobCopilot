@@ -88,9 +88,10 @@ Maven multi-module layout (`backend/pom.xml`):
   - `ai.queue.job.parse`
   - `ai.queue.resume.parse`
   - `ai.queue.conversation`
+  - `ai.queue.conversation.compact`
   - `ai.queue.job.rank`
 - AI worker consumes from `ai.queue.feedback` and runs incremental model retraining.
-- Publishes results to `backend.queue.job.parse`, `backend.queue.resume.parse`, `backend.queue.conversation`, and `backend.queue.job.rank`.
+- Publishes results to `backend.queue.job.parse`, `backend.queue.resume.parse`, `backend.queue.conversation`, `backend.queue.conversation.compact`, and `backend.queue.job.rank`.
 - `INTERNAL_API_KEY` is mandatory in non-dev environments; the FastAPI middleware validates `X-Internal-API-Key`.
 - Embedding dimensions must match the backend (`LLM_EMBEDDING_MODEL_DIMENSION`).
 - Logging uses the standard library `logging` module; `structlog` is available in dependencies.

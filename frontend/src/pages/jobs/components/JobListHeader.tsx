@@ -15,12 +15,12 @@ export default function JobListHeader({
   onAddClick,
 }: JobListHeaderProps) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div>
+    <div className="master-detail-responsive-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="min-w-0">
         <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
         <p className="text-gray-500 mt-1">{subtitle}</p>
       </div>
-      <Button onClick={onAddClick}>
+      <Button onClick={onAddClick} className="master-detail-responsive-action">
         <Plus className="w-4 h-4 mr-2" />
         {addButtonLabel}
       </Button>

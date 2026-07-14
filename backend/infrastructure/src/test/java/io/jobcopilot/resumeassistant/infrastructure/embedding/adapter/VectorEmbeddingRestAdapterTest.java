@@ -8,11 +8,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpEntity;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -46,6 +48,7 @@ class VectorEmbeddingRestAdapterTest {
     private VectorEmbeddingRestAdapter adapter;
 
     private static final String BASE_URL = "http://ai-service:8000";
+    private static final String EMBEDDINGS_URL = BASE_URL + "/api/v1/ai/embeddings";
 
     @BeforeEach
     void setUp() {
@@ -65,8 +68,8 @@ class VectorEmbeddingRestAdapterTest {
                 "count", 1
         );
         when(restTemplate.postForObject(
-                eq(BASE_URL + "/api/v1/ai/embeddings"),
-                any(),
+                eq(EMBEDDINGS_URL),
+                any(HttpEntity.class),
                 eq(Map.class)
         )).thenReturn(response);
 
@@ -89,7 +92,7 @@ class VectorEmbeddingRestAdapterTest {
                 "embeddings", List.of(largeEmbedding),
                 "modelUsed", "text-embedding-3-large"
         );
-        when(restTemplate.postForObject(any(), any(), eq(Map.class))).thenReturn(response);
+        when(restTemplate.postForObject(eq(EMBEDDINGS_URL), any(HttpEntity.class), eq(Map.class))).thenReturn(response);
 
         // 当 / When
         float[] result = adapter.generate("Long text for embedding generation test");
@@ -137,7 +140,7 @@ class VectorEmbeddingRestAdapterTest {
     @DisplayName("Should throw on null response body")
     void shouldThrowOnNullResponseBody() {
         // 给定 / Given
-        when(restTemplate.postForObject(any(), any(), eq(Map.class))).thenReturn(null);
+        when(restTemplate.postForObject(eq(EMBEDDINGS_URL), any(HttpEntity.class), eq(Map.class))).thenReturn(null);
 
         // 当&那么 / When & Then
         assertThatThrownBy(() -> adapter.generate("Some text"))
@@ -150,7 +153,7 @@ class VectorEmbeddingRestAdapterTest {
     void shouldThrowWhenEmbeddingsKeyMissing() {
         // 给定 / Given
         Map<String, Object> response = Map.of("modelUsed", "model");
-        when(restTemplate.postForObject(any(), any(), eq(Map.class))).thenReturn(response);
+        when(restTemplate.postForObject(eq(EMBEDDINGS_URL), any(HttpEntity.class), eq(Map.class))).thenReturn(response);
 
         // 当&那么 / When & Then
         assertThatThrownBy(() -> adapter.generate("Some text"))
@@ -163,7 +166,7 @@ class VectorEmbeddingRestAdapterTest {
     void shouldThrowWhenEmbeddingsListEmpty() {
         // 给定 / Given
         Map<String, Object> response = Map.of("embeddings", List.of());
-        when(restTemplate.postForObject(any(), any(), eq(Map.class))).thenReturn(response);
+        when(restTemplate.postForObject(eq(EMBEDDINGS_URL), any(HttpEntity.class), eq(Map.class))).thenReturn(response);
 
         // 当&那么 / When & Then
         assertThatThrownBy(() -> adapter.generate("Some text"))
@@ -175,8 +178,9 @@ class VectorEmbeddingRestAdapterTest {
     @DisplayName("Should throw when first embedding is null")
     void shouldThrowWhenFirstEmbeddingIsNull() {
         // 给定 / Given
-        Map<String, Object> response = Map.of("embeddings", List.of((Object) null));
-        when(restTemplate.postForObject(any(), any(), eq(Map.class))).thenReturn(response);
+        Map<String, Object> response = new HashMap<>();
+        response.put("embeddings", java.util.Collections.singletonList(null));
+        when(restTemplate.postForObject(eq(EMBEDDINGS_URL), any(HttpEntity.class), eq(Map.class))).thenReturn(response);
 
         // 当&那么 / When & Then
         assertThatThrownBy(() -> adapter.generate("Some text"))
@@ -191,7 +195,7 @@ class VectorEmbeddingRestAdapterTest {
     @DisplayName("Should throw AiServiceUnavailableException on ResourceAccessException")
     void shouldThrowAiServiceUnavailableExceptionOnResourceAccessException() {
         // 给定 / Given
-        when(restTemplate.postForObject(any(), any(), eq(Map.class)))
+        when(restTemplate.postForObject(eq(EMBEDDINGS_URL), any(HttpEntity.class), eq(Map.class)))
                 .thenThrow(new ResourceAccessException("Connection refused"));
 
         // 当&那么 / When & Then
@@ -203,7 +207,7 @@ class VectorEmbeddingRestAdapterTest {
     @DisplayName("Should throw RuntimeException on RestClientException")
     void shouldThrowRuntimeExceptionOnRestClientException() {
         // 给定 / Given
-        when(restTemplate.postForObject(any(), any(), eq(Map.class)))
+        when(restTemplate.postForObject(eq(EMBEDDINGS_URL), any(HttpEntity.class), eq(Map.class)))
                 .thenThrow(new RestClientException("400 Bad Request"));
 
         // 当&那么 / When & Then

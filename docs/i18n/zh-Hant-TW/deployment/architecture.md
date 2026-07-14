@@ -85,7 +85,7 @@ JobCopilot 是一個以**三層 Docker 網路架構**部署的 AI 驅動求職�
 | **網路** | `internal-network` |
 | **主機連接埠** | 預設無；`8000:8000` 是已註解的開發除錯範例 |
 | **職責** | 大型語言模型（LLM）推理、嵌入向量生成、履歷/職缺解析、職缺排序、適配度評分，以及自適應模型產物載入。 |
-| **安全說明** | REST 端點 `/api/v1/ai/embeddings` 受 `X-Internal-API-Key` 中介軟體保護。MQ 消費者監聽四個佇列：`ai.queue.job.parse`、`ai.queue.resume.parse`、`ai.queue.conversation`、`ai.queue.job.rank`。不存取資料庫。 |
+| **安全說明** | REST 端點 `/api/v1/ai/embeddings` 受 `X-Internal-API-Key` 中介軟體保護。MQ 消費者監聽五個佇列：`ai.queue.job.parse`、`ai.queue.resume.parse`、`ai.queue.conversation`、`ai.queue.conversation.compact`、`ai.queue.job.rank`。不存取資料庫。 |
 
 ### 3.4 AI Worker (LightGBM)
 
