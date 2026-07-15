@@ -39,7 +39,7 @@ boto3>=1.35.0
 
 # LLM网关 / LLM Gateway
 litellm==1.61.11
-tenacity==8.4.1
+tenacity==8.5.0
 
 # Google Auth (Required by LiteLLM for Vertex AI)
 google-auth==2.53.0
