@@ -10,47 +10,48 @@
 # Major updates are blocked by block-major-upgrades.yml.
 # -----------------------------------------------------------------------------
 
-name: Dependabot Auto-Merge
-
-on:
-  pull_request:
-    types: [opened, reopened, labeled, synchronize]
-
-permissions:
-  contents: write
-  pull-requests: write
-
-jobs:
-  auto-merge:
-    runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
-    steps:
-      - name: Dependabot metadata
-        id: metadata
-        uses: dependabot/fetch-metadata@v2
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Enable auto-merge for patch updates
-        if: steps.metadata.outputs.update-type == 'version-update:semver-patch'
-        run: |
-          gh pr merge --auto --squash "$PR_URL"
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Comment on minor updates
-        if: steps.metadata.outputs.update-type == 'version-update:semver-minor'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: [
-                '🤖 This is a **minor** Dependabot update.',
-                '',
-                'It requires **one human review** before merging. Please verify release notes for any behavior changes and approve when ready.'
-              ].join('\n')
-            });
+# Disabled together with automatic Dependabot version checks and PR creation.
+# name: Dependabot Auto-Merge
+#
+# on:
+#   pull_request:
+#     types: [opened, reopened, labeled, synchronize]
+#
+# permissions:
+#   contents: write
+#   pull-requests: write
+#
+# jobs:
+#   auto-merge:
+#     runs-on: ubuntu-latest
+#     if: github.actor == 'dependabot[bot]'
+#     steps:
+#       - name: Dependabot metadata
+#         id: metadata
+#         uses: dependabot/fetch-metadata@v2
+#         with:
+#           github-token: ${{ secrets.GITHUB_TOKEN }}
+#
+#       - name: Enable auto-merge for patch updates
+#         if: steps.metadata.outputs.update-type == 'version-update:semver-patch'
+#         run: |
+#           gh pr merge --auto --squash "$PR_URL"
+#         env:
+#           PR_URL: ${{ github.event.pull_request.html_url }}
+#           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#
+#       - name: Comment on minor updates
+#         if: steps.metadata.outputs.update-type == 'version-update:semver-minor'
+#         uses: actions/github-script@v7
+#         with:
+#           script: |
+#             await github.rest.issues.createComment({
+#               owner: context.repo.owner,
+#               repo: context.repo.repo,
+#               issue_number: context.issue.number,
+#               body: [
+#                 '🤖 This is a **minor** Dependabot update.',
+#                 '',
+#                 'It requires **one human review** before merging. Please verify release notes for any behavior changes and approve when ready.'
+#               ].join('\n')
+#             });
