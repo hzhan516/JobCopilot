@@ -69,15 +69,17 @@ def test_embedding_request_boundary_batch_size_minus_one():
 
 
 def test_conversation_v1_envelope_round_trip():
-    command = ConversationRequestCommand.model_validate({
-        "conversationId": "conv-1",
-        "userId": "user-1",
-        "currentMessage": "hello",
-        "requestId": "req-1",
-        "schemaVersion": 1,
-        "eventId": "evt-1",
-        "occurredAt": "2026-07-18T00:00:00Z",
-    })
+    command = ConversationRequestCommand.model_validate(
+        {
+            "conversationId": "conv-1",
+            "userId": "user-1",
+            "currentMessage": "hello",
+            "requestId": "req-1",
+            "schemaVersion": 1,
+            "eventId": "evt-1",
+            "occurredAt": "2026-07-18T00:00:00Z",
+        }
+    )
     assert command.request_id == "req-1"
     assert command.schema_version == 1
     assert command.event_id == "evt-1"

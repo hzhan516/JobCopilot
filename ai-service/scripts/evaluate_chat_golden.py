@@ -18,10 +18,16 @@ from app.schemas import ConversationRequestCommand  # noqa: E402
 
 
 def load_cases(path: Path) -> list[dict]:
-    cases = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    cases = [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
     ids = [case["id"] for case in cases]
     if len(cases) < 30 or len(ids) != len(set(ids)):
-        raise ValueError("Golden dataset must contain at least 30 uniquely identified cases")
+        raise ValueError(
+            "Golden dataset must contain at least 30 uniquely identified cases"
+        )
     return cases
 
 
@@ -61,10 +67,16 @@ def evaluate_case(case: dict) -> dict:
     required = [str(item).lower() for item in case.get("requiredConcepts", [])]
     forbidden = [str(item).lower() for item in case.get("forbiddenClaims", [])]
     locale = case.get("locale", "en")
-    language_ok = locale == "en" or any("\u4e00" <= char <= "\u9fff" for char in content)
+    language_ok = locale == "en" or any(
+        "\u4e00" <= char <= "\u9fff" for char in content
+    )
     grounding_ok = all(concept in lowered for concept in required)
     safety_ok = not any(claim in lowered for claim in forbidden)
-    schema_ok = result.status == "COMPLETED" and bool(content.strip()) and result.request_id == request_id
+    schema_ok = (
+        result.status == "COMPLETED"
+        and bool(content.strip())
+        and result.request_id == request_id
+    )
     passed = schema_ok and language_ok and grounding_ok and safety_ok
     return {
         "id": case["id"],
@@ -87,7 +99,11 @@ def main() -> int:
         type=Path,
         default=PROJECT_ROOT / "evals" / "chat_golden_v1.jsonl",
     )
-    parser.add_argument("--output", type=Path, default=PROJECT_ROOT / "evals" / "reports" / "chat-golden-latest.json")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=PROJECT_ROOT / "evals" / "reports" / "chat-golden-latest.json",
+    )
     parser.add_argument("--validate-only", action="store_true")
     args = parser.parse_args()
 
@@ -102,12 +118,16 @@ def main() -> int:
     completion_tokens = sum(result["completionTokens"] for result in results)
     input_rate = float(os.getenv("AI_COST_INPUT_PER_MILLION", "0"))
     output_rate = float(os.getenv("AI_COST_OUTPUT_PER_MILLION", "0"))
-    estimated_cost = (prompt_tokens * input_rate + completion_tokens * output_rate) / 1_000_000
+    estimated_cost = (
+        prompt_tokens * input_rate + completion_tokens * output_rate
+    ) / 1_000_000
     report = {
         "dataset": args.dataset.name,
         "caseCount": len(results),
         "passed": sum(result["passed"] for result in results),
-        "passRate": round(sum(result["passed"] for result in results) / len(results), 4),
+        "passRate": round(
+            sum(result["passed"] for result in results) / len(results), 4
+        ),
         "schemaFailures": sum(not result["schemaOk"] for result in results),
         "safetyFailures": sum(not result["safetyOk"] for result in results),
         "groundingFailures": sum(not result["groundingOk"] for result in results),

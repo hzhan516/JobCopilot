@@ -213,8 +213,11 @@ def test_handle_conversation_message_success(mock_process):
     ).encode("utf-8")
 
     mock_result = AiResultEvent(
-        referenceId="conv-1", type="CONVERSATION_REPLY", status="COMPLETED", data={},
-        requestId="req-1"
+        referenceId="conv-1",
+        type="CONVERSATION_REPLY",
+        status="COMPLETED",
+        data={},
+        requestId="req-1",
     )
     mock_process.return_value = mock_result
 

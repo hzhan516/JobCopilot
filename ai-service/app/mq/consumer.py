@@ -253,13 +253,26 @@ def classify_ai_error(exc: Exception) -> str:
             or "resource_exhausted" in message
         ):
             return ERROR_RATE_LIMITED
-        if "authentication" in name or "permissiondenied" in name or "401" in message or "403" in message:
+        if (
+            "authentication" in name
+            or "permissiondenied" in name
+            or "401" in message
+            or "403" in message
+        ):
             return ERROR_PROVIDER_AUTH
-        if "notfound" in name or "model_not_found" in message or "model not found" in message:
+        if (
+            "notfound" in name
+            or "model_not_found" in message
+            or "model not found" in message
+        ):
             return ERROR_MODEL_NOT_FOUND
         if "timeout" in name or "timeout" in message or "timed out" in message:
             return ERROR_UPSTREAM_TIMEOUT
-        if "contextwindow" in name or "prompt too large" in message or "context length" in message:
+        if (
+            "contextwindow" in name
+            or "prompt too large" in message
+            or "context length" in message
+        ):
             return ERROR_PROMPT_TOO_LARGE
         if (
             "json" in name
@@ -458,8 +471,15 @@ def _async_handler(wrapped_handler, log_message_metadata: bool = False):
                             request_id,
                         )
                         with _cache_lock:
-                            attempts = _publish_attempts.get(request_id or str(delivery_tag), 0) + 1
-                            _publish_attempts[request_id or str(delivery_tag)] = attempts
+                            attempts = (
+                                _publish_attempts.get(
+                                    request_id or str(delivery_tag), 0
+                                )
+                                + 1
+                            )
+                            _publish_attempts[request_id or str(delivery_tag)] = (
+                                attempts
+                            )
                         ch.basic_nack(
                             delivery_tag=delivery_tag,
                             requeue=attempts < MQ_RESULT_PUBLISH_MAX_ATTEMPTS,

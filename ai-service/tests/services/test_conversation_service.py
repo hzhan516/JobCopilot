@@ -15,14 +15,19 @@ def test_infer_file_format():
     assert _infer_file_format("http://example.com/resume.docx") == "docx"
     assert _infer_file_format("http://example.com/resume.txt") == "txt"
     assert _infer_file_format("http://example.com/resume.md") == "md"
-    assert _infer_file_format(
-        "/api/storage/download?key=conversations%2Fconv-1%2Fresume.pdf"
-    ) == "pdf"
+    assert (
+        _infer_file_format(
+            "/api/storage/download?key=conversations%2Fconv-1%2Fresume.pdf"
+        )
+        == "pdf"
+    )
     assert _infer_file_format("http://example.com/resume.jpg") is None
     assert _infer_file_format("http://example.com/resume") is None
 
 
-@patch("app.services.conversation_service._load_attachment_context", return_value=([], []))
+@patch(
+    "app.services.conversation_service._load_attachment_context", return_value=([], [])
+)
 def test_prompt_has_untrusted_boundaries_and_current_message_once(_mock_attachments):
     nonce = "CURRENT-NONCE-7391"
     command = ConversationRequestCommand(
@@ -44,8 +49,12 @@ def test_prompt_has_untrusted_boundaries_and_current_message_once(_mock_attachme
     assert "signed URLs" in prompt
 
 
-@patch("app.services.conversation_service._load_attachment_context", return_value=([], []))
-def test_prompt_budget_is_deterministic_and_preserves_current_message(_mock_attachments):
+@patch(
+    "app.services.conversation_service._load_attachment_context", return_value=([], [])
+)
+def test_prompt_budget_is_deterministic_and_preserves_current_message(
+    _mock_attachments,
+):
     command = ConversationRequestCommand(
         conversationId="conv-1",
         userId="user-1",

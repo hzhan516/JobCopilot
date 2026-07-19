@@ -12,10 +12,14 @@ def _load(name: str) -> dict:
 
 
 def test_java_request_fixture_validates_with_pydantic():
-    command = ConversationRequestCommand.model_validate(_load("conversation-request.json"))
+    command = ConversationRequestCommand.model_validate(
+        _load("conversation-request.json")
+    )
     assert command.schema_version == 1
     assert command.request_id == "00000000-0000-0000-0000-000000000401"
-    assert command.current_message not in [message.content for message in command.message_history]
+    assert command.current_message not in [
+        message.content for message in command.message_history
+    ]
 
 
 def test_result_fixtures_validate_and_keep_exact_request_id():

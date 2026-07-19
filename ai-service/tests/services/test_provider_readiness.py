@@ -24,9 +24,14 @@ def test_provider_configuration_rejects_unknown_provider():
     )
 
 
-@patch("app.services.provider_readiness.validate_provider_configuration", return_value=(True, None))
+@patch(
+    "app.services.provider_readiness.validate_provider_configuration",
+    return_value=(True, None),
+)
 @patch("app.services.provider_readiness.litellm.completion")
-def test_probe_caches_success_without_exposing_credentials(mock_completion, _mock_validate):
+def test_probe_caches_success_without_exposing_credentials(
+    mock_completion, _mock_validate
+):
     mock_completion.return_value = MagicMock()
     readiness = ProviderReadiness()
 

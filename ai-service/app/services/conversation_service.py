@@ -197,7 +197,9 @@ def _clip_text(value: str | None, limit: int) -> str:
     return text[:head] + marker + text[-(keep - head) :]
 
 
-def _budget_history(command: ConversationRequestCommand, budget: int) -> list[dict[str, str]]:
+def _budget_history(
+    command: ConversationRequestCommand, budget: int
+) -> list[dict[str, str]]:
     if budget <= 0:
         return []
     summaries: list[dict[str, str]] = []
@@ -212,7 +214,10 @@ def _budget_history(command: ConversationRequestCommand, budget: int) -> list[di
     selected: list[dict[str, str]] = []
     used = 0
     for item in summaries:
-        clipped = {**item, "content": _clip_text(item["content"], min(6000, budget - used))}
+        clipped = {
+            **item,
+            "content": _clip_text(item["content"], min(6000, budget - used)),
+        }
         size = len(json.dumps(clipped, ensure_ascii=False))
         if used + size <= budget:
             selected.append(clipped)
@@ -235,7 +240,9 @@ def _budget_history(command: ConversationRequestCommand, budget: int) -> list[di
 def _build_conversation_prompt(command: ConversationRequestCommand) -> str:
     """Build a budgeted prompt with explicit untrusted-data boundaries."""
     attachments, warnings = _load_attachment_context(command)
-    current_message = _clip_text(command.current_message, CHAT_CURRENT_MESSAGE_MAX_CHARS)
+    current_message = _clip_text(
+        command.current_message, CHAT_CURRENT_MESSAGE_MAX_CHARS
+    )
     remaining = max(0, CHAT_PROMPT_MAX_CHARS - 9000 - len(current_message))
 
     resume_text = _clip_text(command.resume_text, min(CHAT_RESUME_MAX_CHARS, remaining))
@@ -400,7 +407,9 @@ def _normalize_conversation_result(result: dict) -> tuple[str, str | None, dict]
 
     if file_url is not None:
         file_url = str(file_url).strip() or None
-        if file_url and (len(file_url) > 2048 or not file_url.startswith(("https://", "http://"))):
+        if file_url and (
+            len(file_url) > 2048 or not file_url.startswith(("https://", "http://"))
+        ):
             logger.warning("Discarding invalid generated file URL")
             file_url = None
 

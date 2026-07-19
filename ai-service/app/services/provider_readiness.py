@@ -59,7 +59,9 @@ def _vertex_credentials_available() -> bool:
         return False
 
 
-def validate_provider_configuration(model: str = LLM_TEXT_MODEL) -> tuple[bool, str | None]:
+def validate_provider_configuration(
+    model: str = LLM_TEXT_MODEL,
+) -> tuple[bool, str | None]:
     provider = _provider_alias(model)
     if provider == "vertex_ai":
         if not _is_real_value(VERTEX_PROJECT_ID) or not _is_real_value(VERTEX_LOCATION):
@@ -68,11 +70,23 @@ def validate_provider_configuration(model: str = LLM_TEXT_MODEL) -> tuple[bool, 
             return False, "CONFIG_VERTEX_CREDENTIALS"
         return True, None
     if provider == "gemini":
-        return (True, None) if _is_real_value(os.getenv("GEMINI_API_KEY")) else (False, "CONFIG_GEMINI_KEY")
+        return (
+            (True, None)
+            if _is_real_value(os.getenv("GEMINI_API_KEY"))
+            else (False, "CONFIG_GEMINI_KEY")
+        )
     if provider == "openai":
-        return (True, None) if _is_real_value(os.getenv("OPENAI_API_KEY")) else (False, "CONFIG_OPENAI_KEY")
+        return (
+            (True, None)
+            if _is_real_value(os.getenv("OPENAI_API_KEY"))
+            else (False, "CONFIG_OPENAI_KEY")
+        )
     if provider == "anthropic":
-        return (True, None) if _is_real_value(os.getenv("ANTHROPIC_API_KEY")) else (False, "CONFIG_ANTHROPIC_KEY")
+        return (
+            (True, None)
+            if _is_real_value(os.getenv("ANTHROPIC_API_KEY"))
+            else (False, "CONFIG_ANTHROPIC_KEY")
+        )
     if provider in {"mock", "ollama"}:
         return True, None
     return False, "CONFIG_UNSUPPORTED_PROVIDER"
@@ -126,7 +140,9 @@ class ProviderReadiness:
     def public_status(self) -> dict[str, object]:
         return asdict(self.snapshot())
 
-    def record_result(self, *, success: bool, error_code: str | None = None, probed: bool = False) -> None:
+    def record_result(
+        self, *, success: bool, error_code: str | None = None, probed: bool = False
+    ) -> None:
         now = _now()
         with self._lock:
             current = self._snapshot
@@ -159,7 +175,11 @@ class ProviderReadiness:
             self.record_result(success=True, probed=True)
         except Exception as exc:
             error_code = classify_provider_error(exc)
-            logger.warning("Provider readiness probe failed: provider=%s error_code=%s", current.provider, error_code)
+            logger.warning(
+                "Provider readiness probe failed: provider=%s error_code=%s",
+                current.provider,
+                error_code,
+            )
             self.record_result(success=False, error_code=error_code, probed=True)
         return self.snapshot()
 

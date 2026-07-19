@@ -32,8 +32,12 @@ def test_resolve_app_version_prefers_environment(monkeypatch):
 
 def test_health_check_healthy(monkeypatch):
     monkeypatch.setattr(main_module, "_mq_is_connected", True)
-    monkeypatch.setattr(main_module.provider_readiness, "snapshot", lambda: SimpleNamespace(ready=True))
-    monkeypatch.setattr(main_module.provider_readiness, "public_status", lambda: {"ready": True})
+    monkeypatch.setattr(
+        main_module.provider_readiness, "snapshot", lambda: SimpleNamespace(ready=True)
+    )
+    monkeypatch.setattr(
+        main_module.provider_readiness, "public_status", lambda: {"ready": True}
+    )
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
@@ -56,8 +60,12 @@ def test_liveness_does_not_fail_when_dependencies_are_down(monkeypatch):
 
 def test_status(monkeypatch):
     monkeypatch.setattr(main_module, "_mq_is_connected", True)
-    monkeypatch.setattr(main_module.provider_readiness, "snapshot", lambda: SimpleNamespace(ready=True))
-    monkeypatch.setattr(main_module.provider_readiness, "public_status", lambda: {"ready": True})
+    monkeypatch.setattr(
+        main_module.provider_readiness, "snapshot", lambda: SimpleNamespace(ready=True)
+    )
+    monkeypatch.setattr(
+        main_module.provider_readiness, "public_status", lambda: {"ready": True}
+    )
     response = client.get("/api/status")
     assert response.status_code == 200
     assert response.json()["ready"] is True
