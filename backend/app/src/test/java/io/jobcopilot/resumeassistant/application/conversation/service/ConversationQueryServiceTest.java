@@ -4,6 +4,8 @@ import io.jobcopilot.resumeassistant.application.conversation.query.GetConversat
 import io.jobcopilot.resumeassistant.application.conversation.query.ListConversationsQuery;
 import io.jobcopilot.resumeassistant.domain.conversation.entity.Conversation;
 import io.jobcopilot.resumeassistant.domain.conversation.repository.ConversationRepository;
+import io.jobcopilot.resumeassistant.domain.conversation.query.ConversationSummary;
+import io.jobcopilot.resumeassistant.domain.conversation.valueobject.AiReplyState;
 import io.jobcopilot.resumeassistant.domain.conversation.valueobject.ConversationStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -97,15 +99,15 @@ class ConversationQueryServiceTest {
     void shouldListConversations() {
         // 给定
         // Given
-        List<Conversation> conversations = List.of(
-                Conversation.reconstruct(UUID.randomUUID(), USER_ID, "Chat 1", ConversationStatus.ACTIVE,
-                        null, null, null, LocalDateTime.now(), LocalDateTime.now(), Collections.emptyList(), 0L, 0, 0L, null, 0)
+        List<ConversationSummary> conversations = List.of(
+                new ConversationSummary(UUID.randomUUID(), USER_ID, "Chat 1", ConversationStatus.ACTIVE,
+                        null, null, LocalDateTime.now(), LocalDateTime.now(), AiReplyState.idle(), "Preview")
         );
-        when(conversationRepository.findAllByUserId(USER_ID)).thenReturn(conversations);
+        when(conversationRepository.findSummariesByUserId(USER_ID)).thenReturn(conversations);
 
         // 当
         // When
-        List<Conversation> result = queryService.listConversations(new ListConversationsQuery(USER_ID));
+        List<ConversationSummary> result = queryService.listConversations(new ListConversationsQuery(USER_ID));
 
         // 那么
         // Then

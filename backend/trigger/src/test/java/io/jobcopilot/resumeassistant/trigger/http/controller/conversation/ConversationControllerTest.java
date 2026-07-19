@@ -2,6 +2,8 @@ package io.jobcopilot.resumeassistant.trigger.http.controller.conversation;
 
 import io.jobcopilot.resumeassistant.api.common.dto.ApiResponse;
 import io.jobcopilot.resumeassistant.api.conversation.dto.ConversationResponse;
+import io.jobcopilot.resumeassistant.api.conversation.dto.ConversationSummaryResponse;
+import io.jobcopilot.resumeassistant.api.conversation.dto.AiReplyResponse;
 import io.jobcopilot.resumeassistant.api.conversation.dto.CreateConversationRequest;
 import io.jobcopilot.resumeassistant.api.conversation.dto.SendMessageRequest;
 import io.jobcopilot.resumeassistant.api.conversation.facade.ConversationFacade;
@@ -136,11 +138,16 @@ class ConversationControllerTest {
     @DisplayName("Should list conversations")
     void shouldListConversations() {
         // 准备 / Given
-        when(conversationFacade.listConversations(USER_ID))
-                .thenReturn(List.of(testConversationResponse));
+        ConversationSummaryResponse summary = new ConversationSummaryResponse(
+                CONVERSATION_ID.toString(), USER_ID.toString(), "Test Conversation", "ACTIVE",
+                null, null, java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC),
+                java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC),
+                new AiReplyResponse(null, "IDLE", null, null, null, null, null),
+                "Preview");
+        when(conversationFacade.listConversations(USER_ID)).thenReturn(List.of(summary));
 
         // 执行 / When
-        ApiResponse<List<ConversationResponse>> response = conversationController.listConversations(USER_ID);
+        ApiResponse<List<ConversationSummaryResponse>> response = conversationController.listConversations(USER_ID);
 
         // 验证 / Then
         assertThat(response.getData()).hasSize(1);

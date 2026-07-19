@@ -44,8 +44,15 @@ public class ConversationContextService {
 
     void queueConversationRequest(Conversation conversation, String currentMessage, boolean init,
                                   UUID requestId, int currentUserMessageSequence) {
+        queueConversationRequest(conversation, currentMessage, init, requestId,
+                currentUserMessageSequence, List.of());
+    }
+
+    void queueConversationRequest(Conversation conversation, String currentMessage, boolean init,
+                                  UUID requestId, int currentUserMessageSequence,
+                                  List<String> attachmentUrls) {
         sendConversationRequestWithContext(conversation, currentMessage, init, requestId,
-                currentUserMessageSequence);
+                currentUserMessageSequence, attachmentUrls);
     }
 
     void deferVectorGeneration(UUID versionId, String markdown) {
@@ -67,7 +74,8 @@ public class ConversationContextService {
     }
 
     private void sendConversationRequestWithContext(Conversation conversation, String currentMessage, boolean init,
-                                                    UUID requestId, int currentUserMessageSequence) {
+                                                    UUID requestId, int currentUserMessageSequence,
+                                                    List<String> attachmentUrls) {
         String resumeText = null;
         String primaryJobText = null;
         List<String> relatedJobTexts = new ArrayList<>();
@@ -106,7 +114,7 @@ public class ConversationContextService {
                 conversation.getUserId().toString(),
                 buildMessageHistory(conversation, currentUserMessageSequence),
                 currentMessage,
-                new ArrayList<>(),
+                attachmentUrls != null ? List.copyOf(attachmentUrls) : List.of(),
                 conversation.getResumeVersionId() != null ? conversation.getResumeVersionId().toString() : null,
                 resumeText,
                 primaryJobText,

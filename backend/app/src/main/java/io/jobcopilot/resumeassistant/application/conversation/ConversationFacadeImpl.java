@@ -1,6 +1,7 @@
 package io.jobcopilot.resumeassistant.application.conversation;
 
 import io.jobcopilot.resumeassistant.api.conversation.dto.ConversationResponse;
+import io.jobcopilot.resumeassistant.api.conversation.dto.ConversationSummaryResponse;
 import io.jobcopilot.resumeassistant.api.conversation.dto.AiReplyResponse;
 import io.jobcopilot.resumeassistant.api.conversation.dto.CreateConversationRequest;
 import io.jobcopilot.resumeassistant.api.conversation.dto.MessageResponse;
@@ -16,6 +17,8 @@ import io.jobcopilot.resumeassistant.application.conversation.service.Conversati
 import io.jobcopilot.resumeassistant.application.conversation.service.ConversationQueryService;
 import io.jobcopilot.resumeassistant.domain.conversation.entity.Conversation;
 import io.jobcopilot.resumeassistant.domain.conversation.entity.Message;
+import io.jobcopilot.resumeassistant.domain.conversation.query.ConversationSummary;
+import io.jobcopilot.resumeassistant.domain.conversation.query.ConversationDetail;
 import io.jobcopilot.resumeassistant.domain.conversation.valueobject.MessageRole;
 import io.jobcopilot.resumeassistant.infrastructure.cache.config.DynamicConfigCache;
 import lombok.RequiredArgsConstructor;
@@ -81,15 +84,14 @@ public class ConversationFacadeImpl implements ConversationFacade {
                 page,
                 size
         );
-        Conversation conversation = queryService.getConversation(query);
-        return mapToResponse(conversation, page, size);
+        return mapDetailToResponse(queryService.getConversationDetail(query));
     }
 
     @Override
-    public List<ConversationResponse> listConversations(UUID userId) {
+    public List<ConversationSummaryResponse> listConversations(UUID userId) {
         ListConversationsQuery query = new ListConversationsQuery(userId);
         return queryService.listConversations(query).stream()
-                .map(this::mapToResponse)
+                .map(this::mapSummaryToResponse)
                 .toList();
     }
 
@@ -139,10 +141,10 @@ public class ConversationFacadeImpl implements ConversationFacade {
     public ConversationResponse compactConversation(String conversationId, UUID userId) {
         compactionService.requestCompaction(UUID.fromString(conversationId), userId);
         // Return current state so the frontend sees COMPACTING status immediately
-        Conversation conversation = queryService.getConversation(
+        ConversationDetail detail = queryService.getConversationDetail(
                 new io.jobcopilot.resumeassistant.application.conversation.query.GetConversationQuery(
                         UUID.fromString(conversationId), userId, null, null));
-        return mapToResponse(conversation);
+        return mapDetailToResponse(detail);
     }
 
     @Override
@@ -197,6 +199,8 @@ public class ConversationFacadeImpl implements ConversationFacade {
                 readContextWindow(),
                 computeUsageRatio(conversation.getContextTokens()),
                 isCompactAdvised(conversation.getContextTokens()),
+                conversation.getCompactionRequestId() != null
+                        ? conversation.getCompactionRequestId().toString() : null,
                 mapAiReply(conversation)
         );
     }
@@ -212,6 +216,56 @@ public class ConversationFacadeImpl implements ConversationFacade {
                 state.userMessageSequence(),
                 state.assistantMessageSequence()
         );
+    }
+
+    private ConversationSummaryResponse mapSummaryToResponse(ConversationSummary summary) {
+        var state = summary.aiReplyState();
+        return new ConversationSummaryResponse(
+                summary.conversationId().toString(),
+                summary.userId().toString(),
+                summary.title(),
+                summary.status().name(),
+                summary.resumeVersionId() != null ? summary.resumeVersionId().toString() : null,
+                summary.jobId() != null ? summary.jobId().toString() : null,
+                summary.createdAt().atOffset(ZoneOffset.UTC),
+                summary.updatedAt().atOffset(ZoneOffset.UTC),
+                new AiReplyResponse(
+                        state.requestId() != null ? state.requestId().toString() : null,
+                        state.status().name(),
+                        state.errorCode(),
+                        state.startedAt() != null ? state.startedAt().atOffset(ZoneOffset.UTC) : null,
+                        state.completedAt() != null ? state.completedAt().atOffset(ZoneOffset.UTC) : null,
+                        state.userMessageSequence(),
+                        state.assistantMessageSequence()),
+                summary.lastMessagePreview());
+    }
+
+    private ConversationResponse mapDetailToResponse(ConversationDetail detail) {
+        var state = detail.aiReplyState();
+        List<MessageResponse> messages = detail.messages().stream()
+                .map(this::mapMessageToResponse)
+                .toList();
+        return new ConversationResponse(
+                detail.conversationId().toString(),
+                detail.userId().toString(),
+                detail.title(),
+                detail.status().name(),
+                detail.resumeVersionId() != null ? detail.resumeVersionId().toString() : null,
+                detail.jobId() != null ? detail.jobId().toString() : null,
+                messages,
+                detail.createdAt().atOffset(ZoneOffset.UTC),
+                detail.updatedAt().atOffset(ZoneOffset.UTC),
+                detail.contextTokens(),
+                readContextWindow(),
+                computeUsageRatio(detail.contextTokens()),
+                isCompactAdvised(detail.contextTokens()),
+                detail.compactionRequestId() != null ? detail.compactionRequestId().toString() : null,
+                new AiReplyResponse(
+                        state.requestId() != null ? state.requestId().toString() : null,
+                        state.status().name(), state.errorCode(),
+                        state.startedAt() != null ? state.startedAt().atOffset(ZoneOffset.UTC) : null,
+                        state.completedAt() != null ? state.completedAt().atOffset(ZoneOffset.UTC) : null,
+                        state.userMessageSequence(), state.assistantMessageSequence()));
     }
 
 

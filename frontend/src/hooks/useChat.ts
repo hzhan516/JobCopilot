@@ -43,6 +43,8 @@ export interface UseChatReturn {
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   activeResumeName: string | null;
   activeJobName: string | null;
+  attachments: Array<{ name: string; url: string }>;
+  isUploadingAttachment: boolean;
 
   setInputMessage: (value: string) => void;
   setNewDialogOpen: (open: boolean) => void;
@@ -53,6 +55,8 @@ export interface UseChatReturn {
   handleSelectConversation: (conversation: Conversation) => Promise<void>;
   handleCreateConversation: () => Promise<void>;
   handleSendMessage: () => Promise<void>;
+  handleAttachFiles: (files: FileList | File[]) => Promise<void>;
+  removeAttachment: (url: string) => void;
   retryAiReply: () => Promise<void>;
   handleDeleteConversation: (conversationId: string) => Promise<void>;
   compactConversation: () => Promise<void>;
@@ -81,6 +85,8 @@ export function useChat(): UseChatReturn {
   const [selectedJobId, setSelectedJobId] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [isCompacting, setIsCompacting] = useState(false);
+  const [attachments, setAttachments] = useState<Array<{ name: string; url: string }>>([]);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollAbortRef = useRef<AbortController | null>(null);
@@ -126,7 +132,9 @@ export function useChat(): UseChatReturn {
 
         setConversations(convs);
         if (convs.length > 0) {
-          syncConversation(convs[0]);
+          const detail = await chatService.getConversation(convs[0].conversationId);
+          if (ignored) return;
+          syncConversation(detail);
         } else {
           setActiveConversation(null);
           setMessages([]);
@@ -185,6 +193,7 @@ export function useChat(): UseChatReturn {
     async (conversation: Conversation) => {
       pollAbortRef.current?.abort();
       pollingRequestIdRef.current = null;
+      setAttachments([]);
       syncConversation(conversation);
       try {
         const detail = await chatService.getConversation(conversation.conversationId);
@@ -258,8 +267,7 @@ export function useChat(): UseChatReturn {
     if (activeConversation?.aiReply?.status === 'PENDING') {
       beginPolling(activeConversation);
     }
-  }, [activeConversation?.conversationId, activeConversation?.aiReply?.requestId,
-    activeConversation?.aiReply?.status, beginPolling]);
+  }, [activeConversation, beginPolling]);
 
   const handleCreateConversation = useCallback(async () => {
     if (!selectedResumeVersionId) {
@@ -298,6 +306,7 @@ export function useChat(): UseChatReturn {
         selectedJobId
       );
       syncConversation(newConversation);
+      setAttachments([]);
       setNewDialogOpen(false);
       toast.success(t('chat.createSuccess'));
 
@@ -344,8 +353,13 @@ export function useChat(): UseChatReturn {
     setIsSending(true);
 
     try {
-      const updatedConversation = await chatService.sendMessage(conversationId, content);
+      const updatedConversation = await chatService.sendMessage(
+        conversationId,
+        content,
+        attachments.map((attachment) => attachment.url)
+      );
       syncConversation(updatedConversation);
+      setAttachments([]);
       beginPolling(updatedConversation);
     } catch (error) {
       console.error('Failed to send chat message', error);
@@ -354,7 +368,46 @@ export function useChat(): UseChatReturn {
     } finally {
       setIsSending(false);
     }
-  }, [inputMessage, activeConversation, isWaitingForReply, syncConversation, beginPolling, t]);
+  }, [inputMessage, activeConversation, isWaitingForReply, attachments, syncConversation, beginPolling, t]);
+
+  const handleAttachFiles = useCallback(async (files: FileList | File[]) => {
+    if (!activeConversation) return;
+    const incoming = Array.from(files).slice(0, Math.max(0, 3 - attachments.length));
+    const allowedTypes = new Set([
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+      'text/markdown',
+      'text/x-markdown',
+      'application/octet-stream',
+    ]);
+    const allowedExtensions = new Set(['pdf', 'docx', 'txt', 'md']);
+    const accepted = incoming.filter((file) => file.size > 0
+      && file.size <= 10 * 1024 * 1024
+      && allowedExtensions.has(file.name.split('.').pop()?.toLowerCase() ?? '')
+      && (file.type === '' || allowedTypes.has(file.type)));
+    if (accepted.length !== incoming.length) {
+      toast.error(t('chat.attachmentInvalid'));
+    }
+    if (accepted.length === 0) return;
+    setIsUploadingAttachment(true);
+    try {
+      const uploaded = await Promise.all(accepted.map(async (file) => ({
+        name: file.name,
+        url: await chatService.uploadAttachment(activeConversation.conversationId, file),
+      })));
+      setAttachments((current) => [...current, ...uploaded].slice(0, 3));
+    } catch (error) {
+      console.error('Failed to upload chat attachment', error);
+      toast.error(t('chat.attachmentUploadFailed'));
+    } finally {
+      setIsUploadingAttachment(false);
+    }
+  }, [activeConversation, attachments.length, t]);
+
+  const removeAttachment = useCallback((url: string) => {
+    setAttachments((current) => current.filter((attachment) => attachment.url !== url));
+  }, []);
 
   const retryAiReply = useCallback(async () => {
     if (!activeConversation || isWaitingForReply) return;
@@ -393,6 +446,7 @@ export function useChat(): UseChatReturn {
         if (activeConversation?.conversationId === conversationId) {
           setActiveConversation(null);
           setMessages([]);
+          setAttachments([]);
         }
         toast.success(t('chat.deleteSuccess'));
       } catch {
@@ -420,6 +474,8 @@ export function useChat(): UseChatReturn {
     messagesEndRef,
     activeResumeName,
     activeJobName,
+    attachments,
+    isUploadingAttachment,
 
     setInputMessage,
     setNewDialogOpen,
@@ -430,6 +486,8 @@ export function useChat(): UseChatReturn {
     handleSelectConversation,
     handleCreateConversation,
     handleSendMessage,
+    handleAttachFiles,
+    removeAttachment,
     retryAiReply,
     handleDeleteConversation,
     compactConversation,

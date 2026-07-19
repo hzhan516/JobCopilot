@@ -125,7 +125,7 @@
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `content` | String | Yes | Message content |
-| `fileUrls` | List<String> | No | Reserved attachment URL list. Current backend accepts the field but does not persist or forward client-provided values to the AI request |
+| `fileUrls` | List<String> | No | Up to three managed attachment URLs returned by this conversation's upload endpoint. Ownership and storage location are validated before they are forwarded to AI |
 
 #### Request Example
 
@@ -199,13 +199,13 @@ If the conversation title is still the default value when a message is added, th
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `page` | Integer | No | Message page number, starting from 0 |
-| `size` | Integer | No | Messages per page, returns all by default |
+| `size` | Integer | No | Messages per page; defaults to 50 and is capped at 100 |
 
 ### Response Structure
 
 #### Success Response (200)
 
-Returns complete conversation information, including all messages (sorted by `sequence` ascending) and the durable `aiReply` state. If `page` and `size` are provided, only messages in the specified pagination range are returned. A client must correlate completion with `aiReply.requestId`; the presence of an older assistant message is not evidence that the newest request completed.
+Returns conversation information with one bounded message page (sorted by `sequence` ascending), durable `aiReply` state, context usage, and the latest `compactionRequestId`. A client must correlate completion with `aiReply.requestId`; the presence of an older assistant message is not evidence that the newest request completed.
 
 ---
 
@@ -223,7 +223,7 @@ Returns complete conversation information, including all messages (sorted by `se
 
 #### Success Response (200)
 
-Returns all conversation lists for the current user (without message details).
+Returns lightweight summaries for the current user, ordered by `updatedAt` descending. Each item excludes message details and includes `lastMessagePreview` plus the durable `aiReply` state.
 
 #### Response Example
 

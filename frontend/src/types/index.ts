@@ -195,6 +195,7 @@ export interface Conversation {
   usageRatio?: number;
   /** Whether usage exceeds compact threshold */
   compactAdvised?: boolean;
+  compactionRequestId?: string | null;
   aiReply?: AiReplyState;
 }
 

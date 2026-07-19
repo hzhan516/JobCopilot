@@ -372,7 +372,7 @@ public class Conversation extends AggregateRoot<UUID> {
         }
         applyCompaction(summary, throughSequence, newContextTokens);
         this.status = ConversationStatus.ACTIVE;
-        this.compactionRequestId = null;
+        // Retain the terminal correlation ID so clients can verify the exact compaction.
         this.updatedAt = LocalDateTime.now();
         return true;
     }
@@ -383,7 +383,7 @@ public class Conversation extends AggregateRoot<UUID> {
             return false;
         }
         this.status = ConversationStatus.ACTIVE;
-        this.compactionRequestId = null;
+        // Retain the terminal correlation ID until the next compaction replaces it.
         this.updatedAt = LocalDateTime.now();
         return true;
     }

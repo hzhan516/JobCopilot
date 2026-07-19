@@ -78,6 +78,9 @@ ERROR_RATE_LIMITED = "RATE_LIMITED"
 ERROR_UPSTREAM_TIMEOUT = "UPSTREAM_TIMEOUT"
 ERROR_UPSTREAM_UNAVAILABLE = "UPSTREAM_UNAVAILABLE"
 ERROR_INVALID_MODEL_RESPONSE = "INVALID_MODEL_RESPONSE"
+ERROR_PROVIDER_AUTH = "PROVIDER_AUTH"
+ERROR_MODEL_NOT_FOUND = "MODEL_NOT_FOUND"
+ERROR_PROMPT_TOO_LARGE = "PROMPT_TOO_LARGE"
 ERROR_UNKNOWN = "UNKNOWN"
 
 # Dead-letter queue arguments: failed messages are routed to the DLX for later inspection.
@@ -250,8 +253,14 @@ def classify_ai_error(exc: Exception) -> str:
             or "resource_exhausted" in message
         ):
             return ERROR_RATE_LIMITED
+        if "authentication" in name or "permissiondenied" in name or "401" in message or "403" in message:
+            return ERROR_PROVIDER_AUTH
+        if "notfound" in name or "model_not_found" in message or "model not found" in message:
+            return ERROR_MODEL_NOT_FOUND
         if "timeout" in name or "timeout" in message or "timed out" in message:
             return ERROR_UPSTREAM_TIMEOUT
+        if "contextwindow" in name or "prompt too large" in message or "context length" in message:
+            return ERROR_PROMPT_TOO_LARGE
         if (
             "json" in name
             or "invalid_model_response" in message

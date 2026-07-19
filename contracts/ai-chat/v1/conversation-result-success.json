@@ -1,0 +1,20 @@
+{
+  "referenceId": "00000000-0000-0000-0000-000000000101",
+  "type": "CONVERSATION_REPLY",
+  "status": "COMPLETED",
+  "data": {
+    "content": "Add one quantified outcome to the first experience bullet.",
+    "fileUrl": null,
+    "requestId": "00000000-0000-0000-0000-000000000401",
+    "locale": "en",
+    "resumeModification": {"modified": false, "markdown": ""},
+    "promptTokens": 100,
+    "completionTokens": 20,
+    "totalTokens": 120
+  },
+  "errorMessage": null,
+  "eventType": null,
+  "schemaVersion": 1,
+  "eventId": "00000000-0000-0000-0000-000000000601",
+  "requestId": "00000000-0000-0000-0000-000000000401"
+}

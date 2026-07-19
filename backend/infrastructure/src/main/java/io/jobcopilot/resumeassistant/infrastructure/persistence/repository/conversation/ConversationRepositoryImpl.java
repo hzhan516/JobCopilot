@@ -4,10 +4,15 @@ import io.jobcopilot.resumeassistant.domain.conversation.entity.Conversation;
 import io.jobcopilot.resumeassistant.domain.conversation.entity.Message;
 import io.jobcopilot.resumeassistant.domain.conversation.repository.ConversationRepository;
 import io.jobcopilot.resumeassistant.domain.conversation.valueobject.AiReplyState;
+import io.jobcopilot.resumeassistant.domain.conversation.query.ConversationSummary;
+import io.jobcopilot.resumeassistant.domain.conversation.query.ConversationDetail;
+import io.jobcopilot.resumeassistant.domain.conversation.valueobject.AiReplyStatus;
+import io.jobcopilot.resumeassistant.domain.conversation.valueobject.ConversationStatus;
 import io.jobcopilot.resumeassistant.infrastructure.persistence.entity.conversation.ConversationJpaEntity;
 import io.jobcopilot.resumeassistant.infrastructure.persistence.entity.conversation.MessageJpaEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.*;
 
@@ -20,6 +25,7 @@ import java.util.*;
 public class ConversationRepositoryImpl implements ConversationRepository {
 
     private final JpaConversationRepository jpaRepository;
+    private final JpaMessageRepository jpaMessageRepository;
 
     @Override
     public Conversation save(Conversation conversation) {
@@ -56,6 +62,60 @@ public class ConversationRepositoryImpl implements ConversationRepository {
     @Override
     public void deleteById(UUID id) {
         jpaRepository.deleteById(id.toString());
+    }
+
+    @Override
+    public List<ConversationSummary> findSummariesByUserId(UUID userId) {
+        return jpaRepository.findSummariesByUserId(userId.toString()).stream()
+                .map(row -> new ConversationSummary(
+                        UUID.fromString(row.getConversationId()),
+                        UUID.fromString(row.getUserId()),
+                        row.getTitle(),
+                        ConversationStatus.valueOf(row.getStatus()),
+                        row.getResumeVersionId() != null ? UUID.fromString(row.getResumeVersionId()) : null,
+                        row.getJobId() != null ? UUID.fromString(row.getJobId()) : null,
+                        row.getCreatedAt(),
+                        row.getUpdatedAt(),
+                        new AiReplyState(
+                                row.getAiReplyRequestId() != null ? UUID.fromString(row.getAiReplyRequestId()) : null,
+                                row.getAiReplyStatus() != null ? AiReplyStatus.valueOf(row.getAiReplyStatus()) : AiReplyStatus.IDLE,
+                                row.getAiReplyErrorCode(),
+                                row.getAiReplyStartedAt(),
+                                row.getAiReplyCompletedAt(),
+                                row.getAiReplyUserMessageSequence(),
+                                row.getAiReplyAssistantMessageSequence()),
+                        row.getLastMessagePreview()))
+                .toList();
+    }
+
+    @Override
+    public Optional<ConversationDetail> findDetailById(UUID conversationId, int page, int size) {
+        return jpaRepository.findSummaryByConversationId(conversationId.toString()).map(row -> {
+            List<Message> messages = jpaMessageRepository
+                    .findByConversationIdOrderBySequenceDesc(
+                            conversationId.toString(), PageRequest.of(page, size))
+                    .stream()
+                    .map(this::mapMessageToDomainEntity)
+                    .sorted(Comparator.comparingInt(Message::getSequence))
+                    .toList();
+            return new ConversationDetail(
+                    UUID.fromString(row.getConversationId()),
+                    UUID.fromString(row.getUserId()),
+                    row.getTitle(),
+                    ConversationStatus.valueOf(row.getStatus()),
+                    row.getResumeVersionId() != null ? UUID.fromString(row.getResumeVersionId()) : null,
+                    row.getJobId() != null ? UUID.fromString(row.getJobId()) : null,
+                    row.getCreatedAt(),
+                    row.getUpdatedAt(),
+                    row.getContextTokens() != null ? row.getContextTokens() : 0,
+                    row.getCompactionRequestId() != null ? UUID.fromString(row.getCompactionRequestId()) : null,
+                    new AiReplyState(
+                            row.getAiReplyRequestId() != null ? UUID.fromString(row.getAiReplyRequestId()) : null,
+                            row.getAiReplyStatus() != null ? AiReplyStatus.valueOf(row.getAiReplyStatus()) : AiReplyStatus.IDLE,
+                            row.getAiReplyErrorCode(), row.getAiReplyStartedAt(), row.getAiReplyCompletedAt(),
+                            row.getAiReplyUserMessageSequence(), row.getAiReplyAssistantMessageSequence()),
+                    messages);
+        });
     }
 
     @Override

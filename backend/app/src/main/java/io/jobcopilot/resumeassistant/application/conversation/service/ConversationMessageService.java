@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.util.List;
 
 /**
  * Handles message-related operations within a conversation: sending user messages,
@@ -27,6 +28,7 @@ public class ConversationMessageService {
     private final ConversationRepository conversationRepository;
     private final ConversationLifecycleService lifecycleService;
     private final ConversationContextService contextService;
+    private final ConversationAttachmentService attachmentService;
     private final AiOptimizedResumeService aiOptimizedResumeService;
     private final ConversationStreamPort streamPort;
 
@@ -36,7 +38,10 @@ public class ConversationMessageService {
         Conversation conversation = lifecycleService.getConversationWithOwnershipCheck(
                 command.conversationId(), command.userId());
 
-        conversation.addMessage(command.role(), command.content());
+        List<String> attachmentUrls = attachmentService.validateReferences(
+                command.conversationId(), command.userId(), command.fileUrls());
+        String primaryAttachment = attachmentUrls.isEmpty() ? null : attachmentUrls.getFirst();
+        conversation.addMessage(command.role(), command.content(), primaryAttachment);
         conversation.autoGenerateTitle(command.content());
         int userMessageSequence = conversation.getMessages().get(conversation.getMessages().size() - 1).getSequence();
         UUID requestId = UUID.randomUUID();
@@ -45,7 +50,8 @@ public class ConversationMessageService {
 
         boolean isInit = saved.getMessages().stream()
                 .noneMatch(m -> m.getRole() == MessageRole.ASSISTANT);
-        contextService.queueConversationRequest(saved, command.content(), isInit, requestId, userMessageSequence);
+        contextService.queueConversationRequest(saved, command.content(), isInit, requestId,
+                userMessageSequence, attachmentUrls);
 
         return saved;
     }
@@ -110,8 +116,10 @@ public class ConversationMessageService {
         UUID requestId = UUID.randomUUID();
         conversation.retryAiReply(requestId);
         Conversation saved = conversationRepository.save(conversation);
+        List<String> attachmentUrls = originalMessage.getFileUrl() == null
+                ? List.of() : List.of(originalMessage.getFileUrl());
         contextService.queueConversationRequest(saved, originalMessage.getContent(), false,
-                requestId, userSequence);
+                requestId, userSequence, attachmentUrls);
         return saved;
     }
 

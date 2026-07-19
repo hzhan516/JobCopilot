@@ -3,17 +3,12 @@ import logging
 import re
 import base64
 import threading
+import time
 from dataclasses import dataclass
 from typing import Any
 
 import litellm
 from litellm import completion
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_exponential,
-    retry_if_exception_type,
-)
 
 from app.config import (
     LLM_TEXT_MODEL,
@@ -21,7 +16,11 @@ from app.config import (
     LLM_TEMPERATURE,
     LLM_REQUEST_TIMEOUT_SECONDS,
     LLM_MAX_TOKENS,
+    LLM_MAX_ATTEMPTS,
+    AI_REQUEST_DEADLINE_SECONDS,
+    CHAT_STRUCTURED_OUTPUT_ENABLED,
 )
+from app.services.provider_readiness import classify_provider_error, provider_readiness
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +65,7 @@ class JsonGenerationResult:
     repaired: bool = False
     repair_raw_text: str | None = None
     usage: Usage | None = None
+    structured_output: bool = False
 
 
 # 全局并发锁：防止 FastAPI 的 I/O 并发瞬间打爆 Vertex AI 导致 429
@@ -75,17 +75,15 @@ _llm_semaphore = threading.BoundedSemaphore(MAX_CONCURRENT_LLM_REQUESTS)
 
 # Exponential backoff for transient LLM failures (rate limits, connection drops).
 # 指数退避重试：针对 LLM 服务商的瞬时限流或网络抖动，避免请求堆积放大故障。
-RETRY_STRATEGY = retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type(
-        (
-            litellm.exceptions.RateLimitError,
-            litellm.exceptions.APIConnectionError,
-            litellm.exceptions.Timeout,
-        )
-    ),
+_RETRYABLE_PROVIDER_ERRORS = (
+    litellm.exceptions.RateLimitError,
+    litellm.exceptions.APIConnectionError,
+    litellm.exceptions.Timeout,
 )
+
+
+class LlmDeadlineExceeded(TimeoutError):
+    """Raised when the total AI-service deadline leaves no retry budget."""
 
 
 def _extract_json_text(raw_text: str) -> str:
@@ -99,7 +97,7 @@ def _extract_json_text(raw_text: str) -> str:
 
     start = cleaned.find("{")
     if start == -1:
-        raise ValueError(f"LLM response did not contain a JSON object: {raw_text}")
+        raise ValueError("LLM response did not contain a JSON object")
 
     depth = 0
     in_string = False
@@ -130,14 +128,9 @@ def _extract_json_text(raw_text: str) -> str:
             if depth == 0:
                 return cleaned[start : index + 1]
             if depth < 0:
-                raise ValueError(
-                    f"LLM response contained invalid JSON braces: {cleaned[start:index + 1]}"
-                )
+                raise ValueError("LLM response contained invalid JSON braces")
 
-    extracted = cleaned[start:]
-    raise ValueError(
-        f"Extracted JSON is incomplete: braces mismatch in {extracted[:200]}"
-    )
+    raise ValueError("Extracted JSON is incomplete: braces mismatch")
 
 
 def _safe_json_loads(text: str) -> dict[str, Any]:
@@ -184,7 +177,7 @@ def _safe_json_loads(text: str) -> dict[str, Any]:
     try:
         return json.loads(sanitized, strict=False)
     except json.JSONDecodeError as e:
-        logger.error("JSON repair failed: %s, text=%r", e, text[:500])
+        logger.error("JSON repair failed: error_type=%s", type(e).__name__)
         raise
 
 
@@ -216,25 +209,68 @@ def _extract_usage(response) -> Usage | None:
         return None
 
 
-@RETRY_STRATEGY
 def _generate_text(
-    model: str, messages: list[dict[str, Any]]
+    model: str,
+    messages: list[dict[str, Any]],
+    *,
+    response_format: dict[str, Any] | None = None,
+    deadline_at: float | None = None,
 ) -> tuple[str, Usage | None]:
     """Execute a text-only LLM completion with retries and empty-response guard.
     执行文本补全：带重试机制与空响应兜底，防止下游因空字符串导致解析异常。"""
     logger.debug("LLM request: model=%s, messages_count=%d", model, len(messages))
-    try:
-        with _llm_semaphore:
-            response = completion(
-                model=model,
-                messages=messages,
-                temperature=LLM_TEMPERATURE,
-                max_tokens=LLM_MAX_TOKENS,
-                timeout=LLM_REQUEST_TIMEOUT_SECONDS,
+    deadline_at = deadline_at or (time.monotonic() + AI_REQUEST_DEADLINE_SECONDS)
+    response = None
+    last_error: Exception | None = None
+    for attempt in range(1, LLM_MAX_ATTEMPTS + 1):
+        remaining = deadline_at - time.monotonic()
+        if remaining <= 0:
+            provider_readiness.record_result(success=False, error_code="TIMEOUT")
+            raise LlmDeadlineExceeded("AI request deadline exhausted") from last_error
+        call_timeout = max(0.1, min(LLM_REQUEST_TIMEOUT_SECONDS, remaining))
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "temperature": LLM_TEMPERATURE,
+            "max_tokens": LLM_MAX_TOKENS,
+            "timeout": call_timeout,
+        }
+        if response_format is not None:
+            kwargs["response_format"] = response_format
+        try:
+            with _llm_semaphore:
+                response = completion(**kwargs)
+            provider_readiness.record_result(success=True)
+            break
+        except Exception as exc:
+            last_error = exc
+            error_code = classify_provider_error(exc)
+            provider_readiness.record_result(success=False, error_code=error_code)
+            retryable = isinstance(exc, _RETRYABLE_PROVIDER_ERRORS)
+            if not retryable or attempt >= LLM_MAX_ATTEMPTS:
+                logger.warning(
+                    "LLM completion failed: model=%s attempt=%d error_code=%s",
+                    model,
+                    attempt,
+                    error_code,
+                )
+                raise
+            backoff = min(2 ** (attempt - 1), 10)
+            if time.monotonic() + backoff >= deadline_at:
+                raise LlmDeadlineExceeded(
+                    "AI request deadline exhausted before retry"
+                ) from exc
+            logger.info(
+                "Retrying LLM completion: model=%s attempt=%d error_code=%s backoff_seconds=%d",
+                model,
+                attempt,
+                error_code,
+                backoff,
             )
-    except Exception:
-        logger.exception("LLM completion failed: model=%s", model)
-        raise
+            time.sleep(backoff)
+
+    if response is None:
+        raise LlmDeadlineExceeded("AI request completed without a provider response")
 
     if not response.choices:
         raise ValueError("LiteLLM returned no choices.")
@@ -299,6 +335,7 @@ def generate_json_from_text_prompt_with_repair(
     prompt: str,
     *,
     repair_context: str | None = None,
+    response_schema: dict[str, Any] | None = None,
 ) -> JsonGenerationResult:
     """Generate a JSON object and make one model-assisted repair attempt before failing.
 
@@ -307,16 +344,41 @@ def generate_json_from_text_prompt_with_repair(
     using generate_json_from_text_prompt().
     """
     messages = [{"role": "user", "content": prompt}]
+    deadline_at = time.monotonic() + AI_REQUEST_DEADLINE_SECONDS
+    response_format = None
+    structured_output = False
+    if CHAT_STRUCTURED_OUTPUT_ENABLED and response_schema:
+        try:
+            structured_output = bool(
+                litellm.supports_response_schema(model=LLM_TEXT_MODEL)
+            )
+        except Exception:
+            structured_output = False
+        if structured_output:
+            response_format = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "jobcopilot_conversation_reply",
+                    "strict": True,
+                    "schema": response_schema,
+                },
+            }
     raw_text, usage = _generate_text(
         model=LLM_TEXT_MODEL,
         messages=messages,
+        response_format=response_format,
+        deadline_at=deadline_at,
     )
 
     parse_error: Exception | None = None
     try:
         parsed, json_text = _parse_json_object_from_text(raw_text)
         return JsonGenerationResult(
-            data=parsed, raw_text=raw_text, json_text=json_text, usage=usage
+            data=parsed,
+            raw_text=raw_text,
+            json_text=json_text,
+            usage=usage,
+            structured_output=structured_output,
         )
     except Exception as first_error:
         parse_error = first_error
@@ -332,6 +394,7 @@ def generate_json_from_text_prompt_with_repair(
         repair_raw_text, _ = _generate_text(
             model=LLM_TEXT_MODEL,
             messages=[{"role": "user", "content": repair_prompt}],
+            deadline_at=deadline_at,
         )
         parsed, json_text = _parse_json_object_from_text(repair_raw_text)
         logger.info(
@@ -346,13 +409,14 @@ def generate_json_from_text_prompt_with_repair(
             repaired=True,
             repair_raw_text=repair_raw_text,
             usage=usage,
+            structured_output=structured_output,
         )
     except Exception as repair_error:
         logger.error(
-            "LLM JSON repair failed: first_error=%s, repair_error=%s, raw_text_prefix=%r",
-            parse_error,
-            repair_error,
-            raw_text[:500],
+            "LLM JSON repair failed: first_error_type=%s repair_error_type=%s raw_text_length=%d",
+            type(parse_error).__name__,
+            type(repair_error).__name__,
+            len(raw_text),
         )
         raise LlmJsonParseError(
             "LLM JSON response could not be parsed or repaired.",
@@ -363,7 +427,6 @@ def generate_json_from_text_prompt_with_repair(
         ) from repair_error
 
 
-@RETRY_STRATEGY
 def generate_json_from_image_prompt(
     prompt: str,
     image_bytes: bytes,

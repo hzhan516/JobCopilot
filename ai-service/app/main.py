@@ -7,7 +7,7 @@ import asyncio
 import logging
 import os
 import threading
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -19,6 +19,7 @@ from app.config import (
     ENV,
     EMBEDDING_MAX_BATCH_SIZE,
     EMBEDDING_MAX_TEXT_LENGTH,
+    AI_PROVIDER_PROBE_INTERVAL_SECONDS,
 )
 from app.mq.consumer import create_connection, setup_all_queues, start_all_consumers
 
@@ -34,6 +35,7 @@ from app.schemas import (
 from app.services.job_matching_service import find_job_matches
 from app.services.suitability_service import evaluate_suitability_with_vertex
 from app.services.vector_service import generate_embedding
+from app.services.provider_readiness import provider_readiness
 
 try:
     from app.__version__ import __version__
@@ -67,10 +69,14 @@ async def lifespan(app: FastAPI):
     _start_mq_consumer_once()
     await model_manager.load_latest()
     reload_task = asyncio.create_task(model_manager.watch_for_reloads())
+    provider_probe_task = asyncio.create_task(_provider_probe_loop())
     yield
     # Shutdown / 优雅关闭
     logger.info("Shutting down MQ consumers...")
     reload_task.cancel()
+    provider_probe_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await provider_probe_task
     global _mq_connection, _mq_channel
     if _mq_channel and _mq_channel.is_open:
         try:
@@ -105,7 +111,15 @@ app.include_router(admin_router)
 
 # Whitelist paths that must remain accessible without authentication (health, docs).
 # 以下路径免鉴权，确保探针和文档端点始终可访问。
-_SKIP_AUTH_PATHS = {"/health", "/", "/docs", "/openapi.json", "/redoc"}
+_SKIP_AUTH_PATHS = {
+    "/health",
+    "/health/live",
+    "/health/ready",
+    "/",
+    "/docs",
+    "/openapi.json",
+    "/redoc",
+}
 
 
 @app.middleware("http")
@@ -146,26 +160,38 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    if not _mq_is_connected:
+    """Backward-compatible readiness endpoint."""
+    snapshot = provider_readiness.snapshot()
+    ready = _mq_is_connected and snapshot.ready
+    if not ready:
         return JSONResponse(
             status_code=503,
             content={
                 "status": "degraded",
-                "mq_connected": False,
-                "message": "Initializing or waiting for RabbitMQ connection...",
+                "mq_connected": _mq_is_connected,
+                "provider": provider_readiness.public_status(),
             },
         )
     return {
         "status": "healthy",
         "mq_connected": True,
-        "vertex_project_configured": os.getenv("VERTEX_PROJECT_ID") is not None
-        and os.getenv("VERTEX_PROJECT_ID") != "jobcopilot-ai-service",
-        "vertex_location": os.getenv("VERTEX_LOCATION", "global"),
+        "provider": provider_readiness.public_status(),
     }
+
+
+@app.get("/health/live")
+async def liveness():
+    return {"status": "alive", "service": "jobcopilot-ai-service"}
+
+
+@app.get("/health/ready")
+async def readiness():
+    return await health_check()
 
 
 @app.get("/api/status")
 async def status():
+    snapshot = provider_readiness.snapshot()
     return {
         "service": "AI Service",
         "features": [
@@ -174,8 +200,16 @@ async def status():
             "job_matching",
             "chat_processing",
         ],
-        "ready": True,
+        "ready": _mq_is_connected and snapshot.ready,
+        "mqConnected": _mq_is_connected,
+        "chat": provider_readiness.public_status(),
     }
+
+
+async def _provider_probe_loop() -> None:
+    while True:
+        await asyncio.to_thread(provider_readiness.probe)
+        await asyncio.sleep(AI_PROVIDER_PROBE_INTERVAL_SECONDS)
 
 
 def initialize_mq() -> None:

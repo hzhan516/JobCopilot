@@ -1,6 +1,8 @@
 package io.jobcopilot.resumeassistant.domain.conversation.repository;
 
 import io.jobcopilot.resumeassistant.domain.conversation.entity.Conversation;
+import io.jobcopilot.resumeassistant.domain.conversation.query.ConversationSummary;
+import io.jobcopilot.resumeassistant.domain.conversation.query.ConversationDetail;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,6 +32,11 @@ public interface ConversationRepository {
      * Find all conversations by user ID
      */
     List<Conversation> findAllByUserId(UUID userId);
+
+    /** Returns updated-desc summaries without loading message bodies. */
+    List<ConversationSummary> findSummariesByUserId(UUID userId);
+
+    Optional<ConversationDetail> findDetailById(UUID conversationId, int page, int size);
 
     /**
      * 统计某用户的对话数量

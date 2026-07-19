@@ -46,10 +46,27 @@ export const chatService = {
     }
   },
 
-  sendMessage: async (conversationId: string, content: string): Promise<Conversation> => {
+  sendMessage: async (
+    conversationId: string,
+    content: string,
+    fileUrls: string[] = []
+  ): Promise<Conversation> => {
     const response = await apiClient.post<ApiResponse<Conversation>>(
       `/v1/conversations/${conversationId}/messages`,
-      { content }
+      { content, fileUrls }
+    );
+    if (response.data.code === 200) {
+      return response.data.data;
+    }
+    throw new Error(response.data.message);
+  },
+
+  uploadAttachment: async (conversationId: string, file: File): Promise<string> => {
+    const form = new FormData();
+    form.append('file', file);
+    const response = await apiClient.post<ApiResponse<string>>(
+      `/v1/conversations/${conversationId}/files`,
+      form
     );
     if (response.data.code === 200) {
       return response.data.data;

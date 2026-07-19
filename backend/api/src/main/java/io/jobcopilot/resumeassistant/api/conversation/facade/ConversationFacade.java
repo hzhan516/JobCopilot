@@ -1,6 +1,7 @@
 package io.jobcopilot.resumeassistant.api.conversation.facade;
 
 import io.jobcopilot.resumeassistant.api.conversation.dto.ConversationResponse;
+import io.jobcopilot.resumeassistant.api.conversation.dto.ConversationSummaryResponse;
 import io.jobcopilot.resumeassistant.api.conversation.dto.CreateConversationRequest;
 import io.jobcopilot.resumeassistant.api.conversation.dto.SendMessageRequest;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,7 +37,7 @@ public interface ConversationFacade {
      * 获取用户的所有对话
      * List all conversations for user
      */
-    List<ConversationResponse> listConversations(UUID userId);
+    List<ConversationSummaryResponse> listConversations(UUID userId);
 
     /**
      * 关闭对话

@@ -31,6 +31,7 @@ public record ConversationResponse(
         Integer contextWindow,
         Double usageRatio,
         Boolean compactAdvised,
+        String compactionRequestId,
         AiReplyResponse aiReply
 ) {
     /** Backward-compatible constructor used by older controller tests. */
@@ -40,7 +41,7 @@ public record ConversationResponse(
             OffsetDateTime createdAt, OffsetDateTime updatedAt, Integer contextTokens,
             Integer contextWindow, Double usageRatio, Boolean compactAdvised) {
         this(conversationId, userId, title, status, resumeVersionId, jobId, messages,
-                createdAt, updatedAt, contextTokens, contextWindow, usageRatio, compactAdvised,
+                createdAt, updatedAt, contextTokens, contextWindow, usageRatio, compactAdvised, null,
                 new AiReplyResponse(null, "IDLE", null, null, null, null, null));
     }
 }

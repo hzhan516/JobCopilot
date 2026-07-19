@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { Message } from '@/types';
 import { useTranslation } from 'react-i18next';
 import { formatTime } from '@/utils/i18n';
@@ -37,6 +37,8 @@ import {
   Briefcase,
   RotateCcw,
   AlertCircle,
+  Paperclip,
+  X,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -70,6 +72,8 @@ export default function CopilotChatArea() {
     messagesEndRef,
     activeResumeName,
     activeJobName,
+    attachments,
+    isUploadingAttachment,
     setInputMessage,
     setNewDialogOpen,
     setNewChatTitle,
@@ -79,12 +83,15 @@ export default function CopilotChatArea() {
     handleSelectConversation,
     handleCreateConversation,
     handleSendMessage,
+    handleAttachFiles,
+    removeAttachment,
     retryAiReply,
     handleDeleteConversation,
     compactConversation,
     isCompacting,
   } = useChat();
   const { context } = useCopilotStore();
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
 
   // 从 Job 详情页唤起时自动选中对应 Job
   useEffect(() => {
@@ -121,6 +128,17 @@ export default function CopilotChatArea() {
             }`}
           >
             <p className="whitespace-pre-wrap break-words">{message.content}</p>
+            {message.fileUrl && (
+              <a
+                href={message.fileUrl}
+                target="_blank"
+                rel="noreferrer"
+                className={`mt-1 inline-flex items-center gap-1 text-xs underline ${isUser ? 'text-blue-100' : 'text-blue-600'}`}
+              >
+                <Paperclip className="h-3 w-3" />
+                {t('chat.attachment')}
+              </a>
+            )}
             <span
               className={`text-[10px] mt-1 block ${
                 isUser ? 'text-blue-200' : 'text-gray-500'
@@ -390,7 +408,50 @@ export default function CopilotChatArea() {
             onCompact={compactConversation}
           />
           <div className="px-3 pb-3">
+            {attachments.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {attachments.map((attachment) => (
+                  <span
+                    key={attachment.url}
+                    className="inline-flex max-w-full items-center gap-1 rounded bg-muted px-2 py-1 text-xs"
+                  >
+                    <Paperclip className="h-3 w-3 shrink-0" />
+                    <span className="max-w-[180px] truncate">{attachment.name}</span>
+                    <button
+                      type="button"
+                      aria-label={t('chat.removeAttachment')}
+                      onClick={() => removeAttachment(attachment.url)}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
             <div className="flex space-x-2">
+              <input
+                ref={attachmentInputRef}
+                type="file"
+                className="hidden"
+                multiple
+                accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+                onChange={(event) => {
+                  if (event.target.files) void handleAttachFiles(event.target.files);
+                  event.target.value = '';
+                }}
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                aria-label={t('chat.addAttachment')}
+                onClick={() => attachmentInputRef.current?.click()}
+                disabled={isUploadingAttachment || isSending || isWaitingForReply || attachments.length >= 3}
+              >
+                {isUploadingAttachment
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <Paperclip className="h-4 w-4" />}
+              </Button>
               <Input
                 placeholder={t('chat.inputPlaceholder')}
                 value={inputMessage}

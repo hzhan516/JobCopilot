@@ -46,6 +46,25 @@ def test_download_file_bytes_from_storage_url(tmp_path, monkeypatch):
     assert result == b"local pdf content"
 
 
+def test_download_file_bytes_from_nested_storage_url(tmp_path, monkeypatch):
+    monkeypatch.setenv("FILE_STORAGE_PATH", str(tmp_path))
+    target = tmp_path / "conversations" / "conversation-1" / "attachment.pdf"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"nested local pdf content")
+
+    result = download_file_bytes(
+        "/api/storage/download?key=conversations%2Fconversation-1%2Fattachment.pdf"
+    )
+    assert result == b"nested local pdf content"
+
+
+def test_download_file_bytes_rejects_storage_path_traversal(tmp_path, monkeypatch):
+    monkeypatch.setenv("FILE_STORAGE_PATH", str(tmp_path))
+
+    with pytest.raises(FileNotFoundError, match="Could not resolve"):
+        download_file_bytes("/api/storage/download?key=..%2Foutside.pdf")
+
+
 def test_download_file_bytes_from_object_key(tmp_path, monkeypatch):
     monkeypatch.setenv("FILE_STORAGE_PATH", str(tmp_path))
     target = tmp_path / "resumes" / "2026" / "05" / "03" / "uuid_file.pdf"
@@ -58,7 +77,7 @@ def test_download_file_bytes_from_object_key(tmp_path, monkeypatch):
 
 def test_download_file_bytes_local_not_found(tmp_path, monkeypatch):
     monkeypatch.setenv("FILE_STORAGE_PATH", str(tmp_path))
-    with pytest.raises(ValueError, match="Unsupported file_url"):
+    with pytest.raises(ValueError, match="Unsupported attachment reference"):
         download_file_bytes("nonexistent.pdf")
 
 

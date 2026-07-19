@@ -214,12 +214,13 @@ class ConversationTest {
         assertThat(conversation.completeCompaction(UUID.randomUUID(), "stale", 1, 2)).isFalse();
         assertThat(conversation.failCompaction(requestId)).isTrue();
         assertThat(conversation.getStatus()).isEqualTo(ConversationStatus.ACTIVE);
+        assertThat(conversation.getCompactionRequestId()).isEqualTo(requestId);
 
         UUID retryId = UUID.randomUUID();
         conversation.markCompacting(retryId);
         assertThat(conversation.completeCompaction(retryId, "summary", 4, 20)).isTrue();
         assertThat(conversation.getStatus()).isEqualTo(ConversationStatus.ACTIVE);
         assertThat(conversation.getContextSummary()).isEqualTo("summary");
-        assertThat(conversation.getCompactionRequestId()).isNull();
+        assertThat(conversation.getCompactionRequestId()).isEqualTo(retryId);
     }
 }

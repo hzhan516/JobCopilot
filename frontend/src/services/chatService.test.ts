@@ -86,8 +86,29 @@ describe('chatService', () => {
 
     const result = await chatService.sendMessage('conv-1', 'Hello AI')
 
-    expect(apiMock.post).toHaveBeenCalledWith('/v1/conversations/conv-1/messages', { content: 'Hello AI' })
+    expect(apiMock.post).toHaveBeenCalledWith('/v1/conversations/conv-1/messages', {
+      content: 'Hello AI',
+      fileUrls: [],
+    })
     expect(result).toEqual(mockConversation)
+  })
+
+  it('uploads and sends controlled attachment references', async () => {
+    apiMock.post
+      .mockResolvedValueOnce({ data: { code: 200, message: 'OK', data: '/api/storage/download?key=conversations/conv-1/file.txt' } })
+      .mockResolvedValueOnce({ data: { code: 200, message: 'OK', data: mockConversation } })
+    const file = new File(['notes'], 'notes.txt', { type: 'text/plain' })
+
+    const url = await chatService.uploadAttachment('conv-1', file)
+    await chatService.sendMessage('conv-1', 'Review this', [url])
+
+    const form = apiMock.post.mock.calls[0][1] as FormData
+    expect(apiMock.post.mock.calls[0][0]).toBe('/v1/conversations/conv-1/files')
+    expect(form.get('file')).toBe(file)
+    expect(apiMock.post.mock.calls[1]).toEqual([
+      '/v1/conversations/conv-1/messages',
+      { content: 'Review this', fileUrls: [url] },
+    ])
   })
 
   it('retries the failed AI reply through the request-scoped endpoint', async () => {

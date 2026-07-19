@@ -84,10 +84,11 @@ class ConversationApplicationServiceTest {
                 conversationRepository, jobRepository, resumeVersionRepository, messageProvider, contextService);
         AiOptimizedResumeService aiOptimizedResumeService = new AiOptimizedResumeService(
                 conversationRepository, resumeVersionRepository, resumeGroupRepository);
-        ConversationMessageService messageService = new ConversationMessageService(
-                conversationRepository, lifecycleService, contextService, aiOptimizedResumeService, streamPort);
         ConversationAttachmentService attachmentService = new ConversationAttachmentService(
                 conversationRepository, lifecycleService, fileStorageService, new StorageProperties());
+        ConversationMessageService messageService = new ConversationMessageService(
+                conversationRepository, lifecycleService, contextService, attachmentService,
+                aiOptimizedResumeService, streamPort);
         applicationService = new ConversationApplicationService(lifecycleService, messageService, attachmentService);
     }
 
