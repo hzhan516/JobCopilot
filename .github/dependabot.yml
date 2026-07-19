@@ -1,5 +1,4 @@
-# Disabled: automatic dependency version checks and Dependabot PR creation.
-# version: 2
+version: 2
 #updates:
 #  # ───────────────────────────────────────────────
 #  # Backend — Maven (Java / Spring Boot)

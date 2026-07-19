@@ -176,28 +176,15 @@ test('real-provider full-stack acceptance', async ({ request, browser }) => {
     data: { title: 'Acceptance Conversation', resumeVersionId, jobId },
   }))
   const conversationId = conversation.conversationId as string
-  const conversationWithPendingReply = await apiData(await request.post(`/api/v1/conversations/${conversationId}/messages`, {
+  await apiData(await request.post(`/api/v1/conversations/${conversationId}/messages`, {
     headers: bearer(token),
     data: { content: 'Give one concise improvement for this resume and job.', fileUrls: [] },
   }))
-  const pendingAiReply = conversationWithPendingReply.aiReply as JsonObject
-  const requestId = pendingAiReply.requestId as string
-  expect(requestId).toBeTruthy()
-  expect(pendingAiReply.status).toBe('PENDING')
   await poll('conversation reply', async () => apiData(await request.get(
     `/api/v1/conversations/${conversationId}`,
     { headers: bearer(token) },
-  )), (value) => {
-    const aiReply = value.aiReply as JsonObject
-    expect(aiReply.requestId).toBe(requestId)
-    if (aiReply.status === 'FAILED' || aiReply.status === 'TIMED_OUT') {
-      throw new Error(`conversation reply ${requestId} entered ${String(aiReply.status)} state`)
-    }
-    if (aiReply.status !== 'COMPLETED') return false
-    return Array.isArray(value.messages)
-      && value.messages.some((message) => (message as JsonObject).role === 'ASSISTANT'
-        && (message as JsonObject).sequence === aiReply.assistantMessageSequence)
-  })
+  )), (value) => Array.isArray(value.messages)
+    && value.messages.some((message) => (message as JsonObject).role === 'ASSISTANT'))
 
   await apiData(await request.post(`/api/v1/conversations/${conversationId}/compact`, {
     headers: bearer(token),

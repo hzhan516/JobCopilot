@@ -128,17 +128,6 @@ export default function CopilotChatArea() {
             }`}
           >
             <p className="whitespace-pre-wrap break-words">{message.content}</p>
-            {message.fileUrl && (
-              <a
-                href={message.fileUrl}
-                target="_blank"
-                rel="noreferrer"
-                className={`mt-1 inline-flex items-center gap-1 text-xs underline ${isUser ? 'text-blue-100' : 'text-blue-600'}`}
-              >
-                <Paperclip className="h-3 w-3" />
-                {t('chat.attachment')}
-              </a>
-            )}
             <span
               className={`text-[10px] mt-1 block ${
                 isUser ? 'text-blue-200' : 'text-gray-500'

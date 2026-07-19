@@ -99,6 +99,24 @@ def test_publish_conversation_compacted_result():
     assert kwargs["routing_key"] == CONVERSATION_COMPACT_RESULT_ROUTING_KEY
 
 
+def test_publish_conversation_compacted_result():
+    mock_channel = MagicMock()
+    event = AiResultEvent(
+        referenceId="conversation-123",
+        type="CONVERSATION_COMPACTED",
+        status="COMPLETED",
+        data={"summary": "Earlier context", "throughSequence": 3, "contextTokens": 42},
+        errorMessage=None,
+        eventType="CONVERSATION",
+    )
+
+    publish_ai_result(mock_channel, event)
+
+    kwargs = mock_channel.basic_publish.call_args.kwargs
+    assert kwargs["exchange"] == AI_DIRECT_EXCHANGE
+    assert kwargs["routing_key"] == CONVERSATION_COMPACT_RESULT_ROUTING_KEY
+
+
 def test_publish_json_payload():
     mock_channel = MagicMock()
     payload = {"test": "data"}

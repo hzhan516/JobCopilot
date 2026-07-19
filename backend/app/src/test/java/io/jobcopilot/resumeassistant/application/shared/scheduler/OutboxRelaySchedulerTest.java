@@ -3,9 +3,11 @@ package io.jobcopilot.resumeassistant.application.shared.scheduler;
 import io.jobcopilot.resumeassistant.domain.shared.entity.OutboxMessage;
 import io.jobcopilot.resumeassistant.domain.shared.repository.OutboxMessageRepository;
 import io.jobcopilot.resumeassistant.types.enums.OutboxStatus;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -31,13 +33,29 @@ class OutboxRelaySchedulerTest {
 
     @BeforeEach
     void setUp() {
-        scheduler = new OutboxRelayScheduler(repository, transactions, publisher);
-        ReflectionTestUtils.setField(scheduler, "batchSize", 100);
-        ReflectionTestUtils.setField(scheduler, "maxAttempts", 5);
-        ReflectionTestUtils.setField(scheduler, "staleProcessingSeconds", 120L);
-        ReflectionTestUtils.setField(scheduler, "confirmTimeoutSeconds", 10L);
-        lenient().when(repository.findStaleProcessing(any(LocalDateTime.class), eq(100)))
-                .thenReturn(List.of());
+        OutboxRelayTransactionService relayTransactionService =
+                new OutboxRelayTransactionService(outboxMessageRepository, rabbitTemplate, objectMapper);
+        scheduler = new OutboxRelayScheduler(outboxMessageRepository, relayTransactionService);
+    }
+
+    @Test
+    @DisplayName("Should relay pending messages and mark as sent")
+    void shouldRelayPendingMessagesAndMarkAsSent() throws Exception {
+        // 准备 / Given
+        OutboxMessage msg1 = OutboxMessage.createPending("ex", "rk", "payload1");
+        OutboxMessage msg2 = OutboxMessage.createPending("ex", "rk", "payload2");
+        when(outboxMessageRepository.findByStatus(OutboxStatus.PENDING))
+                .thenReturn(List.of(msg1, msg2));
+        when(outboxMessageRepository.save(any(OutboxMessage.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(objectMapper.readValue(any(String.class), eq(Object.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        // 执行 / When
+        scheduler.relayPendingMessages();
+
+        // 验证 / Then
+        verify(rabbitTemplate, times(2)).convertAndSend(eq("ex"), eq("rk"), ArgumentMatchers.<Object>any());
+        verify(outboxMessageRepository, times(2)).save(any(OutboxMessage.class));
     }
 
     @Test

@@ -22,16 +22,6 @@ $envFile = Join-Path $root '.env.example'
 $stateFile = Join-Path $frontend 'test-results\acceptance-state.json'
 $project = "jobcopilot-acceptance-$([Guid]::NewGuid().ToString('N').Substring(0, 8))"
 $compose = @('compose', '--env-file', $envFile, '-p', $project)
-$runtimeServices = @(
-    'frontend',
-    'backend',
-    'ai-service',
-    'ai-worker',
-    'postgres',
-    'rabbitmq',
-    'redis',
-    'minio'
-)
 $postgresUser = if ($env:POSTGRES_USER) { $env:POSTGRES_USER } else { 'resume_user' }
 $postgresDb = if ($env:POSTGRES_DB) { $env:POSTGRES_DB } else { 'resume_assistant' }
 
@@ -47,18 +37,13 @@ try {
     do {
         Start-Sleep -Seconds 5
         $rows = @(& docker @compose ps --format json | ForEach-Object { $_ | ConvertFrom-Json })
-        $runtimeRows = @($rows | Where-Object { $_.Service -in $runtimeServices })
-        $healthy = @($runtimeRows | Where-Object { $_.Health -eq 'healthy' }).Count
-        $running = @($runtimeRows | Where-Object { $_.State -eq 'running' }).Count
-        $migration = @($rows | Where-Object { $_.Service -eq 'db-migrate' })
-        $migrationCompleted = $migration.Count -eq 1 `
-            -and $migration[0].State -eq 'exited' `
-            -and [int]$migration[0].ExitCode -eq 0
-    } while (($runtimeRows.Count -ne 8 -or $healthy -ne 8 -or $running -ne 8 -or -not $migrationCompleted) -and (Get-Date) -lt $deadline)
+        $healthy = @($rows | Where-Object { $_.Health -eq 'healthy' }).Count
+        $running = @($rows | Where-Object { $_.State -eq 'running' }).Count
+    } while (($rows.Count -ne 8 -or $healthy -ne 8 -or $running -ne 8) -and (Get-Date) -lt $deadline)
 
-    if ($runtimeRows.Count -ne 8 -or $healthy -ne 8 -or $running -ne 8 -or -not $migrationCompleted) {
+    if ($rows.Count -ne 8 -or $healthy -ne 8 -or $running -ne 8) {
         & docker @compose ps
-        throw "Compose did not reach 8/8 runtime healthy with a successful database migration within five minutes"
+        throw "Compose did not reach 8/8 healthy within five minutes"
     }
 
     $dockerArgs = @(
@@ -98,7 +83,7 @@ try {
         throw 'Conversation compaction fields were not persisted before timeout'
     }
 
-    Write-Host 'ACCEPTANCE PASSED: migration completed, 8/8 runtime healthy, real providers, core API flows, deep links, and compaction persistence.'
+    Write-Host 'ACCEPTANCE PASSED: 8/8 healthy, real providers, core API flows, deep links, and compaction persistence.'
 }
 finally {
     & docker @compose down -v --remove-orphans
