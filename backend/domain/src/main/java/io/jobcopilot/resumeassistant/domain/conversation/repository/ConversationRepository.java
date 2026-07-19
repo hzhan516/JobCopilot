@@ -5,6 +5,7 @@ import io.jobcopilot.resumeassistant.domain.conversation.entity.Conversation;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 /**
  * 对话仓储接口
@@ -47,4 +48,7 @@ public interface ConversationRepository {
      * Delete conversation by ID
      */
     void deleteById(UUID id);
+
+    /** Finds durable pending replies old enough for the terminal-state watchdog. */
+    List<Conversation> findPendingAiRepliesStartedBefore(LocalDateTime cutoff);
 }

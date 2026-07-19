@@ -26,10 +26,11 @@ export const chatService = {
     throw new Error(response.data.message);
   },
 
-  getConversation: async (conversationId: string): Promise<Conversation> => {
-    const response = await apiClient.get<ApiResponse<Conversation>>(
-      `/v1/conversations/${conversationId}`
-    );
+  getConversation: async (conversationId: string, signal?: AbortSignal): Promise<Conversation> => {
+    const url = `/v1/conversations/${conversationId}`;
+    const response = signal
+      ? await apiClient.get<ApiResponse<Conversation>>(url, { signal })
+      : await apiClient.get<ApiResponse<Conversation>>(url);
     if (response.data.code === 200) {
       return response.data.data;
     }
@@ -49,6 +50,16 @@ export const chatService = {
     const response = await apiClient.post<ApiResponse<Conversation>>(
       `/v1/conversations/${conversationId}/messages`,
       { content }
+    );
+    if (response.data.code === 200) {
+      return response.data.data;
+    }
+    throw new Error(response.data.message);
+  },
+
+  retryAiReply: async (conversationId: string): Promise<Conversation> => {
+    const response = await apiClient.post<ApiResponse<Conversation>>(
+      `/v1/conversations/${conversationId}/ai-replies/retry`
     );
     if (response.data.code === 200) {
       return response.data.data;

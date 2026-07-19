@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import uuid
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -329,4 +330,7 @@ def process_conversation(command: ConversationRequestCommand) -> AiResultEvent:
         ),
         errorMessage=None,
         eventType=None,
+        schemaVersion=max(command.schema_version, 1),
+        eventId=str(uuid.uuid4()),
+        requestId=command.request_id,
     )

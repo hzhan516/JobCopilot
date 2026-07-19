@@ -3,6 +3,8 @@ import json
 import logging
 import concurrent.futures
 import os
+import threading
+import uuid
 
 import pika
 
@@ -57,9 +59,13 @@ from app.services.resume_orchestrator import process_resume
 logger = logging.getLogger(__name__)
 
 MQ_WORKER_THREADS = int(os.getenv("MQ_WORKER_THREADS", "4"))
+MQ_RESULT_PUBLISH_MAX_ATTEMPTS = int(os.getenv("MQ_RESULT_PUBLISH_MAX_ATTEMPTS", "3"))
 _executor = concurrent.futures.ThreadPoolExecutor(
     max_workers=MQ_WORKER_THREADS, thread_name_prefix="MqWorker"
 )
+_result_cache: dict[str, AiResultEvent] = {}
+_publish_attempts: dict[str, int] = {}
+_cache_lock = threading.Lock()
 
 JOB_PARSE_FAILED_MESSAGE = (
     "AI service failed while parsing the job posting. Please try again."
@@ -304,6 +310,13 @@ def handle_conversation_message(
     body: bytes,
 ) -> AiResultEvent:
     command = parse_conversation_command(body)
+    cache_key = command.request_id
+    with _cache_lock:
+        cached_result = _result_cache.get(cache_key) if cache_key else None
+    if cached_result is not None:
+        logger.info("Reusing cached conversation result: request_id=%s", cache_key)
+        return cached_result
+
     try:
         result = process_conversation(command)
     except Exception as exc:
@@ -323,8 +336,13 @@ def handle_conversation_message(
             },
             errorMessage=error_code,
             eventType=None,
+            schemaVersion=max(command.schema_version, 1),
+            eventId=str(uuid.uuid4()),
+            requestId=command.request_id,
         )
-
+    if cache_key:
+        with _cache_lock:
+            _result_cache[cache_key] = result
     return result
 
 
@@ -332,6 +350,12 @@ def handle_compact_message(
     body: bytes,
 ) -> AiResultEvent:
     command = parse_compact_command(body)
+    cache_key = command.request_id
+    with _cache_lock:
+        cached_result = _result_cache.get(cache_key)
+    if cached_result is not None:
+        logger.info("Reusing cached compaction result: request_id=%s", cache_key)
+        return cached_result
     try:
         result = process_compaction(command)
     except Exception:
@@ -346,7 +370,12 @@ def handle_compact_message(
             data=None,
             errorMessage="Compaction service error",
             eventType=None,
+            schemaVersion=max(command.schema_version, 1),
+            eventId=str(uuid.uuid4()),
+            requestId=command.request_id,
         )
+    with _cache_lock:
+        _result_cache[cache_key] = result
     return result
 
 
@@ -405,8 +434,27 @@ def _async_handler(wrapped_handler, log_message_metadata: bool = False):
                 result = wrapped_handler(body)
 
                 def safe_publish_and_ack():
-                    publish_ai_result(ch, result)
-                    ch.basic_ack(delivery_tag=delivery_tag)
+                    request_id = result.request_id
+                    try:
+                        publish_ai_result(ch, result)
+                        ch.basic_ack(delivery_tag=delivery_tag)
+                        if request_id:
+                            with _cache_lock:
+                                _result_cache.pop(request_id, None)
+                                _publish_attempts.pop(request_id, None)
+                    except Exception:
+                        logger.exception(
+                            "Result publish failed: tag=%s, request_id=%s",
+                            delivery_tag,
+                            request_id,
+                        )
+                        with _cache_lock:
+                            attempts = _publish_attempts.get(request_id or str(delivery_tag), 0) + 1
+                            _publish_attempts[request_id or str(delivery_tag)] = attempts
+                        ch.basic_nack(
+                            delivery_tag=delivery_tag,
+                            requeue=attempts < MQ_RESULT_PUBLISH_MAX_ATTEMPTS,
+                        )
 
                 ch.connection.add_callback_threadsafe(safe_publish_and_ack)
             except Exception:
@@ -425,6 +473,7 @@ def start_all_consumers(
 ) -> None:
     """Start consuming from all AI workflow queues with prefetch=1 for fair distribution.
     启动所有消费者：prefetch_count=1 保证消息在多个 worker 间公平分发，防止单个任务阻塞后续消息。"""
+    channel.confirm_delivery()
     channel.basic_qos(prefetch_count=MQ_WORKER_THREADS)
 
     channel.basic_consume(

@@ -68,13 +68,17 @@ class ConversationContextServiceTest {
         Conversation conversation = Conversation.create(userId, "AI Chat", null, null);
         conversation.addMessage(MessageRole.USER, "Hello");
 
-        service.queueConversationRequest(conversation, "Hello", true);
+        UUID requestId = UUID.randomUUID();
+        service.queueConversationRequest(conversation, "Hello", true, requestId, 1);
 
         ArgumentCaptor<ConversationRequestCommand> captor = ArgumentCaptor.forClass(ConversationRequestCommand.class);
         verify(aiMessagePublisherPort).sendConversationRequest(captor.capture());
         assertEquals(conversation.getId().toString(), captor.getValue().conversationId());
         assertEquals("Hello", captor.getValue().currentMessage());
-        assertNotNull(captor.getValue().requestId());
+        assertEquals(requestId.toString(), captor.getValue().requestId());
+        assertEquals(1, captor.getValue().schemaVersion());
+        assertNotNull(captor.getValue().eventId());
+        assertTrue(captor.getValue().messageHistory().isEmpty());
         assertTrue(captor.getValue().init());
     }
 

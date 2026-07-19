@@ -55,6 +55,14 @@ public class ConversationController {
         return ApiResponse.success(conversationFacade.sendMessage(conversationId, request, userId));
     }
 
+    @PostMapping("/{conversationId}/ai-replies/retry")
+    public ApiResponse<ConversationResponse> retryAiReply(
+            @PathVariable String conversationId,
+            @CurrentUser UUID userId) {
+        log.info("REST request to retry AI reply for conversation: {}", conversationId);
+        return ApiResponse.success(conversationFacade.retryAiReply(conversationId, userId));
+    }
+
     @GetMapping("/{conversationId}")
     public ApiResponse<ConversationResponse> getConversation(
             @PathVariable String conversationId,

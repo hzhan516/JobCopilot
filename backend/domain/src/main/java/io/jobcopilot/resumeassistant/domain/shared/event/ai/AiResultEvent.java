@@ -19,7 +19,14 @@ public record AiResultEvent(
         String status,
         Map<String, Object> data,
         String errorMessage,
-        String eventType
+        String eventType,
+        Integer schemaVersion,
+        String eventId,
+        String requestId
 ) {
+    public AiResultEvent(String referenceId, String type, String status, Map<String, Object> data,
+                         String errorMessage, String eventType) {
+        this(referenceId, type, status, data, errorMessage, eventType, null, null, null);
+    }
 }
 

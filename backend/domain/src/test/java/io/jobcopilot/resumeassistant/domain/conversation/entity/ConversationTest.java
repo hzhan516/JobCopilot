@@ -1,6 +1,8 @@
 package io.jobcopilot.resumeassistant.domain.conversation.entity;
 
 import io.jobcopilot.resumeassistant.domain.conversation.exception.ConversationException;
+import io.jobcopilot.resumeassistant.domain.conversation.exception.AiReplyInProgressException;
+import io.jobcopilot.resumeassistant.domain.conversation.valueobject.AiReplyStatus;
 import io.jobcopilot.resumeassistant.domain.conversation.valueobject.ConversationStatus;
 import io.jobcopilot.resumeassistant.domain.conversation.valueobject.MessageRole;
 import org.junit.jupiter.api.DisplayName;
@@ -156,5 +158,68 @@ class ConversationTest {
         assertThat(conversation.getId()).isEqualTo(id);
         assertThat(conversation.getTitle()).isEqualTo("Reconstructed");
         assertThat(conversation.getMessages()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should complete only the matching pending AI request exactly once")
+    void shouldCompleteOnlyMatchingPendingAiRequestExactlyOnce() {
+        Conversation conversation = Conversation.create(TEST_USER_ID, null, null, null);
+        conversation.addMessage(MessageRole.USER, "Help me");
+        UUID requestId = UUID.randomUUID();
+        conversation.requestAiReply(requestId, 1);
+
+        assertThat(conversation.completeAiReply(UUID.randomUUID(), "stale", null, 1, 1)).isFalse();
+        assertThat(conversation.completeAiReply(requestId, "answer", null, 10, 3)).isTrue();
+        assertThat(conversation.completeAiReply(requestId, "duplicate", null, 10, 3)).isFalse();
+        assertThat(conversation.getAiReplyState().status()).isEqualTo(AiReplyStatus.COMPLETED);
+        assertThat(conversation.getMessages()).hasSize(2);
+        assertThat(conversation.getMessages().get(1).getContent()).isEqualTo("answer");
+    }
+
+    @Test
+    @DisplayName("Should reject a second user turn while an AI reply is pending")
+    void shouldRejectSecondPendingAiRequest() {
+        Conversation conversation = Conversation.create(TEST_USER_ID, null, null, null);
+        conversation.addMessage(MessageRole.USER, "First");
+        conversation.requestAiReply(UUID.randomUUID(), 1);
+
+        assertThatThrownBy(() -> conversation.requestAiReply(UUID.randomUUID(), 2))
+                .isInstanceOf(AiReplyInProgressException.class);
+    }
+
+    @Test
+    @DisplayName("Should retry a failed AI request with a new request id")
+    void shouldRetryFailedAiRequest() {
+        Conversation conversation = Conversation.create(TEST_USER_ID, null, null, null);
+        conversation.addMessage(MessageRole.USER, "Retry this");
+        UUID firstRequestId = UUID.randomUUID();
+        UUID retryRequestId = UUID.randomUUID();
+        conversation.requestAiReply(firstRequestId, 1);
+
+        assertThat(conversation.failAiReply(firstRequestId, "UPSTREAM_TIMEOUT")).isTrue();
+        conversation.retryAiReply(retryRequestId);
+
+        assertThat(conversation.getAiReplyState().status()).isEqualTo(AiReplyStatus.PENDING);
+        assertThat(conversation.getAiReplyState().requestId()).isEqualTo(retryRequestId);
+        assertThat(conversation.getAiReplyState().userMessageSequence()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Should correlate compaction completion and release failed compaction")
+    void shouldCorrelateCompactionLifecycle() {
+        Conversation conversation = Conversation.create(TEST_USER_ID, null, null, null);
+        UUID requestId = UUID.randomUUID();
+        conversation.markCompacting(requestId);
+
+        assertThat(conversation.completeCompaction(UUID.randomUUID(), "stale", 1, 2)).isFalse();
+        assertThat(conversation.failCompaction(requestId)).isTrue();
+        assertThat(conversation.getStatus()).isEqualTo(ConversationStatus.ACTIVE);
+
+        UUID retryId = UUID.randomUUID();
+        conversation.markCompacting(retryId);
+        assertThat(conversation.completeCompaction(retryId, "summary", 4, 20)).isTrue();
+        assertThat(conversation.getStatus()).isEqualTo(ConversationStatus.ACTIVE);
+        assertThat(conversation.getContextSummary()).isEqualTo("summary");
+        assertThat(conversation.getCompactionRequestId()).isNull();
     }
 }

@@ -1,5 +1,5 @@
 import pytest
-from app.schemas import EmbeddingRequest
+from app.schemas import EmbeddingRequest, ConversationRequestCommand, AiResultEvent
 from app.config import EMBEDDING_MAX_BATCH_SIZE, EMBEDDING_MAX_TEXT_LENGTH
 
 
@@ -66,3 +66,31 @@ def test_embedding_request_boundary_batch_size_minus_one():
     texts = ["t"] * (EMBEDDING_MAX_BATCH_SIZE - 1)
     req = EmbeddingRequest(texts=texts)
     assert len(req.texts) == EMBEDDING_MAX_BATCH_SIZE - 1
+
+
+def test_conversation_v1_envelope_round_trip():
+    command = ConversationRequestCommand.model_validate({
+        "conversationId": "conv-1",
+        "userId": "user-1",
+        "currentMessage": "hello",
+        "requestId": "req-1",
+        "schemaVersion": 1,
+        "eventId": "evt-1",
+        "occurredAt": "2026-07-18T00:00:00Z",
+    })
+    assert command.request_id == "req-1"
+    assert command.schema_version == 1
+    assert command.event_id == "evt-1"
+
+    event = AiResultEvent(
+        referenceId="conv-1",
+        type="CONVERSATION_REPLY",
+        status="COMPLETED",
+        data={"content": "ok", "requestId": "req-1"},
+        requestId="req-1",
+        eventId="result-evt-1",
+        schemaVersion=1,
+    )
+    payload = event.model_dump(by_alias=True)
+    assert payload["requestId"] == "req-1"
+    assert payload["eventId"] == "result-evt-1"

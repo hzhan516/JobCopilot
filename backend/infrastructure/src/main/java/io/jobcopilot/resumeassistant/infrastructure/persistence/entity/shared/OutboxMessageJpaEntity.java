@@ -45,4 +45,20 @@ public class OutboxMessageJpaEntity {
 
     @Column(name = "sent_at")
     private LocalDateTime sentAt;
+
+    @Column(name = "attempt_count", nullable = false)
+    @Builder.Default
+    private Integer attemptCount = 0;
+
+    @Column(name = "next_attempt_at")
+    private LocalDateTime nextAttemptAt;
+
+    @Column(name = "last_error_code", length = 64)
+    private String lastErrorCode;
+
+    @Column(name = "locked_at")
+    private LocalDateTime lockedAt;
+
+    @Column(name = "worker_id", length = 128)
+    private String workerId;
 }

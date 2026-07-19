@@ -209,6 +209,9 @@ class ConversationRequestCommand(AppBaseModel):
     init: bool | None = None
     locale: str | None = None
     request_id: str | None = Field(default=None, alias="requestId")
+    schema_version: int = Field(default=0, alias="schemaVersion")
+    event_id: str | None = Field(default=None, alias="eventId")
+    occurred_at: str | None = Field(default=None, alias="occurredAt")
 
 
 class JobRankCommand(AppBaseModel):
@@ -253,6 +256,10 @@ class ConversationCompactCommand(AppBaseModel):
         default_factory=list, alias="messageHistory"
     )
     compacted_through_sequence: int = Field(default=0, alias="compactedThroughSequence")
+    request_id: str = Field(alias="requestId")
+    schema_version: int = Field(default=1, alias="schemaVersion")
+    event_id: str | None = Field(default=None, alias="eventId")
+    occurred_at: str | None = Field(default=None, alias="occurredAt")
 
 
 class ConversationCompactedData(AppBaseModel):
@@ -282,6 +289,9 @@ class AiResultEvent(AppBaseModel):
     ) = None
     error_message: str | None = Field(default=None, alias="errorMessage")
     event_type: str | None = Field(default=None, alias="eventType")
+    schema_version: int = Field(default=1, alias="schemaVersion")
+    event_id: str | None = Field(default=None, alias="eventId")
+    request_id: str | None = Field(default=None, alias="requestId")
 
 
 class EmbeddingRequest(AppBaseModel):

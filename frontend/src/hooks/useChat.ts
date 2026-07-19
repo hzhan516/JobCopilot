@@ -6,11 +6,16 @@ import { resumeService } from '@/services/resumeService';
 import { jobService } from '@/services/jobService';
 import { toast } from 'sonner';
 
-const AI_REPLY_POLL_ATTEMPTS = 20;
-const AI_REPLY_POLL_INTERVAL_MS = 1500;
+const AI_REPLY_POLL_INTERVALS_MS = [1000, 2000, 3000, 5000] as const;
 
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function delay(ms: number, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    const timeoutId = window.setTimeout(resolve, ms);
+    signal.addEventListener('abort', () => {
+      window.clearTimeout(timeoutId);
+      reject(new DOMException('Polling aborted', 'AbortError'));
+    }, { once: true });
+  });
 }
 
 function normalizeMessages(conversation: Conversation): Message[] {
@@ -48,6 +53,7 @@ export interface UseChatReturn {
   handleSelectConversation: (conversation: Conversation) => Promise<void>;
   handleCreateConversation: () => Promise<void>;
   handleSendMessage: () => Promise<void>;
+  retryAiReply: () => Promise<void>;
   handleDeleteConversation: (conversationId: string) => Promise<void>;
   compactConversation: () => Promise<void>;
   isCompacting: boolean;
@@ -77,6 +83,8 @@ export function useChat(): UseChatReturn {
   const [isCompacting, setIsCompacting] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pollAbortRef = useRef<AbortController | null>(null);
+  const pollingRequestIdRef = useRef<string | null>(null);
 
   const handleNewDialogOpenChange = useCallback((open: boolean) => {
     setNewDialogOpen(open);
@@ -90,6 +98,7 @@ export function useChat(): UseChatReturn {
   const syncConversation = useCallback((conversation: Conversation) => {
     setActiveConversation(conversation);
     setMessages(normalizeMessages(conversation));
+    setIsWaitingForReply(conversation.aiReply?.status === 'PENDING');
     setConversations((prev) => {
       const exists = prev.some((item) => item.conversationId === conversation.conversationId);
       if (!exists) {
@@ -174,6 +183,8 @@ export function useChat(): UseChatReturn {
 
   const handleSelectConversation = useCallback(
     async (conversation: Conversation) => {
+      pollAbortRef.current?.abort();
+      pollingRequestIdRef.current = null;
       syncConversation(conversation);
       try {
         const detail = await chatService.getConversation(conversation.conversationId);
@@ -186,23 +197,69 @@ export function useChat(): UseChatReturn {
   );
 
   const pollForAiReply = useCallback(
-    async (conversationId: string, previousMessageCount: number) => {
-      for (let attempt = 0; attempt < AI_REPLY_POLL_ATTEMPTS; attempt += 1) {
-        await delay(AI_REPLY_POLL_INTERVAL_MS);
-        const updatedConversation = await chatService.getConversation(conversationId);
-        const updatedMessages = normalizeMessages(updatedConversation);
+    async (conversationId: string, requestId: string, signal: AbortSignal) => {
+      let attempt = 0;
+      while (!signal.aborted) {
+        const interval = AI_REPLY_POLL_INTERVALS_MS[
+          Math.min(attempt, AI_REPLY_POLL_INTERVALS_MS.length - 1)
+        ];
+        await delay(interval, signal);
+        let updatedConversation: Conversation;
+        try {
+          updatedConversation = await chatService.getConversation(conversationId, signal);
+        } catch (error) {
+          if (signal.aborted) return;
+          console.warn('Transient failure while polling AI reply', error);
+          attempt += 1;
+          continue;
+        }
+        const reply = updatedConversation.aiReply;
         syncConversation(updatedConversation);
 
-        const newMessages = updatedMessages.slice(previousMessageCount);
-        if (newMessages.some((message) => message.role === 'ASSISTANT')) {
-          return true;
+        // Never let an older assistant message or a different request terminate this wait.
+        if (!reply || reply.requestId !== requestId || reply.status !== 'PENDING') {
+          return;
         }
+        attempt += 1;
       }
-
-      return false;
     },
     [syncConversation]
   );
+
+  const beginPolling = useCallback((conversation: Conversation) => {
+    const requestId = conversation.aiReply?.requestId;
+    if (!requestId || conversation.aiReply?.status !== 'PENDING') return;
+    if (pollingRequestIdRef.current === requestId) return;
+
+    pollAbortRef.current?.abort();
+    const controller = new AbortController();
+    pollAbortRef.current = controller;
+    pollingRequestIdRef.current = requestId;
+    setIsWaitingForReply(true);
+
+    void pollForAiReply(conversation.conversationId, requestId, controller.signal)
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
+          console.error('Failed to poll AI reply', error);
+          toast.info(t('chat.aiPending'));
+        }
+      })
+      .finally(() => {
+        if (pollingRequestIdRef.current === requestId) {
+          pollingRequestIdRef.current = null;
+          pollAbortRef.current = null;
+        }
+      });
+  }, [pollForAiReply, t]);
+
+  useEffect(() => () => pollAbortRef.current?.abort(), []);
+
+  useEffect(() => {
+    if (activeConversation?.aiReply?.status === 'PENDING') {
+      beginPolling(activeConversation);
+    }
+  }, [activeConversation?.conversationId, activeConversation?.aiReply?.requestId,
+    activeConversation?.aiReply?.status, beginPolling]);
 
   const handleCreateConversation = useCallback(async () => {
     if (!selectedResumeVersionId) {
@@ -245,23 +302,7 @@ export function useChat(): UseChatReturn {
       toast.success(t('chat.createSuccess'));
 
       // 新对话包含预设消息并已触发异步 AI 请求，轮询等待回复
-      const newMessages = normalizeMessages(newConversation);
-      if (!newMessages.some((message) => message.role === 'ASSISTANT')) {
-        setIsWaitingForReply(true);
-        void (async () => {
-          try {
-            const hasReply = await pollForAiReply(newConversation.conversationId, newMessages.length);
-            if (!hasReply) {
-              toast.info(t('chat.aiPending'));
-            }
-          } catch (error) {
-            console.error('Failed to poll AI reply after creation', error);
-            toast.info(t('chat.aiPending'));
-          } finally {
-            setIsWaitingForReply(false);
-          }
-        })();
-      }
+      beginPolling(newConversation);
     } catch {
       toast.error(t('chat.createFailed'));
     } finally {
@@ -274,12 +315,12 @@ export function useChat(): UseChatReturn {
     resumes,
     jobs,
     syncConversation,
-    pollForAiReply,
+    beginPolling,
     t,
   ]);
 
   const handleSendMessage = useCallback(async () => {
-    if (!inputMessage.trim() || !activeConversation) {
+    if (!inputMessage.trim() || !activeConversation || isWaitingForReply) {
       console.warn('Chat send skipped', {
         hasInput: Boolean(inputMessage.trim()),
         hasActiveConversation: Boolean(activeConversation),
@@ -304,26 +345,8 @@ export function useChat(): UseChatReturn {
 
     try {
       const updatedConversation = await chatService.sendMessage(conversationId, content);
-      const savedMessages = normalizeMessages(updatedConversation);
       syncConversation(updatedConversation);
-
-      const lastMessage = savedMessages[savedMessages.length - 1];
-      if (lastMessage?.role !== 'ASSISTANT') {
-        setIsWaitingForReply(true);
-        void (async () => {
-          try {
-            const hasReply = await pollForAiReply(conversationId, savedMessages.length);
-            if (!hasReply) {
-              toast.info(t('chat.aiPending'));
-            }
-          } catch (error) {
-            console.error('Failed to poll AI reply', error);
-            toast.info(t('chat.aiPending'));
-          } finally {
-            setIsWaitingForReply(false);
-          }
-        })();
-      }
+      beginPolling(updatedConversation);
     } catch (error) {
       console.error('Failed to send chat message', error);
       setMessages((prev) => prev.filter((message) => message.messageId !== tempMessageId));
@@ -331,7 +354,22 @@ export function useChat(): UseChatReturn {
     } finally {
       setIsSending(false);
     }
-  }, [inputMessage, activeConversation, syncConversation, pollForAiReply, t]);
+  }, [inputMessage, activeConversation, isWaitingForReply, syncConversation, beginPolling, t]);
+
+  const retryAiReply = useCallback(async () => {
+    if (!activeConversation || isWaitingForReply) return;
+    setIsSending(true);
+    try {
+      const updatedConversation = await chatService.retryAiReply(activeConversation.conversationId);
+      syncConversation(updatedConversation);
+      beginPolling(updatedConversation);
+    } catch (error) {
+      console.error('Failed to retry AI reply', error);
+      toast.error(t('chat.retryFailed'));
+    } finally {
+      setIsSending(false);
+    }
+  }, [activeConversation, isWaitingForReply, syncConversation, beginPolling, t]);
 
   const compactConversation = useCallback(async () => {
     if (!activeConversation) return;
@@ -392,6 +430,7 @@ export function useChat(): UseChatReturn {
     handleSelectConversation,
     handleCreateConversation,
     handleSendMessage,
+    retryAiReply,
     handleDeleteConversation,
     compactConversation,
     isCompacting,

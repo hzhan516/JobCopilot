@@ -41,6 +41,17 @@ spring:
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME:guest}
     password: ${SPRING_RABBITMQ_PASSWORD:guest}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          initial-interval: 3000ms
+          max-attempts: 3
+          max-interval: 10000ms
+          multiplier: 2.0
 
   mail:
     host: ${SMTP_HOST:}
@@ -114,6 +125,15 @@ app:
         conversation: backend.queue.conversation
         conversation-compact: backend.queue.conversation.compact
         job-rank: backend.queue.job.rank
+  ai-chat:
+    end-to-end-deadline-seconds: ${AI_CHAT_END_TO_END_DEADLINE_SECONDS:120}
+    watchdog-interval-ms: ${AI_CHAT_WATCHDOG_INTERVAL_MS:15000}
+  outbox:
+    relay-interval-ms: ${OUTBOX_RELAY_INTERVAL_MS:2000}
+    batch-size: ${OUTBOX_BATCH_SIZE:100}
+    max-attempts: ${OUTBOX_MAX_ATTEMPTS:5}
+    stale-processing-seconds: ${OUTBOX_STALE_PROCESSING_SECONDS:120}
+    publisher-confirm-timeout-seconds: ${OUTBOX_PUBLISH_CONFIRM_TIMEOUT_SECONDS:10}
 
 # AI 服务连接地址 / AI service connection URL
 ai:

@@ -1,6 +1,7 @@
 package io.jobcopilot.resumeassistant.infrastructure.persistence.entity.conversation;
 
 import io.jobcopilot.resumeassistant.domain.conversation.valueobject.ConversationStatus;
+import io.jobcopilot.resumeassistant.domain.conversation.valueobject.AiReplyStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -67,6 +68,32 @@ public class ConversationJpaEntity {
     @Column(name = "compacted_through_sequence", nullable = false)
     @Builder.Default
     private Integer compactedThroughSequence = 0;
+
+    @Column(name = "compaction_request_id", length = 36)
+    private String compactionRequestId;
+
+    @Column(name = "ai_reply_request_id", length = 36)
+    private String aiReplyRequestId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ai_reply_status", nullable = false, length = 20)
+    @Builder.Default
+    private AiReplyStatus aiReplyStatus = AiReplyStatus.IDLE;
+
+    @Column(name = "ai_reply_error_code", length = 64)
+    private String aiReplyErrorCode;
+
+    @Column(name = "ai_reply_started_at")
+    private LocalDateTime aiReplyStartedAt;
+
+    @Column(name = "ai_reply_completed_at")
+    private LocalDateTime aiReplyCompletedAt;
+
+    @Column(name = "ai_reply_user_message_sequence")
+    private Integer aiReplyUserMessageSequence;
+
+    @Column(name = "ai_reply_assistant_message_sequence")
+    private Integer aiReplyAssistantMessageSequence;
 
     @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default

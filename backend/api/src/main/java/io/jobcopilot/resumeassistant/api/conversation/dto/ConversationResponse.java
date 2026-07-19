@@ -30,7 +30,17 @@ public record ConversationResponse(
         Integer contextTokens,
         Integer contextWindow,
         Double usageRatio,
-        Boolean compactAdvised
+        Boolean compactAdvised,
+        AiReplyResponse aiReply
 ) {
-    // ponytail: compact canonical constructor, add builder if optional fields grow past 4
+    /** Backward-compatible constructor used by older controller tests. */
+    public ConversationResponse(
+            String conversationId, String userId, String title, String status,
+            String resumeVersionId, String jobId, List<MessageResponse> messages,
+            OffsetDateTime createdAt, OffsetDateTime updatedAt, Integer contextTokens,
+            Integer contextWindow, Double usageRatio, Boolean compactAdvised) {
+        this(conversationId, userId, title, status, resumeVersionId, jobId, messages,
+                createdAt, updatedAt, contextTokens, contextWindow, usageRatio, compactAdvised,
+                new AiReplyResponse(null, "IDLE", null, null, null, null, null));
+    }
 }

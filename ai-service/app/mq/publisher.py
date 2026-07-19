@@ -46,7 +46,7 @@ def publish_ai_result(
         ensure_ascii=False,
     )
 
-    channel.basic_publish(
+    published = channel.basic_publish(
         exchange=AI_DIRECT_EXCHANGE,
         routing_key=routing_key,
         body=message_body.encode("utf-8"),
@@ -54,7 +54,10 @@ def publish_ai_result(
             content_type="application/json",
             delivery_mode=2,
         ),
+        mandatory=True,
     )
+    if published is False:
+        raise RuntimeError("RabbitMQ did not confirm AI result publish")
     if event.status == "FAILED":
         logger.error(
             "Published AI result: type=%s, status=%s, routing_key=%s, error=%s",

@@ -16,6 +16,23 @@ public record ConversationCompactCommand(
         String conversationId,
         String userId,
         List<Map<String, Object>> messageHistory,
-        int compactedThroughSequence
+        int compactedThroughSequence,
+        String requestId,
+        int schemaVersion,
+        String eventId,
+        String occurredAt
 ) {
+    public ConversationCompactCommand(
+            String conversationId, String userId, List<Map<String, Object>> messageHistory,
+            int compactedThroughSequence, String requestId) {
+        this(conversationId, userId, messageHistory, compactedThroughSequence, requestId,
+                1, java.util.UUID.randomUUID().toString(), java.time.OffsetDateTime.now().toString());
+    }
+
+    public ConversationCompactCommand(
+            String conversationId, String userId, List<Map<String, Object>> messageHistory,
+            int compactedThroughSequence) {
+        this(conversationId, userId, messageHistory, compactedThroughSequence,
+                java.util.UUID.randomUUID().toString());
+    }
 }

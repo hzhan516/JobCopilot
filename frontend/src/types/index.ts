@@ -195,6 +195,19 @@ export interface Conversation {
   usageRatio?: number;
   /** Whether usage exceeds compact threshold */
   compactAdvised?: boolean;
+  aiReply?: AiReplyState;
+}
+
+export type AiReplyStatus = 'IDLE' | 'PENDING' | 'COMPLETED' | 'FAILED' | 'TIMED_OUT';
+
+export interface AiReplyState {
+  requestId: string | null;
+  status: AiReplyStatus;
+  errorCode?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  userMessageSequence?: number | null;
+  assistantMessageSequence?: number | null;
 }
 
 export interface Message {

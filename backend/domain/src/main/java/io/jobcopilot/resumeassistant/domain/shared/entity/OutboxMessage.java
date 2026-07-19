@@ -24,6 +24,11 @@ public class OutboxMessage {
     private final LocalDateTime createdAt;
     private OutboxStatus status;
     private LocalDateTime sentAt;
+    private int attemptCount;
+    private LocalDateTime nextAttemptAt;
+    private String lastErrorCode;
+    private LocalDateTime lockedAt;
+    private String workerId;
 
     @Builder
     public OutboxMessage(String id,
@@ -32,7 +37,12 @@ public class OutboxMessage {
                          String payload,
                          OutboxStatus status,
                          LocalDateTime createdAt,
-                         LocalDateTime sentAt) {
+                         LocalDateTime sentAt,
+                         int attemptCount,
+                         LocalDateTime nextAttemptAt,
+                         String lastErrorCode,
+                         LocalDateTime lockedAt,
+                         String workerId) {
         this.id = id;
         this.exchange = exchange;
         this.routingKey = routingKey;
@@ -40,6 +50,11 @@ public class OutboxMessage {
         this.status = status;
         this.createdAt = createdAt;
         this.sentAt = sentAt;
+        this.attemptCount = attemptCount;
+        this.nextAttemptAt = nextAttemptAt;
+        this.lastErrorCode = lastErrorCode;
+        this.lockedAt = lockedAt;
+        this.workerId = workerId;
     }
 
     /**
@@ -54,6 +69,8 @@ public class OutboxMessage {
                 .payload(payload)
                 .status(OutboxStatus.PENDING)
                 .createdAt(LocalDateTime.now())
+                .attemptCount(0)
+                .nextAttemptAt(LocalDateTime.now())
                 .build();
     }
 
@@ -64,13 +81,45 @@ public class OutboxMessage {
     public void markSent() {
         this.status = OutboxStatus.SENT;
         this.sentAt = LocalDateTime.now();
+        this.lockedAt = null;
+        this.workerId = null;
+        this.lastErrorCode = null;
     }
 
     /**
      * 标记为发送失败
      * Mark as failed
      */
-    public void markFailed() {
-        this.status = OutboxStatus.FAILED;
+    public void markProcessing(String workerId, LocalDateTime now) {
+        if (status != OutboxStatus.PENDING && status != OutboxStatus.FAILED) {
+            throw new IllegalStateException("Only due outbox messages can be claimed");
+        }
+        this.status = OutboxStatus.PROCESSING;
+        this.workerId = workerId;
+        this.lockedAt = now;
+        this.attemptCount += 1;
+    }
+
+    public void markFailed(String errorCode, LocalDateTime nextAttemptAt, int maxAttempts) {
+        this.lastErrorCode = errorCode;
+        this.lockedAt = null;
+        this.workerId = null;
+        if (attemptCount >= maxAttempts) {
+            this.status = OutboxStatus.DEAD;
+            this.nextAttemptAt = null;
+        } else {
+            this.status = OutboxStatus.FAILED;
+            this.nextAttemptAt = nextAttemptAt;
+        }
+    }
+
+    public void recoverStaleClaim(LocalDateTime now) {
+        if (status == OutboxStatus.PROCESSING) {
+            this.status = OutboxStatus.FAILED;
+            this.lastErrorCode = "STALE_CLAIM";
+            this.nextAttemptAt = now;
+            this.lockedAt = null;
+            this.workerId = null;
+        }
     }
 }

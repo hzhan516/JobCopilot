@@ -3,6 +3,7 @@ package io.jobcopilot.resumeassistant.infrastructure.persistence.repository.conv
 import io.jobcopilot.resumeassistant.domain.conversation.entity.Conversation;
 import io.jobcopilot.resumeassistant.domain.conversation.entity.Message;
 import io.jobcopilot.resumeassistant.domain.conversation.repository.ConversationRepository;
+import io.jobcopilot.resumeassistant.domain.conversation.valueobject.AiReplyState;
 import io.jobcopilot.resumeassistant.infrastructure.persistence.entity.conversation.ConversationJpaEntity;
 import io.jobcopilot.resumeassistant.infrastructure.persistence.entity.conversation.MessageJpaEntity;
 import lombok.RequiredArgsConstructor;
@@ -57,6 +58,16 @@ public class ConversationRepositoryImpl implements ConversationRepository {
         jpaRepository.deleteById(id.toString());
     }
 
+    @Override
+    public List<Conversation> findPendingAiRepliesStartedBefore(java.time.LocalDateTime cutoff) {
+        return jpaRepository.findByAiReplyStatusAndAiReplyStartedAtBefore(
+                        io.jobcopilot.resumeassistant.domain.conversation.valueobject.AiReplyStatus.PENDING,
+                        cutoff)
+                .stream()
+                .map(this::mapToDomainEntity)
+                .toList();
+    }
+
     /**
      * 将领域实体映射为 JPA 实体
      * Map domain entity to JPA entity
@@ -77,6 +88,16 @@ public class ConversationRepositoryImpl implements ConversationRepository {
                 .totalTokensUsed(conversation.getTotalTokensUsed())
                 .contextSummary(conversation.getContextSummary())
                 .compactedThroughSequence(conversation.getCompactedThroughSequence())
+                .compactionRequestId(conversation.getCompactionRequestId() != null
+                        ? conversation.getCompactionRequestId().toString() : null)
+                .aiReplyRequestId(conversation.getAiReplyState().requestId() != null
+                        ? conversation.getAiReplyState().requestId().toString() : null)
+                .aiReplyStatus(conversation.getAiReplyState().status())
+                .aiReplyErrorCode(conversation.getAiReplyState().errorCode())
+                .aiReplyStartedAt(conversation.getAiReplyState().startedAt())
+                .aiReplyCompletedAt(conversation.getAiReplyState().completedAt())
+                .aiReplyUserMessageSequence(conversation.getAiReplyState().userMessageSequence())
+                .aiReplyAssistantMessageSequence(conversation.getAiReplyState().assistantMessageSequence())
                 .build();
 
         List<MessageJpaEntity> messageEntities = conversation.getMessages().stream()
@@ -128,7 +149,18 @@ public class ConversationRepositoryImpl implements ConversationRepository {
                 entity.getContextTokens() != null ? entity.getContextTokens() : 0,
                 entity.getTotalTokensUsed() != null ? entity.getTotalTokensUsed() : 0L,
                 entity.getContextSummary(),
-                entity.getCompactedThroughSequence() != null ? entity.getCompactedThroughSequence() : 0
+                entity.getCompactedThroughSequence() != null ? entity.getCompactedThroughSequence() : 0,
+                new AiReplyState(
+                        entity.getAiReplyRequestId() != null ? java.util.UUID.fromString(entity.getAiReplyRequestId()) : null,
+                        entity.getAiReplyStatus() != null ? entity.getAiReplyStatus()
+                                : io.jobcopilot.resumeassistant.domain.conversation.valueobject.AiReplyStatus.IDLE,
+                        entity.getAiReplyErrorCode(),
+                        entity.getAiReplyStartedAt(),
+                        entity.getAiReplyCompletedAt(),
+                        entity.getAiReplyUserMessageSequence(),
+                        entity.getAiReplyAssistantMessageSequence()),
+                entity.getCompactionRequestId() != null
+                        ? java.util.UUID.fromString(entity.getCompactionRequestId()) : null
         );
     }
 

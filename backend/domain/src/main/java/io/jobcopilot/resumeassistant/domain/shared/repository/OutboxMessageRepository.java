@@ -5,6 +5,7 @@ import io.jobcopilot.resumeassistant.types.enums.OutboxStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Outbox 消息仓储接口
@@ -17,6 +18,12 @@ public interface OutboxMessageRepository {
      * Save outbox message
      */
     OutboxMessage save(OutboxMessage message);
+
+    Optional<OutboxMessage> findById(String id);
+
+    List<OutboxMessage> findDueForDelivery(LocalDateTime now, int limit);
+
+    List<OutboxMessage> findStaleProcessing(LocalDateTime cutoff, int limit);
 
     /**
      * 根据状态查询消息

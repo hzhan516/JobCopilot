@@ -790,4 +790,36 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
 COMMENT ON COLUMN users.version IS 'Optimistic locking version / 乐观锁版本号';
 
 ALTER TABLE job_matching_models ADD COLUMN IF NOT EXISTS optimistic_version BIGINT NOT NULL DEFAULT 0;
+
+-- ==========================================
+-- V26: AI chat request state and outbox retry
+-- ==========================================
+ALTER TABLE conversations
+    ADD COLUMN IF NOT EXISTS compaction_request_id VARCHAR(36),
+    ADD COLUMN IF NOT EXISTS ai_reply_request_id VARCHAR(36),
+    ADD COLUMN IF NOT EXISTS ai_reply_status VARCHAR(20) NOT NULL DEFAULT 'IDLE',
+    ADD COLUMN IF NOT EXISTS ai_reply_error_code VARCHAR(64),
+    ADD COLUMN IF NOT EXISTS ai_reply_started_at TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS ai_reply_completed_at TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS ai_reply_user_message_sequence INTEGER,
+    ADD COLUMN IF NOT EXISTS ai_reply_assistant_message_sequence INTEGER;
+
+CREATE INDEX IF NOT EXISTS idx_conversations_ai_reply_pending
+    ON conversations (ai_reply_status, ai_reply_started_at);
+
+ALTER TABLE outbox_message
+    ADD COLUMN IF NOT EXISTS attempt_count INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS next_attempt_at TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS last_error_code VARCHAR(64),
+    ADD COLUMN IF NOT EXISTS locked_at TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS worker_id VARCHAR(128);
+
+UPDATE outbox_message
+SET next_attempt_at = COALESCE(next_attempt_at, created_at)
+WHERE status IN ('PENDING', 'FAILED');
+
+CREATE INDEX IF NOT EXISTS idx_outbox_due
+    ON outbox_message (status, next_attempt_at, created_at);
+CREATE INDEX IF NOT EXISTS idx_outbox_stale_processing
+    ON outbox_message (status, locked_at);
 COMMENT ON COLUMN job_matching_models.optimistic_version IS 'Optimistic locking version / 乐观锁版本号（与业务 model_version 区分）';

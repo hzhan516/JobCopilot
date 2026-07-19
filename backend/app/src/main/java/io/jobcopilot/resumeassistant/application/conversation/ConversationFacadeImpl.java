@@ -1,6 +1,7 @@
 package io.jobcopilot.resumeassistant.application.conversation;
 
 import io.jobcopilot.resumeassistant.api.conversation.dto.ConversationResponse;
+import io.jobcopilot.resumeassistant.api.conversation.dto.AiReplyResponse;
 import io.jobcopilot.resumeassistant.api.conversation.dto.CreateConversationRequest;
 import io.jobcopilot.resumeassistant.api.conversation.dto.MessageResponse;
 import io.jobcopilot.resumeassistant.api.conversation.dto.SendMessageRequest;
@@ -103,15 +104,20 @@ public class ConversationFacadeImpl implements ConversationFacade {
     }
 
     @Override
-    public void saveAiReply(String conversationId, String content, String fileUrl, String aiOptimizedMarkdown) {
-        applicationService.saveAiReply(UUID.fromString(conversationId), content, fileUrl, aiOptimizedMarkdown);
+    public boolean saveAiReply(String conversationId, String requestId, String content, String fileUrl,
+                               String aiOptimizedMarkdown, int promptTokens, int completionTokens) {
+        return applicationService.saveAiReply(UUID.fromString(conversationId), UUID.fromString(requestId),
+                content, fileUrl, aiOptimizedMarkdown, promptTokens, completionTokens);
     }
 
     @Override
-    public void saveAiReply(String conversationId, String content, String fileUrl,
-                            String aiOptimizedMarkdown, int promptTokens, int completionTokens) {
-        applicationService.saveAiReply(UUID.fromString(conversationId), content, fileUrl,
-                aiOptimizedMarkdown, promptTokens, completionTokens);
+    public boolean failAiReply(String conversationId, String requestId, String errorCode) {
+        return applicationService.failAiReply(UUID.fromString(conversationId), UUID.fromString(requestId), errorCode);
+    }
+
+    @Override
+    public ConversationResponse retryAiReply(String conversationId, UUID userId) {
+        return mapToResponse(applicationService.retryAiReply(UUID.fromString(conversationId), userId));
     }
 
     @Override
@@ -120,8 +126,8 @@ public class ConversationFacadeImpl implements ConversationFacade {
     }
 
     @Override
-    public void failAiReply(String conversationId, String errorMessage) {
-        applicationService.failAiReply(UUID.fromString(conversationId), errorMessage);
+    public void notifyAiReplyFailure(String conversationId, String errorMessage) {
+        applicationService.notifyAiReplyFailure(UUID.fromString(conversationId), errorMessage);
     }
 
     @Override
@@ -140,8 +146,15 @@ public class ConversationFacadeImpl implements ConversationFacade {
     }
 
     @Override
-    public void applyCompactionResult(String conversationId, String summary, int throughSequence, int contextTokens) {
-        compactionService.applyCompactionResult(conversationId, summary, throughSequence, contextTokens);
+    public boolean applyCompactionResult(String conversationId, String requestId, String summary,
+                                         int throughSequence, int contextTokens) {
+        return compactionService.applyCompactionResult(
+                conversationId, requestId, summary, throughSequence, contextTokens);
+    }
+
+    @Override
+    public boolean failCompaction(String conversationId, String requestId) {
+        return compactionService.failCompaction(conversationId, requestId);
     }
 
     @Override
@@ -183,7 +196,21 @@ public class ConversationFacadeImpl implements ConversationFacade {
                 conversation.getContextTokens(),
                 readContextWindow(),
                 computeUsageRatio(conversation.getContextTokens()),
-                isCompactAdvised(conversation.getContextTokens())
+                isCompactAdvised(conversation.getContextTokens()),
+                mapAiReply(conversation)
+        );
+    }
+
+    private AiReplyResponse mapAiReply(Conversation conversation) {
+        var state = conversation.getAiReplyState();
+        return new AiReplyResponse(
+                state.requestId() != null ? state.requestId().toString() : null,
+                state.status().name(),
+                state.errorCode(),
+                state.startedAt() != null ? state.startedAt().atOffset(ZoneOffset.UTC) : null,
+                state.completedAt() != null ? state.completedAt().atOffset(ZoneOffset.UTC) : null,
+                state.userMessageSequence(),
+                state.assistantMessageSequence()
         );
     }
 

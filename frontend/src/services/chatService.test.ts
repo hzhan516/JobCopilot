@@ -89,4 +89,27 @@ describe('chatService', () => {
     expect(apiMock.post).toHaveBeenCalledWith('/v1/conversations/conv-1/messages', { content: 'Hello AI' })
     expect(result).toEqual(mockConversation)
   })
+
+  it('retries the failed AI reply through the request-scoped endpoint', async () => {
+    const pendingConversation: Conversation = {
+      ...mockConversation,
+      aiReply: {
+        requestId: 'request-2',
+        status: 'PENDING',
+        errorCode: null,
+        startedAt: '2026-07-18T12:00:00Z',
+        completedAt: null,
+        userMessageSequence: 1,
+        assistantMessageSequence: null,
+      },
+    }
+    apiMock.post.mockResolvedValueOnce({
+      data: { code: 200, message: 'OK', data: pendingConversation },
+    })
+
+    const result = await chatService.retryAiReply('conv-1')
+
+    expect(apiMock.post).toHaveBeenCalledWith('/v1/conversations/conv-1/ai-replies/retry')
+    expect(result.aiReply?.requestId).toBe('request-2')
+  })
 })

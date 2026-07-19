@@ -4,6 +4,8 @@ import io.jobcopilot.resumeassistant.infrastructure.persistence.entity.conversat
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.time.LocalDateTime;
+import io.jobcopilot.resumeassistant.domain.conversation.valueobject.AiReplyStatus;
 
 /**
  * Spring Data JPA 仓储接口
@@ -22,4 +24,7 @@ public interface JpaConversationRepository extends JpaRepository<ConversationJpa
      * Count conversations by user ID
      */
     long countByUserId(String userId);
+
+    List<ConversationJpaEntity> findByAiReplyStatusAndAiReplyStartedAtBefore(
+            AiReplyStatus status, LocalDateTime cutoff);
 }

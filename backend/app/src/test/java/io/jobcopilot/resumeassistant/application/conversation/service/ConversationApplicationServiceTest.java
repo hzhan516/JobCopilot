@@ -386,13 +386,16 @@ class ConversationApplicationServiceTest {
         UUID conversationId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         Conversation conversation = Conversation.create(userId, "Title", null, null);
+        UUID requestId = UUID.randomUUID();
+        conversation.requestAiReply(requestId, 0);
 
         when(conversationRepository.findById(conversationId)).thenReturn(Optional.of(conversation));
         when(conversationRepository.save(any(Conversation.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         // 执行 / When
-        applicationService.saveAiReply(conversationId, "AI reply", "https://minio.example.com/file.pdf");
+        applicationService.saveAiReply(conversationId, requestId, "AI reply",
+                "https://minio.example.com/file.pdf", null, 0, 0);
 
         // 验证 / Then
         assertEquals(1, conversation.getMessages().size());
@@ -411,6 +414,8 @@ class ConversationApplicationServiceTest {
         UUID groupId = UUID.randomUUID();
 
         Conversation conversation = Conversation.create(userId, "Title", resumeVersionId, null);
+        UUID requestId = UUID.randomUUID();
+        conversation.requestAiReply(requestId, 0);
         ResumeVersion originalVersion = mock(ResumeVersion.class);
         ResumeGroup group = mock(ResumeGroup.class);
 
@@ -423,7 +428,8 @@ class ConversationApplicationServiceTest {
         when(resumeGroupRepository.findById(groupId)).thenReturn(Optional.of(group));
 
         // 执行 / When
-        applicationService.saveAiReply(conversationId, "AI reply", null, "# Optimized Resume");
+        applicationService.saveAiReply(conversationId, requestId, "AI reply", null,
+                "# Optimized Resume", 0, 0);
 
         // 验证 / Then
         assertEquals(1, conversation.getMessages().size());
@@ -451,6 +457,8 @@ class ConversationApplicationServiceTest {
         UUID workingVersionId = UUID.randomUUID();
 
         Conversation conversation = Conversation.create(userId, "Title", resumeVersionId, null);
+        UUID requestId = UUID.randomUUID();
+        conversation.requestAiReply(requestId, 0);
         conversation.setAiOptimizedVersionId(workingVersionId);
 
         ResumeVersion originalVersion = mock(ResumeVersion.class);
@@ -468,7 +476,8 @@ class ConversationApplicationServiceTest {
         when(resumeGroupRepository.findById(groupId)).thenReturn(Optional.of(group));
 
         // 执行 / When
-        applicationService.saveAiReply(conversationId, "AI reply", null, "# Updated Resume");
+        applicationService.saveAiReply(conversationId, requestId, "AI reply", null,
+                "# Updated Resume", 0, 0);
 
         // 验证 / Then
         assertEquals(1, conversation.getMessages().size());
@@ -496,6 +505,8 @@ class ConversationApplicationServiceTest {
         UUID workingVersionId = UUID.randomUUID();
 
         Conversation conversation = Conversation.create(userId, "Title", resumeVersionId, null);
+        UUID requestId = UUID.randomUUID();
+        conversation.requestAiReply(requestId, 0);
         conversation.setAiOptimizedVersionId(workingVersionId);
 
         ResumeVersion originalVersion = mock(ResumeVersion.class);
@@ -512,7 +523,8 @@ class ConversationApplicationServiceTest {
         when(resumeGroupRepository.findById(groupId)).thenReturn(Optional.of(group));
 
         // 执行 / When
-        applicationService.saveAiReply(conversationId, "AI reply", null, "# Re-created Resume");
+        applicationService.saveAiReply(conversationId, requestId, "AI reply", null,
+                "# Re-created Resume", 0, 0);
 
         // 验证 / Then
         assertEquals(1, conversation.getMessages().size());

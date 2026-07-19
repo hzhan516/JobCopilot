@@ -45,8 +45,8 @@ public class ConversationCompactionService {
             throw new ConversationException("conversation.compaction.in.progress");
         }
 
-        // ponytail: status-based concurrency guard; replace with Redis lock if multi-node contention arises
-        conversation.markCompacting();
+        UUID requestId = UUID.randomUUID();
+        conversation.markCompacting(requestId);
         conversationRepository.save(conversation);
 
         List<Map<String, Object>> history = buildCompactHistory(conversation);
@@ -55,7 +55,8 @@ public class ConversationCompactionService {
                 conversationId.toString(),
                 userId.toString(),
                 history,
-                conversation.getCompactedThroughSequence()
+                conversation.getCompactedThroughSequence(),
+                requestId.toString()
         );
         aiMessagePublisherPort.sendConversationCompact(command);
 
@@ -82,15 +83,33 @@ public class ConversationCompactionService {
      * 应用 AI 服务返回的压缩结果。
      */
     @Transactional(timeout = 30)
-    public void applyCompactionResult(String conversationId, String summary, int throughSequence, int promptTokens) {
+    public boolean applyCompactionResult(String conversationId, String requestId, String summary,
+                                         int throughSequence, int promptTokens) {
         Conversation conversation = conversationRepository.findById(UUID.fromString(conversationId))
                 .orElseThrow(() -> new ConversationException("conversation.not.found"));
 
-        conversation.applyCompaction(summary, throughSequence, promptTokens);
-        conversation.markActive();
+        if (!conversation.completeCompaction(UUID.fromString(requestId), summary, throughSequence, promptTokens)) {
+            log.info("Ignoring duplicate or stale compaction result: conversation={}, requestId={}",
+                    conversationId, requestId);
+            return false;
+        }
         conversationRepository.save(conversation);
 
         log.info("Compaction applied for conversation: {}, throughSequence={}, contextTokens={}",
                 conversationId, throughSequence, promptTokens);
+        return true;
+    }
+
+    @Transactional(timeout = 30)
+    public boolean failCompaction(String conversationId, String requestId) {
+        Conversation conversation = conversationRepository.findById(UUID.fromString(conversationId))
+                .orElseThrow(() -> new ConversationException("conversation.not.found"));
+        if (!conversation.failCompaction(UUID.fromString(requestId))) {
+            log.info("Ignoring duplicate or stale compaction failure: conversation={}, requestId={}",
+                    conversationId, requestId);
+            return false;
+        }
+        conversationRepository.save(conversation);
+        return true;
     }
 }

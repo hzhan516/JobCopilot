@@ -42,7 +42,7 @@ public class AiResultMessageListener {
     }
 
     private static String conversationDedupKey(AiResultEvent event) {
-        String requestId = extractString(event.data(), "requestId");
+        String requestId = extractRequestId(event);
         if (requestId == null || requestId.isBlank()) {
             return dedupKey(event, "conversation");
         }
@@ -83,27 +83,27 @@ public class AiResultMessageListener {
 
     @RabbitListener(queues = "${app.rabbitmq.queue.res.conversation}")
     public void onConversationReply(AiResultEvent event) {
-        String key = conversationDedupKey(event);
-        if (idempotencyService.isProcessed(key)) {
-            log.info("Duplicate CONVERSATION_REPLY result skipped for referenceId: {}", event.referenceId());
-            return;
+        String requestId = extractRequestId(event);
+        if (requestId == null || requestId.isBlank()) {
+            throw new IllegalArgumentException("Conversation result is missing requestId");
         }
+        String key = conversationDedupKey(event);
         log.info("Received AiResultEvent for CONVERSATION_REPLY, referenceId: {}, status: {}", event.referenceId(), event.status());
         try {
             if (!"COMPLETED".equals(event.status())) {
-                log.warn("Conversation AI reply failed for conversation: {}, error: {}", event.referenceId(), event.errorMessage());
-                String errorContent = conversationFacade.resolveAiFailureMessage(
-                        event.errorMessage(),
-                        extractString(event.data(), "locale")
-                );
-                conversationFacade.saveAiReply(
-                        event.referenceId(),
-                        errorContent,
-                        null,
-                        null
-                );
-                conversationFacade.failAiReply(event.referenceId(), errorContent);
-                idempotencyService.markProcessed(key);
+                String errorCode = extractString(event.data(), "errorCode");
+                if (errorCode == null || errorCode.isBlank()) {
+                    errorCode = event.errorMessage() != null ? event.errorMessage() : "UNKNOWN";
+                }
+                log.warn("Conversation AI reply failed: conversation={}, requestId={}, errorCode={}",
+                        event.referenceId(), requestId, errorCode);
+                boolean persisted = conversationFacade.failAiReply(event.referenceId(), requestId, errorCode);
+                if (persisted) {
+                    String errorContent = conversationFacade.resolveAiFailureMessage(
+                            errorCode, extractString(event.data(), "locale"));
+                    conversationFacade.notifyAiReplyFailure(event.referenceId(), errorContent);
+                }
+                markProcessedBestEffort(key);
                 return;
             }
 
@@ -113,17 +113,40 @@ public class AiResultMessageListener {
             int promptTokens = extractInt(event.data(), "promptTokens");
             int completionTokens = extractInt(event.data(), "completionTokens");
 
-            conversationFacade.saveAiReply(event.referenceId(), content, fileUrl, aiOptimizedMarkdown,
-                    promptTokens, completionTokens);
-            log.info("Saved AI reply for conversation: {}, promptTokens={}, completionTokens={}",
-                    event.referenceId(), promptTokens, completionTokens);
+            boolean persisted = conversationFacade.saveAiReply(event.referenceId(), requestId, content,
+                    fileUrl, aiOptimizedMarkdown, promptTokens, completionTokens);
+            if (persisted) {
+                log.info("Saved AI reply: conversation={}, requestId={}, promptTokens={}, completionTokens={}",
+                        event.referenceId(), requestId, promptTokens, completionTokens);
+                conversationFacade.completeAiReply(event.referenceId(), content);
+            } else {
+                log.info("Ignored duplicate or stale AI result: conversation={}, requestId={}",
+                        event.referenceId(), requestId);
+            }
+            markProcessedBestEffort(key);
+        } catch (Exception e) {
+            log.error("Error processing conversation result: conversation={}, requestId={}",
+                    event.referenceId(), requestId, e);
+            if (e instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new IllegalStateException("Failed to persist conversation result", e);
+        }
+    }
 
-            conversationFacade.completeAiReply(event.referenceId(), content);
+    private void markProcessedBestEffort(String key) {
+        try {
             idempotencyService.markProcessed(key);
         } catch (Exception e) {
-            log.error("Error processing AiResultEvent for CONVERSATION_REPLY referenceId: {}", event.referenceId(), e);
-            conversationFacade.failAiReply(event.referenceId(), e.getMessage());
+            log.warn("Redis idempotency fast path unavailable for key: {}", key, e);
         }
+    }
+
+    private static String extractRequestId(AiResultEvent event) {
+        if (event.requestId() != null && !event.requestId().isBlank()) {
+            return event.requestId();
+        }
+        return extractString(event.data(), "requestId");
     }
 
     @RabbitListener(queues = "${app.rabbitmq.queue.res.job-rank}")
@@ -196,19 +219,19 @@ public class AiResultMessageListener {
 
     @RabbitListener(queues = "${app.rabbitmq.queue.res.conversation-compact}")
     public void onConversationCompacted(AiResultEvent event) {
-        String key = dedupKey(event, "conversation-compact");
-        if (idempotencyService.isProcessed(key)) {
-            log.info("Duplicate CONVERSATION_COMPACTED result skipped for referenceId: {}", event.referenceId());
-            return;
+        String requestId = extractRequestId(event);
+        if (requestId == null || requestId.isBlank()) {
+            throw new IllegalArgumentException("CONVERSATION_COMPACTED result is missing requestId");
         }
-        log.info("Received AiResultEvent for CONVERSATION_COMPACTED, referenceId: {}, status: {}",
-                event.referenceId(), event.status());
+        String key = "conversation-compact:" + requestId;
+        log.info("Received AiResultEvent for CONVERSATION_COMPACTED, referenceId: {}, requestId: {}, status: {}",
+                event.referenceId(), requestId, event.status());
         try {
             if (!"COMPLETED".equals(event.status())) {
-                log.warn("Conversation compaction failed for conversation: {}, error: {}",
-                        event.referenceId(), event.errorMessage());
-                // ponytail: mark active so the user can retry; add retry-count column if needed
-                idempotencyService.markProcessed(key);
+                boolean persisted = conversationFacade.failCompaction(event.referenceId(), requestId);
+                log.warn("Conversation compaction failed: conversation={}, requestId={}, persisted={}, error={}",
+                        event.referenceId(), requestId, persisted, event.errorMessage());
+                markProcessedBestEffort(key);
                 return;
             }
 
@@ -217,17 +240,21 @@ public class AiResultMessageListener {
             int contextTokens = extractInt(event.data(), "contextTokens");
 
             if (summary == null || summary.isBlank()) {
-                log.warn("Compaction result missing summary for conversation: {}", event.referenceId());
-                idempotencyService.markProcessed(key);
-                return;
+                throw new IllegalArgumentException("Compaction result is missing summary");
             }
 
-            conversationFacade.applyCompactionResult(event.referenceId(), summary, throughSequence, contextTokens);
-            log.info("Compaction applied for conversation: {}", event.referenceId());
-            idempotencyService.markProcessed(key);
+            boolean persisted = conversationFacade.applyCompactionResult(
+                    event.referenceId(), requestId, summary, throughSequence, contextTokens);
+            log.info("Compaction result handled: conversation={}, requestId={}, persisted={}",
+                    event.referenceId(), requestId, persisted);
+            markProcessedBestEffort(key);
         } catch (Exception e) {
-            log.error("Error processing AiResultEvent for CONVERSATION_COMPACTED referenceId: {}",
-                    event.referenceId(), e);
+            log.error("Error processing compaction result: conversation={}, requestId={}",
+                    event.referenceId(), requestId, e);
+            if (e instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new IllegalStateException("Failed to persist compaction result", e);
         }
     }
 

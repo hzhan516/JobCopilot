@@ -10,6 +10,8 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Optional;
+import org.springframework.data.domain.PageRequest;
 
 /**
  * Outbox 消息仓储实现
@@ -25,6 +27,25 @@ public class OutboxMessageRepositoryImpl implements OutboxMessageRepository {
     @Override
     public OutboxMessage save(OutboxMessage message) {
         return mapper.toDomain(jpaRepository.save(mapper.toJpaEntity(message)));
+    }
+
+    @Override
+    public Optional<OutboxMessage> findById(String id) {
+        return jpaRepository.findById(id).map(mapper::toDomain);
+    }
+
+    @Override
+    public List<OutboxMessage> findDueForDelivery(LocalDateTime now, int limit) {
+        return jpaRepository.findDueForDelivery(now, PageRequest.of(0, limit)).stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<OutboxMessage> findStaleProcessing(LocalDateTime cutoff, int limit) {
+        return jpaRepository.findStaleProcessing(cutoff, PageRequest.of(0, limit)).stream()
+                .map(mapper::toDomain)
+                .toList();
     }
 
     @Override

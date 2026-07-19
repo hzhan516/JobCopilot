@@ -35,6 +35,8 @@ import {
   Sparkles,
   FileText,
   Briefcase,
+  RotateCcw,
+  AlertCircle,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -77,6 +79,7 @@ export default function CopilotChatArea() {
     handleSelectConversation,
     handleCreateConversation,
     handleSendMessage,
+    retryAiReply,
     handleDeleteConversation,
     compactConversation,
     isCompacting,
@@ -344,6 +347,32 @@ export default function CopilotChatArea() {
                 </div>
               </div>
             )}
+            {(activeConversation.aiReply?.status === 'FAILED'
+              || activeConversation.aiReply?.status === 'TIMED_OUT') && (
+              <div className="flex justify-start mb-3">
+                <div className="max-w-[90%] rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+                  <div className="flex items-center gap-2 text-xs">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    <span>
+                      {activeConversation.aiReply.status === 'TIMED_OUT'
+                        ? t('chat.aiReplyTimedOut')
+                        : t('chat.aiReplyFailed')}
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="mt-2 h-7 text-xs"
+                    onClick={retryAiReply}
+                    disabled={isSending}
+                  >
+                    <RotateCcw className="mr-1 h-3 w-3" />
+                    {t('chat.retry')}
+                  </Button>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </>
         )}
@@ -372,13 +401,13 @@ export default function CopilotChatArea() {
                     handleSendMessage();
                   }
                 }}
-                disabled={isSending}
+                disabled={isSending || isWaitingForReply}
                 className="flex-1 text-sm"
               />
               <Button
                 size="sm"
                 onClick={handleSendMessage}
-                disabled={!inputMessage.trim() || isSending}
+                disabled={!inputMessage.trim() || isSending || isWaitingForReply}
               >
                 {isSending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
