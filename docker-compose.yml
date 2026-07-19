@@ -123,6 +123,41 @@ services:
   #     (defense-in-depth layer 2).
   #   - All user-facing endpoints require a valid JWT (defense-in-depth layer 3).
   # ============================================================================
+  # Development schema upgrade gate. PostgreSQL init scripts only run for an
+  # empty data directory, while the dev profile keeps Flyway disabled until the
+  # historical duplicate V11/V12 migrations have been audited. This one-shot
+  # service upgrades existing dev volumes with idempotent SQL before Backend
+  # starts. Non-dev profiles skip this gate and continue to use Flyway.
+  db-migrate:
+    image: docker.io/ankane/pgvector:latest
+    container_name: jobcopilot-db-migrate
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - PGHOST=${POSTGRES_HOST:-postgres}
+      - PGPORT=${POSTGRES_PORT:-5432}
+      - PGDATABASE=${POSTGRES_DB:?Database name is required}
+      - PGUSER=${POSTGRES_USER:?Database user is required}
+      - PGPASSWORD=${POSTGRES_PASSWORD:?Database password is required}
+    volumes:
+      - ./backend/app/src/main/resources/db/migration:/migrations:ro
+    command:
+      - sh
+      - -ec
+      - |
+        if [ "$${SPRING_PROFILES_ACTIVE}" != "dev" ]; then
+          echo "Skipping dev schema upgrade for profile $${SPRING_PROFILES_ACTIVE}."
+          exit 0
+        fi
+        psql -v ON_ERROR_STOP=1 -f /migrations/V12__dynamic_config.sql
+        psql -v ON_ERROR_STOP=1 -f /migrations/V25__chat_context_compaction.sql
+        psql -v ON_ERROR_STOP=1 -f /migrations/V26__ai_chat_request_state_and_outbox_retry.sql
+    networks:
+      - db-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   backend:
     build:
       context: ./backend
@@ -236,6 +271,8 @@ services:
       # gates the frontend startup.
       postgres:
         condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       redis:

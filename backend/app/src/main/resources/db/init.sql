@@ -725,6 +725,45 @@ CREATE INDEX IF NOT EXISTS idx_conversations_job_id ON conversations(job_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_ai_optimized_version_id ON conversations(ai_optimized_version_id);
 
 -- ==========================================
+-- V12: Dynamic configuration / 动态配置
+-- ==========================================
+-- Development uses this bootstrap file instead of Flyway. Keep this block in
+-- sync with V12__dynamic_config.sql so clean volumes include management-plane
+-- configuration required by AI Chat context settings.
+CREATE TABLE IF NOT EXISTS dynamic_config (
+    config_key VARCHAR(100) PRIMARY KEY,
+    config_value JSONB NOT NULL,
+    default_value JSONB NOT NULL,
+    description VARCHAR(500),
+    category VARCHAR(50) NOT NULL,
+    value_type VARCHAR(20) NOT NULL DEFAULT 'STRING',
+    is_sensitive BOOLEAN DEFAULT FALSE,
+    is_readonly BOOLEAN DEFAULT FALSE,
+    updated_by UUID REFERENCES users(id),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+INSERT INTO dynamic_config (config_key, config_value, default_value, description, category, value_type) VALUES
+('captcha.enabled', 'true', 'true', 'Enable slider CAPTCHA', 'security', 'BOOLEAN'),
+('captcha.tolerance', '8', '8', 'CAPTCHA drag tolerance (pixels)', 'security', 'NUMBER'),
+('captcha.maxAttempts', '5', '5', 'Max CAPTCHA attempts per IP', 'security', 'NUMBER'),
+('captcha.tokenExpiry', '300', '300', 'CAPTCHA token lifetime (seconds)', 'security', 'NUMBER'),
+('emailVerification.enabled', 'false', 'false', 'Require email verification on register', 'email', 'BOOLEAN'),
+('emailVerification.codeExpiry', '300', '300', 'Verification code lifetime (seconds)', 'email', 'NUMBER'),
+('llm.textModel', '"gemini/gemini-2.5-flash"', '"gemini/gemini-2.5-flash"', 'Text generation model', 'ai', 'STRING'),
+('llm.visionModel', '"gemini/gemini-2.5-flash"', '"gemini/gemini-2.5-flash"', 'Vision model for PDF/image', 'ai', 'STRING'),
+('llm.embeddingModel', '"gemini/gemini-embedding-001"', '"gemini/gemini-embedding-001"', 'Embedding model', 'ai', 'STRING'),
+('feature.googleAuth', 'true', 'true', 'Google OAuth login', 'feature', 'BOOLEAN'),
+('feature.chat', 'true', 'true', 'AI chat assistant', 'feature', 'BOOLEAN'),
+('feature.jobMatching', 'true', 'true', 'Job matching with AI', 'feature', 'BOOLEAN'),
+('rateLimit.api', '100', '100', 'API rate limit (req/min)', 'rate', 'NUMBER'),
+('rateLimit.auth', '10', '10', 'Auth rate limit (req/min)', 'rate', 'NUMBER'),
+('log.backendLevel', '"INFO"', '"INFO"', 'Backend log level', 'logging', 'STRING'),
+('log.aiServiceLevel', '"INFO"', '"INFO"', 'AI service log level', 'logging', 'STRING')
+ON CONFLICT DO NOTHING;
+
+-- ==========================================
 -- V13: Outbox Message / 事务发件箱消息表
 -- ==========================================
 
@@ -790,6 +829,25 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
 COMMENT ON COLUMN users.version IS 'Optimistic locking version / 乐观锁版本号';
 
 ALTER TABLE job_matching_models ADD COLUMN IF NOT EXISTS optimistic_version BIGINT NOT NULL DEFAULT 0;
+
+-- ==========================================
+-- V25: Chat context compaction / 对话上下文压缩
+-- ==========================================
+-- Keep the clean dev bootstrap aligned with V25__chat_context_compaction.sql.
+INSERT INTO dynamic_config (config_key, config_value, default_value, description, category, value_type) VALUES
+('chat.contextWindow', '1000000', '1000000', 'Context window size in tokens for usage indicator denominator', 'ai', 'NUMBER'),
+('chat.compactThreshold', '80', '80', 'Usage ratio (%) above which compact advisory is shown', 'ai', 'NUMBER')
+ON CONFLICT DO NOTHING;
+
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS context_tokens INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS total_tokens_used BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS context_summary TEXT;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS compacted_through_sequence INTEGER NOT NULL DEFAULT 0;
+
+COMMENT ON COLUMN conversations.context_tokens IS 'Prompt tokens from the most recent AI call / 最近一次 AI 调用的 prompt tokens';
+COMMENT ON COLUMN conversations.total_tokens_used IS 'Cumulative tokens consumed across all AI calls / 所有 AI 调用的累计 token 消耗';
+COMMENT ON COLUMN conversations.context_summary IS 'LLM-generated summary of compacted message history / LLM 生成的压缩历史摘要';
+COMMENT ON COLUMN conversations.compacted_through_sequence IS 'Last message sequence number covered by the summary / 摘要已覆盖到的最后一条消息序号';
 
 -- ==========================================
 -- V26: AI chat request state and outbox retry
