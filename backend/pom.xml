@@ -52,7 +52,7 @@
         <jodconverter-local.version>4.4.7</jodconverter-local.version>
 
         <!-- Utilities -->
-        <commons-io.version>2.15.1</commons-io.version>
+        <commons-io.version>2.22.0</commons-io.version>
         <commons-exec.version>1.4.0</commons-exec.version>
 
         <!-- Security -->
