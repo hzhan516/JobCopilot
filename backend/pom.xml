@@ -53,7 +53,7 @@
 
         <!-- Utilities -->
         <commons-io.version>2.15.1</commons-io.version>
-        <commons-exec.version>1.4.0</commons-exec.version>
+        <commons-exec.version>1.6.0</commons-exec.version>
 
         <!-- Security -->
         <jjwt.version>0.13.0</jjwt.version>
