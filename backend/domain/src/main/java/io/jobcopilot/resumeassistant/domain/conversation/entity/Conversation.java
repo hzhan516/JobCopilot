@@ -1,6 +1,9 @@
 package io.jobcopilot.resumeassistant.domain.conversation.entity;
 
 import io.jobcopilot.resumeassistant.domain.conversation.exception.ConversationException;
+import io.jobcopilot.resumeassistant.domain.conversation.exception.AiReplyInProgressException;
+import io.jobcopilot.resumeassistant.domain.conversation.valueobject.AiReplyState;
+import io.jobcopilot.resumeassistant.domain.conversation.valueobject.AiReplyStatus;
 import io.jobcopilot.resumeassistant.domain.conversation.valueobject.ConversationStatus;
 import io.jobcopilot.resumeassistant.domain.conversation.valueobject.MessageRole;
 import io.jobcopilot.resumeassistant.domain.shared.entity.AggregateRoot;
@@ -32,13 +35,16 @@ public class Conversation extends AggregateRoot<UUID> {
     private long totalTokensUsed;
     private String contextSummary;
     private int compactedThroughSequence;
+    private AiReplyState aiReplyState;
+    private UUID compactionRequestId;
 
     protected Conversation(UUID id, UUID userId, String title, ConversationStatus status,
                            UUID resumeVersionId, UUID jobId, UUID aiOptimizedVersionId,
                            LocalDateTime createdAt, LocalDateTime updatedAt,
                            List<Message> messages, long version,
                            int contextTokens, long totalTokensUsed,
-                           String contextSummary, int compactedThroughSequence) {
+                           String contextSummary, int compactedThroughSequence,
+                           AiReplyState aiReplyState, UUID compactionRequestId) {
         this.id = id;
         this.userId = userId;
         this.title = title;
@@ -54,6 +60,8 @@ public class Conversation extends AggregateRoot<UUID> {
         this.totalTokensUsed = totalTokensUsed;
         this.contextSummary = contextSummary;
         this.compactedThroughSequence = compactedThroughSequence;
+        this.aiReplyState = aiReplyState != null ? aiReplyState : AiReplyState.idle();
+        this.compactionRequestId = compactionRequestId;
     }
 
     public static Conversation create(UUID userId, String title, UUID resumeVersionId, UUID jobId) {
@@ -74,7 +82,9 @@ public class Conversation extends AggregateRoot<UUID> {
                 0,     // contextTokens
                 0L,    // totalTokensUsed
                 null,  // contextSummary
-                0      // compactedThroughSequence
+                0,     // compactedThroughSequence
+                AiReplyState.idle(),
+                null
         );
     }
 
@@ -87,9 +97,35 @@ public class Conversation extends AggregateRoot<UUID> {
                                            LocalDateTime createdAt, LocalDateTime updatedAt,
                                            List<Message> messages, long version,
                                            int contextTokens, long totalTokensUsed,
-                                           String contextSummary, int compactedThroughSequence) {
+                                           String contextSummary, int compactedThroughSequence,
+                                           AiReplyState aiReplyState, UUID compactionRequestId) {
         return new Conversation(id, userId, title, status, resumeVersionId, jobId, aiOptimizedVersionId, createdAt, updatedAt, messages, version,
-                contextTokens, totalTokensUsed, contextSummary, compactedThroughSequence);
+                contextTokens, totalTokensUsed, contextSummary, compactedThroughSequence, aiReplyState,
+                compactionRequestId);
+    }
+
+    public static Conversation reconstruct(UUID id, UUID userId, String title, ConversationStatus status,
+                                           UUID resumeVersionId, UUID jobId, UUID aiOptimizedVersionId,
+                                           LocalDateTime createdAt, LocalDateTime updatedAt,
+                                           List<Message> messages, long version,
+                                           int contextTokens, long totalTokensUsed,
+                                           String contextSummary, int compactedThroughSequence,
+                                           AiReplyState aiReplyState) {
+        return reconstruct(id, userId, title, status, resumeVersionId, jobId, aiOptimizedVersionId,
+                createdAt, updatedAt, messages, version, contextTokens, totalTokensUsed,
+                contextSummary, compactedThroughSequence, aiReplyState, null);
+    }
+
+    /** Backward-compatible reconstruction for tests and adapters that predate durable AI state. */
+    public static Conversation reconstruct(UUID id, UUID userId, String title, ConversationStatus status,
+                                           UUID resumeVersionId, UUID jobId, UUID aiOptimizedVersionId,
+                                           LocalDateTime createdAt, LocalDateTime updatedAt,
+                                           List<Message> messages, long version,
+                                           int contextTokens, long totalTokensUsed,
+                                           String contextSummary, int compactedThroughSequence) {
+        return reconstruct(id, userId, title, status, resumeVersionId, jobId, aiOptimizedVersionId,
+                createdAt, updatedAt, messages, version, contextTokens, totalTokensUsed,
+                contextSummary, compactedThroughSequence, AiReplyState.idle());
     }
 
     public void addMessage(MessageRole role, String content) {
@@ -103,6 +139,78 @@ public class Conversation extends AggregateRoot<UUID> {
         int sequence = this.messages.size() + 1;
         Message newMessage = Message.create(this.getId(), role, content, sequence, fileUrl);
         this.messages.add(newMessage);
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /** Starts exactly one durable AI reply request for the latest persisted user message. */
+    public void requestAiReply(UUID requestId, int userMessageSequence) {
+        if (requestId == null) {
+            throw new IllegalArgumentException("requestId is required");
+        }
+        if (this.status == ConversationStatus.CLOSED) {
+            throw new ConversationException("conversation.message.send.failed");
+        }
+        if (aiReplyState.isPending()) {
+            throw new AiReplyInProgressException();
+        }
+        this.aiReplyState = AiReplyState.pending(requestId, userMessageSequence, LocalDateTime.now());
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Completes the matching request and appends its assistant message exactly once.
+     * Duplicate or stale results are ignored and return false.
+     */
+    public boolean completeAiReply(UUID requestId, String content, String fileUrl,
+                                   int promptTokens, int completionTokens) {
+        if (!aiReplyState.isPending() || !aiReplyState.matches(requestId)) {
+            return false;
+        }
+        addMessage(MessageRole.ASSISTANT, content, fileUrl);
+        int assistantSequence = messages.get(messages.size() - 1).getSequence();
+        recordTokenUsage(promptTokens, completionTokens);
+        LocalDateTime now = LocalDateTime.now();
+        this.aiReplyState = new AiReplyState(requestId, AiReplyStatus.COMPLETED, null,
+                aiReplyState.startedAt(), now, aiReplyState.userMessageSequence(), assistantSequence);
+        this.updatedAt = now;
+        return true;
+    }
+
+    /** Marks the matching request failed without manufacturing an assistant message. */
+    public boolean failAiReply(UUID requestId, String errorCode) {
+        if (!aiReplyState.isPending() || !aiReplyState.matches(requestId)) {
+            return false;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        this.aiReplyState = new AiReplyState(requestId, AiReplyStatus.FAILED, errorCode,
+                aiReplyState.startedAt(), now, aiReplyState.userMessageSequence(), null);
+        this.updatedAt = now;
+        return true;
+    }
+
+    /** Marks the matching request timed out; a late result can no longer mutate the aggregate. */
+    public boolean timeoutAiReply(UUID requestId) {
+        if (!aiReplyState.isPending() || !aiReplyState.matches(requestId)) {
+            return false;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        this.aiReplyState = new AiReplyState(requestId, AiReplyStatus.TIMED_OUT, "END_TO_END_TIMEOUT",
+                aiReplyState.startedAt(), now, aiReplyState.userMessageSequence(), null);
+        this.updatedAt = now;
+        return true;
+    }
+
+    /** Retries the last failed/timed-out user turn with a new request id. */
+    public void retryAiReply(UUID newRequestId) {
+        if (aiReplyState.status() != AiReplyStatus.FAILED
+                && aiReplyState.status() != AiReplyStatus.TIMED_OUT) {
+            throw new ConversationException("conversation.ai.reply.retry.not.allowed");
+        }
+        Integer userSequence = aiReplyState.userMessageSequence();
+        if (userSequence == null) {
+            throw new ConversationException("conversation.ai.reply.retry.not.allowed");
+        }
+        this.aiReplyState = AiReplyState.pending(newRequestId, userSequence, LocalDateTime.now());
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -207,6 +315,14 @@ public class Conversation extends AggregateRoot<UUID> {
         return compactedThroughSequence;
     }
 
+    public AiReplyState getAiReplyState() {
+        return aiReplyState;
+    }
+
+    public UUID getCompactionRequestId() {
+        return compactionRequestId;
+    }
+
     /**
      * Records token usage from an AI call, updating both the snapshot context tokens
      * and the cumulative total.
@@ -239,13 +355,42 @@ public class Conversation extends AggregateRoot<UUID> {
         return this.status == ConversationStatus.COMPACTING;
     }
 
-    public void markCompacting() {
+    public void markCompacting(UUID requestId) {
+        if (requestId == null) {
+            throw new IllegalArgumentException("requestId is required");
+        }
         this.status = ConversationStatus.COMPACTING;
+        this.compactionRequestId = requestId;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    /** Applies only the result belonging to the currently active compaction request. */
+    public boolean completeCompaction(UUID requestId, String summary, int throughSequence,
+                                      int newContextTokens) {
+        if (!isCompacting() || !java.util.Objects.equals(compactionRequestId, requestId)) {
+            return false;
+        }
+        applyCompaction(summary, throughSequence, newContextTokens);
+        this.status = ConversationStatus.ACTIVE;
+        // Retain the terminal correlation ID so clients can verify the exact compaction.
+        this.updatedAt = LocalDateTime.now();
+        return true;
+    }
+
+    /** Releases a failed compaction only when it matches the active request. */
+    public boolean failCompaction(UUID requestId) {
+        if (!isCompacting() || !java.util.Objects.equals(compactionRequestId, requestId)) {
+            return false;
+        }
+        this.status = ConversationStatus.ACTIVE;
+        // Retain the terminal correlation ID until the next compaction replaces it.
+        this.updatedAt = LocalDateTime.now();
+        return true;
     }
 
     public void markActive() {
         this.status = ConversationStatus.ACTIVE;
+        this.compactionRequestId = null;
         this.updatedAt = LocalDateTime.now();
     }
 }

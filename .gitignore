@@ -83,6 +83,7 @@ id_rsa.pub
 /ai-service/.coverage
 /ai-service/coverage.xml
 /ai-service/htmlcov/
+/ai-service/evals/reports/
 dist/
 build/
 

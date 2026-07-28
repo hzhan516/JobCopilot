@@ -42,8 +42,17 @@ public class ConversationContextService {
     private final AiMessagePublisherPort aiMessagePublisherPort;
     private final VectorGenerationPort vectorGenerationPort;
 
-    void queueConversationRequest(Conversation conversation, String currentMessage, boolean init) {
-        sendConversationRequestWithContext(conversation, currentMessage, init);
+    void queueConversationRequest(Conversation conversation, String currentMessage, boolean init,
+                                  UUID requestId, int currentUserMessageSequence) {
+        queueConversationRequest(conversation, currentMessage, init, requestId,
+                currentUserMessageSequence, List.of());
+    }
+
+    void queueConversationRequest(Conversation conversation, String currentMessage, boolean init,
+                                  UUID requestId, int currentUserMessageSequence,
+                                  List<String> attachmentUrls) {
+        sendConversationRequestWithContext(conversation, currentMessage, init, requestId,
+                currentUserMessageSequence, attachmentUrls);
     }
 
     void deferVectorGeneration(UUID versionId, String markdown) {
@@ -64,7 +73,9 @@ public class ConversationContextService {
         }
     }
 
-    private void sendConversationRequestWithContext(Conversation conversation, String currentMessage, boolean init) {
+    private void sendConversationRequestWithContext(Conversation conversation, String currentMessage, boolean init,
+                                                    UUID requestId, int currentUserMessageSequence,
+                                                    List<String> attachmentUrls) {
         String resumeText = null;
         String primaryJobText = null;
         List<String> relatedJobTexts = new ArrayList<>();
@@ -101,16 +112,19 @@ public class ConversationContextService {
         ConversationRequestCommand mqCommand = new ConversationRequestCommand(
                 conversation.getId().toString(),
                 conversation.getUserId().toString(),
-                buildMessageHistory(conversation),
+                buildMessageHistory(conversation, currentUserMessageSequence),
                 currentMessage,
-                new ArrayList<>(),
+                attachmentUrls != null ? List.copyOf(attachmentUrls) : List.of(),
                 conversation.getResumeVersionId() != null ? conversation.getResumeVersionId().toString() : null,
                 resumeText,
                 primaryJobText,
                 relatedJobTexts,
                 init,
                 locale,
-                UUID.randomUUID().toString()
+                requestId.toString(),
+                1,
+                UUID.randomUUID().toString(),
+                java.time.OffsetDateTime.now().toString()
         );
         aiMessagePublisherPort.sendConversationRequest(mqCommand);
         log.info("Queued conversation request to outbox for conversation: {}, init={}, locale={}",
@@ -118,6 +132,10 @@ public class ConversationContextService {
     }
 
     List<Map<String, Object>> buildMessageHistory(Conversation conversation) {
+        return buildMessageHistory(conversation, -1);
+    }
+
+    List<Map<String, Object>> buildMessageHistory(Conversation conversation, int excludedSequence) {
         List<Map<String, Object>> history = new ArrayList<>();
 
         // Prepend summary of compacted history if available
@@ -133,6 +151,9 @@ public class ConversationContextService {
         for (Message msg : conversation.getMessages()) {
             // Skip messages already covered by the summary
             if (compactedThrough > 0 && msg.getSequence() <= compactedThrough) {
+                continue;
+            }
+            if (msg.getSequence() == excludedSequence) {
                 continue;
             }
             Map<String, Object> entry = new LinkedHashMap<>();

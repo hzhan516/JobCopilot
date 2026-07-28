@@ -3,6 +3,7 @@ package io.jobcopilot.resumeassistant.trigger.http.advice;
 import io.jobcopilot.resumeassistant.api.common.dto.ApiResponse;
 import io.jobcopilot.resumeassistant.api.shared.service.ExceptionMessageResolver;
 import io.jobcopilot.resumeassistant.domain.job.exception.JobContentNotReadyException;
+import io.jobcopilot.resumeassistant.domain.conversation.exception.AiReplyInProgressException;
 import io.jobcopilot.resumeassistant.domain.matching.exception.ResumeVectorNotReadyException;
 import io.jobcopilot.resumeassistant.domain.shared.exception.AiServiceUnavailableException;
 import io.jobcopilot.resumeassistant.domain.shared.exception.LocalizedException;
@@ -35,6 +36,18 @@ public class GlobalExceptionHandler {
 
     private final MessageProvider messageProvider;
     private final ExceptionMessageResolver exceptionResolver;
+
+    @ExceptionHandler(AiReplyInProgressException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAiReplyInProgress(AiReplyInProgressException ex) {
+        String message;
+        try {
+            message = messageProvider.getMessage(ex.getMessageKey(), ex.getArgs());
+        } catch (Exception ignored) {
+            message = ex.getMessageKey();
+        }
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(HttpStatus.CONFLICT.value(), message));
+    }
 
     /**
      * Aggregates field-level validation failures into a single structured payload so the frontend

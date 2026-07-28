@@ -1,0 +1,20 @@
+{
+  "conversationId": "00000000-0000-0000-0000-000000000101",
+  "userId": "00000000-0000-0000-0000-000000000201",
+  "messageHistory": [
+    {"role": "USER", "content": "Earlier question"},
+    {"role": "ASSISTANT", "content": "Earlier answer"}
+  ],
+  "currentMessage": "Give one concise improvement.",
+  "fileUrls": [],
+  "resumeVersionId": "00000000-0000-0000-0000-000000000301",
+  "resumeText": "Synthetic resume content",
+  "primaryJobText": "Synthetic job content",
+  "relatedJobTexts": [],
+  "init": false,
+  "locale": "en",
+  "requestId": "00000000-0000-0000-0000-000000000401",
+  "schemaVersion": 1,
+  "eventId": "00000000-0000-0000-0000-000000000501",
+  "occurredAt": "2026-07-18T12:00:00Z"
+}

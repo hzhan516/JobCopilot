@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 
 from app.schemas import (
     AiResultEvent,
@@ -60,6 +61,9 @@ def process_compaction(command: ConversationCompactCommand) -> AiResultEvent:
             data=None,
             errorMessage="No messages to compact",
             eventType=None,
+            schemaVersion=max(command.schema_version, 1),
+            eventId=str(uuid.uuid4()),
+            requestId=command.request_id,
         )
 
     try:
@@ -79,6 +83,9 @@ def process_compaction(command: ConversationCompactCommand) -> AiResultEvent:
             ),
             errorMessage=None,
             eventType=None,
+            schemaVersion=max(command.schema_version, 1),
+            eventId=str(uuid.uuid4()),
+            requestId=command.request_id,
         )
     except Exception as exc:
         logger.exception(
@@ -91,4 +98,7 @@ def process_compaction(command: ConversationCompactCommand) -> AiResultEvent:
             data=None,
             errorMessage=str(exc),
             eventType=None,
+            schemaVersion=max(command.schema_version, 1),
+            eventId=str(uuid.uuid4()),
+            requestId=command.request_id,
         )

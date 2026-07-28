@@ -32,6 +32,18 @@ public record ConversationRequestCommand(
         List<String> relatedJobTexts,
         boolean init,
         String locale,
-        String requestId
+        String requestId,
+        int schemaVersion,
+        String eventId,
+        String occurredAt
 ) {
+    public ConversationRequestCommand(
+            String conversationId, String userId, List<Map<String, Object>> messageHistory,
+            String currentMessage, List<String> fileUrls, String resumeVersionId,
+            String resumeText, String primaryJobText, List<String> relatedJobTexts,
+            boolean init, String locale, String requestId) {
+        this(conversationId, userId, messageHistory, currentMessage, fileUrls, resumeVersionId,
+                resumeText, primaryJobText, relatedJobTexts, init, locale, requestId,
+                1, java.util.UUID.randomUUID().toString(), java.time.OffsetDateTime.now().toString());
+    }
 }

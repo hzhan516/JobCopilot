@@ -68,6 +68,7 @@
 | `messages` | Array | Message list. Creating a conversation immediately adds a preset `USER` message and starts the initial AI request |
 | `createdAt` | String (ISO 8601) | Creation time |
 | `updatedAt` | String (ISO 8601) | Update time |
+| `aiReply` | Object | Durable request state: `requestId`, `status`, `errorCode`, timestamps, and correlated message sequences |
 
 #### Response Example
 
@@ -124,7 +125,7 @@
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `content` | String | Yes | Message content |
-| `fileUrls` | List<String> | No | Reserved attachment URL list. Current backend accepts the field but does not persist or forward client-provided values to the AI request |
+| `fileUrls` | List<String> | No | Up to three managed attachment URLs returned by this conversation's upload endpoint. Ownership and storage location are validated before they are forwarded to AI |
 
 #### Request Example
 
@@ -139,7 +140,9 @@
 
 #### Success Response (200)
 
-Returns the updated complete conversation information, including the newly added user message. **Note**: The AI reply is processed asynchronously via MQ and will not appear in the response immediately; the frontend calls the stream endpoint to wait for the latest reply.
+Returns the updated conversation including the new user message and `aiReply.status=PENDING` with a unique `aiReply.requestId`. The AI reply is asynchronous. Clients must poll the conversation resource and finish waiting only when that same request ID reaches `COMPLETED`, `FAILED`, or `TIMED_OUT`.
+
+While a reply is `PENDING`, a second send returns HTTP `409`. This prevents two user turns from racing against the same aggregate state.
 
 If the conversation title is still the default value when a message is added, the system automatically sets the title to the first 30 characters of that message content. In the current create flow, the preset initial message can set this title before the user's next message.
 
@@ -196,13 +199,13 @@ If the conversation title is still the default value when a message is added, th
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `page` | Integer | No | Message page number, starting from 0 |
-| `size` | Integer | No | Messages per page, returns all by default |
+| `size` | Integer | No | Messages per page; defaults to 50 and is capped at 100 |
 
 ### Response Structure
 
 #### Success Response (200)
 
-Returns complete conversation information, including all message lists (sorted by `sequence` ascending). If `page` and `size` are provided, only messages in the specified pagination range are returned. If the AI has replied, the message list will contain messages with `role=ASSISTANT`, and may include `fileUrl`.
+Returns conversation information with one bounded message page (sorted by `sequence` ascending), durable `aiReply` state, context usage, and the latest `compactionRequestId`. A client must correlate completion with `aiReply.requestId`; the presence of an older assistant message is not evidence that the newest request completed.
 
 ---
 
@@ -220,7 +223,7 @@ Returns complete conversation information, including all message lists (sorted b
 
 #### Success Response (200)
 
-Returns all conversation lists for the current user (without message details).
+Returns lightweight summaries for the current user, ordered by `updatedAt` descending. Each item excludes message details and includes `lastMessagePreview` plus the durable `aiReply` state.
 
 #### Response Example
 
@@ -380,6 +383,8 @@ Returns a temporary URL from the configured storage backend after successful fil
 
 Returns a `text/plain` streaming response. The HTTP connection remains open until the AI reply is generated.
 
+This endpoint remains available for backward compatibility. The current frontend uses the durable `aiReply` state returned by `GET /api/v1/conversations/{conversationId}` because it survives refresh, reconnect, and backend restart.
+
 > **Note: Current implementation is pseudo-streaming.**
 > The AI Service generates the complete reply synchronously and sends it back via MQ as a single event.
 > The backend holds the HTTP connection open, waits for the MQ reply, and then writes the complete content
@@ -421,6 +426,10 @@ AI 回复超时，请稍后重试。
 | `401` | Not authenticated | Missing or expired JWT Token |
 | `400` | Conversation business error | Conversation does not exist, access denied, or other localized conversation-domain error |
 
+### Retry a Failed or Timed-out Reply
+
+`POST /api/v1/conversations/{conversationId}/ai-replies/retry` retries the same user turn with a new request ID. Retry is accepted only when the current state is `FAILED` or `TIMED_OUT`; it does not append another user message.
+
 ---
 
 ## 9. Async Message Flow Description
@@ -429,14 +438,15 @@ AI 回复超时，请稍后重试。
 
 After the user calls the [Send Message] interface, the backend executes the following asynchronous flow:
 
-1. Save user message (`role=USER`) to the database
+1. Save the user message and a request-scoped `PENDING` reply state in the same database transaction
 2. If the conversation title is still the default value, automatically generate the title from the message content
 3. Assemble `ConversationRequestCommand`, including history messages, current message, resumeVersionId, resumeText, primaryJobText, relatedJobTexts, init flag, and locale
-4. Send via RabbitMQ using routing key `ai.req.conversation` to queue `ai.queue.conversation`
-5. Python AI service consumes the message and generates a reply
-6. AI service sends the result using routing key `backend.res.conversation` to queue `backend.queue.conversation`
-7. `AiResultMessageListener` listens for `CONVERSATION_REPLY` type events and saves the AI reply (`role=ASSISTANT`) to the database
-8. If the AI result includes `resumeModification.modified=true`, the backend creates or updates an `AI_OPTIMIZED` resume version and appends the optimized Markdown to the assistant message content
+4. Save the versioned request envelope to the transactional outbox, including `requestId`, `eventId`, `schemaVersion`, and `occurredAt`
+5. The outbox relay claims due rows, publishes with RabbitMQ confirms, and applies bounded retry or `DEAD` state
+6. Python AI service consumes the message and generates a reply once per request ID
+7. AI service publishes the correlated result with publisher confirms and acknowledges the request only after result publication succeeds
+8. `AiResultMessageListener` atomically completes only the matching pending request and appends one `ASSISTANT` message; duplicate and stale results are ignored
+9. If the AI result includes `resumeModification.modified=true`, the backend creates or updates an `AI_OPTIMIZED` resume version and appends the optimized Markdown to the assistant message content
 
 ### 8.2 Data Format Sent to AI Service
 
@@ -456,7 +466,11 @@ After the user calls the [Send Message] interface, the backend executes the foll
   "primaryJobText": "Software Engineer\nExample Corp\nJob description...",
   "relatedJobTexts": ["Backend Engineer\nExample Corp\nRelated job description..."],
   "init": true,
-  "locale": "zh-TW"
+  "locale": "zh-TW",
+  "requestId": "7f785b8f-137f-4588-bd8d-f72a3f39cf62",
+  "schemaVersion": 1,
+  "eventId": "87fa5f67-c64b-45cf-b00b-2a63f59cf481",
+  "occurredAt": "2026-07-18T12:00:00Z"
 }
 ```
 
@@ -473,6 +487,10 @@ After the user calls the [Send Message] interface, the backend executes the foll
 | `relatedJobTexts` | List<String> | Up to five other completed job texts for context |
 | `init` | Boolean | Whether this request is the first AI initialization for the conversation |
 | `locale` | String | User interface locale, e.g. `en`, `zh-CN`, or `zh-TW` |
+| `requestId` | String (UUID) | End-to-end idempotency and correlation ID for this user turn |
+| `schemaVersion` | Integer | Event contract version |
+| `eventId` | String (UUID) | Unique envelope event ID |
+| `occurredAt` | String (ISO 8601) | Event creation time |
 
 ### 8.3 Data Format for Receiving AI Replies
 
@@ -483,6 +501,9 @@ After the user calls the [Send Message] interface, the backend executes the foll
   "referenceId": "550e8400-e29b-41d4-a716-446655440003",
   "type": "CONVERSATION_REPLY",
   "status": "COMPLETED",
+  "schemaVersion": 1,
+  "eventId": "4c0cb55a-29a8-4235-9c9a-97758edc0993",
+  "requestId": "7f785b8f-137f-4588-bd8d-f72a3f39cf62",
   "data": {
     "content": "根据您的简历，我建议从以下几个方面优化工作经验...",
     "fileUrl": null,
@@ -501,6 +522,7 @@ After the user calls the [Send Message] interface, the backend executes the foll
 | `referenceId` | String | Conversation ID |
 | `type` | String | Fixed as `CONVERSATION_REPLY` |
 | `status` | String | `COMPLETED` or `FAILED` |
+| `requestId` | String (UUID) | Must match the active pending request before state can change |
 | `data.content` | String | AI reply text |
 | `data.fileUrl` | String | AI generated file URL (optional) |
 | `data.resumeModification.modified` | Boolean | Whether the AI rewrote or optimized the resume |
@@ -597,7 +619,16 @@ After the user calls the [Send Message] interface, the backend executes the foll
   "jobId": String,            // Associated job ID
   "messages": MessageResponse[], // Message list (may be paginated)
   "createdAt": OffsetDateTime, // Creation time
-  "updatedAt": OffsetDateTime  // Update time
+  "updatedAt": OffsetDateTime, // Update time
+  "aiReply": {
+    "requestId": String,
+    "status": String,           // IDLE / PENDING / COMPLETED / FAILED / TIMED_OUT
+    "errorCode": String,
+    "startedAt": OffsetDateTime,
+    "completedAt": OffsetDateTime,
+    "userMessageSequence": Integer,
+    "assistantMessageSequence": Integer
+  }
 }
 ```
 
@@ -619,7 +650,6 @@ After the user calls the [Send Message] interface, the backend executes the foll
 
 ## Notes
 
-### Frontend Streaming Interface Call
+### Frontend Completion Tracking
 
-The frontend `chatService.ts` calls `GET /v1/conversations/{conversationId}/stream` via `fetch` + `ReadableStream`.
-See [8. Stream AI Reply](#8-stream-ai-reply) for the backend endpoint documentation.
+The frontend polls `GET /v1/conversations/{conversationId}` with adaptive intervals and an abortable request. Polling follows the exact `aiReply.requestId`, resumes after refresh, and presents retry controls for `FAILED` and `TIMED_OUT` states.

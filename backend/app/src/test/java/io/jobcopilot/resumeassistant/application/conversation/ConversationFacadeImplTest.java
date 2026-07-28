@@ -1,12 +1,17 @@
 package io.jobcopilot.resumeassistant.application.conversation;
 
 import io.jobcopilot.resumeassistant.api.conversation.dto.ConversationResponse;
+import io.jobcopilot.resumeassistant.api.conversation.dto.ConversationSummaryResponse;
 import io.jobcopilot.resumeassistant.api.conversation.dto.CreateConversationRequest;
 import io.jobcopilot.resumeassistant.api.conversation.dto.SendMessageRequest;
 import io.jobcopilot.resumeassistant.application.conversation.service.ConversationApplicationService;
 import io.jobcopilot.resumeassistant.application.conversation.service.ConversationFailureMessageResolver;
 import io.jobcopilot.resumeassistant.application.conversation.service.ConversationQueryService;
 import io.jobcopilot.resumeassistant.domain.conversation.entity.Conversation;
+import io.jobcopilot.resumeassistant.domain.conversation.query.ConversationDetail;
+import io.jobcopilot.resumeassistant.domain.conversation.query.ConversationSummary;
+import io.jobcopilot.resumeassistant.domain.conversation.valueobject.AiReplyState;
+import io.jobcopilot.resumeassistant.domain.conversation.valueobject.ConversationStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -86,7 +91,11 @@ class ConversationFacadeImplTest {
         // 给定
         // Given
         Conversation conv = Conversation.create(USER_ID, "Chat", null, null);
-        when(queryService.getConversation(any())).thenReturn(conv);
+        ConversationDetail detail = new ConversationDetail(
+                conv.getId(), conv.getUserId(), conv.getTitle(), conv.getStatus(),
+                conv.getResumeVersionId(), conv.getJobId(), conv.getCreatedAt(), conv.getUpdatedAt(),
+                conv.getContextTokens(), conv.getCompactionRequestId(), conv.getAiReplyState(), conv.getMessages());
+        when(queryService.getConversationDetail(any())).thenReturn(detail);
 
         // 当
         // When
@@ -102,14 +111,16 @@ class ConversationFacadeImplTest {
     void shouldListConversations() {
         // 给定
         // Given
-        List<Conversation> conversations = List.of(
-                Conversation.create(USER_ID, "Chat 1", null, null)
+        List<ConversationSummary> conversations = List.of(
+                new ConversationSummary(UUID.randomUUID(), USER_ID, "Chat 1", ConversationStatus.ACTIVE,
+                        null, null, java.time.LocalDateTime.now(), java.time.LocalDateTime.now(),
+                        AiReplyState.idle(), "Preview")
         );
         when(queryService.listConversations(any())).thenReturn(conversations);
 
         // 当
         // When
-        List<ConversationResponse> result = conversationFacade.listConversations(USER_ID);
+        List<ConversationSummaryResponse> result = conversationFacade.listConversations(USER_ID);
 
         // 那么
         // Then

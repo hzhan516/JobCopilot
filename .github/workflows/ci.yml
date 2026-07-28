@@ -39,6 +39,10 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Check AI Chat schema synchronization
+        working-directory: .
+        run: python3 scripts/check-ai-chat-schema-sync.py
+
       - name: Build, Test & Verify (JaCoCo)
         # Skip OWASP dependency-check here; it runs in a separate nightly workflow
         # so that dependency update PRs are not blocked by transient CVE false-positives.

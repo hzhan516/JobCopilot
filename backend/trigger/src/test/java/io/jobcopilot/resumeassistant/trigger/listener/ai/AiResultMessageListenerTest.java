@@ -8,6 +8,7 @@ import io.jobcopilot.resumeassistant.api.resume.facade.ResumeFacade;
 import io.jobcopilot.resumeassistant.domain.shared.event.ai.AiResultEvent;
 import io.jobcopilot.resumeassistant.infrastructure.messaging.RedisIdempotencyService;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,6 +21,7 @@ import java.util.Map;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 /**
  * AI 结果消息监听器测试 / AI result message listener tests
@@ -51,6 +53,13 @@ class AiResultMessageListenerTest {
 
     @InjectMocks
     private AiResultMessageListener listener;
+
+    @BeforeEach
+    void setUpConversationPersistence() {
+        lenient().when(conversationFacade.saveAiReply(anyString(), anyString(), anyString(),
+                nullable(String.class), nullable(String.class), anyInt(), anyInt())).thenReturn(true);
+        lenient().when(conversationFacade.failAiReply(anyString(), anyString(), anyString())).thenReturn(true);
+    }
 
     @Test
     @DisplayName("Should delegate job parse result to JobFacade / 应将职位解析结果委托给 JobFacade")
@@ -118,7 +127,7 @@ class AiResultMessageListenerTest {
                 "conv-1",
                 "CONVERSATION_REPLY",
                 "COMPLETED",
-                Map.of("content", "Hello from AI", "fileUrl", "http://minio/file.pdf"),
+                Map.of("requestId", "req-1", "content", "Hello from AI", "fileUrl", "http://minio/file.pdf"),
                 null,
                 null
         );
@@ -127,7 +136,8 @@ class AiResultMessageListenerTest {
         listener.onConversationReply(event);
 
         // 验证 / Then
-        verify(conversationFacade).saveAiReply("conv-1", "Hello from AI", "http://minio/file.pdf", null, 0, 0);
+        verify(conversationFacade).saveAiReply("conv-1", "req-1", "Hello from AI",
+                "http://minio/file.pdf", null, 0, 0);
         verify(conversationFacade).completeAiReply("conv-1", "Hello from AI");
     }
 
@@ -141,6 +151,7 @@ class AiResultMessageListenerTest {
                 "COMPLETED",
                 Map.of(
                         "content", "Here is your optimized resume",
+                        "requestId", "req-1",
                         "resumeModification", Map.of("modified", true, "markdown", "# Optimized Resume")
                 ),
                 null,
@@ -151,7 +162,8 @@ class AiResultMessageListenerTest {
         listener.onConversationReply(event);
 
         // 验证 / Then
-        verify(conversationFacade).saveAiReply("conv-1", "Here is your optimized resume", null, "# Optimized Resume", 0, 0);
+        verify(conversationFacade).saveAiReply("conv-1", "req-1", "Here is your optimized resume",
+                null, "# Optimized Resume", 0, 0);
         verify(conversationFacade).completeAiReply("conv-1", "Here is your optimized resume");
     }
 
@@ -165,6 +177,7 @@ class AiResultMessageListenerTest {
                 "COMPLETED",
                 Map.of(
                         "content", "No changes needed",
+                        "requestId", "req-1",
                         "resumeModification", Map.of("modified", false, "markdown", "")
                 ),
                 null,
@@ -175,7 +188,8 @@ class AiResultMessageListenerTest {
         listener.onConversationReply(event);
 
         // 验证 / Then
-        verify(conversationFacade).saveAiReply("conv-1", "No changes needed", null, null, 0, 0);
+        verify(conversationFacade).saveAiReply("conv-1", "req-1", "No changes needed",
+                null, null, 0, 0);
         verify(conversationFacade).completeAiReply("conv-1", "No changes needed");
     }
 
@@ -198,8 +212,8 @@ class AiResultMessageListenerTest {
         listener.onConversationReply(event);
 
         // 验证 / Then
-        verify(conversationFacade).saveAiReply("conv-1", "AI 请求暂时过于频繁，请几分钟后再试。", null, null);
-        verify(conversationFacade).failAiReply("conv-1", "AI 请求暂时过于频繁，请几分钟后再试。");
+        verify(conversationFacade).failAiReply("conv-1", "req-1", "RATE_LIMITED");
+        verify(conversationFacade).notifyAiReplyFailure("conv-1", "AI 请求暂时过于频繁，请几分钟后再试。");
         verify(idempotencyService).markProcessed("conversation:conv-1:req-1:FAILED");
     }
 
@@ -229,8 +243,8 @@ class AiResultMessageListenerTest {
         listener.onConversationReply(second);
 
         // 楠岃瘉 / Then
-        verify(conversationFacade).saveAiReply("conv-1", "First reply", null, null, 0, 0);
-        verify(conversationFacade).saveAiReply("conv-1", "Second reply", null, null, 0, 0);
+        verify(conversationFacade).saveAiReply("conv-1", "req-1", "First reply", null, null, 0, 0);
+        verify(conversationFacade).saveAiReply("conv-1", "req-2", "Second reply", null, null, 0, 0);
         verify(idempotencyService).markProcessed("conversation:conv-1:req-1:COMPLETED");
         verify(idempotencyService).markProcessed("conversation:conv-1:req-2:COMPLETED");
     }

@@ -1,10 +1,13 @@
 package io.jobcopilot.resumeassistant.domain.conversation.repository;
 
 import io.jobcopilot.resumeassistant.domain.conversation.entity.Conversation;
+import io.jobcopilot.resumeassistant.domain.conversation.query.ConversationSummary;
+import io.jobcopilot.resumeassistant.domain.conversation.query.ConversationDetail;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 /**
  * 对话仓储接口
@@ -30,6 +33,11 @@ public interface ConversationRepository {
      */
     List<Conversation> findAllByUserId(UUID userId);
 
+    /** Returns updated-desc summaries without loading message bodies. */
+    List<ConversationSummary> findSummariesByUserId(UUID userId);
+
+    Optional<ConversationDetail> findDetailById(UUID conversationId, int page, int size);
+
     /**
      * 统计某用户的对话数量
      * Count conversations by user ID
@@ -47,4 +55,7 @@ public interface ConversationRepository {
      * Delete conversation by ID
      */
     void deleteById(UUID id);
+
+    /** Finds durable pending replies old enough for the terminal-state watchdog. */
+    List<Conversation> findPendingAiRepliesStartedBefore(LocalDateTime cutoff);
 }

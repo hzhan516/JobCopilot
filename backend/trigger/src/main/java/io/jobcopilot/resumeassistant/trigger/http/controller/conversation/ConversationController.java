@@ -2,6 +2,7 @@ package io.jobcopilot.resumeassistant.trigger.http.controller.conversation;
 
 import io.jobcopilot.resumeassistant.api.common.dto.ApiResponse;
 import io.jobcopilot.resumeassistant.api.conversation.dto.ConversationResponse;
+import io.jobcopilot.resumeassistant.api.conversation.dto.ConversationSummaryResponse;
 import io.jobcopilot.resumeassistant.api.conversation.dto.CreateConversationRequest;
 import io.jobcopilot.resumeassistant.api.conversation.dto.SendMessageRequest;
 import io.jobcopilot.resumeassistant.api.conversation.facade.ConversationFacade;
@@ -55,6 +56,14 @@ public class ConversationController {
         return ApiResponse.success(conversationFacade.sendMessage(conversationId, request, userId));
     }
 
+    @PostMapping("/{conversationId}/ai-replies/retry")
+    public ApiResponse<ConversationResponse> retryAiReply(
+            @PathVariable String conversationId,
+            @CurrentUser UUID userId) {
+        log.info("REST request to retry AI reply for conversation: {}", conversationId);
+        return ApiResponse.success(conversationFacade.retryAiReply(conversationId, userId));
+    }
+
     @GetMapping("/{conversationId}")
     public ApiResponse<ConversationResponse> getConversation(
             @PathVariable String conversationId,
@@ -66,7 +75,7 @@ public class ConversationController {
     }
 
     @GetMapping
-    public ApiResponse<List<ConversationResponse>> listConversations(
+    public ApiResponse<List<ConversationSummaryResponse>> listConversations(
             @CurrentUser UUID userId) {
         log.info("REST request to list conversations for user: {}", userId);
         return ApiResponse.success(conversationFacade.listConversations(userId));

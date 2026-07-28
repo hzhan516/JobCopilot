@@ -6,6 +6,8 @@ package io.jobcopilot.resumeassistant.types.enums;
  */
 public enum OutboxStatus {
     PENDING,
+    PROCESSING,
     SENT,
-    FAILED
+    FAILED,
+    DEAD
 }

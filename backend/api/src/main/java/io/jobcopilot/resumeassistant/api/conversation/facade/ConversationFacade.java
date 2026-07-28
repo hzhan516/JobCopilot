@@ -1,6 +1,7 @@
 package io.jobcopilot.resumeassistant.api.conversation.facade;
 
 import io.jobcopilot.resumeassistant.api.conversation.dto.ConversationResponse;
+import io.jobcopilot.resumeassistant.api.conversation.dto.ConversationSummaryResponse;
 import io.jobcopilot.resumeassistant.api.conversation.dto.CreateConversationRequest;
 import io.jobcopilot.resumeassistant.api.conversation.dto.SendMessageRequest;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,7 +37,7 @@ public interface ConversationFacade {
      * 获取用户的所有对话
      * List all conversations for user
      */
-    List<ConversationResponse> listConversations(UUID userId);
+    List<ConversationSummaryResponse> listConversations(UUID userId);
 
     /**
      * 关闭对话
@@ -56,14 +57,16 @@ public interface ConversationFacade {
      *
      * @param aiOptimizedMarkdown AI 优化后的简历 Markdown（可选）/ AI optimized resume markdown (optional)
      */
-    void saveAiReply(String conversationId, String content, String fileUrl, String aiOptimizedMarkdown);
+    boolean saveAiReply(String conversationId, String requestId, String content, String fileUrl,
+                        String aiOptimizedMarkdown, int promptTokens, int completionTokens);
 
     /**
      * 保存 AI 回复消息（含 token 用量）
      * Save AI reply message with token usage
      */
-    void saveAiReply(String conversationId, String content, String fileUrl, String aiOptimizedMarkdown,
-                     int promptTokens, int completionTokens);
+    boolean failAiReply(String conversationId, String requestId, String errorCode);
+
+    ConversationResponse retryAiReply(String conversationId, UUID userId);
 
     /**
      * 完成 AI 流式回复并唤醒等待中的流请求
@@ -81,7 +84,7 @@ public interface ConversationFacade {
      * @param conversationId 对话 ID / Conversation ID
      * @param errorMessage   错误信息 / Error message
      */
-    void failAiReply(String conversationId, String errorMessage);
+    void notifyAiReplyFailure(String conversationId, String errorMessage);
 
     /**
      * Resolve an AI failure code into user-readable text for the requested locale.
@@ -107,5 +110,8 @@ public interface ConversationFacade {
      * 应用 AI 服务返回的压缩结果
      * Apply compaction result from AI service
      */
-    void applyCompactionResult(String conversationId, String summary, int throughSequence, int contextTokens);
+    boolean applyCompactionResult(String conversationId, String requestId, String summary,
+                                  int throughSequence, int contextTokens);
+
+    boolean failCompaction(String conversationId, String requestId);
 }

@@ -37,19 +37,20 @@ public class ConversationApplicationService {
     }
 
     @Transactional(timeout = 30)
-    public void saveAiReply(UUID conversationId, String content, String fileUrl) {
-        messageService.saveAiReply(conversationId, content, fileUrl, null, 0, 0);
+    public boolean saveAiReply(UUID conversationId, UUID requestId, String content, String fileUrl,
+                               String aiOptimizedMarkdown, int promptTokens, int completionTokens) {
+        return messageService.saveAiReply(conversationId, requestId, content, fileUrl,
+                aiOptimizedMarkdown, promptTokens, completionTokens);
     }
 
     @Transactional(timeout = 30)
-    public void saveAiReply(UUID conversationId, String content, String fileUrl, String aiOptimizedMarkdown) {
-        messageService.saveAiReply(conversationId, content, fileUrl, aiOptimizedMarkdown, 0, 0);
+    public boolean failAiReply(UUID conversationId, UUID requestId, String errorCode) {
+        return messageService.failAiReply(conversationId, requestId, errorCode);
     }
 
     @Transactional(timeout = 30)
-    public void saveAiReply(UUID conversationId, String content, String fileUrl,
-                            String aiOptimizedMarkdown, int promptTokens, int completionTokens) {
-        messageService.saveAiReply(conversationId, content, fileUrl, aiOptimizedMarkdown, promptTokens, completionTokens);
+    public Conversation retryAiReply(UUID conversationId, UUID userId) {
+        return messageService.retryAiReply(conversationId, userId);
     }
 
     @Transactional(timeout = 30)
@@ -72,7 +73,7 @@ public class ConversationApplicationService {
         messageService.completeAiReply(conversationId, content);
     }
 
-    public void failAiReply(UUID conversationId, String errorMessage) {
+    public void notifyAiReplyFailure(UUID conversationId, String errorMessage) {
         messageService.failAiReply(conversationId, errorMessage);
     }
 }

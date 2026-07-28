@@ -81,8 +81,36 @@ LLM_EMBEDDING_MODEL_DIMENSION = int(
 )
 
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))
-LLM_REQUEST_TIMEOUT_SECONDS = float(os.getenv("LLM_REQUEST_TIMEOUT_SECONDS", "60"))
+LLM_REQUEST_TIMEOUT_SECONDS = float(os.getenv("LLM_REQUEST_TIMEOUT_SECONDS", "40"))
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "8192"))
+LLM_MAX_ATTEMPTS = max(1, int(os.getenv("LLM_MAX_ATTEMPTS", "3")))
+AI_REQUEST_DEADLINE_SECONDS = float(os.getenv("AI_REQUEST_DEADLINE_SECONDS", "90"))
+AI_PROVIDER_PROBE_ENABLED = os.getenv("AI_PROVIDER_PROBE_ENABLED", "true").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+AI_PROVIDER_PROBE_INTERVAL_SECONDS = max(
+    60, int(os.getenv("AI_PROVIDER_PROBE_INTERVAL_SECONDS", "300"))
+)
+AI_PROVIDER_PROBE_TIMEOUT_SECONDS = float(
+    os.getenv("AI_PROVIDER_PROBE_TIMEOUT_SECONDS", "15")
+)
+CHAT_STRUCTURED_OUTPUT_ENABLED = os.getenv(
+    "CHAT_STRUCTURED_OUTPUT_ENABLED", "true"
+).lower() in {"1", "true", "yes", "on"}
+CHAT_PROMPT_MAX_CHARS = max(12000, int(os.getenv("CHAT_PROMPT_MAX_CHARS", "60000")))
+CHAT_CURRENT_MESSAGE_MAX_CHARS = max(
+    1000, int(os.getenv("CHAT_CURRENT_MESSAGE_MAX_CHARS", "12000"))
+)
+CHAT_RESUME_MAX_CHARS = max(4000, int(os.getenv("CHAT_RESUME_MAX_CHARS", "24000")))
+CHAT_PRIMARY_JOB_MAX_CHARS = max(
+    3000, int(os.getenv("CHAT_PRIMARY_JOB_MAX_CHARS", "16000"))
+)
+CHAT_ATTACHMENTS_MAX_CHARS = max(
+    2000, int(os.getenv("CHAT_ATTACHMENTS_MAX_CHARS", "12000"))
+)
 
 BACKEND_SERVICE_URL = os.getenv("BACKEND_SERVICE_URL", "http://backend:8080")
 BACKEND_QUERY_TIMEOUT = float(os.getenv("BACKEND_QUERY_TIMEOUT", "5"))
@@ -99,6 +127,14 @@ MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
 MINIO_MODEL_BUCKET = os.getenv("MINIO_MODEL_BUCKET", "ai-models")
+AI_ATTACHMENT_ALLOWED_HOSTS = {
+    host.strip().lower()
+    for host in os.getenv("AI_ATTACHMENT_ALLOWED_HOSTS", "minio").split(",")
+    if host.strip()
+}
+AI_ATTACHMENT_MAX_BYTES = max(
+    1024, int(os.getenv("AI_ATTACHMENT_MAX_BYTES", str(10 * 1024 * 1024)))
+)
 
 if ENV != "dev" and (
     not MINIO_ENDPOINT or not MINIO_ACCESS_KEY or not MINIO_SECRET_KEY

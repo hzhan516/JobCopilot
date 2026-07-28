@@ -1,4 +1,5 @@
 import json
+import pytest
 from unittest.mock import MagicMock, patch
 
 from app.mq.consumer import (
@@ -23,6 +24,8 @@ from app.mq.consumer import (
     ERROR_UPSTREAM_TIMEOUT,
     ERROR_INVALID_MODEL_RESPONSE,
     classify_ai_error,
+    _result_cache,
+    _publish_attempts,
 )
 from app.config import AI_DLQ_QUEUE
 from app.schemas import (
@@ -33,6 +36,15 @@ from app.schemas import (
     AiResultEvent,
     JobRankResultPayload,
 )
+
+
+@pytest.fixture(autouse=True)
+def clear_conversation_result_cache():
+    _result_cache.clear()
+    _publish_attempts.clear()
+    yield
+    _result_cache.clear()
+    _publish_attempts.clear()
 
 
 @patch("pika.BlockingConnection")
@@ -98,6 +110,7 @@ def test_parse_commands():
     assert isinstance(conv_cmd, ConversationRequestCommand)
     assert conv_cmd.conversation_id == "conv-1"
     assert conv_cmd.request_id == "req-1"
+    assert conv_cmd.schema_version == 0
 
     rank_body = json.dumps(
         {
@@ -200,7 +213,11 @@ def test_handle_conversation_message_success(mock_process):
     ).encode("utf-8")
 
     mock_result = AiResultEvent(
-        referenceId="conv-1", type="CONVERSATION_REPLY", status="COMPLETED", data={}
+        referenceId="conv-1",
+        type="CONVERSATION_REPLY",
+        status="COMPLETED",
+        data={},
+        requestId="req-1",
     )
     mock_process.return_value = mock_result
 
@@ -233,6 +250,9 @@ def test_handle_conversation_message_failure(mock_process):
     assert result.data["requestId"] == "req-1"
     assert result.data["locale"] == "zh-CN"
     assert result.data["errorCode"] == ERROR_RATE_LIMITED
+    assert result.request_id == "req-1"
+    assert result.schema_version == 1
+    assert result.event_id is not None
 
 
 def test_classify_ai_error():
@@ -303,6 +323,7 @@ def test_async_handler_acknowledges_success(mock_submit, mock_publish):
     mock_method.delivery_tag = 1
     mock_handle = MagicMock()
     mock_result = MagicMock()
+    mock_result.request_id = None
     mock_handle.return_value = mock_result
 
     callback = _async_handler(mock_handle)
@@ -314,6 +335,24 @@ def test_async_handler_acknowledges_success(mock_submit, mock_publish):
     ack_callback()
     mock_publish.assert_called_once_with(mock_channel, mock_result)
     mock_channel.basic_ack.assert_called_once_with(delivery_tag=1)
+
+
+@patch("app.mq.consumer.publish_ai_result", side_effect=RuntimeError("confirm failed"))
+@patch("app.mq.consumer._executor.submit")
+def test_async_handler_requeues_bounded_publish_failure(mock_submit, mock_publish):
+    mock_submit.side_effect = lambda fn, *args, **kwargs: fn(*args, **kwargs)
+    mock_channel = MagicMock()
+    mock_channel.connection = MagicMock()
+    mock_method = MagicMock(delivery_tag=7)
+    mock_result = MagicMock(request_id="req-publish")
+    callback = _async_handler(MagicMock(return_value=mock_result))
+
+    callback(mock_channel, mock_method, None, b"body")
+    publish_callback = mock_channel.connection.add_callback_threadsafe.call_args[0][0]
+    publish_callback()
+
+    mock_channel.basic_ack.assert_not_called()
+    mock_channel.basic_nack.assert_called_once_with(delivery_tag=7, requeue=True)
 
 
 @patch("app.mq.consumer._executor.submit")
@@ -343,6 +382,7 @@ def test_start_all_consumers():
     from app.mq.consumer import MQ_WORKER_THREADS
 
     mock_channel.basic_qos.assert_called_once_with(prefetch_count=MQ_WORKER_THREADS)
+    mock_channel.confirm_delivery.assert_called_once_with()
     assert mock_channel.basic_consume.call_count == 5
     for call in mock_channel.basic_consume.call_args_list:
         assert call.kwargs["auto_ack"] is False

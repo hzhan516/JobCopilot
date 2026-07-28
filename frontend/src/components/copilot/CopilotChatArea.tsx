@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { Message } from '@/types';
 import { useTranslation } from 'react-i18next';
 import { formatTime } from '@/utils/i18n';
@@ -35,6 +35,10 @@ import {
   Sparkles,
   FileText,
   Briefcase,
+  RotateCcw,
+  AlertCircle,
+  Paperclip,
+  X,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -68,6 +72,8 @@ export default function CopilotChatArea() {
     messagesEndRef,
     activeResumeName,
     activeJobName,
+    attachments,
+    isUploadingAttachment,
     setInputMessage,
     setNewDialogOpen,
     setNewChatTitle,
@@ -77,11 +83,15 @@ export default function CopilotChatArea() {
     handleSelectConversation,
     handleCreateConversation,
     handleSendMessage,
+    handleAttachFiles,
+    removeAttachment,
+    retryAiReply,
     handleDeleteConversation,
     compactConversation,
     isCompacting,
   } = useChat();
   const { context } = useCopilotStore();
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
 
   // 从 Job 详情页唤起时自动选中对应 Job
   useEffect(() => {
@@ -344,6 +354,32 @@ export default function CopilotChatArea() {
                 </div>
               </div>
             )}
+            {(activeConversation.aiReply?.status === 'FAILED'
+              || activeConversation.aiReply?.status === 'TIMED_OUT') && (
+              <div className="flex justify-start mb-3">
+                <div className="max-w-[90%] rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+                  <div className="flex items-center gap-2 text-xs">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    <span>
+                      {activeConversation.aiReply.status === 'TIMED_OUT'
+                        ? t('chat.aiReplyTimedOut')
+                        : t('chat.aiReplyFailed')}
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="mt-2 h-7 text-xs"
+                    onClick={retryAiReply}
+                    disabled={isSending}
+                  >
+                    <RotateCcw className="mr-1 h-3 w-3" />
+                    {t('chat.retry')}
+                  </Button>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </>
         )}
@@ -361,7 +397,50 @@ export default function CopilotChatArea() {
             onCompact={compactConversation}
           />
           <div className="px-3 pb-3">
+            {attachments.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {attachments.map((attachment) => (
+                  <span
+                    key={attachment.url}
+                    className="inline-flex max-w-full items-center gap-1 rounded bg-muted px-2 py-1 text-xs"
+                  >
+                    <Paperclip className="h-3 w-3 shrink-0" />
+                    <span className="max-w-[180px] truncate">{attachment.name}</span>
+                    <button
+                      type="button"
+                      aria-label={t('chat.removeAttachment')}
+                      onClick={() => removeAttachment(attachment.url)}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
             <div className="flex space-x-2">
+              <input
+                ref={attachmentInputRef}
+                type="file"
+                className="hidden"
+                multiple
+                accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+                onChange={(event) => {
+                  if (event.target.files) void handleAttachFiles(event.target.files);
+                  event.target.value = '';
+                }}
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                aria-label={t('chat.addAttachment')}
+                onClick={() => attachmentInputRef.current?.click()}
+                disabled={isUploadingAttachment || isSending || isWaitingForReply || attachments.length >= 3}
+              >
+                {isUploadingAttachment
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <Paperclip className="h-4 w-4" />}
+              </Button>
               <Input
                 placeholder={t('chat.inputPlaceholder')}
                 value={inputMessage}
@@ -372,13 +451,13 @@ export default function CopilotChatArea() {
                     handleSendMessage();
                   }
                 }}
-                disabled={isSending}
+                disabled={isSending || isWaitingForReply}
                 className="flex-1 text-sm"
               />
               <Button
                 size="sm"
                 onClick={handleSendMessage}
-                disabled={!inputMessage.trim() || isSending}
+                disabled={!inputMessage.trim() || isSending || isWaitingForReply}
               >
                 {isSending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.util.List;
 
 /**
  * Handles message-related operations within a conversation: sending user messages,
@@ -27,6 +28,7 @@ public class ConversationMessageService {
     private final ConversationRepository conversationRepository;
     private final ConversationLifecycleService lifecycleService;
     private final ConversationContextService contextService;
+    private final ConversationAttachmentService attachmentService;
     private final AiOptimizedResumeService aiOptimizedResumeService;
     private final ConversationStreamPort streamPort;
 
@@ -36,23 +38,38 @@ public class ConversationMessageService {
         Conversation conversation = lifecycleService.getConversationWithOwnershipCheck(
                 command.conversationId(), command.userId());
 
-        conversation.addMessage(command.role(), command.content());
+        List<String> attachmentUrls = attachmentService.validateReferences(
+                command.conversationId(), command.userId(), command.fileUrls());
+        String primaryAttachment = attachmentUrls.isEmpty() ? null : attachmentUrls.getFirst();
+        conversation.addMessage(command.role(), command.content(), primaryAttachment);
         conversation.autoGenerateTitle(command.content());
+        int userMessageSequence = conversation.getMessages().get(conversation.getMessages().size() - 1).getSequence();
+        UUID requestId = UUID.randomUUID();
+        conversation.requestAiReply(requestId, userMessageSequence);
         Conversation saved = conversationRepository.save(conversation);
 
         boolean isInit = saved.getMessages().stream()
                 .noneMatch(m -> m.getRole() == MessageRole.ASSISTANT);
-        contextService.queueConversationRequest(saved, command.content(), isInit);
+        contextService.queueConversationRequest(saved, command.content(), isInit, requestId,
+                userMessageSequence, attachmentUrls);
 
         return saved;
     }
 
     @Transactional(timeout = 30)
-    public void saveAiReply(UUID conversationId, String content, String fileUrl,
-                            String aiOptimizedMarkdown, int promptTokens, int completionTokens) {
+    public boolean saveAiReply(UUID conversationId, UUID requestId, String content, String fileUrl,
+                               String aiOptimizedMarkdown, int promptTokens, int completionTokens) {
         log.info("Saving AI reply for conversation: {}", conversationId);
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new ConversationException("conversation.not.found"));
+
+        if (!conversation.getAiReplyState().isPending()
+                || !conversation.getAiReplyState().matches(requestId)) {
+            log.info("Ignoring duplicate or stale AI reply: conversation={}, requestId={}, currentRequestId={}, status={}",
+                    conversationId, requestId, conversation.getAiReplyState().requestId(),
+                    conversation.getAiReplyState().status());
+            return false;
+        }
 
         String finalContent = content;
         if (aiOptimizedMarkdown != null && !aiOptimizedMarkdown.isBlank()
@@ -62,22 +79,48 @@ public class ConversationMessageService {
             contextService.deferVectorGeneration(aiVersionId, aiOptimizedMarkdown);
         }
 
-        conversation.addMessage(MessageRole.ASSISTANT, finalContent, fileUrl);
-        conversation.recordTokenUsage(promptTokens, completionTokens);
+        if (!conversation.completeAiReply(requestId, finalContent, fileUrl, promptTokens, completionTokens)) {
+            return false;
+        }
         conversationRepository.save(conversation);
 
         log.info("AI reply saved for conversation: {}, promptTokens={}, completionTokens={}",
                 conversationId, promptTokens, completionTokens);
+        return true;
     }
 
     @Transactional(timeout = 30)
-    public void saveAiReply(UUID conversationId, String content, String fileUrl, String aiOptimizedMarkdown) {
-        saveAiReply(conversationId, content, fileUrl, aiOptimizedMarkdown, 0, 0);
+    public boolean failAiReply(UUID conversationId, UUID requestId, String errorCode) {
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new ConversationException("conversation.not.found"));
+        if (!conversation.failAiReply(requestId, errorCode)) {
+            log.info("Ignoring duplicate or stale failed reply: conversation={}, requestId={}",
+                    conversationId, requestId);
+            return false;
+        }
+        conversationRepository.save(conversation);
+        return true;
     }
 
     @Transactional(timeout = 30)
-    public void saveAiReply(UUID conversationId, String content, String fileUrl) {
-        saveAiReply(conversationId, content, fileUrl, null, 0, 0);
+    public Conversation retryAiReply(UUID conversationId, UUID userId) {
+        Conversation conversation = lifecycleService.getConversationWithOwnershipCheck(conversationId, userId);
+        Integer userSequence = conversation.getAiReplyState().userMessageSequence();
+        if (userSequence == null) {
+            throw new ConversationException("conversation.ai.reply.retry.not.allowed");
+        }
+        Message originalMessage = conversation.getMessages().stream()
+                .filter(message -> message.getSequence() == userSequence && message.getRole() == MessageRole.USER)
+                .findFirst()
+                .orElseThrow(() -> new ConversationException("conversation.ai.reply.retry.not.allowed"));
+        UUID requestId = UUID.randomUUID();
+        conversation.retryAiReply(requestId);
+        Conversation saved = conversationRepository.save(conversation);
+        List<String> attachmentUrls = originalMessage.getFileUrl() == null
+                ? List.of() : List.of(originalMessage.getFileUrl());
+        contextService.queueConversationRequest(saved, originalMessage.getContent(), false,
+                requestId, userSequence, attachmentUrls);
+        return saved;
     }
 
     public void completeAiReply(UUID conversationId, String content) {

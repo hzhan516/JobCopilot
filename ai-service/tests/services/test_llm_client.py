@@ -149,6 +149,27 @@ def test_generate_json_from_text_prompt_with_repair_succeeds(mock_generate):
     assert "Convert the malformed model output" in repair_messages[0]["content"]
 
 
+@patch("app.services.llm_client.litellm.supports_response_schema", return_value=True)
+@patch("app.services.llm_client._generate_text")
+def test_generate_json_uses_native_schema_when_supported(mock_generate, _mock_support):
+    mock_generate.return_value = ('{"content": "ok"}', None)
+    schema = {
+        "type": "object",
+        "properties": {"content": {"type": "string"}},
+        "required": ["content"],
+    }
+
+    result = generate_json_from_text_prompt_with_repair(
+        "test prompt", response_schema=schema
+    )
+
+    assert result.structured_output is True
+    response_format = mock_generate.call_args.kwargs["response_format"]
+    assert response_format["type"] == "json_schema"
+    assert response_format["json_schema"]["schema"] == schema
+    assert "deadline_at" in mock_generate.call_args.kwargs
+
+
 @patch("app.services.llm_client._generate_text")
 def test_generate_json_from_text_prompt_with_repair_raises_with_raw_text(mock_generate):
     mock_generate.side_effect = [

@@ -18,6 +18,7 @@ def test_process_compaction_empty_messages():
         userId="user-1",
         messageHistory=[],
         compactedThroughSequence=0,
+        requestId="compact-1",
     )
 
     result = process_compaction(command)
@@ -25,6 +26,7 @@ def test_process_compaction_empty_messages():
     assert result.type == "CONVERSATION_COMPACTED"
     assert result.status == "FAILED"
     assert result.error_message == "No messages to compact"
+    assert result.request_id == "compact-1"
 
 
 @patch("app.services.compaction_service._generate_text")
@@ -45,6 +47,7 @@ def test_process_compaction_success(mock_generate):
         userId="user-1",
         messageHistory=messages,
         compactedThroughSequence=0,
+        requestId="compact-2",
     )
 
     result = process_compaction(command)
@@ -54,6 +57,7 @@ def test_process_compaction_success(mock_generate):
     assert result.data.summary == "This is a summary of the conversation."
     assert result.data.through_sequence == 2
     assert result.data.context_tokens > 0
+    assert result.request_id == "compact-2"
 
 
 @patch("app.services.compaction_service._generate_text")
@@ -69,12 +73,14 @@ def test_process_compaction_llm_failure(mock_generate):
         userId="user-1",
         messageHistory=messages,
         compactedThroughSequence=0,
+        requestId="compact-3",
     )
 
     result = process_compaction(command)
 
     assert result.type == "CONVERSATION_COMPACTED"
     assert result.status == "FAILED"
+    assert result.request_id == "compact-3"
 
 
 @patch("app.services.compaction_service._generate_text")

@@ -1,0 +1,15 @@
+{
+  "referenceId": "00000000-0000-0000-0000-000000000101",
+  "type": "CONVERSATION_REPLY",
+  "status": "FAILED",
+  "data": {
+    "requestId": "00000000-0000-0000-0000-000000000401",
+    "locale": "en",
+    "errorCode": "RATE_LIMITED"
+  },
+  "errorMessage": "RATE_LIMITED",
+  "eventType": null,
+  "schemaVersion": 1,
+  "eventId": "00000000-0000-0000-0000-000000000602",
+  "requestId": "00000000-0000-0000-0000-000000000401"
+}

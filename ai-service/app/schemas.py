@@ -81,15 +81,25 @@ class ResumeModification(AppBaseModel):
     对话回复中返回的简历修改元数据。"""
 
     modified: bool = False
-    markdown: str = ""
+    markdown: str = Field(default="", max_length=200000)
+
+
+class ConversationModelOutput(AppBaseModel):
+    """Strict provider-facing schema for a user-visible chat reply."""
+
+    content: str = Field(min_length=1, max_length=32000)
+    file_url: str | None = Field(default=None, alias="fileUrl", max_length=2048)
+    resume_modification: ResumeModification = Field(
+        default_factory=ResumeModification, alias="resumeModification"
+    )
 
 
 class ConversationData(AppBaseModel):
     """Payload for CONVERSATION_REPLY completion events.
     对话回复完成事件的 data 负载。"""
 
-    content: str
-    file_url: str | None = Field(default=None, alias="fileUrl")
+    content: str = Field(min_length=1, max_length=32000)
+    file_url: str | None = Field(default=None, alias="fileUrl", max_length=2048)
     request_id: str | None = Field(default=None, alias="requestId")
     locale: str | None = None
     resume_modification: ResumeModification = Field(
@@ -200,8 +210,8 @@ class ConversationRequestCommand(AppBaseModel):
     message_history: list[ConversationMessage] = Field(
         default_factory=list, alias="messageHistory"
     )
-    current_message: str = Field(alias="currentMessage")
-    file_urls: list[str] = Field(default_factory=list, alias="fileUrls")
+    current_message: str = Field(alias="currentMessage", min_length=1, max_length=12000)
+    file_urls: list[str] = Field(default_factory=list, alias="fileUrls", max_length=3)
     resume_version_id: str | None = Field(default=None, alias="resumeVersionId")
     resume_text: str | None = Field(default=None, alias="resumeText")
     primary_job_text: str | None = Field(default=None, alias="primaryJobText")
@@ -209,6 +219,9 @@ class ConversationRequestCommand(AppBaseModel):
     init: bool | None = None
     locale: str | None = None
     request_id: str | None = Field(default=None, alias="requestId")
+    schema_version: int = Field(default=0, alias="schemaVersion")
+    event_id: str | None = Field(default=None, alias="eventId")
+    occurred_at: str | None = Field(default=None, alias="occurredAt")
 
 
 class JobRankCommand(AppBaseModel):
@@ -253,6 +266,10 @@ class ConversationCompactCommand(AppBaseModel):
         default_factory=list, alias="messageHistory"
     )
     compacted_through_sequence: int = Field(default=0, alias="compactedThroughSequence")
+    request_id: str = Field(alias="requestId")
+    schema_version: int = Field(default=1, alias="schemaVersion")
+    event_id: str | None = Field(default=None, alias="eventId")
+    occurred_at: str | None = Field(default=None, alias="occurredAt")
 
 
 class ConversationCompactedData(AppBaseModel):
@@ -282,6 +299,9 @@ class AiResultEvent(AppBaseModel):
     ) = None
     error_message: str | None = Field(default=None, alias="errorMessage")
     event_type: str | None = Field(default=None, alias="eventType")
+    schema_version: int = Field(default=1, alias="schemaVersion")
+    event_id: str | None = Field(default=None, alias="eventId")
+    request_id: str | None = Field(default=None, alias="requestId")
 
 
 class EmbeddingRequest(AppBaseModel):

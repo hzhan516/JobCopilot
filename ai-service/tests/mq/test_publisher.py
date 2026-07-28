@@ -37,6 +37,7 @@ def test_get_result_routing_key():
 
 def test_publish_ai_result():
     mock_channel = MagicMock()
+    mock_channel.basic_publish.return_value = True
     event = AiResultEvent(
         referenceId="ref-123",
         type="JOB_PARSE",
@@ -62,6 +63,22 @@ def test_publish_ai_result():
     props = kwargs["properties"]
     assert props.content_type == "application/json"
     assert props.delivery_mode == 2
+    assert kwargs["mandatory"] is True
+
+
+def test_publish_ai_result_requires_broker_confirm():
+    mock_channel = MagicMock()
+    mock_channel.basic_publish.return_value = False
+    event = AiResultEvent(
+        referenceId="conv-1",
+        type="CONVERSATION_REPLY",
+        status="COMPLETED",
+        data={"content": "ok"},
+        requestId="req-1",
+    )
+
+    with pytest.raises(RuntimeError, match="did not confirm"):
+        publish_ai_result(mock_channel, event)
 
 
 def test_publish_conversation_compacted_result():

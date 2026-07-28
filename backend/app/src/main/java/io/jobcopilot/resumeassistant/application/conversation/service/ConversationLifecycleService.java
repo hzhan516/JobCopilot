@@ -68,9 +68,12 @@ public class ConversationLifecycleService {
         String preset = messageProvider.getMessage("conversation.preset.match_score");
         conversation.addMessage(MessageRole.USER, preset);
         conversation.autoGenerateTitle(preset);
+        int userMessageSequence = conversation.getMessages().get(conversation.getMessages().size() - 1).getSequence();
+        UUID requestId = UUID.randomUUID();
+        conversation.requestAiReply(requestId, userMessageSequence);
         conversation = conversationRepository.save(conversation);
 
-        contextService.queueConversationRequest(conversation, preset, true);
+        contextService.queueConversationRequest(conversation, preset, true, requestId, userMessageSequence);
         return conversation;
     }
 

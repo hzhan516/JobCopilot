@@ -10,6 +10,7 @@ import xml.etree.ElementTree as ET
 
 import httpx
 from pypdf import PdfReader
+from app.config import AI_ATTACHMENT_ALLOWED_HOSTS, AI_ATTACHMENT_MAX_BYTES
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +25,18 @@ def _resolve_local_path(object_key: str) -> Path | None:
 
     # Prevent path traversal and glob injection.
     # 防止路径遍历与 glob 注入：拒绝包含路径分隔符、父目录引用或 glob 元字符的 key。
-    if ".." in object_key or any(c in object_key for c in ("/", "\\", "*", "?", "[")):
+    normalized_key = object_key.replace("\\", "/").strip("/")
+    key_path = Path(normalized_key)
+    if (
+        not normalized_key
+        or Path(object_key).is_absolute()
+        or ".." in key_path.parts
+        or any(c in normalized_key for c in ("*", "?", "["))
+    ):
         return None
 
     # Try direct path first (支持子目录结构)
-    direct = base / object_key
+    direct = base / key_path
     try:
         direct.resolve().relative_to(base.resolve())
         if direct.is_file():
@@ -40,7 +48,7 @@ def _resolve_local_path(object_key: str) -> Path | None:
 
     # Fallback: search by exact basename under base directory.
     # 兜底：按精确文件名递归查找。
-    basename = Path(object_key).name
+    basename = key_path.name
     for path in base.rglob(glob.escape(basename)):
         if path.is_file():
             try:
@@ -58,6 +66,8 @@ def _is_dangerous_url(url: str) -> bool:
     hostname = parsed.hostname
     if not hostname:
         return True
+    if hostname.lower() in AI_ATTACHMENT_ALLOWED_HOSTS:
+        return False
     if hostname.lower() in {"localhost", "127.0.0.1", "0.0.0.0", "::1"}:
         return True
     try:
@@ -83,17 +93,17 @@ def download_file_bytes(file_url: str) -> bytes:
 
     if stripped.startswith(("http://", "https://")):
         if _is_dangerous_url(stripped):
-            raise ValueError(
-                f"URL resolves to internal address and is not allowed: {stripped}"
-            )
-        logger.debug("Downloading file via HTTP: %s", stripped)
+            raise ValueError("Attachment URL host is not allowed")
+        logger.debug("Downloading attachment via controlled HTTP URL")
         response = httpx.get(stripped, timeout=30.0, follow_redirects=True)
         response_url_str = str(response.url)
         if response_url_str.startswith(("http://", "https://")) and _is_dangerous_url(
             response_url_str
         ):
-            raise ValueError(f"Redirected to disallowed URL: {response.url}")
+            raise ValueError("Attachment redirect target is not allowed")
         response.raise_for_status()
+        if len(response.content) > AI_ATTACHMENT_MAX_BYTES:
+            raise ValueError("Attachment exceeds the configured size limit")
         return response.content
 
     if stripped.startswith("/api/storage/download"):
@@ -103,20 +113,16 @@ def download_file_bytes(file_url: str) -> bytes:
             object_key = keys[0]
             local_path = _resolve_local_path(object_key)
             if local_path:
-                logger.info(
-                    "Reading file from shared storage (by URL key): %s", local_path
-                )
+                logger.info("Reading attachment from shared storage URL key")
                 return local_path.read_bytes()
-        raise FileNotFoundError(
-            f"Could not resolve local file for storage URL: {stripped}"
-        )
+        raise FileNotFoundError("Could not resolve local attachment storage URL")
 
     local_path = _resolve_local_path(stripped)
     if local_path:
-        logger.info("Reading file from shared storage (by object key): %s", local_path)
+        logger.info("Reading attachment from shared storage object key")
         return local_path.read_bytes()
 
-    raise ValueError(f"Unsupported file_url (not HTTP, not local path): {stripped}")
+    raise ValueError("Unsupported attachment reference")
 
 
 def _extract_text_from_pdf(file_bytes: bytes) -> str:
