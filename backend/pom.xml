@@ -59,7 +59,7 @@
         <jjwt.version>0.13.0</jjwt.version>
 
         <!-- Testing -->
-        <archunit.version>1.4.2</archunit.version>
+        <archunit.version>1.5.0</archunit.version>
         <assertj.version>3.27.7</assertj.version>
     </properties>
 
