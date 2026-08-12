@@ -51,7 +51,7 @@ AI Service / AI worker
 | 组件 | 技术 | 暴露方式 | 职责 |
 |------|------|----------|------|
 | 前端 / 网关 | React 19、Vite 7、Nginx | 主机 `${FRONTEND_HOST_PORT:-80}` -> 容器 `8080` | 提供 UI，代理 `/api` 和 `/health` 到后端 |
-| 后端 | Java 21、Spring Boot 3.5、DDD 模块 | 内部 `8080`；默认不直接暴露到主机 | REST API、认证、简历/职位/申请工作流、向量持久化 |
+| 后端 | Java 25、Spring Boot 3.5、DDD 模块 | 内部 `8080`；默认不直接暴露到主机 | REST API、认证、简历/职位/申请工作流、向量持久化 |
 | AI Service | Python 3.11、FastAPI、LiteLLM | 内部 `8000`；默认不直接暴露到主机 | 同步 AI 端点、嵌入、解析、排序、对话支持 |
 | AI Worker | Python 3.11、RabbitMQ 消费者、LightGBM | 内部工作进程 | 异步解析、职位排序任务、反馈采集、增量模型训练 |
 | PostgreSQL | PostgreSQL 15 + pgvector | `db-network` 内部 `5432` | 业务数据和向量存储 |
@@ -303,7 +303,7 @@ npm run dev
 
 前置要求：
 
-- JDK 21
+- JDK 25
 - Maven 3.9+
 
 ```bash
@@ -372,8 +372,8 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ### 后端
 
-- Java 21
-- Spring Boot 3.5.7
+- Java 25
+- Spring Boot 3.5.16
 - PostgreSQL 15 + pgvector
 - RabbitMQ 3
 - Maven 3.9+

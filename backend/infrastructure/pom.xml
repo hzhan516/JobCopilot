@@ -204,7 +204,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
 
                 <configuration>
-                    <release>21</release>
+                    <release>${maven.compiler.release}</release>
                     <compilerArgs>
                         <arg>-parameters</arg>
                     </compilerArgs>

@@ -6,7 +6,7 @@
 # -----------------------------------------------------------------------------
 # 阶段 1: 构建阶段
 # -----------------------------------------------------------------------------
-FROM docker.io/eclipse-temurin:21-jdk-alpine AS builder
+FROM docker.io/eclipse-temurin:25-jdk-alpine AS builder
 
 # 安装必要的工具
 RUN apk add --no-cache curl
@@ -27,6 +27,8 @@ COPY app/pom.xml app/
 RUN --mount=type=cache,target=/root/.m2 \
     ./mvnw dependency:go-offline -B || \
     (apk add --no-cache maven && \
+    java -version && \
+    mvn -version && \
     mvn dependency:go-offline -B)
 
 # 复制源代码
@@ -44,7 +46,7 @@ RUN --mount=type=cache,target=/root/.m2 \
 # -----------------------------------------------------------------------------
 # 阶段 2: 运行阶段
 # -----------------------------------------------------------------------------
-FROM docker.io/eclipse-temurin:21-jre-alpine
+FROM docker.io/eclipse-temurin:25-jre-alpine
 
 # 版本构建参数 / Version build argument
 ARG APP_VERSION=dev

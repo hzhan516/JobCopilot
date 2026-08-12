@@ -64,7 +64,7 @@ AI Service / AI worker
 | 元件 | 技術 | 網路暴露 | 職責 |
 |------|------|----------|------|
 | 前端 / 閘道 | React 19、Vite 7、Nginx | 主機 `${FRONTEND_HOST_PORT:-80}` -> 容器 `8080` | 提供 UI，反向代理後端 API 和健康檢查 |
-| 後端 | Java 21、Spring Boot 3.5 | 內部 `8080`；可選開發連接埠映射 | REST API、認證、領域工作流、交易、持久化、MQ 發布/消費 |
+| 後端 | Java 25、Spring Boot 3.5 | 內部 `8080`；可選開發連接埠映射 | REST API、認證、領域工作流、交易、持久化、MQ 發布/消費 |
 | AI Service | Python 3.11、FastAPI、LiteLLM | 內部 `8000`；可選開發連接埠映射 | 嵌入、解析、排序和對話相關同步端點 |
 | AI Worker | Python 3.11、RabbitMQ 消費者、LightGBM | 內部工作程序 | 非同步任務處理、回饋採集、增量模型訓練 |
 | PostgreSQL | PostgreSQL 15 + pgvector | `db-network` 內部 `5432` | 業務表和向量表 |

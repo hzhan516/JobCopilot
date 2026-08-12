@@ -122,16 +122,16 @@ Maven multi-module layout (`backend/pom.xml`):
 
 | Workflow | File | Purpose |
 |----------|------|---------|
-| **CI** | `.github/workflows/ci.yml` | Backend build/test (JDK 21, Maven), frontend build/test (Node 20, npm), AI service build/test (Python 3.11), Trivy security scan, Docker build/push to GHCR. |
-| **Dependabot Auto-Merge** | `.github/workflows/dependabot-auto-merge.yml` | Enables auto-merge for Dependabot patch updates; comments on minor updates. |
+| **CI** | `.github/workflows/ci.yml` | Backend build/test (JDK 25, Maven), frontend build/test (Node 20, npm), AI service build/test (Python 3.11), Trivy security scan, Docker build/push to GHCR. |
+| **Dependabot Auto-Merge** | `.github/workflows/dependabot-auto-merge.yml` | (FROZEN) Disabled during Java 25 upgrade. Enables auto-merge for Dependabot patch updates; comments on minor updates. |
 | **Dependency Check Nightly** | `.github/workflows/dependency-check-nightly.yml` | OWASP dependency-check every Sunday at 02:00 UTC. |
 | **Qodana** | `.github/workflows/qodana_code_quality.yml` | Static analysis on PRs/pushes to `main` and `releases/*`; skipped for Dependabot. |
-| **Block Major Upgrades** | `.github/workflows/block-major-upgrades.yml` | Detects and closes Dependabot major-version bump PRs. |
+| **Block Major Upgrades** | `.github/workflows/block-major-upgrades.yml` | (FROZEN) Disabled during Java 25 upgrade. Detects and closes Dependabot major-version bump PRs. |
 
-Dependabot configuration (`.github/dependabot.yml`) schedules weekly grouped updates for Maven, npm, pip, and GitHub Actions; major-version updates are ignored.
+Dependabot configuration (`.github/dependabot.yml`) is currently **frozen** (commented out) during the Java 25 upgrade to prevent automated PR activity.
 
 Current CI notes (as observed in `ci.yml`):
-- Backend tests are limited to `types` and `domain` modules (`mvn test --batch-mode -pl types,domain -am`).
+- Backend non-architecture tests run across the complete Maven reactor.
 - ArchUnit runs separately and currently excludes `AppLayerArchitectureTest`.
 - Docker images are pushed to `ghcr.io/${{ github.repository_owner }}/jobcopilot-{backend,frontend,ai-service}`.
 

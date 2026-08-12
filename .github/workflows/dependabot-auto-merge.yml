@@ -1,3 +1,9 @@
+# AUTOMATED BOT PR WORKFLOW DISABLED
+# Reason: freeze automated dependency PR activity during the Java 25 upgrade.
+# Restore: only through a separate, manually approved PR after the Java 25
+#          production observation gate has passed.
+# Disabled since: 2026-08-12
+
 # -----------------------------------------------------------------------------
 # Auto-merge Dependabot patch updates
 # -----------------------------------------------------------------------------

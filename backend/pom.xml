@@ -22,13 +22,13 @@
     </modules>
 
     <properties>
-        <java.version>21</java.version>
-        <maven.compiler.release>21</maven.compiler.release>
+        <java.version>25</java.version>
+        <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Build toolchain requirements -->
         <maven.min.version>3.9.6</maven.min.version>
-        <jdk.min.version>21</jdk.min.version>
+        <jdk.min.version>25</jdk.min.version>
 
         <!-- 框架版本 -->
         <spring-boot.version>3.5.16</spring-boot.version>
