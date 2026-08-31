@@ -64,7 +64,7 @@ AI Service / AI worker
 | Component | Technology | Network Exposure | Responsibility |
 |-----------|------------|------------------|----------------|
 | Frontend / Gateway | React 19, Vite 7, Nginx | Host `${FRONTEND_HOST_PORT:-80}` -> container `8080` | UI delivery, reverse proxy for backend API and health checks |
-| Backend | Java 21, Spring Boot 3.5 | Internal `8080`; optional dev-only host mapping | REST API, authentication, domain workflows, transactions, persistence, MQ publishing/consuming |
+| Backend | Java 25, Spring Boot 3.5 | Internal `8080`; optional dev-only host mapping | REST API, authentication, domain workflows, transactions, persistence, MQ publishing/consuming |
 | AI Service | Python 3.11, FastAPI, LiteLLM | Internal `8000`; optional dev-only host mapping | Embeddings, parsing, ranking, chat-oriented endpoints |
 | AI Worker | Python 3.11, RabbitMQ consumers, LightGBM | Internal worker process | Async task processing, feedback ingestion, incremental model training |
 | PostgreSQL | PostgreSQL 15 + pgvector | Internal `5432` on `db-network` | Business tables and vector tables |

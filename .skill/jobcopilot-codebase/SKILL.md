@@ -65,7 +65,7 @@ JobCopilot is an AI-powered job search platform with three main services:
 | Layer | Tech | Entry Point | Port (internal) |
 |-------|------|-------------|-----------------|
 | **Frontend** | React 19.2.7 + Vite 7.2.4 + TypeScript 5.9 | `frontend/src/App.tsx` → `main.tsx` | 5173 (dev) |
-| **Backend** | Java 21 + Spring Boot 3.5.16 + Maven | `backend/app/.../Application.java` | 8080 |
+| **Backend** | Java 25 + Spring Boot 3.5.16 + Maven | `backend/app/.../Application.java` | 8080 |
 | **AI Service** | Python 3.11+ + FastAPI 0.138.0 + LiteLLM | `ai-service/app/main.py` | 8000 |
 
 **Quick start**: `docker compose --env-file .env up -d --build`

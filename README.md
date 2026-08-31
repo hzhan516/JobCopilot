@@ -51,7 +51,7 @@ AI API / AI worker
 | Component | Technology | Exposure | Responsibility |
 |-----------|------------|----------|----------------|
 | Frontend / Gateway | React 19, Vite 7, Nginx | Host `${FRONTEND_HOST_PORT:-80}` -> container `8080` | Serve UI, proxy `/api` and `/health` to backend |
-| Backend | Java 21, Spring Boot 3.5, DDD modules | Internal `8080`; direct host port disabled by default | REST API, authentication, resume/job/application workflows, vector persistence |
+| Backend | Java 25, Spring Boot 3.5, DDD modules | Internal `8080`; direct host port disabled by default | REST API, authentication, resume/job/application workflows, vector persistence |
 | AI API | Python 3.11, FastAPI, LiteLLM | Internal `8000`; direct host port disabled by default | Synchronous AI endpoints, embeddings, parsing, ranking, chat support |
 | AI Worker | Python 3.11, RabbitMQ consumers, LightGBM | Internal worker process | Asynchronous parsing, ranking jobs, feedback ingestion, incremental model training |
 | PostgreSQL | PostgreSQL 15 with pgvector | Internal `5432` on `db-network` | Business data and vector storage |
@@ -303,7 +303,7 @@ The development server will start at <http://localhost:5173>
 
 Requirements:
 
-- JDK 21
+- JDK 25
 - Maven 3.9+
 
 ```bash
@@ -371,8 +371,8 @@ See [docs/deployment/DOCKER_DEPLOY.md](docs/deployment/DOCKER_DEPLOY.md) for det
 
 ### Backend
 
-- Java 21
-- Spring Boot 3.5.7
+- Java 25
+- Spring Boot 3.5.16
 - PostgreSQL 15 + pgvector
 - RabbitMQ 3
 - Maven 3.9+
